@@ -13,6 +13,9 @@ export const ROUTES = {
   caseLawDetail: (id: string) => `/case-law/${id}`,
   legislation: "/legislation",
   legislationDetail: (id: string) => `/legislation/${id}`,
+  legislationProvision: (statuteId: string, provisionId: string) =>
+    `/legislation/${statuteId}/section/${provisionId}`,
+  adminLegalLibrary: "/admin/legal-library",
   quickCodes: "/quick-codes",
   benchNotes: "/bench-notes",
   benchNoteDetail: (id: string) => `/bench-notes/${id}`,

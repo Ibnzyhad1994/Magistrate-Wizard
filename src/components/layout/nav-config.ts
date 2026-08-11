@@ -9,6 +9,7 @@ import {
   Bookmark,
   Search,
   Landmark,
+  LibraryBig,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { NavItem } from "@/types";
@@ -69,6 +70,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Court Assignments",
     href: ROUTES.adminCourtAssignments,
     icon: Landmark,
+    roles: ["admin"],
+  },
+  {
+    label: "Legal Library",
+    href: ROUTES.adminLegalLibrary,
+    icon: LibraryBig,
     roles: ["admin"],
   },
 ];

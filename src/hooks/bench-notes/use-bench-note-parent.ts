@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { BenchNoteParentType } from "@/lib/validations/bench-note";
+import { ROUTES } from "@/routes/paths";
 
 export interface ResolvedParent {
   label: string;
   subtitle: string | null;
+  /** Fully resolved route to navigate to — computed here (not a static per-type map in the page) because statute_provision needs a second id (its parent statute) that only this lookup has. */
+  href: string;
 }
 
 /**
@@ -29,7 +32,13 @@ export function useBenchNoteParent(
           .eq("id", entityId as string)
           .maybeSingle();
         if (error) throw error;
-        return data ? { label: data.matter_title, subtitle: data.case_number } : null;
+        return data
+          ? {
+              label: data.matter_title,
+              subtitle: data.case_number,
+              href: ROUTES.docketMatter(entityId as string),
+            }
+          : null;
       }
       if (entityType === "judgment") {
         const { data, error } = await supabase
@@ -38,7 +47,13 @@ export function useBenchNoteParent(
           .eq("id", entityId as string)
           .maybeSingle();
         if (error) throw error;
-        return data ? { label: data.title, subtitle: data.case_number } : null;
+        return data
+          ? {
+              label: data.title,
+              subtitle: data.case_number,
+              href: ROUTES.judgmentDetail(entityId as string),
+            }
+          : null;
       }
       if (entityType === "case_law") {
         const { data, error } = await supabase
@@ -47,7 +62,13 @@ export function useBenchNoteParent(
           .eq("id", entityId as string)
           .maybeSingle();
         if (error) throw error;
-        return data ? { label: data.case_name, subtitle: data.citation } : null;
+        return data
+          ? {
+              label: data.case_name,
+              subtitle: data.citation,
+              href: ROUTES.caseLawDetail(entityId as string),
+            }
+          : null;
       }
       if (entityType === "statute") {
         const { data, error } = await supabase
@@ -56,7 +77,29 @@ export function useBenchNoteParent(
           .eq("id", entityId as string)
           .maybeSingle();
         if (error) throw error;
-        return data ? { label: data.title, subtitle: data.code } : null;
+        return data
+          ? {
+              label: data.title,
+              subtitle: data.code,
+              href: ROUTES.legislationDetail(entityId as string),
+            }
+          : null;
+      }
+      if (entityType === "statute_provision") {
+        const { data, error } = await supabase
+          .from("statute_provisions")
+          .select("statute_id, number, heading, level, statutes(title)")
+          .eq("id", entityId as string)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) return null;
+        const provisionLabel = data.heading || `${data.level} ${data.number ?? ""}`.trim();
+        const statuteTitle = (data.statutes as unknown as { title: string } | null)?.title;
+        return {
+          label: statuteTitle ? `${statuteTitle} — ${provisionLabel}` : provisionLabel,
+          subtitle: data.number ? `${data.level} ${data.number}` : data.level,
+          href: ROUTES.legislationProvision(data.statute_id, entityId as string),
+        };
       }
       return null;
     },

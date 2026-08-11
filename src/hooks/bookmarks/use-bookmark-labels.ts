@@ -5,6 +5,8 @@ import type { Bookmark } from "@/types/database.types";
 export interface BookmarkLabel {
   label: string;
   subtitle: string | null;
+  /** Set for entity types whose route needs a second id (e.g. statute_provision needs its parent statute id to build /legislation/:statuteId/section/:provisionId). */
+  parentId?: string;
 }
 
 /**
@@ -31,8 +33,9 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
       const benchNoteIds = ids("bench_note");
       const caseIds = ids("case");
       const statuteIds = ids("statute");
+      const provisionIds = ids("statute_provision");
 
-      const [dm, j, cl, qc, bn, c, s] = await Promise.all([
+      const [dm, j, cl, qc, bn, c, s, sp] = await Promise.all([
         docketMatterIds.length
           ? supabase.from("docket_matters").select("id, matter_title, case_number").in("id", docketMatterIds)
           : Promise.resolve({ data: [], error: null }),
@@ -54,6 +57,12 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
         statuteIds.length
           ? supabase.from("statutes").select("id, title, code").in("id", statuteIds)
           : Promise.resolve({ data: [], error: null }),
+        provisionIds.length
+          ? supabase
+              .from("statute_provisions")
+              .select("id, number, heading, level, statute_id, statutes(title)")
+              .in("id", provisionIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       dm.data?.forEach((r) => map.set(`docket_matter:${r.id}`, { label: r.matter_title, subtitle: r.case_number }));
@@ -63,6 +72,21 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
       bn.data?.forEach((r) => map.set(`bench_note:${r.id}`, { label: r.title, subtitle: null }));
       c.data?.forEach((r) => map.set(`case:${r.id}`, { label: r.title, subtitle: r.case_number }));
       s.data?.forEach((r) => map.set(`statute:${r.id}`, { label: r.title, subtitle: r.code }));
+      (sp.data as unknown as Array<{
+        id: string;
+        number: string | null;
+        heading: string | null;
+        level: string;
+        statute_id: string;
+        statutes: { title: string } | null;
+      }> | null)?.forEach((r) => {
+        const provisionLabel = r.heading || `${r.level} ${r.number ?? ""}`.trim();
+        map.set(`statute_provision:${r.id}`, {
+          label: r.statutes ? `${r.statutes.title} — ${provisionLabel}` : provisionLabel,
+          subtitle: r.number ? `${r.level} ${r.number}` : r.level,
+          parentId: r.statute_id,
+        });
+      });
 
       return map;
     },

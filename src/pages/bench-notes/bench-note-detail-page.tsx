@@ -35,13 +35,7 @@ const PARENT_TYPE_LABELS: Record<string, string> = {
   judgment: "Judgment",
   case_law: "Case Law",
   statute: "Legislation",
-};
-
-const PARENT_ROUTE: Record<string, (id: string) => string> = {
-  docket_matter: ROUTES.docketMatter,
-  judgment: ROUTES.judgmentDetail,
-  case_law: ROUTES.caseLawDetail,
-  statute: ROUTES.legislationDetail,
+  statute_provision: "Legislation Provision",
 };
 
 export default function BenchNoteDetailPage() {
@@ -157,7 +151,7 @@ export default function BenchNoteDetailPage() {
             <button
               type="button"
               className="text-primary hover:underline"
-              onClick={() => navigate(PARENT_ROUTE[note.entity_type]?.(note.entity_id) ?? "#")}
+              onClick={() => navigate(parent.href)}
             >
               {parent.label}
               {parent.subtitle ? ` · ${parent.subtitle}` : ""}

@@ -29,7 +29,7 @@ import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useCaseLawList } from "@/hooks/case-law/use-case-law";
 import { useStatutes } from "@/hooks/legislation/use-legislation";
 import {
-  BENCH_NOTE_PARENT_TYPES,
+  BENCH_NOTE_PICKABLE_PARENT_TYPES,
   benchNoteCreateSchema,
   type BenchNoteCreateFormValues,
   type BenchNoteParentType,
@@ -42,6 +42,7 @@ const PARENT_TYPE_LABELS: Record<BenchNoteParentType, string> = {
   judgment: "Judgment",
   case_law: "Case Law",
   statute: "Legislation",
+  statute_provision: "Legislation Provision",
 };
 
 interface CreateBenchNoteDialogProps {
@@ -172,7 +173,7 @@ export function CreateBenchNoteDialog({
                             setParentFilter("");
                           }}
                         >
-                          {BENCH_NOTE_PARENT_TYPES.map((t) => (
+                          {BENCH_NOTE_PICKABLE_PARENT_TYPES.map((t) => (
                             <option key={t} value={t}>
                               {PARENT_TYPE_LABELS[t]}
                             </option>

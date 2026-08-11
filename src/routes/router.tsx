@@ -23,6 +23,7 @@ import BenchNoteDetailPage from "@/pages/bench-notes/bench-note-detail-page";
 import BookmarksPage from "@/pages/bookmarks/bookmarks-page";
 import SearchPage from "@/pages/search/search-page";
 import CourtAssignmentsPage from "@/pages/admin/court-assignments-page";
+import LegalLibraryAdminPage from "@/pages/admin/legal-library-admin-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
           { path: "/case-law/:id", element: <CaseLawDetailPage /> },
           { path: ROUTES.legislation, element: <LegislationListPage /> },
           { path: "/legislation/:id", element: <LegislationDetailPage /> },
+          { path: "/legislation/:id/section/:provisionId", element: <LegislationDetailPage /> },
           { path: ROUTES.quickCodes, element: <QuickCodesPage /> },
           { path: ROUTES.benchNotes, element: <BenchNotesListPage /> },
           { path: "/bench-notes/:id", element: <BenchNoteDetailPage /> },
@@ -75,6 +77,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: ROUTES.adminCourtAssignments, element: <CourtAssignmentsPage /> },
+          { path: ROUTES.adminLegalLibrary, element: <LegalLibraryAdminPage /> },
         ],
       },
     ],

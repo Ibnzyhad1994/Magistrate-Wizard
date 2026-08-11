@@ -16,6 +16,7 @@ const TYPE_LABELS: Record<BookmarkEntityType, string> = {
   case: "Case",
   bench_note: "Bench Note",
   statute: "Legislation",
+  statute_provision: "Legislation Provision",
   case_law: "Case Law",
   docket_matter: "Docket Matter",
   judgment: "Judgment",
@@ -70,7 +71,12 @@ export default function BookmarksPage() {
         <div className="space-y-3">
           {data.map((b) => {
             const resolved = labels?.get(`${b.entity_type}:${b.entity_id}`);
-            const route = TYPE_ROUTE[b.entity_type]?.(b.entity_id);
+            const route =
+              b.entity_type === "statute_provision"
+                ? resolved?.parentId
+                  ? ROUTES.legislationProvision(resolved.parentId, b.entity_id)
+                  : undefined
+                : TYPE_ROUTE[b.entity_type]?.(b.entity_id);
             return (
               <Card key={b.id}>
                 <CardContent className="flex items-center justify-between gap-3 p-4">

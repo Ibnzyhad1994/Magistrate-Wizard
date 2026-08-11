@@ -223,12 +223,26 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           decided_date: string | null;
+          disposition: string | null;
+          document_hash: string | null;
           full_text: string | null;
           id: string;
+          import_job_id: string | null;
           is_discoverable: boolean;
+          issues: string | null;
+          judges: string | null;
           jurisdiction: string;
+          key_passages: string | null;
+          neutral_citation: string | null;
+          original_filename: string | null;
           owner_id: string | null;
+          parties: string | null;
+          principles: string | null;
+          reported_citation: string | null;
+          retrieved_at: string | null;
+          review_status: string;
           search_vector: unknown | null;
+          source_id: string | null;
           source_url: string | null;
           summary: string | null;
           updated_at: string;
@@ -240,12 +254,26 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           decided_date?: string | null;
+          disposition?: string | null;
+          document_hash?: string | null;
           full_text?: string | null;
           id?: string;
+          import_job_id?: string | null;
           is_discoverable?: boolean;
+          issues?: string | null;
+          judges?: string | null;
           jurisdiction: string;
+          key_passages?: string | null;
+          neutral_citation?: string | null;
+          original_filename?: string | null;
           owner_id?: string | null;
+          parties?: string | null;
+          principles?: string | null;
+          reported_citation?: string | null;
+          retrieved_at?: string | null;
+          review_status?: string;
           search_vector?: unknown | null;
+          source_id?: string | null;
           source_url?: string | null;
           summary?: string | null;
           updated_at?: string;
@@ -257,12 +285,26 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           decided_date?: string | null;
+          disposition?: string | null;
+          document_hash?: string | null;
           full_text?: string | null;
           id?: string;
+          import_job_id?: string | null;
           is_discoverable?: boolean;
+          issues?: string | null;
+          judges?: string | null;
           jurisdiction?: string;
+          key_passages?: string | null;
+          neutral_citation?: string | null;
+          original_filename?: string | null;
           owner_id?: string | null;
+          parties?: string | null;
+          principles?: string | null;
+          reported_citation?: string | null;
+          retrieved_at?: string | null;
+          review_status?: string;
           search_vector?: unknown | null;
+          source_id?: string | null;
           source_url?: string | null;
           summary?: string | null;
           updated_at?: string;
@@ -280,6 +322,20 @@ export type Database = {
             columns: ["owner_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_law_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_sources";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_law_import_job_id_fkey";
+            columns: ["import_job_id"];
+            isOneToOne: false;
+            referencedRelation: "import_jobs";
             referencedColumns: ["id"];
           },
         ];
@@ -1046,7 +1102,7 @@ export type Database = {
           },
         ];
       };
-      /** Polymorphic (entity_type/entity_id, 6 approved parent types); no FK on entity_id by design. Delete order: Storage API first, then this row — never delete the storage object via SQL. */
+      /** Polymorphic (entity_type/entity_id, 7 approved parent types since 0055: docket_matter/judgment/case_law/quick_code/bench_note/case/statute); no FK on entity_id by design. Delete order: Storage API first, then this row — never delete the storage object via SQL. */
       documents: {
         Row: {
           created_at: string;
@@ -1604,44 +1660,89 @@ export type Database = {
       };
       statutes: {
         Row: {
+          act_number: string | null;
+          amendment_note: string | null;
+          chapter_number: string | null;
           code: string;
+          commencement_note: string | null;
           created_at: string;
           created_by: string | null;
+          document_hash: string | null;
           effective_date: string | null;
+          enactment_year: number | null;
           full_text: string | null;
           id: string;
+          import_job_id: string | null;
+          instrument_type: string | null;
+          is_current_version: boolean;
           jurisdiction: string;
+          original_filename: string | null;
+          retrieved_at: string | null;
+          review_status: string;
           search_vector: unknown | null;
+          short_title: string | null;
+          source_id: string | null;
           source_url: string | null;
           summary: string | null;
+          supersedes_statute_id: string | null;
           title: string;
           updated_at: string;
         };
         Insert: {
+          act_number?: string | null;
+          amendment_note?: string | null;
+          chapter_number?: string | null;
           code: string;
+          commencement_note?: string | null;
           created_at?: string;
           created_by?: string | null;
+          document_hash?: string | null;
           effective_date?: string | null;
+          enactment_year?: number | null;
           full_text?: string | null;
           id?: string;
+          import_job_id?: string | null;
+          instrument_type?: string | null;
+          is_current_version?: boolean;
           jurisdiction: string;
+          original_filename?: string | null;
+          retrieved_at?: string | null;
+          review_status?: string;
           search_vector?: unknown | null;
+          short_title?: string | null;
+          source_id?: string | null;
           source_url?: string | null;
           summary?: string | null;
+          supersedes_statute_id?: string | null;
           title: string;
           updated_at?: string;
         };
         Update: {
+          act_number?: string | null;
+          amendment_note?: string | null;
+          chapter_number?: string | null;
           code?: string;
+          commencement_note?: string | null;
           created_at?: string;
           created_by?: string | null;
+          document_hash?: string | null;
           effective_date?: string | null;
+          enactment_year?: number | null;
           full_text?: string | null;
           id?: string;
+          import_job_id?: string | null;
+          instrument_type?: string | null;
+          is_current_version?: boolean;
           jurisdiction?: string;
+          original_filename?: string | null;
+          retrieved_at?: string | null;
+          review_status?: string;
           search_vector?: unknown | null;
+          short_title?: string | null;
+          source_id?: string | null;
           source_url?: string | null;
           summary?: string | null;
+          supersedes_statute_id?: string | null;
           title?: string;
           updated_at?: string;
         };
@@ -1651,6 +1752,280 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "statutes_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_sources";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "statutes_import_job_id_fkey";
+            columns: ["import_job_id"];
+            isOneToOne: false;
+            referencedRelation: "import_jobs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "statutes_supersedes_statute_id_fkey";
+            columns: ["supersedes_statute_id"];
+            isOneToOne: false;
+            referencedRelation: "statutes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      statute_provisions: {
+        Row: {
+          body_text: string | null;
+          created_at: string;
+          heading: string | null;
+          id: string;
+          level: string;
+          number: string | null;
+          parent_provision_id: string | null;
+          search_vector: unknown | null;
+          sort_order: number;
+          statute_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          body_text?: string | null;
+          created_at?: string;
+          heading?: string | null;
+          id?: string;
+          level: string;
+          number?: string | null;
+          parent_provision_id?: string | null;
+          search_vector?: unknown | null;
+          sort_order?: number;
+          statute_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          body_text?: string | null;
+          created_at?: string;
+          heading?: string | null;
+          id?: string;
+          level?: string;
+          number?: string | null;
+          parent_provision_id?: string | null;
+          search_vector?: unknown | null;
+          sort_order?: number;
+          statute_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "statute_provisions_statute_id_fkey";
+            columns: ["statute_id"];
+            isOneToOne: false;
+            referencedRelation: "statutes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "statute_provisions_parent_provision_id_fkey";
+            columns: ["parent_provision_id"];
+            isOneToOne: false;
+            referencedRelation: "statute_provisions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      legal_sources: {
+        Row: {
+          base_url: string | null;
+          canonical_trusted: boolean;
+          connector_type: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          jurisdiction: string;
+          last_checked_at: string | null;
+          last_successful_import_at: string | null;
+          name: string;
+          notes: string | null;
+          source_type: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          base_url?: string | null;
+          canonical_trusted?: boolean;
+          connector_type: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          jurisdiction: string;
+          last_checked_at?: string | null;
+          last_successful_import_at?: string | null;
+          name: string;
+          notes?: string | null;
+          source_type: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          base_url?: string | null;
+          canonical_trusted?: boolean;
+          connector_type?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          jurisdiction?: string;
+          last_checked_at?: string | null;
+          last_successful_import_at?: string | null;
+          name?: string;
+          notes?: string | null;
+          source_type?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "legal_sources_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      import_batches: {
+        Row: {
+          content_type: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          label: string;
+        };
+        Insert: {
+          content_type: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          label: string;
+        };
+        Update: {
+          content_type?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          label?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "import_batches_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      import_jobs: {
+        Row: {
+          batch_id: string | null;
+          completed_at: string | null;
+          content_type: string;
+          created_at: string;
+          created_by: string;
+          duplicate_warning: string | null;
+          error_summary: string | null;
+          extracted_metadata: Json | null;
+          extracted_text: string | null;
+          id: string;
+          proposed_tags: string[] | null;
+          retry_count: number;
+          source_id: string | null;
+          source_url: string | null;
+          started_at: string | null;
+          status: string;
+          target_case_law_id: string | null;
+          target_statute_id: string | null;
+          updated_at: string;
+          uploaded_document_id: string | null;
+        };
+        Insert: {
+          batch_id?: string | null;
+          completed_at?: string | null;
+          content_type: string;
+          created_at?: string;
+          created_by: string;
+          duplicate_warning?: string | null;
+          error_summary?: string | null;
+          extracted_metadata?: Json | null;
+          extracted_text?: string | null;
+          id?: string;
+          proposed_tags?: string[] | null;
+          retry_count?: number;
+          source_id?: string | null;
+          source_url?: string | null;
+          started_at?: string | null;
+          status?: string;
+          target_case_law_id?: string | null;
+          target_statute_id?: string | null;
+          updated_at?: string;
+          uploaded_document_id?: string | null;
+        };
+        Update: {
+          batch_id?: string | null;
+          completed_at?: string | null;
+          content_type?: string;
+          created_at?: string;
+          created_by?: string;
+          duplicate_warning?: string | null;
+          error_summary?: string | null;
+          extracted_metadata?: Json | null;
+          extracted_text?: string | null;
+          id?: string;
+          proposed_tags?: string[] | null;
+          retry_count?: number;
+          source_id?: string | null;
+          source_url?: string | null;
+          started_at?: string | null;
+          status?: string;
+          target_case_law_id?: string | null;
+          target_statute_id?: string | null;
+          updated_at?: string;
+          uploaded_document_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "import_jobs_batch_id_fkey";
+            columns: ["batch_id"];
+            isOneToOne: false;
+            referencedRelation: "import_batches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "import_jobs_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_sources";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "import_jobs_target_case_law_id_fkey";
+            columns: ["target_case_law_id"];
+            isOneToOne: false;
+            referencedRelation: "case_law";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "import_jobs_target_statute_id_fkey";
+            columns: ["target_statute_id"];
+            isOneToOne: false;
+            referencedRelation: "statutes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "import_jobs_uploaded_document_id_fkey";
+            columns: ["uploaded_document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
             referencedColumns: ["id"];
           },
         ];
@@ -1839,7 +2214,8 @@ export type Database = {
         | "case_law"
         | "docket_matter"
         | "judgment"
-        | "quick_code";
+        | "quick_code"
+        | "statute_provision";
       case_status: "open" | "pending" | "closed" | "archived";
       docket_matter_status: "active" | "stayed" | "completed" | "archived";
       note_status: "draft" | "published";
@@ -1999,6 +2375,7 @@ export const Constants = {
         "docket_matter",
         "judgment",
         "quick_code",
+        "statute_provision",
       ],
       case_status: ["open", "pending", "closed", "archived"],
       docket_matter_status: ["active", "stayed", "completed", "archived"],
@@ -2028,6 +2405,10 @@ export type Case = Tables<"cases">;
 export type CaseParty = Tables<"case_parties">;
 export type BenchNote = Tables<"bench_notes">;
 export type Statute = Tables<"statutes">;
+export type StatuteProvision = Tables<"statute_provisions">;
+export type LegalSource = Tables<"legal_sources">;
+export type ImportBatch = Tables<"import_batches">;
+export type ImportJob = Tables<"import_jobs">;
 export type CaseLaw = Tables<"case_law">;
 export type CaseLawAnnotation = Tables<"case_law_annotations">;
 export type Tag = Tables<"tags">;
