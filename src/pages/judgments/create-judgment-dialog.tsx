@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useCreateJudgment } from "@/hooks/judgments/use-judgments";
 import {
   judgmentCreateSchema,
@@ -104,7 +105,12 @@ export function CreateJudgmentDialog({ open, onOpenChange }: CreateJudgmentDialo
                   <FormItem>
                     <FormLabel>Judgment date (optional)</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DateOnlyInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        aria-label="Judgment date"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

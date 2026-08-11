@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useCreatePersonalCaseLaw } from "@/hooks/case-law/use-case-law";
 import {
   caseLawFieldsSchema,
@@ -118,7 +119,12 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
                   <FormItem>
                     <FormLabel>Decided date (optional)</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DateOnlyInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        aria-label="Decided date"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

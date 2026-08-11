@@ -27,6 +27,7 @@ import { RichTextEditor } from "@/components/common/rich-text-editor";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { TagInput } from "@/components/common/tag-input";
+import { DateOnlyInput } from "@/components/common/date-only-input";
 import {
   useDeleteJudgment,
   useFinalizeJudgment,
@@ -299,7 +300,13 @@ function FieldsCard({
                   <FormItem>
                     <FormLabel>Judgment date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} disabled={!isDraft} />
+                      <DateOnlyInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={!isDraft}
+                        aria-label="Judgment date"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

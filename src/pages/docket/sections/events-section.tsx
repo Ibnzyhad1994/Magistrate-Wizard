@@ -41,6 +41,7 @@ import {
 } from "@/lib/validations/docket";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
 import { ControlledVocabSelect } from "@/components/common/controlled-vocab-select";
+import { DateOnlyInput } from "@/components/common/date-only-input";
 import type { DocketEvent } from "@/types/database.types";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -212,7 +213,12 @@ function EventDialog({
                   <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DateOnlyInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        aria-label="Event date"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useCaseLawItem,
@@ -312,7 +313,12 @@ function FieldsCard({
                   <FormItem>
                     <FormLabel>Decided date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DateOnlyInput
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        aria-label="Decided date"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

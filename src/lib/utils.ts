@@ -115,6 +115,91 @@ export function formatTimeOnly(value: string | null | undefined): string {
   return `${hour12}:${minute} ${period}`;
 }
 
+/* ------------------------------------------------------------------ *
+ * STRICT DATE / TIME / TIMESTAMPTZ DISTINCTION
+ *
+ * Three, and only three, kinds of value flow through this app's date
+ * handling, and each has its own contract:
+ *
+ *  - DATE (calendar-only): `docket_events.scheduled_date`,
+ *    `judgments.judgment_date`, `case_law.decided_date`,
+ *    `statutes.effective_date`, legacy `cases.filed_date`/`closed_date`.
+ *    Represented ONLY as a plain "YYYY-MM-DD" string end-to-end — never
+ *    parsed via `new Date(dateOnlyString)` (UTC-midnight parsing), never
+ *    round-tripped through `.toISOString()`. Display: `DD/MM/YYYY` in
+ *    edit controls (`toDDMMYYYY`/`DateOnlyInput`), "20 Aug 2026" in
+ *    read-only prose (`formatDate`, en-GB). `parseDateOnly` exists only
+ *    to build a LOCAL-midnight `Date` for `Intl.DateTimeFormat`/calendar
+ *    grid math — the calendar day cannot shift because construction and
+ *    formatting always happen in the same local zone.
+ *
+ *  - TIME (clock-only): `docket_events.scheduled_time`. Represented as a
+ *    plain "HH:MM[:SS]" string. Never constructs a `Date` at all
+ *    (`formatTimeOnly` above) — a bare `time` value has no timezone, so
+ *    there is nothing to convert and no correct way to put it through
+ *    `Date`/`Intl`.
+ *
+ *  - TIMESTAMPTZ (instant): `created_at`, `updated_at`, `finalized_at`,
+ *    `started_at`/`ended_at` (`magistrate_courts`,
+ *    `docket_matter_assignments`), `shares.created_at`/`revoked_at`, etc.
+ *    These genuinely represent a moment in time and are correctly
+ *    handled with ordinary timezone-aware `new Date(isoString)` +
+ *    viewer-local `Intl` rendering (`formatDate`'s non-date-only branch,
+ *    `formatDateTime`) — this is intentional, not a bug, and must not be
+ *    "fixed."
+ * ------------------------------------------------------------------ */
+
+/**
+ * DATE-only display for edit controls: "2026-08-20" -> "20/08/2026".
+ * Distinct from `formatDate`'s prose rendering ("20 Aug 2026") — this is
+ * the exact DD/MM/YYYY numeric form `DateOnlyInput` reads and writes.
+ */
+export function toDDMMYYYY(value: string | null | undefined): string {
+  if (!value || !DATE_ONLY_RE.test(value)) return "";
+  const [y, m, d] = value.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/**
+ * Strictly parses a "DD/MM/YYYY" string into a `date`-column-ready
+ * "YYYY-MM-DD" string, or `null` if it isn't a complete, real calendar
+ * date (wrong length, month out of range, day that doesn't exist in
+ * that month — e.g. "31/02/2026", "30/02/2028" non-leap-year). Validates
+ * by constructing a LOCAL `Date` (`new Date(year, month-1, day)` — same
+ * safe local-construction technique as `parseDateOnly`, never a
+ * date-string-to-UTC parse) and confirming it round-trips to the exact
+ * same year/month/day via local getters; a rolled-over value (e.g. Feb
+ * 30 becoming Mar 2) fails the round-trip and is correctly rejected.
+ */
+export function parseDDMMYYYYToISO(text: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text.trim());
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) {
+    return null;
+  }
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * Masks free-typed digits into a "DD/MM/YYYY" shape as the user types
+ * (auto-inserts "/" after the day and month segments, caps at 8 digits)
+ * — used by `DateOnlyInput`. Pure string manipulation, no `Date`
+ * involved, so there is nothing here that could ever be timezone-
+ * sensitive.
+ */
+export function maskDDMMYYYY(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += "/" + digits.slice(2, 4);
+  if (digits.length > 4) out += "/" + digits.slice(4, 8);
+  return out;
+}
+
 /**
  * Turns a stored lowercase/snake_case categorical value (a Docket Matter
  * status, party role/type, event status, share permission, etc.) into a
