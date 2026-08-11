@@ -1,0 +1,54 @@
+-- 0041_extend_bookmark_entity_type.sql
+--
+-- Part 1 of 2 of the Bookmark entity-type extension (see
+-- 0042_bookmark_entity_validation_extension.sql for part 2). Adds three
+-- new values to the bookmark_entity_type enum: docket_matter, judgment,
+-- quick_code. This file does ONLY the ALTER TYPE -- it does not
+-- reference, compare, or otherwise use any of the three new values.
+--
+-- WHY THIS IS SPLIT FROM THE VALIDATOR UPDATE (investigated live before
+-- writing this file, not assumed from memory): a rollback-only probe
+-- against a brand-new, same-transaction, disposable enum type suggested
+-- ALTER TYPE ADD VALUE followed by immediate use was safe on this
+-- Postgres version -- but that probe was not representative. Re-tested
+-- directly against the REAL bookmark_entity_type (which has existed
+-- since migration 0008, long before this transaction) inside a second
+-- rollback-only probe, and confirmed: a plain equality comparison of
+-- the newly-added value, executing a function that CASEs on it, and
+-- inserting it into the real bookmarks table ALL fail in the same
+-- transaction as the ALTER TYPE, with "unsafe use of new value ...
+-- of enum type bookmark_entity_type". Only bare compilation of a
+-- plpgsql function body containing the new literal (never executed)
+-- succeeds in the same transaction -- plpgsql bodies are not validated
+-- against the catalog until first execution. This matches Postgres's
+-- real restriction: a value added to a PRE-EXISTING enum type cannot be
+-- used for comparison until the adding transaction commits. (The
+-- disposable-type probe was misleading specifically because the type
+-- itself was also new-in-transaction, which is not this migration's
+-- real situation and was not representative of it.)
+--
+-- Consequently this migration adds ONLY the three enum values, with no
+-- use of them anywhere in this file. 0042 (a separate, subsequently-
+-- applied migration, its own committed transaction) rewrites
+-- validate_bookmark_entity() to reference them. This is the documented
+-- Part I contingency -- not a numbering change for its own sake.
+--
+-- REVERSIBILITY NOTE (disclosed, not a defect): PostgreSQL has no
+-- ALTER TYPE ... DROP VALUE. Once these three values are added and this
+-- migration is applied for real, removing them again is not a simple
+-- down-migration -- it requires recreating the enum type entirely and
+-- migrating every dependent column/row. This is a permanent, one-way
+-- schema change, unlike most other migrations in this project. The
+-- change itself is purely additive and backward-compatible: it does not
+-- touch the four existing enum values, any existing bookmarks row
+-- (there are currently zero), or any existing query, so the risk this
+-- irreversibility carries is low -- but it is a real, disclosed
+-- difference from this project's usual easy-forward-reconciliation
+-- posture, and is recorded here for that reason.
+--
+-- bookmarks currently has zero live rows (confirmed live before writing
+-- this migration).
+
+alter type public.bookmark_entity_type add value 'docket_matter';
+alter type public.bookmark_entity_type add value 'judgment';
+alter type public.bookmark_entity_type add value 'quick_code';
