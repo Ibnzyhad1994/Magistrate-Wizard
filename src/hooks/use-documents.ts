@@ -87,11 +87,32 @@ export function useUploadDocument(entityType: string, entityId: string) {
   });
 }
 
-/** Signed URL for reading/downloading a document (private bucket). */
+/** Signed URL for downloading a document (private bucket). Unchanged. */
 export async function getDocumentDownloadUrl(filePath: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .createSignedUrl(filePath, 60);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+/**
+ * Signed URL for in-app viewing (private bucket) — a longer expiry than
+ * the download URL (5 minutes vs. 60 seconds) since a viewer may stay
+ * open while the reader scrolls a multi-page PDF, but still short-lived,
+ * never public. Same `storage.objects` "Users can read documents they
+ * have access to" SELECT policy as `getDocumentDownloadUrl` — that
+ * policy nests an `EXISTS` against the document's parent record
+ * (docket_matters/judgments/case_law/quick_codes/bench_notes/cases),
+ * which itself runs under the caller's own RLS, so a signed URL can only
+ * ever be minted for a document the caller could already lawfully see.
+ * This function changes no authorization — it only asks Storage for a
+ * URL with a different, still-short lifetime.
+ */
+export async function getDocumentViewUrl(filePath: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(filePath, 300);
   if (error) throw error;
   return data.signedUrl;
 }

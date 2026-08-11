@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FileText, Upload, Trash2, Download } from "lucide-react";
+import { FileText, Upload, Trash2, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { DocumentViewerDialog } from "@/components/common/document-viewer-dialog";
 import {
   getDocumentDownloadUrl,
   useDeleteDocument,
@@ -63,6 +64,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
 
   async function handleDownload(doc: Document) {
     setDownloadingId(doc.id);
@@ -133,7 +135,14 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
             {data.map((doc) => (
               <TableRow key={doc.id}>
                 <TableCell className="font-medium text-foreground">
-                  {doc.file_name}
+                  <button
+                    type="button"
+                    onClick={() => setViewingDoc(doc)}
+                    className="truncate text-left hover:underline"
+                    title="Open"
+                  >
+                    {doc.file_name}
+                  </button>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatBytes(doc.file_size)}
@@ -142,6 +151,14 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
                   {formatDate(doc.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`View ${doc.file_name}`}
+                    onClick={() => setViewingDoc(doc)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -191,6 +208,13 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
             );
           }
         }}
+      />
+
+      <DocumentViewerDialog
+        document={viewingDoc}
+        open={!!viewingDoc}
+        onOpenChange={(open) => !open && setViewingDoc(null)}
+        onDownload={(d) => void handleDownload(d)}
       />
     </div>
   );

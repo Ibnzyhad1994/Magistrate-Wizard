@@ -163,7 +163,7 @@ function LifecycleBar({
           </Button>
           <p className="text-xs text-muted-foreground">
             Draft — all fields are editable. Finalizing locks the substantive
-            content permanently (you can always Unlock later to correct it).
+            fields until you Unlock the judgment to make corrections.
           </p>
         </>
       ) : (
@@ -178,8 +178,9 @@ function LifecycleBar({
             Unlock
           </Button>
           <p className="text-xs text-muted-foreground">
-            Final — substantive fields are locked. Unlock to make corrections,
-            then finalize again when ready.
+            Final — substantive fields are locked. Unlock returns this
+            judgment to an editable draft so you can make corrections, then
+            finalize it again when ready.
           </p>
         </>
       )}
@@ -188,7 +189,7 @@ function LifecycleBar({
         open={confirmFinalize}
         onOpenChange={setConfirmFinalize}
         title="Finalize this judgment?"
-        description="Title, case number, court, date, citation, and content will be locked. You can always Unlock later to make corrections."
+        description="Title, case number, court, date, citation, and content will be locked until you Unlock the judgment to make corrections."
         confirmLabel="Finalize"
         confirmVariant="default"
         isConfirming={finalize.isPending}

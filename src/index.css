@@ -106,6 +106,71 @@
   }
 }
 
+@layer components {
+  /**
+   * Tiptap-rendered content (`src/components/common/rich-text-editor.tsx`).
+   * Tailwind's preflight resets h1-h6 font-size/font-weight to `inherit`
+   * and strips list-style/margin from ul/ol, so a genuine <h2>/<ul> node
+   * in the editor document renders with zero visual distinction from a
+   * plain paragraph unless explicitly restyled here. This project does
+   * not have the `@tailwindcss/typography` ("prose") plugin installed —
+   * the `prose` classes previously used were silently inert — so this is
+   * a small, dependency-free, explicitly scoped stylesheet instead of a
+   * new build dependency.
+   */
+  .richtext-content {
+    @apply text-sm leading-relaxed text-foreground;
+  }
+
+  .richtext-content > * + * {
+    @apply mt-3;
+  }
+
+  .richtext-content h1 {
+    @apply text-2xl font-bold tracking-tight text-foreground;
+  }
+
+  .richtext-content h2 {
+    @apply text-xl font-bold tracking-tight text-foreground;
+  }
+
+  .richtext-content h3 {
+    @apply text-lg font-semibold tracking-tight text-foreground;
+  }
+
+  .richtext-content p {
+    @apply leading-relaxed;
+  }
+
+  .richtext-content ul {
+    @apply list-disc space-y-1 pl-6;
+  }
+
+  .richtext-content ol {
+    @apply list-decimal space-y-1 pl-6;
+  }
+
+  .richtext-content a {
+    @apply text-primary underline underline-offset-2;
+  }
+
+  .richtext-content blockquote {
+    @apply border-l-2 border-border pl-4 italic text-muted-foreground;
+  }
+
+  .richtext-content code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.85em];
+  }
+
+  .richtext-content p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    @apply text-muted-foreground;
+  }
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
