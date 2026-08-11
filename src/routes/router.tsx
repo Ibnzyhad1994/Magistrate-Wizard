@@ -13,6 +13,8 @@ import DocketListPage from "@/pages/docket/docket-list-page";
 import DocketMatterDetailPage from "@/pages/docket/docket-matter-detail-page";
 import JudgmentListPage from "@/pages/judgments/judgment-list-page";
 import JudgmentDetailPage from "@/pages/judgments/judgment-detail-page";
+import CaseLawListPage from "@/pages/case-law/case-law-list-page";
+import CaseLawDetailPage from "@/pages/case-law/case-law-detail-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -44,6 +46,8 @@ export const router = createBrowserRouter([
           { path: "/docket/:id", element: <DocketMatterDetailPage /> },
           { path: ROUTES.judgments, element: <JudgmentListPage /> },
           { path: "/judgments/:id", element: <JudgmentDetailPage /> },
+          { path: ROUTES.caseLaw, element: <CaseLawListPage /> },
+          { path: "/case-law/:id", element: <CaseLawDetailPage /> },
         ],
       },
     ],
