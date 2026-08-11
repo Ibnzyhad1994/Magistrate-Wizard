@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, CheckCircle2, FileQuestion } from "lucide-react";
+import { ArrowLeft, Trash2, FileQuestion } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,9 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
-import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditor } from "@/components/common/rich-text-editor";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { SaveIndicator } from "@/components/common/save-indicator";
 import {
   useBenchNote,
   useDeleteBenchNote,
@@ -23,6 +23,12 @@ import {
 import { useBenchNoteParent } from "@/hooks/bench-notes/use-bench-note-parent";
 import { ROUTES } from "@/routes/paths";
 import { toTitleCase } from "@/lib/utils";
+import { useBackNav } from "@/hooks/use-back-nav";
+
+/** How long to wait after the last keystroke before persisting content. */
+const AUTOSAVE_DEBOUNCE_MS = 1200;
+
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 const PARENT_TYPE_LABELS: Record<string, string> = {
   docket_matter: "Docket Matter",
@@ -39,6 +45,7 @@ const PARENT_ROUTE: Record<string, (id: string) => string> = {
 export default function BenchNoteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const back = useBackNav(ROUTES.benchNotes, "Back to Bench Notes");
   const { data: note, isPending, isError, error, refetch } = useBenchNote(id);
   const deleteBenchNote = useDeleteBenchNote();
   const updateFields = useUpdateBenchNoteFields(id ?? "");
@@ -50,20 +57,59 @@ export default function BenchNoteDetailPage() {
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [title, setTitle] = useState("");
-  const [pendingContent, setPendingContent] = useState<{ json: JSONContent; text: string } | null>(
-    null,
-  );
-  const [contentDirty, setContentDirty] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+
+  // Real debounced autosave (this previously required an explicit "Save
+  // content" click despite looking like autosave elsewhere in the app —
+  // see Part E investigation notes). `latestContent` always holds the
+  // most recent editor output; `debounceTimer` fires `persist()` once
+  // typing pauses. A ref (not state) so rapid keystrokes don't cause
+  // re-renders or race against the debounce timer's own closure.
+  const latestContent = useRef<{ json: JSONContent; text: string } | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function persist() {
+    const pending = latestContent.current;
+    if (!pending) return;
+    setSaveState("saving");
+    updateContent.mutate(
+      { content: pending.json, content_text: pending.text },
+      {
+        onSuccess: () => setSaveState("saved"),
+        onError: () => setSaveState("error"),
+      },
+    );
+  }
+
+  function handleEditorChange(json: JSONContent, text: string) {
+    latestContent.current = { json, text };
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(persist, AUTOSAVE_DEBOUNCE_MS);
+  }
 
   // Intentionally re-syncs only when switching to a different note (by id),
   // not on every background refetch of the same note — otherwise an
   // in-flight refetch could stomp the title the user is actively editing.
   useEffect(() => {
     if (note) setTitle(note.title);
-    setContentDirty(false);
-    setPendingContent(null);
+    setSaveState("idle");
+    latestContent.current = null;
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id]);
+
+  // Flush a pending debounce on unmount so navigating away right after
+  // typing doesn't silently drop the last few hundred milliseconds of
+  // edits — fire the save immediately instead of waiting out the timer.
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        if (latestContent.current) persist();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isPending) {
     return (
@@ -89,10 +135,10 @@ export default function BenchNoteDetailPage() {
           variant="ghost"
           size="sm"
           className="-ml-2 mb-2"
-          onClick={() => navigate(ROUTES.benchNotes)}
+          onClick={() => navigate(back.to)}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Bench Notes
+          {back.label}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{note.title}</h1>
@@ -192,33 +238,14 @@ export default function BenchNoteDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Content</CardTitle>
-          {contentDirty && (
-            <Button
-              size="sm"
-              disabled={updateContent.isPending}
-              onClick={() => {
-                if (!pendingContent) return;
-                updateContent.mutate(
-                  { content: pendingContent.json, content_text: pendingContent.text },
-                  { onSuccess: () => setContentDirty(false) },
-                );
-              }}
-            >
-              {updateContent.isPending && <LoadingSpinner className="text-current" size={14} />}
-              <CheckCircle2 className="h-4 w-4" />
-              Save content
-            </Button>
-          )}
+          <SaveIndicator state={saveState} onRetry={persist} />
         </CardHeader>
         <CardContent>
           <RichTextEditor
             key={note.id}
             content={(note.content as JSONContent | null) ?? null}
             placeholder="Write your note…"
-            onChange={(json, text) => {
-              setPendingContent({ json, text });
-              setContentDirty(true);
-            }}
+            onChange={handleEditorChange}
           />
         </CardContent>
       </Card>

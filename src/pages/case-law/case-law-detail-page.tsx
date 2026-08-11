@@ -50,10 +50,12 @@ import {
 } from "@/lib/validations/case-law";
 import { formatDate, formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
+import { useBackNav } from "@/hooks/use-back-nav";
 
 export default function CaseLawDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const back = useBackNav(ROUTES.caseLaw, "Back to Case Law");
   const { user } = useAuth();
   const { data: caseLaw, isPending, isError, error, refetch } = useCaseLawItem(id);
   const deleteCaseLaw = useDeleteCaseLaw();
@@ -87,16 +89,16 @@ export default function CaseLawDetailPage() {
           variant="ghost"
           size="sm"
           className="-ml-2 mb-2"
-          onClick={() => navigate(ROUTES.caseLaw)}
+          onClick={() => navigate(back.to)}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Case Law
+          {back.label}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {caseLaw.case_name}
           </h1>
-          <Badge variant={isCanonical ? "outline" : "secondary"}>
+          <Badge variant={isCanonical ? "canonical" : "secondary"}>
             {isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"}
           </Badge>
           <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />

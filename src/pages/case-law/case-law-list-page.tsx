@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
 import { useCaseLawList } from "@/hooks/case-law/use-case-law";
+import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { CreateCaseLawDialog } from "@/pages/case-law/create-case-law-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
@@ -29,15 +30,20 @@ export default function CaseLawListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useCaseLawList();
+  // Real full-text search over Case Law's own search_vector (case_name,
+  // citation, court, jurisdiction, summary, full_text) — scoped to Case
+  // Law only, never Global Search. Previously this was a client-side
+  // substring match over just case_name/citation/court, which couldn't
+  // find a match in an entry's summary/full text at all.
+  const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
+    "search_case_law",
+    query,
+  );
 
   const { canonical, mine, discoverable } = useMemo(() => {
     const all = data ?? [];
-    const q = query.trim().toLowerCase();
-    const matches = (row: (typeof all)[number]) =>
-      !q ||
-      row.case_name.toLowerCase().includes(q) ||
-      row.citation.toLowerCase().includes(q) ||
-      row.court.toLowerCase().includes(q);
+    const q = query.trim();
+    const matches = (row: (typeof all)[number]) => !q || (matchingIds?.has(row.id) ?? false);
     return {
       canonical: all.filter((c) => c.owner_id === null && matches(c)),
       mine: all.filter((c) => c.owner_id === user?.id && matches(c)),
@@ -45,7 +51,7 @@ export default function CaseLawListPage() {
         (c) => c.owner_id !== null && c.owner_id !== user?.id && c.is_discoverable && matches(c),
       ),
     };
-  }, [data, user?.id, query]);
+  }, [data, user?.id, query, matchingIds]);
 
   return (
     <div className="space-y-6">
@@ -65,15 +71,20 @@ export default function CaseLawListPage() {
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          className="pl-8"
-          placeholder="Filter by case name, citation, or court…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Filter case law"
-        />
+      <div className="max-w-sm space-y-1">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Search case name, citation, court, or text…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search case law"
+          />
+        </div>
+        {query.trim() && searchPending && (
+          <p className="text-xs text-muted-foreground">Searching…</p>
+        )}
       </div>
 
       {isPending ? (
@@ -186,7 +197,7 @@ function CaseLawTable({
                 <TableCell className="font-medium text-foreground">
                   {row.case_name}
                   {row.owner_id === null && (
-                    <Badge variant="outline" className="ml-2">
+                    <Badge variant="canonical" className="ml-2">
                       Canonical
                     </Badge>
                   )}

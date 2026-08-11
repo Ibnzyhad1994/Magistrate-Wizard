@@ -50,7 +50,7 @@ export function CaseLawSection({ matterId }: CaseLawSectionProps) {
               {caseLaw.owner_id ? (
                 <Badge variant="secondary">Personal</Badge>
               ) : (
-                <Badge>Canonical</Badge>
+                <Badge variant="canonical">Canonical</Badge>
               )}
             </CardContent>
           </Card>

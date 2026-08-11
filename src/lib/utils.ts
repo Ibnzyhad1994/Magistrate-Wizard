@@ -10,9 +10,61 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
- * Format a Date (or ISO string) using the platform Intl API.
- * Centralized here so date formatting stays consistent across the app.
+ * Parses a Postgres `date`-column value (a plain "YYYY-MM-DD" string with
+ * no time or timezone component) into a JS `Date` representing LOCAL
+ * midnight on that calendar day.
+ *
+ * ROOT CAUSE this exists to avoid: `new Date("2026-08-20")` is parsed by
+ * the JS spec as **UTC midnight**, not local midnight. Formatting that
+ * value with `Intl.DateTimeFormat` (which renders in the browser's LOCAL
+ * timezone by default) then silently rolls the calendar date backward by
+ * one day for every negative-UTC-offset timezone — including Guyana
+ * (UTC-4). This is exactly the "20 Aug selected, 19 Aug displayed" bug:
+ * UTC midnight on the 20th is 8:00 PM local time on the 19th in Guyana.
+ * Constructing a `Date` from separate year/month/day components instead
+ * (`new Date(y, m - 1, d)`) uses the LOCAL timezone at construction time,
+ * so the calendar date can never shift — a `date` column's value is a
+ * calendar date, not an instant, and must never be timezone-sensitive.
+ */
+export function parseDateOnly(value: string): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y as number, (m as number) - 1, d as number);
+}
+
+/**
+ * Today's calendar date, as a "YYYY-MM-DD" string, in the VIEWER's LOCAL
+ * timezone — safe to compare directly against a Postgres `date` column
+ * (e.g. `.gte("scheduled_date", getLocalDateOnly())`).
+ *
+ * Deliberately NOT `new Date().toISOString().slice(0, 10)`: `toISOString`
+ * always renders in UTC, so for any negative-UTC-offset timezone (Guyana,
+ * UTC-4) that expression returns TOMORROW's date for several hours every
+ * evening (e.g. 9:00 PM local Aug 19 in Guyana is already 1:00 AM UTC Aug
+ * 20), which would silently drop today's remaining Upcoming Appearances
+ * and pull in tomorrow's a day early. Building the string from local
+ * `Date` accessors avoids that entirely.
+ */
+export function getLocalDateOnly(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Format a `date` (calendar-date-only) or `timestamptz` value for
+ * display. Centralized here so date formatting/timezone handling stays
+ * consistent — and correct — across the app.
+ *
+ * Accepts either: a plain "YYYY-MM-DD" string (a Postgres `date` column
+ * — parsed via `parseDateOnly` so the calendar day can never shift with
+ * timezone, see above), or a full ISO timestamp string / `Date` (a
+ * `timestamptz` column, e.g. `created_at`/`finalized_at` — these
+ * genuinely represent an instant and are correctly rendered in the
+ * viewer's local time, which is intentional and unchanged).
  */
 export function formatDate(
   date: string | Date,
@@ -22,8 +74,16 @@ export function formatDate(
     day: "numeric",
   },
 ): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-US", options).format(d);
+  const d =
+    typeof date === "string"
+      ? DATE_ONLY_RE.test(date)
+        ? parseDateOnly(date)
+        : new Date(date)
+      : date;
+  // en-GB (Commonwealth) ordering — "20 Aug 2026", day before month —
+  // per the Guyana/Commonwealth judicial date-presentation standard.
+  // Never en-US, which would read as month-first.
+  return new Intl.DateTimeFormat("en-GB", options).format(d);
 }
 
 export function formatDateTime(date: string | Date): string {
@@ -34,6 +94,25 @@ export function formatDateTime(date: string | Date): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+/**
+ * Format a Postgres `time`-column value ("HH:MM" or "HH:MM:SS", no
+ * timezone — a wall-clock time, not an instant) as a clean 12-hour
+ * string, e.g. "14:30:00" -> "2:30 PM". Deliberately does NOT go through
+ * `Date`/`Intl` timezone conversion at all — a bare `time` value has no
+ * timezone to convert, and running it through `new Date()` would invite
+ * exactly the same class of bug as the date-only case above.
+ */
+export function formatTimeOnly(value: string | null | undefined): string {
+  if (!value) return "";
+  const match = /^(\d{1,2}):(\d{2})/.exec(value);
+  if (!match) return value;
+  const hour24 = Number(match[1]);
+  const minute = match[2];
+  const period = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${minute} ${period}`;
 }
 
 /**

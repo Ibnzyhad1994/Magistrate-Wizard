@@ -3,6 +3,7 @@ import {
   Gavel,
   Scale,
   BookOpen,
+  ScrollText,
   Braces,
   StickyNote,
   Bookmark,
@@ -38,6 +39,11 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Case Law",
     href: ROUTES.caseLaw,
     icon: BookOpen,
+  },
+  {
+    label: "Legislation",
+    href: ROUTES.legislation,
+    icon: ScrollText,
   },
   {
     label: "Quick Codes",

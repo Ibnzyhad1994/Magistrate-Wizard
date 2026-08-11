@@ -17,6 +17,7 @@ import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { ROUTES } from "@/routes/paths";
+import { useBackNav } from "@/hooks/use-back-nav";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   active: "default",
@@ -28,6 +29,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
 export default function DocketMatterDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const back = useBackNav(ROUTES.docket, "Back to Docket");
   const { data: matter, isPending, isError, error, refetch } = useDocketMatter(id);
 
   if (isPending) {
@@ -62,10 +64,10 @@ export default function DocketMatterDetailPage() {
           variant="ghost"
           size="sm"
           className="-ml-2 mb-2"
-          onClick={() => navigate(ROUTES.docket)}
+          onClick={() => navigate(back.to)}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Docket
+          {back.label}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">

@@ -14,6 +14,10 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
+        // Restrained brass/gold treatment reserved for institutional /
+        // canonical content (shared, admin-curated — not a personal
+        // record). Never used as a general-purpose accent.
+        canonical: "border-brass/30 bg-brass/10 text-brass-foreground dark:text-brass",
       },
     },
     defaultVariants: {

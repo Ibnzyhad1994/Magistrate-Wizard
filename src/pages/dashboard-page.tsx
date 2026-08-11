@@ -21,7 +21,7 @@ import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, toTitleCase } from "@/lib/utils";
+import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   active: "default",
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                       </div>
                       <Badge variant="outline">
                         {formatDate(event.scheduled_date)}
-                        {event.scheduled_time ? ` ${event.scheduled_time}` : ""}
+                        {event.scheduled_time ? ` ${formatTimeOnly(event.scheduled_time)}` : ""}
                       </Badge>
                     </button>
                   </li>

@@ -26,6 +26,7 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditor } from "@/components/common/rich-text-editor";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { TagInput } from "@/components/common/tag-input";
 import {
   useDeleteJudgment,
   useFinalizeJudgment,
@@ -50,10 +51,12 @@ import {
 } from "@/lib/validations/judgment";
 import { formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
+import { useBackNav } from "@/hooks/use-back-nav";
 
 export default function JudgmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const back = useBackNav(ROUTES.judgments, "Back to Judgments");
   const { data: judgment, isPending, isError, error, refetch } = useJudgment(id);
 
   if (isPending) {
@@ -82,10 +85,10 @@ export default function JudgmentDetailPage() {
           variant="ghost"
           size="sm"
           className="-ml-2 mb-2"
-          onClick={() => navigate(ROUTES.judgments)}
+          onClick={() => navigate(back.to)}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Judgments
+          {back.label}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -393,19 +396,15 @@ function TagsCard({ judgmentId }: { judgmentId: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-2">
-          <Input
+          <TagInput
             value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                if (value.trim()) {
-                  addTag.mutate(value.trim(), { onSuccess: () => setValue("") });
-                }
+            onChange={setValue}
+            onSubmit={() => {
+              if (value.trim()) {
+                addTag.mutate(value.trim(), { onSuccess: () => setValue("") });
               }
             }}
-            placeholder="Add a tag…"
-            aria-label="New tag"
+            disabled={addTag.isPending}
           />
         </div>
         <div className="flex flex-wrap gap-2">

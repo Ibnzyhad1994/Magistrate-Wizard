@@ -27,7 +27,13 @@ const TYPE_ROUTE: Partial<Record<BookmarkEntityType, (id: string) => string>> = 
   judgment: ROUTES.judgmentDetail,
   case_law: ROUTES.caseLawDetail,
   bench_note: ROUTES.benchNoteDetail,
-  quick_code: () => ROUTES.quickCodes,
+  statute: ROUTES.legislationDetail,
+  // Quick Codes have no standalone detail route — they live in a table on
+  // the shared list page. Rather than dropping the user into the generic
+  // list with no indication of which one they bookmarked, pass the id as
+  // a query param; the list page scrolls to and highlights that row (see
+  // the `qc` search param handling in quick-codes-page.tsx).
+  quick_code: (id) => `${ROUTES.quickCodes}?qc=${id}`,
 };
 
 export default function BookmarksPage() {
@@ -72,7 +78,12 @@ export default function BookmarksPage() {
                     type="button"
                     className="flex-1 text-left disabled:cursor-default"
                     disabled={!resolved || !route}
-                    onClick={() => route && navigate(route)}
+                    onClick={() =>
+                      route &&
+                      navigate(route, {
+                        state: { backTo: ROUTES.bookmarks, backLabel: "Back to Bookmarks" },
+                      })
+                    }
                   >
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{TYPE_LABELS[b.entity_type]}</Badge>

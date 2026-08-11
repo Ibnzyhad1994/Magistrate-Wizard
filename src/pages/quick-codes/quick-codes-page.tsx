@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Plus, Copy, Pencil, Trash2, Braces, Link2, Bookmark, BookmarkCheck } from "lucide-react";
@@ -53,6 +54,7 @@ import {
 import { toast } from "sonner";
 import { useAddBookmark, useIsBookmarked, useRemoveBookmark } from "@/hooks/bookmarks/use-bookmarks";
 import type { QuickCode } from "@/types/database.types";
+import { cn } from "@/lib/utils";
 
 export default function QuickCodesPage() {
   const { data, isPending, isError, error, refetch } = useQuickCodes();
@@ -62,6 +64,33 @@ export default function QuickCodesPage() {
   const [pendingDelete, setPendingDelete] = useState<QuickCode | null>(null);
   const [associationsFor, setAssociationsFor] = useState<QuickCode | null>(null);
   const deleteQuickCode = useDeleteQuickCode();
+
+  // Quick Codes have no standalone detail route, so a Bookmark (or any
+  // other deep link) targets this list with `?qc=<id>` instead. Rather
+  // than dropping the user into an undifferentiated list, scroll to and
+  // briefly highlight that specific row.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get("qc");
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  useEffect(() => {
+    if (!highlightId || !data) return;
+    const row = rowRefs.current.get(highlightId);
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFlashId(highlightId);
+      const timeout = setTimeout(() => setFlashId(null), 2500);
+      // Clear the param so refreshing/reordering later doesn't re-trigger
+      // the scroll, while leaving the highlight visible for this visit.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("qc");
+        return next;
+      }, { replace: true });
+      return () => clearTimeout(timeout);
+    }
+  }, [highlightId, data, setSearchParams]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -160,7 +189,14 @@ export default function QuickCodesPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((qc) => (
-                  <TableRow key={qc.id}>
+                  <TableRow
+                    key={qc.id}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(qc.id, el);
+                      else rowRefs.current.delete(qc.id);
+                    }}
+                    className={cn(flashId === qc.id && "bg-primary/10 transition-colors duration-1000")}
+                  >
                     <TableCell className="font-mono font-medium text-foreground">
                       {qc.code_word}
                     </TableCell>

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { getLocalDateOnly } from "@/lib/utils";
 
 /**
  * Current Court assignments — deliberately reads `magistrate_courts`
@@ -38,7 +39,8 @@ export function useUpcomingAppearances() {
   return useQuery({
     queryKey: ["dashboard", "upcoming-appearances"],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      // Local calendar date, not UTC — see getLocalDateOnly() for why.
+      const today = getLocalDateOnly();
       const { data, error } = await supabase
         .from("docket_events")
         .select(

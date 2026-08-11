@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Tag as TagIcon, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
+import { TagInput } from "@/components/common/tag-input";
 import {
   useAddDocketTag,
   useDocketTags,
@@ -31,18 +31,7 @@ export function TagsSection({ matterId }: TagsSectionProps) {
   return (
     <div className="mt-4 space-y-4">
       <div className="flex max-w-sm gap-2">
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-          placeholder="Add a tag…"
-          aria-label="New tag name"
-        />
+        <TagInput value={value} onChange={setValue} onSubmit={handleAdd} disabled={addTag.isPending} />
         <Button onClick={handleAdd} disabled={addTag.isPending || !value.trim()}>
           <Plus className="h-4 w-4" />
           Add

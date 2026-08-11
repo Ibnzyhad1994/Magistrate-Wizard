@@ -22,15 +22,16 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 // Only entity types with a live, routable detail page in this frontend.
-// `case` and `statute` predate this rebuild and have no detail route —
-// their search results are still shown (RLS already decided visibility),
-// just without a working link.
+// `case` predates this rebuild and still has no detail route — its
+// search results are shown (RLS already decided visibility), just
+// without a working link. `statute` now does (Legislation workspace).
 const TYPE_ROUTE: Partial<Record<string, (id: string) => string>> = {
   bench_note: ROUTES.benchNoteDetail,
   case_law: ROUTES.caseLawDetail,
   docket_matter: ROUTES.docketMatter,
   judgment: ROUTES.judgmentDetail,
   quick_code: () => ROUTES.quickCodes,
+  statute: ROUTES.legislationDetail,
 };
 
 /**

@@ -4,7 +4,12 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Warm ivory/stone, not stark white — cards (--card, still pure
+       white) read as if resting on paper rather than floating in a
+       generic admin-app void. Subtle on purpose; see Part J notes in
+       the architecture spec for the reasoning and the honest caveat
+       that this couldn't be visually screenshotted in this sandbox. */
+    --background: 40 20% 98%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -31,6 +36,13 @@
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 222 47% 20%;
+
+    /* Restrained brass/gold accent — reserved for institutional/
+       canonical-content cues (e.g. the "Canonical" Badge variant), never
+       a general-purpose color. Muted/desaturated deliberately: this is
+       not meant to read as bright gold. */
+    --brass: 38 42% 42%;
+    --brass-foreground: 38 55% 18%;
 
     --radius: 0.5rem;
 
@@ -72,6 +84,10 @@
     --border: 222 30% 18%;
     --input: 222 30% 18%;
     --ring: 217 91% 60%;
+
+    /* Lighter/warmer brass for legibility against the dark navy surfaces. */
+    --brass: 42 55% 58%;
+    --brass-foreground: 42 70% 78%;
 
     --sidebar-background: 222 50% 5%;
     --sidebar-foreground: 210 40% 96%;

@@ -14,11 +14,11 @@ interface BookmarkToggleProps {
 }
 
 /**
- * Shared bookmark toggle for the 5 entity types this frontend actually has
- * detail pages for (Docket Matter, Judgment, Case Law, Bench Note, Quick
- * Code) — `case` and `statute` are valid `bookmark_entity_type` values too,
- * but predate this rebuild and have no UI surface here to bookmark from;
- * the Bookmarks list still displays any existing bookmark of those types.
+ * Shared bookmark toggle for the entity types this frontend has detail
+ * pages for (Docket Matter, Judgment, Case Law, Legislation/Statute,
+ * Bench Note, Quick Code) — `case` is the one remaining valid
+ * `bookmark_entity_type` with no UI surface here to bookmark from; the
+ * Bookmarks list still displays any existing bookmark of that type.
  */
 export function BookmarkToggle({ entityType, entityId }: BookmarkToggleProps) {
   const { data: existing, isPending } = useIsBookmarked(entityType, entityId);

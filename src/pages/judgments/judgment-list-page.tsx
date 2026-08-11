@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Scale } from "lucide-react";
+import { Plus, Scale, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -18,24 +19,38 @@ import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
+import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { CreateJudgmentDialog } from "@/pages/judgments/create-judgment-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
 
 export default function JudgmentListPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useJudgments();
+  // Real full-text search over Judgments' own search_vector (title,
+  // case_number, court_name, citation, content_text) — scoped to
+  // Judgments only, never Global Search. Previously this list had no
+  // search at all.
+  const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
+    "search_judgments",
+    query,
+  );
 
   const { drafts, finals, discoverable } = useMemo(() => {
     const all = data ?? [];
+    const q = query.trim();
+    const matches = (row: (typeof all)[number]) => !q || (matchingIds?.has(row.id) ?? false);
     return {
-      drafts: all.filter((j) => j.owner_id === user?.id && j.status === "draft"),
-      finals: all.filter((j) => j.owner_id === user?.id && j.status === "final"),
-      discoverable: all.filter((j) => j.owner_id !== user?.id && j.is_discoverable),
+      drafts: all.filter((j) => j.owner_id === user?.id && j.status === "draft" && matches(j)),
+      finals: all.filter((j) => j.owner_id === user?.id && j.status === "final" && matches(j)),
+      discoverable: all.filter(
+        (j) => j.owner_id !== user?.id && j.is_discoverable && matches(j),
+      ),
     };
-  }, [data, user?.id]);
+  }, [data, user?.id, query, matchingIds]);
 
   return (
     <div className="space-y-6">
@@ -53,6 +68,22 @@ export default function JudgmentListPage() {
           <Plus className="h-4 w-4" />
           New draft
         </Button>
+      </div>
+
+      <div className="max-w-sm space-y-1">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Search title, case number, citation, or text…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search judgments"
+          />
+        </div>
+        {query.trim() && searchPending && (
+          <p className="text-xs text-muted-foreground">Searching…</p>
+        )}
       </div>
 
       {isPending ? (

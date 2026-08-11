@@ -21,6 +21,42 @@ export const DOCKET_EVENT_STATUSES = [
   "entered_in_error",
 ] as const;
 
+/**
+ * Curated Event Type / Stage vocabularies for Magistrates' Court practice.
+ * `docket_events.event_type` and `.stage_at_event` are deliberately
+ * UNCONSTRAINED `text` columns in the database (see 0024's own comments
+ * and the architecture spec) — no CHECK constraint exists or is added
+ * here. These lists exist purely as a UI convenience surfaced through
+ * `ControlledVocabSelect` (canonical options + a free-text "Other"
+ * escape hatch), so any pre-existing or future free-text value — however
+ * it got there — remains fully representable and is never rejected or
+ * silently coerced onto the nearest canonical term.
+ */
+export const EVENT_TYPES = [
+  "Hearing",
+  "Mention",
+  "Trial",
+  "Sentencing",
+  "Case Management",
+  "Preliminary Inquiry",
+  "Committal",
+  "Bail",
+  "Decision/Judgment",
+  "Review",
+] as const;
+
+export const EVENT_STAGES = [
+  "First Appearance",
+  "Plea",
+  "Preliminary Inquiry",
+  "Trial",
+  "Continuation",
+  "Submission",
+  "Decision",
+  "Sentencing",
+  "Enforcement",
+] as const;
+
 export const PARTY_TYPES = [
   "individual",
   "organization",

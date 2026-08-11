@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,10 +34,13 @@ import {
 } from "@/hooks/docket/use-docket-events";
 import {
   DOCKET_EVENT_STATUSES,
+  EVENT_STAGES,
+  EVENT_TYPES,
   docketEventSchema,
   type DocketEventFormValues,
 } from "@/lib/validations/docket";
-import { formatDate, toTitleCase } from "@/lib/utils";
+import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
+import { ControlledVocabSelect } from "@/components/common/controlled-vocab-select";
 import type { DocketEvent } from "@/types/database.types";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -93,10 +96,10 @@ export function EventsSection({ matterId }: EventsSectionProps) {
               onClick={() => setDialogEvent(event)}
             >
               <CardContent className="flex flex-wrap items-start justify-between gap-2 p-4">
-                <div>
+                <div className="min-w-0 space-y-1">
                   <p className="font-medium text-foreground">
                     {formatDate(event.scheduled_date)}
-                    {event.scheduled_time ? ` at ${event.scheduled_time}` : ""}
+                    {event.scheduled_time ? ` at ${formatTimeOnly(event.scheduled_time)}` : ""}
                     {event.event_type ? ` — ${event.event_type}` : ""}
                   </p>
                   {event.stage_at_event && (
@@ -104,9 +107,20 @@ export function EventsSection({ matterId }: EventsSectionProps) {
                       Stage: {event.stage_at_event}
                     </p>
                   )}
+                  {event.location && (
+                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {event.location}
+                    </p>
+                  )}
                   {event.outcome_at_event && (
                     <p className="text-sm text-muted-foreground">
                       Outcome: {event.outcome_at_event}
+                    </p>
+                  )}
+                  {event.orders_made_at_event && (
+                    <p className="text-sm text-muted-foreground">
+                      Orders: {event.orders_made_at_event}
                     </p>
                   )}
                 </div>
@@ -227,7 +241,12 @@ function EventDialog({
                   <FormItem>
                     <FormLabel>Event type</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Hearing" {...field} />
+                      <ControlledVocabSelect
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        options={EVENT_TYPES}
+                        placeholder="Select event type…"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -275,7 +294,12 @@ function EventDialog({
                 <FormItem>
                   <FormLabel>Stage at event (optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <ControlledVocabSelect
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      options={EVENT_STAGES}
+                      placeholder="Select stage…"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
