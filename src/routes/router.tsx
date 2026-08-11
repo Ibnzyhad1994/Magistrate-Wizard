@@ -11,6 +11,8 @@ import ForgotPasswordPage from "@/pages/auth/forgot-password-page";
 import DashboardPage from "@/pages/dashboard-page";
 import DocketListPage from "@/pages/docket/docket-list-page";
 import DocketMatterDetailPage from "@/pages/docket/docket-matter-detail-page";
+import JudgmentListPage from "@/pages/judgments/judgment-list-page";
+import JudgmentDetailPage from "@/pages/judgments/judgment-detail-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -40,6 +42,8 @@ export const router = createBrowserRouter([
           { path: ROUTES.dashboard, element: <DashboardPage /> },
           { path: ROUTES.docket, element: <DocketListPage /> },
           { path: "/docket/:id", element: <DocketMatterDetailPage /> },
+          { path: ROUTES.judgments, element: <JudgmentListPage /> },
+          { path: "/judgments/:id", element: <JudgmentDetailPage /> },
         ],
       },
     ],

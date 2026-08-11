@@ -12,7 +12,7 @@ import { PartiesSection } from "@/pages/docket/sections/parties-section";
 import { TagsSection } from "@/pages/docket/sections/tags-section";
 import { JudgmentsSection } from "@/pages/docket/sections/judgments-section";
 import { CaseLawSection } from "@/pages/docket/sections/case-law-section";
-import { DocumentsSection } from "@/pages/docket/sections/documents-section";
+import { DocumentsPanel } from "@/components/common/documents-panel";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { ROUTES } from "@/routes/paths";
 
@@ -113,7 +113,7 @@ export default function DocketMatterDetailPage() {
           <CaseLawSection matterId={matter.id} />
         </TabsContent>
         <TabsContent value="documents">
-          <DocumentsSection matterId={matter.id} />
+          <DocumentsPanel entityType="docket_matter" entityId={matter.id} />
         </TabsContent>
         <TabsContent value="sharing">
           <SharingSection matterId={matter.id} />

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FileText, Upload, Trash2 } from "lucide-react";
+import { FileText, Upload, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,15 +15,20 @@ import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import {
+  getDocumentDownloadUrl,
   useDeleteDocument,
   useDocuments,
   useUploadDocument,
-} from "@/hooks/docket/use-docket-documents";
+} from "@/hooks/use-documents";
+import { getErrorMessage } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Document } from "@/types/database.types";
 
-interface DocumentsSectionProps {
-  matterId: string;
+interface DocumentsPanelProps {
+  /** One of the six approved polymorphic parent types. */
+  entityType: "docket_matter" | "judgment" | "case_law" | "quick_code" | "bench_note";
+  entityId: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -32,15 +37,32 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function DocumentsSection({ matterId }: DocumentsSectionProps) {
-  const { data, isPending, isError, error, refetch } = useDocuments(
-    "docket_matter",
-    matterId,
-  );
-  const upload = useUploadDocument("docket_matter", matterId);
-  const del = useDeleteDocument("docket_matter", matterId);
+/**
+ * Shared attachment UI for every polymorphic Document parent — see
+ * `src/hooks/use-documents.ts` for the underlying upload/list/delete
+ * logic (Storage-API-first deletion order, orphan cleanup on partial
+ * upload failure). One implementation instead of duplicating this
+ * across Docket/Judgment/Case Law/Quick Code/Bench Note detail pages.
+ */
+export function DocumentsPanel({ entityType, entityId }: DocumentsPanelProps) {
+  const { data, isPending, isError, error, refetch } = useDocuments(entityType, entityId);
+  const upload = useUploadDocument(entityType, entityId);
+  const del = useDeleteDocument(entityType, entityId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function handleDownload(doc: Document) {
+    setDownloadingId(doc.id);
+    try {
+      const url = await getDocumentDownloadUrl(doc.file_path);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   return (
     <div className="mt-4 space-y-4">
@@ -77,7 +99,7 @@ export function DocumentsSection({ matterId }: DocumentsSectionProps) {
         <EmptyState
           icon={FileText}
           title="No documents attached"
-          description="Upload PDFs, images, or Word documents relevant to this matter."
+          description="Upload PDFs, images, or Word documents relevant to this record."
         />
       ) : (
         <Table>
@@ -102,6 +124,19 @@ export function DocumentsSection({ matterId }: DocumentsSectionProps) {
                   {formatDate(doc.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Download ${doc.file_name}`}
+                    disabled={downloadingId === doc.id}
+                    onClick={() => void handleDownload(doc)}
+                  >
+                    {downloadingId === doc.id ? (
+                      <LoadingSpinner size={16} />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"

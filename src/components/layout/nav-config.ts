@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gavel } from "lucide-react";
+import { LayoutDashboard, Gavel, Scale } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { NavItem } from "@/types";
 
@@ -18,5 +18,10 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Docket",
     href: ROUTES.docket,
     icon: Gavel,
+  },
+  {
+    label: "Judgments",
+    href: ROUTES.judgments,
+    icon: Scale,
   },
 ];

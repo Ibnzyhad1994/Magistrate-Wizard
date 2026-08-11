@@ -9,13 +9,16 @@ const key = (entityType: string, entityId: string) =>
 const DOCUMENTS_BUCKET = "documents";
 
 /**
- * Documents attached to any polymorphic parent (`entity_type`/`entity_id`).
- * Deletion order is Storage-API-first, then the `public.documents` metadata
- * row — per the 0049 resolution, direct SQL deletion of a storage object
- * orphans the physical blob, so the Storage API call must happen first and
- * the metadata row is only removed once that succeeds. If Storage removal
- * fails, the metadata row is deliberately left in place (the document stays
- * visible/re-deletable) rather than silently orphaning it.
+ * Shared attachment layer for every polymorphic Document parent
+ * (`entity_type`/`entity_id` — docket_matter, judgment, case_law,
+ * quick_code, bench_note). One implementation instead of duplicating
+ * upload/list/delete logic per feature area. Deletion order is
+ * Storage-API-first, then the `public.documents` metadata row — per the
+ * 0049 resolution, direct SQL deletion of a storage object orphans the
+ * physical blob, so the Storage API call must happen first and the
+ * metadata row is only removed once that succeeds. If Storage removal
+ * fails, the metadata row is deliberately left in place (the document
+ * stays visible/re-deletable) rather than silently orphaning it.
  */
 export function useDocuments(entityType: string, entityId: string | undefined) {
   return useQuery({
@@ -82,6 +85,15 @@ export function useUploadDocument(entityType: string, entityId: string) {
       toast.error(getErrorMessage(error));
     },
   });
+}
+
+/** Signed URL for reading/downloading a document (private bucket). */
+export async function getDocumentDownloadUrl(filePath: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(filePath, 60);
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 export function useDeleteDocument(entityType: string, entityId: string) {
