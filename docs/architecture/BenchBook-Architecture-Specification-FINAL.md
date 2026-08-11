@@ -921,7 +921,7 @@ Explicitly excluded from search-entity status: `docket_events`, `docket_matter_p
 
 ## 12. Final Audit Model
 
-Unchanged mechanism and unchanged recorded direction for the eventual redacted-content design (§17). One addition: since multiple magistrates can now legitimately share and edit the same Docket Matter, a metadata-only audit trail becomes useful to *assigned magistrates themselves*, not just to admins — noted as a product consideration for whenever that migration is actually designed, not a decision made now.
+**RESOLVED and APPLIED as `0048_audit_extensions.sql`** — see §16/§17. The content-redaction mechanism this section carried as explicitly deferred is now built: `audit_trigger_fn()` (0009, unchanged as a migration file, `CREATE OR REPLACE`'d by 0048 per the forward-modification pattern already used by 0046) redacts a small, explicit, per-table field list — private substantive judicial work product (Judgment/Bench Note `content`/`content_text`, Quick Code `content`/`description`, Case Law Annotation `annotation_text`, personal Case Law `summary`/`full_text`) is never duplicated in full into the admin-readable `audit_log`; institutional/access-control tables (Docket Matter, Docket Event, Docket Matter Party minus `contact_info`, Docket Matter Assignment, Court assignment, Share) are captured in full, since none of their columns are private work product. A GENERATED `search_vector` column is stripped alongside its source text everywhere redaction applies — caught live during 0048's own pretest as a real defect (an early draft redacted the source columns but not the tsvector derived from them, which still leaked the text via its lexemes) and fixed before application. `audit_log` immutability was hardened (table-level INSERT/UPDATE/DELETE/TRUNCATE grants revoked from `anon`/`authenticated`, mirroring 0043's EXECUTE-revocation precedent; RLS already permitted none of it). Reader model unchanged — admin-only SELECT via `is_admin()`; admin visibility is now, by construction, already limited to redacted/safe payloads. Deliberately NOT expanded into 0048, flagged as follow-up candidates: `profiles` role-change auditing (real security value, e.g. who was promoted to admin — not in this migration's authorized scope), and the legacy `comments`/`case_parties` tables (discovered live outside the original five audited tables, carry the same free-text-privacy/PII shape as bench_notes/docket_matter_parties respectively).
 
 ---
 
@@ -3364,10 +3364,43 @@ cases, case_parties, case_tags
                                              unused_index INFOs on the
                                              new search_vector GIN
                                              indexes.
-0048_audit_extensions.sql                  — readiness/design under
-                                             review this turn (see §17
-                                             open questions before any
-                                             SQL is written).
+0048_audit_extensions.sql                  — APPLIED and verified live.
+                                             Extends audit_trigger_fn()
+                                             (0009) with table-specific
+                                             redaction and adds audit
+                                             coverage to docket_matters/
+                                             docket_events/docket_matter_
+                                             parties (contact_info
+                                             redacted)/docket_matter_
+                                             assignments/magistrate_
+                                             courts/shares (all
+                                             unredacted); judgments/
+                                             bench_notes (content+
+                                             content_text+search_vector
+                                             redacted); quick_codes
+                                             (content+description+
+                                             search_vector redacted);
+                                             case_law_annotations
+                                             (annotation_text redacted);
+                                             case_law (summary+full_text+
+                                             search_vector redacted only
+                                             when owner_id is not null --
+                                             canonical rows unredacted).
+                                             Hardens audit_log via
+                                             REVOKE INSERT/UPDATE/DELETE/
+                                             TRUNCATE from anon/
+                                             authenticated (RLS already
+                                             blocked it; defense-in-
+                                             depth, mirroring 0043).
+                                             Rollback-only pretest: 27/27
+                                             PASS, one real defect caught
+                                             pre-apply (search_vector
+                                             leaking redacted text via
+                                             its lexemes -- fixed). Zero
+                                             new advisor findings. See
+                                             §12/§17.
+0049_storage_policy_updates.sql            — next, readiness/design not
+                                             yet started this turn.
 0049_storage_policy_updates.sql            (was 0048, was 0047, was 0046)
 ```
 
@@ -3405,7 +3438,7 @@ Migrations proceed one at a time, each submitted for review before the next is w
 - ~~Docket tagging: institutional vs. personal, and whether the existing global `tags` table should be reused~~ → **Resolved when `0026_docket_matter_tags` was prepared — see §4. The global `tags` table is explicitly NOT reused for the Docket, because a tag's text may itself reveal sensitive judicial information and `tags` has no access-scoping mechanism at all. Institutional Docket tags (`docket_matter_tags`) are a dedicated direct child table of `docket_matters`, access-inherited via the same two-path predicate as `docket_events`/`docket_matter_parties`, with free-form `tag_name` (case-insensitive/whitespace-trimmed uniqueness scoped per matter, not globally), `created_by` provenance only, and an ordinary hard-DELETE lifecycle (a deliberate, explicit exception to the Docket's usual no-hard-delete rule, since tags are operational metadata rather than substantive judicial history). A separate, private, user-owned personal-label mechanism remains explicitly deferred — not designed or built as part of 0026, and must never auto-transfer to a successor magistrate merely because the successor inherits ordinary Court Docket access.**
 
 **Still open, explicitly deferred (not blocking 0015/0016):**
-- **The audit log's content-redaction mechanism** (§12/Revision 2 §17): direction recorded, exact implementation deferred to when that migration is designed.
+- ~~The audit log's content-redaction mechanism~~ → **RESOLVED and APPLIED as `0048_audit_extensions.sql` — see §12/§16.**
 - Whether the optional automatic-release trigger on `docket_matter_assignments` (§4/§6 of this revision) should also fire on any other status transition beyond `completed`/`archived` — currently scoped exactly per your instruction (not on `stayed`).
 - `comments`'s eventual fate; Realtime scope; whether a canonical Case Law entry could ever be "promoted" from a personal one — all unchanged, non-blocking.
 - ~~Mandatory when `0035_case_law_personal_research` is reached: a `docket_matter_case_law` and `quick_code_case_law` regression pass~~ → **Fulfilled.** `0035`'s own 54-scenario verification battery included a full behavioral regression pass on both tables (canonical/own-private/another's-private/another's-discoverable/no-Docket-or-no-Quick-Code-ownership combinations, plus complete discoverability-transition sequences proving zero association-row mutation) — zero code changes to either `0030` or `0034` were required, confirming the nested-RLS design worked exactly as intended.
