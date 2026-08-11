@@ -3399,8 +3399,72 @@ cases, case_parties, case_tags
                                              its lexemes -- fixed). Zero
                                              new advisor findings. See
                                              §12/§17.
-0049_storage_policy_updates.sql            — next, readiness/design not
-                                             yet started this turn.
+0049 "Storage Policy Updates" — RESOLVED as a documented NO-OP, no SQL
+                                             file created. Storage RLS
+                                             (0011, fixed for the
+                                             polymorphic documents model
+                                             by 0040) was re-inspected
+                                             live and found already
+                                             correct: object reads
+                                             require lawful Document
+                                             access, uploads/deletes are
+                                             folder-owner-scoped, path/
+                                             name knowledge alone grants
+                                             nothing. Nothing to change
+                                             at the schema/RLS level.
+                                             What 0040 deferred here was
+                                             physical blob cleanup on
+                                             parent-cascade deletion,
+                                             which Supabase's own docs
+                                             confirm cannot be done
+                                             safely via SQL/a DB trigger
+                                             (a SQL DELETE against
+                                             storage.objects orphans the
+                                             blob rather than removing
+                                             it -- deletion must go
+                                             through the Storage API).
+                                             Resolved application-level
+                                             rule (no schema impact):
+                                             explicit user-driven
+                                             Document deletion must call
+                                             the Storage API to remove
+                                             the blob FIRST, then delete
+                                             the documents metadata row
+                                             only after that succeeds
+                                             (implemented in the
+                                             frontend Documents feature,
+                                             not the database). Parent-
+                                             cascade deletion (the
+                                             existing documents_parent_
+                                             cascade_delete() trigger,
+                                             unchanged) removes the
+                                             metadata row but not the
+                                             blob -- an orphaned blob
+                                             with no metadata/access
+                                             path is accepted as known,
+                                             non-security-relevant
+                                             operational debt for v1
+                                             (nobody can reach it once
+                                             its documents row is gone,
+                                             since the storage.objects
+                                             SELECT policy requires a
+                                             matching documents row).
+                                             Scheduled reconciliation
+                                             (comparing the documents
+                                             catalogue against the
+                                             bucket and removing verified
+                                             orphans via the Storage API)
+                                             is recorded as deferred
+                                             future maintenance, NOT
+                                             built now -- no Edge
+                                             Functions, pg_net, or
+                                             webhook infrastructure
+                                             introduced to close this.
+                                             Backend migration sequence
+                                             is CLOSED at 0048; no 0049
+                                             file exists or is planned
+                                             unless a genuine future
+                                             schema need arises.
 0049_storage_policy_updates.sql            (was 0048, was 0047, was 0046)
 ```
 
@@ -3413,6 +3477,7 @@ Migrations proceed one at a time, each submitted for review before the next is w
 ## 17. Remaining Decisions
 
 **Resolved through this revision:**
+- ~~Storage blob-lifecycle / "0049 Storage Policy Updates"~~ → **RESOLVED as a documented NO-OP at the schema level — see §16. Storage RLS (0011/0040) is already correct and unchanged. Application-level rule recorded (not a migration): explicit Document deletion must remove the Storage blob via the Storage API before deleting the `documents` metadata row; SQL/trigger-based blob deletion is rejected outright per Supabase's own documentation (it orphans the object instead of removing it). Parent-cascade deletion leaves an orphaned-but-inaccessible blob, accepted as known v1 operational debt, not a security issue (no live documents row means no live storage.objects SELECT-policy path to it). Scheduled orphan reconciliation is deferred future maintenance, deliberately not built now — no Edge Functions/pg_net/webhooks introduced. Backend migration sequence closes at 0048.**
 - ~~Search coverage gap: `docket_matters`/`judgments`/`quick_codes` had no `search_vector`/`search_X()` and were absent from `global_search()`~~ (resolved and **APPLIED** as `0047_search_extensions.sql` — see §11/§16) → **Exact `0010` pattern extended to all three: `GENERATED ALWAYS ... STORED` `tsvector`, covering GIN index, `SECURITY INVOKER` `search_X(p_query, p_limit default 20)`. `search_docket_matters()`/`search_judgments()` follow the `search_case_law()` precedent (RLS alone, no redundant explicit predicate); `search_quick_codes()` relies on `quick_codes`' trivial owner-only RLS. `global_search()` gains three additive UNION ALL branches; `search_result` composite type unchanged (plain `text` `entity_type`, no enum risk). Explicitly excluded: `docket_events`/`docket_matter_parties`/`docket_matter_tags`/`judgment_tags`/`case_law_annotations` (child/organizational rows), `documents` (deferred), `shares`/`bookmarks` (association/metadata). Verified via a 20-item rollback-only pretest (four-path Docket access, share grant/revoke with `search_vector` byte-identity proof that privacy is enforced by RLS not vector content, Judgment discoverability round-trip, Case Law/Quick Code/Bench Note/legacy Case/Statute regressions, Admin no-bypass confirmation, edge-case query safety) — zero defects, applied exactly as reviewed, zero new advisory findings beyond the three expected `unused_index` INFOs.**
 - ~~Judgment lifecycle: draft/final states, hard-delete behavior, reversibility, per-field locking, discoverability interaction, tag/association/document mutability post-finalization, correction mechanism, finalization authority~~ (the nine/ten questions raised when `0027_judgments` deliberately deferred all lifecycle behavior; a full options/implications/recommendations package was produced once `0044` passed, then approved and resolved and **APPLIED** as `0045_judgment_lifecycle_locking.sql` — see §6/§14/§16) → **Exactly two states, `draft`/`final`, constrained TEXT with a CHECK (not an enum, learning from the `bookmark_entity_type` enum-migration risk). Draft: fully editable, hard-deletable, exactly as 0027. Final: `title`/`case_number`/`court_name`/`judgment_date`/`citation`/`content`/`content_text` locked; hard DELETE blocked; `is_discoverable` remains freely owner-toggleable in both states (privacy and lifecycle are independent dimensions); owner may always unlock (`final → draft`), owner-only, no `is_admin()` bypass anywhere. A single UPDATE combining unlock with any substantive edit is rejected (atomic-bypass prevention) — unlock must be its own statement, edits only follow in a later one. `finalized_at`/`finalized_by` are force-set by a trigger on every `draft → final` transition (client-supplied values always overwritten), preserved — never nulled — across an unlock, and record only the most-recent finalization, not a full history; a Judgment can never be created already-final. Enforcement is deliberately split: a new `protect_judgment_lifecycle()` `BEFORE INSERT OR UPDATE` trigger supplies field-level state-machine protection (narrowing WHICH fields may change), while the pre-existing owner-only UPDATE RLS (`can_edit_judgment()`, unmodified) continues to supply WHO may attempt it — lifecycle state is deliberately NOT folded into `can_view_judgment()`/`can_edit_judgment()` themselves, since `judgment_tags`, `docket_matter_judgments`, `quick_code_judgments`, and `documents` all reuse those helpers for organizational actions (tagging, linking, attaching) that must and do continue working on a final Judgment, confirmed live. DELETE narrowed directly (`can_edit_judgment(id) AND status = 'draft'`), not through the shared helper. Correction mechanism is unlock → edit → re-finalize only — no corrigendum table, amendment entity, version history, or superseding-Judgment chain; those remain explicit future work, deliberately not over-built for a personal-work-product tool whose audit infrastructure isn't fully wired yet.**
 - ~~Narrow professional-identity mechanism~~ (§17 of Addendum 3 / decision 8 above; resolved and **APPLIED** as `0043_narrow_professional_identity.sql` — see §14/§16) → **Two context-gated SECURITY DEFINER functions, not a `profiles` RLS carve-out: `resolve_docket_assignment_identity()` and `resolve_docket_share_identity()`. Display name only (`full_name`); no professional-title field was found that doesn't also encode the admin flag, so none is invented or returned. Neither function accepts a bare `profile_id` — each re-derives its authorization from the exact live access predicate of the context row's parent (full three-path Docket read envelope for assignments; exact Share visibility-for-management predicate for shares), so arbitrary-profile probing is structurally impossible and `profiles` itself stays self-only. `magistrate_courts` identity and `docket_matters.created_by`/`last_updated_by` attribution were deliberately scoped out — no current requirement for either. EXECUTE revoked from `anon` (this schema's default-privilege auto-grant to `anon` on every new function was discovered live and reversed explicitly) and granted only to `authenticated`. Applied and verified live via a 25+-scenario behavioral battery (structural, tested-not-assumed EXECUTE grants, retained-assignment matrix, share matrix, oracle/side-channel tests, `profiles` RLS regression) — PASS.**
