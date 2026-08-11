@@ -1,0 +1,82 @@
+import { useState } from "react";
+import { Tag as TagIcon, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/common/empty-state";
+import { InlineError } from "@/components/common/inline-error";
+import {
+  useAddDocketTag,
+  useDocketTags,
+  useRemoveDocketTag,
+} from "@/hooks/docket/use-docket-tags";
+
+interface TagsSectionProps {
+  matterId: string;
+}
+
+export function TagsSection({ matterId }: TagsSectionProps) {
+  const { data, isPending, isError, error, refetch } = useDocketTags(matterId);
+  const addTag = useAddDocketTag(matterId);
+  const removeTag = useRemoveDocketTag(matterId);
+  const [value, setValue] = useState("");
+
+  function handleAdd() {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    addTag.mutate(trimmed, { onSuccess: () => setValue("") });
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex max-w-sm gap-2">
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder="Add a tag…"
+          aria-label="New tag name"
+        />
+        <Button onClick={handleAdd} disabled={addTag.isPending || !value.trim()}>
+          <Plus className="h-4 w-4" />
+          Add
+        </Button>
+      </div>
+
+      {isPending ? (
+        <Skeleton className="h-8 w-64" />
+      ) : isError ? (
+        <InlineError error={error} onRetry={() => void refetch()} />
+      ) : !data || data.length === 0 ? (
+        <EmptyState
+          icon={TagIcon}
+          title="No tags yet"
+          description="Tags help you find related matters quickly across the Docket."
+        />
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {data.map((tag) => (
+            <Badge key={tag.id} variant="secondary" className="gap-1 py-1 pl-2.5 pr-1">
+              {tag.tag_name}
+              <button
+                type="button"
+                onClick={() => removeTag.mutate(tag.id)}
+                disabled={removeTag.isPending}
+                className="rounded-full p-0.5 hover:bg-background/60"
+                aria-label={`Remove tag ${tag.tag_name}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

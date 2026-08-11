@@ -5,6 +5,8 @@
 export const ROUTES = {
   home: "/",
   dashboard: "/dashboard",
+  docket: "/docket",
+  docketMatter: (id: string) => `/docket/${id}`,
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",
