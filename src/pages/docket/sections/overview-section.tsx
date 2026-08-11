@@ -44,7 +44,7 @@ import {
   docketMatterOutcomeSchema,
   type DocketMatterOutcomeFormValues,
 } from "@/lib/validations/docket";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, toTitleCase } from "@/lib/utils";
 import type { DocketMatter } from "@/types/database.types";
 
 interface OverviewSectionProps {
@@ -124,7 +124,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           >
             {DOCKET_MATTER_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {toTitleCase(s)}
               </option>
             ))}
           </Select>
@@ -259,12 +259,12 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                     {a.display_name ?? "Unknown magistrate"}
                     {!a.ended_at && (
                       <span className="ml-2 text-xs font-normal text-primary">
-                        active
+                        Active
                       </span>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {a.reason.replace(/_/g, " ")} · started{" "}
+                    {toTitleCase(a.reason)} · started{" "}
                     {formatDateTime(a.started_at)}
                     {a.ended_at ? ` · ended ${formatDateTime(a.ended_at)}` : ""}
                   </p>

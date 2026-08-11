@@ -46,6 +46,7 @@ import {
   docketPartySchema,
   type DocketPartyFormValues,
 } from "@/lib/validations/docket";
+import { toTitleCase } from "@/lib/utils";
 import type { DocketMatterParty } from "@/types/database.types";
 
 interface PartiesSectionProps {
@@ -107,16 +108,16 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
                 <TableCell className="font-medium text-foreground">
                   {party.full_name}
                 </TableCell>
-                <TableCell className="capitalize">{party.role}</TableCell>
-                <TableCell className="capitalize text-muted-foreground">
-                  {party.party_type.replace(/_/g, " ")}
+                <TableCell>{toTitleCase(party.role)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {toTitleCase(party.party_type)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {party.attorney_name || "—"}
                 </TableCell>
                 <TableCell>
                   {party.party_status !== "active" && (
-                    <Badge variant="destructive">entered in error</Badge>
+                    <Badge variant="destructive">{toTitleCase(party.party_status)}</Badge>
                   )}
                 </TableCell>
               </TableRow>
@@ -218,7 +219,7 @@ function PartyDialog({
                         </option>
                         {PARTY_ROLES.map((r) => (
                           <option key={r} value={r}>
-                            {r}
+                            {toTitleCase(r)}
                           </option>
                         ))}
                       </Select>
@@ -237,7 +238,7 @@ function PartyDialog({
                       <Select {...field}>
                         {PARTY_TYPES.map((t) => (
                           <option key={t} value={t}>
-                            {t.replace(/_/g, " ")}
+                            {toTitleCase(t)}
                           </option>
                         ))}
                       </Select>
@@ -287,7 +288,7 @@ function PartyDialog({
                       <Select {...field}>
                         {PARTY_STATUSES.map((s) => (
                           <option key={s} value={s}>
-                            {s.replace(/_/g, " ")}
+                            {toTitleCase(s)}
                           </option>
                         ))}
                       </Select>

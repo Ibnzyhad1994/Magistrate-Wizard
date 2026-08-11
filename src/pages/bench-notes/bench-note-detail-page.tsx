@@ -22,6 +22,7 @@ import {
 } from "@/hooks/bench-notes/use-bench-notes";
 import { useBenchNoteParent } from "@/hooks/bench-notes/use-bench-note-parent";
 import { ROUTES } from "@/routes/paths";
+import { toTitleCase } from "@/lib/utils";
 
 const PARENT_TYPE_LABELS: Record<string, string> = {
   docket_matter: "Docket Matter",
@@ -96,7 +97,7 @@ export default function BenchNoteDetailPage() {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{note.title}</h1>
           <Badge variant={note.status === "published" ? "default" : "secondary"}>
-            {note.status}
+            {toTitleCase(note.status)}
           </Badge>
           <BookmarkToggle entityType="bench_note" entityId={note.id} />
         </div>

@@ -48,7 +48,7 @@ import {
   judgmentFieldsSchema,
   type JudgmentFieldsFormValues,
 } from "@/lib/validations/judgment";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 
 export default function JudgmentDetailPage() {
@@ -91,7 +91,7 @@ export default function JudgmentDetailPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {judgment.title}
           </h1>
-          <Badge variant={isDraft ? "secondary" : "default"}>{judgment.status}</Badge>
+          <Badge variant={isDraft ? "secondary" : "default"}>{toTitleCase(judgment.status)}</Badge>
           <BookmarkToggle entityType="judgment" entityId={judgment.id} />
         </div>
         {!isDraft && judgment.finalized_at && (

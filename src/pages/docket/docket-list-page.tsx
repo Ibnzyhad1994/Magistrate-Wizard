@@ -23,7 +23,7 @@ import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
 import { ROUTES } from "@/routes/paths";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   active: "default",
@@ -137,7 +137,7 @@ export default function DocketListPage() {
                     <TableCell>
                       {matter.status && (
                         <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
-                          {matter.status}
+                          {toTitleCase(matter.status)}
                         </Badge>
                       )}
                     </TableCell>

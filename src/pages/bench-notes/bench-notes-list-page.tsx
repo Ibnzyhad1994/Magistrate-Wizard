@@ -19,7 +19,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
 import { ROUTES } from "@/routes/paths";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 
 const PARENT_TYPE_LABELS: Record<string, string> = {
   docket_matter: "Docket Matter",
@@ -110,7 +110,7 @@ export default function BenchNotesListPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={note.status === "published" ? "default" : "secondary"}>
-                        {note.status}
+                        {toTitleCase(note.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">

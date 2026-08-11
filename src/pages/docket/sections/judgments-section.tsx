@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { useLinkedJudgments } from "@/hooks/docket/use-docket-links";
+import { toTitleCase } from "@/lib/utils";
 
 interface JudgmentsSectionProps {
   matterId: string;
@@ -47,8 +48,8 @@ export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
                   {[judgment.case_number, judgment.citation].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>
-              <Badge variant={judgment.status === "finalized" ? "default" : "secondary"}>
-                {judgment.status}
+              <Badge variant={judgment.status === "final" ? "default" : "secondary"}>
+                {toTitleCase(judgment.status)}
               </Badge>
             </CardContent>
           </Card>

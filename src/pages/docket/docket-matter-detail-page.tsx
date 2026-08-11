@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
 import { useDocketMatter } from "@/hooks/docket/use-docket-matters";
+import { toTitleCase } from "@/lib/utils";
 import { OverviewSection } from "@/pages/docket/sections/overview-section";
 import { EventsSection } from "@/pages/docket/sections/events-section";
 import { PartiesSection } from "@/pages/docket/sections/parties-section";
@@ -71,7 +72,7 @@ export default function DocketMatterDetailPage() {
             {matter.matter_title}
           </h1>
           <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
-            {matter.status}
+            {toTitleCase(matter.status)}
           </Badge>
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
         </div>

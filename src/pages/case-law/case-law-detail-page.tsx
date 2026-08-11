@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, ExternalLink, Trash2, StickyNote, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trash2, StickyNote, Pencil, Gavel, Link2, Unlink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,10 +40,15 @@ import {
   useUpdateCaseLawAnnotation,
 } from "@/hooks/case-law/use-case-law-annotations";
 import {
+  useCaseLawLinkedMatters,
+  useDeleteCaseLawDocketLink,
+} from "@/hooks/case-law/use-case-law-docket-links";
+import { LinkDocketMatterDialog } from "@/pages/case-law/link-docket-matter-dialog";
+import {
   caseLawFieldsSchema,
   type CaseLawFieldsFormValues,
 } from "@/lib/validations/case-law";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 
 export default function CaseLawDetailPage() {
@@ -92,7 +97,7 @@ export default function CaseLawDetailPage() {
             {caseLaw.case_name}
           </h1>
           <Badge variant={isCanonical ? "outline" : "secondary"}>
-            {isCanonical ? "Canonical" : isOwner ? "My research" : "Discoverable"}
+            {isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"}
           </Badge>
           <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />
         </div>
@@ -127,6 +132,7 @@ export default function CaseLawDetailPage() {
         <div className="space-y-4">
           {isOwner && <DiscoverabilityCard caseLaw={caseLaw} />}
           <TagsCard caseLawId={caseLaw.id} />
+          <LinkedMattersCard caseLawId={caseLaw.id} />
         </div>
       </div>
 
@@ -438,6 +444,117 @@ function TagsCard({ caseLawId }: { caseLawId: string }) {
           ) : null,
         )}
       </CardContent>
+    </Card>
+  );
+}
+
+const MATTER_STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
+  active: "default",
+  stayed: "secondary",
+  completed: "outline",
+  archived: "outline",
+};
+
+/**
+ * "Link to Docket Matter" — the Case-Law-initiated side of the existing
+ * `docket_matter_case_law` association (0030). Available to any caller
+ * who can view this Case Law entry, not just its owner: citing a
+ * canonical or another magistrate's discoverable authority in one's own
+ * matter is the whole point, and the live INSERT policy already
+ * requires only Docket access on the chosen matter plus Case-Law read
+ * access here — never Case Law ownership. Unlinking removes only the
+ * association row; neither record is touched.
+ */
+function LinkedMattersCard({ caseLawId }: { caseLawId: string }) {
+  const { data, isPending, isError, error, refetch } = useCaseLawLinkedMatters(caseLawId);
+  const deleteLink = useDeleteCaseLawDocketLink(caseLawId);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const linkedMatterIds = (data ?? []).map((l) => l.docket_matter_id);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Gavel className="h-4 w-4" />
+          Linked Docket Matters
+        </CardTitle>
+        <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+          <Link2 className="h-3.5 w-3.5" />
+          Link
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {isPending ? (
+          <Skeleton className="h-16 w-full" />
+        ) : isError ? (
+          <InlineError error={error} onRetry={() => void refetch()} className="border-0 p-0" />
+        ) : !data || data.length === 0 ? (
+          <EmptyState
+            className="border-0 py-4"
+            title="Not linked to any matter"
+            description="Link this authority to a Docket Matter you have access to."
+          />
+        ) : (
+          <ul className="space-y-2">
+            {data.map((link) => (
+              <li
+                key={link.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-border p-2"
+              >
+                {link.docket_matters ? (
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => navigate(ROUTES.docketMatter(link.docket_matter_id))}
+                  >
+                    <span className="block truncate text-sm font-medium text-foreground hover:underline">
+                      {link.docket_matters.matter_title}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {link.docket_matters.case_number}
+                      {link.docket_matters.status && (
+                        <Badge
+                          variant={MATTER_STATUS_VARIANT[link.docket_matters.status] ?? "outline"}
+                          className="text-[10px]"
+                        >
+                          {toTitleCase(link.docket_matters.status)}
+                        </Badge>
+                      )}
+                    </span>
+                  </button>
+                ) : (
+                  <span className="flex-1 text-sm italic text-muted-foreground">
+                    Matter unavailable
+                  </span>
+                )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Unlink"
+                  disabled={deleteLink.isPending}
+                  onClick={() =>
+                    deleteLink.mutate({
+                      linkId: link.id,
+                      docketMatterId: link.docket_matter_id,
+                    })
+                  }
+                >
+                  <Unlink className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+
+      <LinkDocketMatterDialog
+        caseLawId={caseLawId}
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+        linkedMatterIds={linkedMatterIds}
+      />
     </Card>
   );
 }

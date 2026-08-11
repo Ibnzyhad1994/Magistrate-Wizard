@@ -33,7 +33,7 @@ import {
   useRevokeShare,
   useUpdateSharePermission,
 } from "@/hooks/docket/use-docket-shares";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 
 interface SharingSectionProps {
   matterId: string;
@@ -111,8 +111,8 @@ export function SharingSection({ matterId }: SharingSectionProps) {
                       })
                     }
                   >
-                    <option value="view">view</option>
-                    <option value="edit">edit</option>
+                    <option value="view">View</option>
+                    <option value="edit">Edit</option>
                   </Select>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
@@ -147,7 +147,7 @@ export function SharingSection({ matterId }: SharingSectionProps) {
                     {share.recipient_display_name ?? "Unknown"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {share.permission}
+                    {toTitleCase(share.permission)}
                   </TableCell>
                   <TableCell className="text-right text-xs text-muted-foreground">
                     Revoked {formatDate(share.revoked_at as string)}

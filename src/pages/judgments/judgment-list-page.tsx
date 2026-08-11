@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { CreateJudgmentDialog } from "@/pages/judgments/create-judgment-dialog";
 import { ROUTES } from "@/routes/paths";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 
 export default function JudgmentListPage() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -167,7 +167,7 @@ function JudgmentTable({
                 </TableCell>
                 <TableCell>
                   <Badge variant={row.status === "final" ? "default" : "secondary"}>
-                    {row.status}
+                    {toTitleCase(row.status)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground">

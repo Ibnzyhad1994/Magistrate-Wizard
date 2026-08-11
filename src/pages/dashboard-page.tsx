@@ -21,7 +21,7 @@ import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   active: "default",
@@ -167,7 +167,7 @@ export default function DashboardPage() {
                       </div>
                       {matter.status && (
                         <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
-                          {matter.status}
+                          {toTitleCase(matter.status)}
                         </Badge>
                       )}
                     </button>

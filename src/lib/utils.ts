@@ -37,6 +37,25 @@ export function formatDateTime(date: string | Date): string {
 }
 
 /**
+ * Turns a stored lowercase/snake_case categorical value (a Docket Matter
+ * status, party role/type, event status, share permission, etc.) into a
+ * professionally capitalized display label, e.g. "government_body" ->
+ * "Government Body", "entered_in_error" -> "Entered In Error". Purely a
+ * display-layer transform — never changes the underlying stored value,
+ * which every CHECK constraint, RLS predicate, and STATUS_VARIANT-style
+ * lookup elsewhere in the app continues to compare against unchanged.
+ */
+export function toTitleCase(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/_/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/**
  * Produce initials from a display name, e.g. "Jane Doe" -> "JD".
  * Falls back to the first two characters if only one word is given.
  */

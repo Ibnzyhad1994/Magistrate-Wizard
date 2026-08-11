@@ -37,7 +37,7 @@ import {
   docketEventSchema,
   type DocketEventFormValues,
 } from "@/lib/validations/docket";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 import type { DocketEvent } from "@/types/database.types";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -111,7 +111,7 @@ export function EventsSection({ matterId }: EventsSectionProps) {
                   )}
                 </div>
                 <Badge variant={STATUS_VARIANT[event.event_status] ?? "outline"}>
-                  {event.event_status.replace(/_/g, " ")}
+                  {toTitleCase(event.event_status)}
                 </Badge>
               </CardContent>
             </Card>
@@ -243,7 +243,7 @@ function EventDialog({
                       <Select {...field}>
                         {DOCKET_EVENT_STATUSES.map((s) => (
                           <option key={s} value={s}>
-                            {s.replace(/_/g, " ")}
+                            {toTitleCase(s)}
                           </option>
                         ))}
                       </Select>
