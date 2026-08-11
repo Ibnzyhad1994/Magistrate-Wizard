@@ -20,12 +20,14 @@ export interface ResolvedShare {
  * resolved per-row via `resolve_docket_share_identity()` rather than a
  * broad `profiles` SELECT — `profiles` RLS is owner-or-admin only, so
  * that RPC is the only RLS-authorized way to display who a share
- * belongs to. Creating a brand-new share (granting to a not-yet-known
- * recipient) needs a recipient-lookup mechanism that does not currently
- * exist at the backend level (profiles cannot be searched by email under
- * current RLS) — that is a genuine open product/security decision, not
- * something to invent here, so "new share" is intentionally not exposed
- * yet. View / edit-permission / revoke are fully implemented.
+ * belongs to. Creating a new share resolves the recipient first via
+ * `resolve_docket_share_recipient()` (0051 — exact, case-insensitive
+ * email match, gated by the same authority the `shares` INSERT policy
+ * itself checks) and only then inserts the Share row; the resolver
+ * never discloses *why* a lookup failed (unauthorized caller, unknown
+ * email, inactive recipient, and self-lookup all collapse to the same
+ * empty result), so the UI must show one generic "no eligible
+ * recipient" message rather than trying to distinguish the cause.
  */
 export function useDocketShares(matterId: string | undefined) {
   return useQuery({
@@ -81,6 +83,61 @@ export function useUpdateSharePermission(matterId: string) {
     },
     onSuccess: () => {
       toast.success("Share permission updated.");
+      void queryClient.invalidateQueries({ queryKey: key(matterId) });
+    },
+  });
+}
+
+export interface ResolvedRecipient {
+  profile_id: string;
+  display_name: string | null;
+}
+
+/**
+ * Step 1 of share creation: resolve a proposed recipient by exact email.
+ * Returns `null` for any failure (not authorized, unknown email, self,
+ * inactive) — the RPC itself makes these indistinguishable, so this
+ * hook does not attempt to either.
+ */
+export function useResolveShareRecipient(matterId: string) {
+  return useMutation({
+    mutationFn: async (email: string): Promise<ResolvedRecipient | null> => {
+      const { data, error } = await supabase.rpc(
+        "resolve_docket_share_recipient",
+        { p_docket_matter_id: matterId, p_email: email },
+      );
+      if (error) throw error;
+      return data?.[0] ?? null;
+    },
+  });
+}
+
+/** Step 2: create the Share once a recipient has been resolved. */
+export function useCreateShare(matterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      recipientId,
+      permission,
+    }: {
+      recipientId: string;
+      permission: "view" | "edit";
+    }) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not signed in.");
+      const { error } = await supabase.from("shares").insert({
+        item_type: "docket_matter",
+        item_id: matterId,
+        recipient_id: recipientId,
+        granted_by: user.id,
+        permission,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Matter shared.");
       void queryClient.invalidateQueries({ queryKey: key(matterId) });
     },
   });

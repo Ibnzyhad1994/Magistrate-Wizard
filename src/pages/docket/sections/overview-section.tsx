@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Pencil } from "lucide-react";
+import { Pencil, Bookmark } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,8 +9,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -23,8 +31,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { useUpdateDocketMatter } from "@/hooks/docket/use-docket-matters";
-import { useDocketAssignments } from "@/hooks/docket/use-docket-assignments";
+import {
+  useCreateRetainedAssignment,
+  useDocketAssignments,
+  useEndRetainedAssignment,
+} from "@/hooks/docket/use-docket-assignments";
 import {
   DOCKET_MATTER_STATUSES,
   docketMatterOutcomeSchema,
@@ -42,13 +56,23 @@ interface OverviewSectionProps {
 
 export function OverviewSection({ matter }: OverviewSectionProps) {
   const [editingOutcome, setEditingOutcome] = useState(false);
+  const [retainOpen, setRetainOpen] = useState(false);
+  const [retainNotes, setRetainNotes] = useState("");
+  const [pendingEnd, setPendingEnd] = useState<string | null>(null);
+  const { user } = useAuth();
   const updateMatter = useUpdateDocketMatter(matter.id);
+  const createRetained = useCreateRetainedAssignment(matter.id);
+  const endRetained = useEndRetainedAssignment(matter.id);
   const {
     data: assignments,
     isPending: assignmentsPending,
     isError: assignmentsError,
     error: assignmentsErr,
   } = useDocketAssignments(matter.id);
+
+  const myActiveRetained = assignments?.find(
+    (a) => a.profile_id === user?.id && !a.ended_at,
+  );
 
   const form = useForm<DocketMatterOutcomeFormValues>({
     resolver: zodResolver(docketMatterOutcomeSchema),
@@ -195,8 +219,23 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Assignment history</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Retained assignments</CardTitle>
+          {myActiveRetained ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setPendingEnd(myActiveRetained.id)}
+            >
+              End my retention
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => setRetainOpen(true)}>
+              <Bookmark className="h-3.5 w-3.5" />
+              Retain as part-heard
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {assignmentsPending ? (
@@ -210,7 +249,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             <EmptyState
               className="border-0 py-6"
               title="No retained assignments"
-              description="This matter is only governed by the standard Court assignment."
+              description="A magistrate whose ordinary Court access ends can retain this specific matter as part-heard."
             />
           ) : (
             <ul className="space-y-3 text-sm">
@@ -218,18 +257,92 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                 <li key={a.id} className="border-b border-border pb-2 last:border-0">
                   <p className="font-medium text-foreground">
                     {a.display_name ?? "Unknown magistrate"}
+                    {!a.ended_at && (
+                      <span className="ml-2 text-xs font-normal text-primary">
+                        active
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {a.reason.replace(/_/g, " ")} · started{" "}
                     {formatDateTime(a.started_at)}
                     {a.ended_at ? ` · ended ${formatDateTime(a.ended_at)}` : ""}
                   </p>
+                  {a.notes && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{a.notes}</p>
+                  )}
                 </li>
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={retainOpen} onOpenChange={setRetainOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Retain this matter as part-heard</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This keeps this specific matter accessible to you even after your
+            ordinary Court assignment ends, since you already heard part of
+            it. You can end the retention yourself at any time.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">
+              Notes (optional)
+            </label>
+            <Input
+              value={retainNotes}
+              onChange={(e) => setRetainNotes(e.target.value)}
+              placeholder="e.g. part-heard on evidence, adjourned for judgment"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRetainOpen(false)}
+              disabled={createRetained.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() =>
+                createRetained.mutate(retainNotes, {
+                  onSuccess: () => {
+                    setRetainOpen(false);
+                    setRetainNotes("");
+                  },
+                })
+              }
+              disabled={createRetained.isPending}
+            >
+              {createRetained.isPending && (
+                <LoadingSpinner className="text-current" size={16} />
+              )}
+              Retain matter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!pendingEnd}
+        onOpenChange={(open) => !open && setPendingEnd(null)}
+        title="End your retained assignment?"
+        description="You will lose access to this matter unless you have another current Court assignment or an active share on it."
+        confirmLabel="End retention"
+        isConfirming={endRetained.isPending}
+        onConfirm={() => {
+          if (pendingEnd) {
+            endRetained.mutate(pendingEnd, {
+              onSuccess: () => setPendingEnd(null),
+            });
+          }
+        }}
+      />
     </div>
   );
 }
