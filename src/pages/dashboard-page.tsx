@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gavel, ArrowRight, Landmark, CalendarClock, UserCheck, Scale, Braces, StickyNote } from "lucide-react";
+import { Gavel, ArrowRight, Landmark, CalendarClock, UserCheck, Scale, Braces, StickyNote, ShieldAlert } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -73,6 +73,25 @@ export default function DashboardPage() {
             : "Your BenchBook workspace."}
         </p>
       </div>
+
+      {!courtsPending && (courts?.length ?? 0) === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex items-start gap-3 p-4">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                No current Court assignment
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Your account is active, but you have not yet been assigned to a
+                Court. Contact an administrator. You can still use Judgments,
+                Case Law research, Quick Codes, Bench Notes, and Bookmarks in
+                the meantime — Docket access requires a Court assignment.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard

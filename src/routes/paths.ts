@@ -16,6 +16,7 @@ export const ROUTES = {
   benchNoteDetail: (id: string) => `/bench-notes/${id}`,
   bookmarks: "/bookmarks",
   search: "/search",
+  adminCourtAssignments: "/admin/court-assignments",
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",

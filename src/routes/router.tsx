@@ -20,6 +20,7 @@ import BenchNotesListPage from "@/pages/bench-notes/bench-notes-list-page";
 import BenchNoteDetailPage from "@/pages/bench-notes/bench-note-detail-page";
 import BookmarksPage from "@/pages/bookmarks/bookmarks-page";
 import SearchPage from "@/pages/search/search-page";
+import CourtAssignmentsPage from "@/pages/admin/court-assignments-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -58,6 +59,18 @@ export const router = createBrowserRouter([
           { path: "/bench-notes/:id", element: <BenchNoteDetailPage /> },
           { path: ROUTES.bookmarks, element: <BookmarksPage /> },
           { path: ROUTES.search, element: <SearchPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute allowedRoles={["admin"]} />,
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: ROUTES.adminCourtAssignments, element: <CourtAssignmentsPage /> },
         ],
       },
     ],

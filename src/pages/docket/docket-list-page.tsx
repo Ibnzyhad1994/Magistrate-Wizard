@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
+import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
@@ -36,6 +37,8 @@ export default function DocketListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const navigate = useNavigate();
   const { data, isPending, isError, error, refetch } = useDocketMatters(search);
+  const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
+  const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
 
   return (
     <div className="space-y-6">
@@ -49,11 +52,23 @@ export default function DocketListPage() {
             sitting, or shared with you.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          disabled={noCourts}
+          title={noCourts ? "You have no current Court assignment." : undefined}
+        >
           <Plus className="h-4 w-4" />
           New matter
         </Button>
       </div>
+
+      {noCourts && (
+        <p className="text-sm text-muted-foreground">
+          You have no current Court assignment, so you can&apos;t create a new
+          matter. You can still view and act on matters retained or shared
+          with you below. Contact an administrator for a Court assignment.
+        </p>
+      )}
 
       <div className="relative max-w-sm">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -87,7 +102,8 @@ export default function DocketListPage() {
                   : "Matters you create, are assigned, or are shared on will appear here."
               }
               action={
-                !search && (
+                !search &&
+                !noCourts && (
                   <Button size="sm" onClick={() => setCreateOpen(true)}>
                     <Plus className="h-4 w-4" />
                     Create the first matter

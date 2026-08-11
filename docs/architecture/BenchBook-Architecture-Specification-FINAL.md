@@ -135,6 +135,19 @@ magistrate_courts (
 --     same court (e.g. left and later rejoined)
 ```
 
+**Court-assignment authorization model — resolved (supersedes the interim self-or-admin INSERT/UPDATE policy shipped with `0017_magistrate_courts.sql`; hardened by a forward migration, §16):**
+
+`magistrate_courts` is an **authority-originating** table, not a preference or a continuation of already-legitimate access. A row in this table is the sole input to `can_access_court()`, which is in turn one of the three paths feeding every Docket read/write predicate in §14. Creating a `magistrate_courts` row therefore *grants* Court-wide Docket authority from nothing — it does not confirm or preserve access the caller already holds by some other means.
+
+This is the decisive difference from `docket_matter_assignments` (retained/part-heard, §4 above, self-service since `0022`): a retained assignment can only be created by a magistrate who, at the moment of creation, *already* holds ordinary Court access to that specific matter via `can_access_court()` — it narrows and preserves a pre-existing, already-legitimate grant down to one matter as the magistrate's broader Court access is about to end. It can never be used to originate access the caller doesn't already have. `magistrate_courts`, by contrast, has no such precondition available to check — there is nothing upstream of it to require, because it *is* the upstream grant. Self-service at this layer would mean any authenticated user could grant themselves Court-wide authority over any active Court with no precondition at all, which is a fundamentally different (and unacceptable) trust decision from self-service at the retained-assignment layer.
+
+**Resolved rules (V1):**
+- Account registration never grants Court authority. A `profiles` row may legitimately and permanently have zero current `magistrate_courts` rows — this is not an error state, transitional bug, or something the frontend should present as broken.
+- Initial and ongoing Court assignment is **Admin-managed only**. An ordinary magistrate cannot INSERT their own `magistrate_courts` row, and cannot UPDATE one at all (including ending their own current assignment) — assignment lifecycle management, including ending a current assignment, is exclusively an Admin action in V1. (This is a deliberate scope narrowing from the original `0017` self-or-admin UPDATE policy, made at the same time INSERT was narrowed, since the same "who may originate/alter Court-wide authority" reasoning applies to both.)
+- Admin management authority over `magistrate_courts` is **not** Docket content authority. `is_admin()` continues to appear nowhere in `can_access_court()`, `can_view_docket_matter()`, `can_edit_docket_matter()`, or any Docket/Judgment/Case-Law RLS predicate. An Admin who is also a sitting magistrate needs an ordinary, real `magistrate_courts` row — created the same way any other magistrate's is, by an Admin (themselves or another Admin) — to read or write any Docket content. Administering the roster and holding judicial authority remain two separate, independently-held capabilities, matching the governing principle already stated above (§3): `is_admin()` is valid for administrative/system/reference functions, never for private judicial content.
+- History is never deleted. Ending a Court assignment sets `ended_at`, exactly as before; there is still no DELETE policy on this table. Reassignment to a different Court is modeled as ending the current row and creating a new one (by an Admin), never as an in-place mutation of `profile_id`/`court_id` on an existing row — `protect_magistrate_court_history()`'s field-immutability rules for a current row continue to apply unchanged.
+- Offboarding a magistrate ends their current `magistrate_courts` assignment(s) (`ended_at := now()`); it does not delete the historical record, matching the existing no-hard-delete principle already established for this table and for `docket_matter_assignments`.
+
 **The operational Docket itself:**
 
 ```
@@ -3579,6 +3592,149 @@ cases, case_parties, case_tags
                                              succeeds; `anon` EXECUTE
                                              denied). Zero new advisor
                                              findings.
+0052_harden_magistrate_court_assignment_    APPLIED. Closes a genuine
+authority.sql                               authorization gap surfaced
+                                             during manual release-
+                                             candidate testing:
+                                             `magistrate_courts` is
+                                             AUTHORITY-ORIGINATING — a
+                                             row in it is the sole input
+                                             to `can_access_court()`,
+                                             itself one of the three
+                                             paths feeding every Docket
+                                             read/write predicate. The
+                                             INSERT/UPDATE policies
+                                             shipped with
+                                             `0017_magistrate_courts.sql`
+                                             were self-service
+                                             (`profile_id = auth.uid()
+                                             OR is_admin()`) — reasonable
+                                             for `docket_matter_
+                                             assignments` retained/part-
+                                             heard self-service (0022),
+                                             which can only narrow a
+                                             pre-existing, already-
+                                             lawful Court grant down to
+                                             one matter, but wrong for
+                                             `magistrate_courts` itself,
+                                             which has no upstream
+                                             precondition to check — it
+                                             IS the upstream grant. Under
+                                             the pre-0052 policy any
+                                             authenticated user could
+                                             INSERT their own row against
+                                             any active Court and
+                                             immediately gain full
+                                             ordinary Docket authority
+                                             over it, with zero
+                                             invitation/approval/
+                                             relationship check.
+                                             Confirmed live before
+                                             writing: `magistrate_courts`
+                                             had 0 rows and no real
+                                             account had ever exercised
+                                             the path, but the privilege
+                                             existed and was reachable by
+                                             any signed-up user. Fixed by
+                                             modifying the two existing
+                                             policies in place (`ALTER
+                                             POLICY`, same technique as
+                                             0050): INSERT and UPDATE
+                                             both now `(SELECT
+                                             is_admin())`-only, renamed
+                                             to "Admins can create Court
+                                             assignments" / "Admins can
+                                             manage Court assignments"
+                                             to reflect the new
+                                             semantics; SELECT (self-or-
+                                             admin) is untouched, neither
+                                             broadened nor narrowed.
+                                             `protect_magistrate_court_
+                                             history()` and `check_court_
+                                             active_for_assignment()`
+                                             (both 0017) are left
+                                             completely unmodified — the
+                                             former's non-admin branch
+                                             becomes harmless dead code
+                                             now that UPDATE requires
+                                             `is_admin()` to even reach
+                                             it; the latter already
+                                             applies uniformly regardless
+                                             of role and continues to
+                                             correctly block even an
+                                             Admin from assigning to an
+                                             inactive Court. No DELETE
+                                             policy — history still
+                                             never removable. `is_admin()`
+                                             still appears nowhere in
+                                             `can_access_court()`/
+                                             `can_view_docket_matter()`/
+                                             `can_edit_docket_matter()`
+                                             or any other Docket/
+                                             Judgment/Case-Law predicate
+                                             — Admin roster-management
+                                             authority over
+                                             `magistrate_courts` remains
+                                             explicitly NOT Docket
+                                             content authority. Rollback-
+                                             only pretest (disposable
+                                             fixtures only, real admin
+                                             account never touched):
+                                             12/12 PASS — ordinary self-
+                                             assign denied; ordinary
+                                             assign-another-profile
+                                             denied; ordinary reactivate-
+                                             ended-assignment denied
+                                             (confirmed via row-count/
+                                             state inspection, since RLS
+                                             UPDATE denial via a failing
+                                             `USING` clause is silent —
+                                             0 rows affected, no
+                                             exception — unlike INSERT's
+                                             `WITH CHECK` violation);
+                                             ordinary transfer/mutate-
+                                             own-row denied (same silent-
+                                             0-rows mechanism); Admin
+                                             create succeeds; Admin
+                                             assignment to an inactive
+                                             Court still rejected; Admin
+                                             end-assignment succeeds;
+                                             ended history row survives;
+                                             `can_access_court()` proven
+                                             false before assignment,
+                                             true after an Admin-created
+                                             assignment, false again
+                                             after that assignment is
+                                             ended; a retained/part-heard
+                                             assignment created while
+                                             ordinary Court access was
+                                             held continues to grant
+                                             `can_view_docket_matter()`
+                                             on that one matter after
+                                             the ordinary Court
+                                             assignment is later ended by
+                                             an Admin (`docket_matter_
+                                             assignments` self-service
+                                             path fully unaffected).
+                                             Zero new advisor findings —
+                                             `get_advisors` (security)
+                                             re-run post-apply returned
+                                             only the same pre-existing,
+                                             unrelated WARN set already
+                                             carried by the schema
+                                             (function search_path on
+                                             `validate_bookmark_entity`,
+                                             the standard anon/
+                                             authenticated SECURITY
+                                             DEFINER EXECUTE WARNs on
+                                             existing RPCs, leaked-
+                                             password-protection). No
+                                             `database.types.ts`
+                                             regeneration needed — this
+                                             migration changes only RLS
+                                             policy predicates/names, no
+                                             table column, function
+                                             signature, or enum.
 ```
 
 0013–0022 above are APPLIED and verified against Supabase directly. 0023 is prepared for review this turn (not applied). All numbering from 0024 onward remains anticipated/planning-only — none of those files exist yet and none will be written or renamed until each is actually reached in turn.
