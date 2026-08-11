@@ -3466,6 +3466,115 @@ cases, case_parties, case_tags
                                              unless a genuine future
                                              schema need arises.
 0049_storage_policy_updates.sql            (was 0048, was 0047, was 0046)
+0050 "Fix RETURNING-visibility self-referencing RLS policies" — APPLIED.
+                                             Discovered while pretesting
+                                             0051 (unrelated to that
+                                             migration's own content): the
+                                             `docket_matters`/`judgments`/
+                                             `case_law` SELECT and UPDATE
+                                             RLS policies called an
+                                             id-only SECURITY DEFINER
+                                             helper (`can_view_X(id)`/
+                                             `can_edit_X(id)`) that
+                                             re-queries the SAME table by
+                                             id. Confirmed via a minimal,
+                                             schema-independent repro that
+                                             this self-referencing shape
+                                             breaks `INSERT ... RETURNING`
+                                             outright (the just-inserted
+                                             row is invisible to the
+                                             helper's own nested self-
+                                             query at RETURNING-time, so
+                                             even the row's own creator
+                                             gets an RLS violation) and
+                                             causes `UPDATE ... RETURNING`
+                                             to silently evaluate against
+                                             stale, pre-update column
+                                             values. Since `supabase-js`'s
+                                             `.insert(values).select()` is
+                                             exactly `INSERT ... RETURNING`
+                                             in one round trip, this
+                                             latent defect (present since
+                                             0020/0027/0035) blocked
+                                             creating a Docket Matter, a
+                                             Judgment, or personal Case Law
+                                             for a fully authorized user.
+                                             Fixed by rewriting those six
+                                             policies (`ALTER POLICY ...
+                                             USING (...)`) to reference the
+                                             row's own columns directly
+                                             instead of self-querying —
+                                             identical boolean predicates,
+                                             no access-control change. The
+                                             `can_view_X`/`can_edit_X`
+                                             helper functions themselves
+                                             are untouched (still used
+                                             correctly, cross-table, by
+                                             `documents`' policies) and
+                                             DELETE policies (unaffected —
+                                             the target row already existed
+                                             before the statement) are also
+                                             untouched. Rollback-only
+                                             pretest: 12/12 PASS, including
+                                             an explicit before/after
+                                             access-control regression
+                                             (not just the RETURNING fix).
+                                             Zero new advisor findings.
+0051_docket_share_recipient_lookup.sql      APPLIED. `resolve_docket_share_
+                                             recipient(p_docket_matter_id,
+                                             p_email)` — the narrow lookup
+                                             RPC needed to unblock Docket
+                                             Share creation in the frontend
+                                             (`profiles` SELECT RLS is
+                                             owner-or-admin only, so there
+                                             was previously no RLS-
+                                             authorized way to resolve "who
+                                             is this email" before creating
+                                             a Share). Reuses
+                                             `has_docket_matter_authority()`
+                                             verbatim for authorization —
+                                             the exact same predicate the
+                                             `shares` INSERT policy itself
+                                             checks (current Court
+                                             assignment OR retained
+                                             assignment; an existing share
+                                             is deliberately NOT authority,
+                                             no admin bypass). Exact,
+                                             case-insensitive email match
+                                             only; recipient must be
+                                             active and not the caller;
+                                             every failure mode collapses
+                                             to the same zero-row result
+                                             (no way to distinguish "wrong
+                                             email" from "not authorized").
+                                             Returns only `(profile_id,
+                                             display_name)` — `display_name`
+                                             is `profiles.full_name`,
+                                             matching the existing
+                                             `resolve_docket_share_identity`/
+                                             `resolve_docket_assignment_
+                                             identity` convention exactly.
+                                             SECURITY DEFINER, STABLE,
+                                             fixed `search_path`, EXECUTE
+                                             revoked from PUBLIC/`anon`,
+                                             granted to `authenticated`
+                                             only. It does NOT create the
+                                             Share — the existing `shares`
+                                             INSERT policy remains the sole
+                                             authority for that. Rollback-
+                                             only pretest: 12/12 PASS
+                                             (authorized Court/retained
+                                             callers succeed; view-share-
+                                             only/edit-share-only/unrelated/
+                                             admin-without-authority callers
+                                             all get zero rows; self-email,
+                                             inactive-recipient, unknown-
+                                             email, and partial-email
+                                             lookups all get zero rows;
+                                             case-insensitive exact match
+                                             succeeds; `anon` EXECUTE
+                                             denied). Zero new advisor
+                                             findings.
 ```
 
 0013–0022 above are APPLIED and verified against Supabase directly. 0023 is prepared for review this turn (not applied). All numbering from 0024 onward remains anticipated/planning-only — none of those files exist yet and none will be written or renamed until each is actually reached in turn.

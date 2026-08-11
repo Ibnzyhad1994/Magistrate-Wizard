@@ -1719,6 +1719,11 @@ export type Database = {
       };
       is_admin: { Args: Record<string, never>; Returns: boolean };
       my_court_id: { Args: Record<string, never>; Returns: string };
+      /** Narrow, authority-gated recipient lookup for Share creation (0051) — NOT a directory search. Zero rows for any failure (unauthorized caller, unknown/partial/self email, inactive recipient). */
+      resolve_docket_share_recipient: {
+        Args: { p_docket_matter_id: string; p_email: string };
+        Returns: { profile_id: string; display_name: string }[];
+      };
       /** Prefer this over a broad `profiles` SELECT for displaying who a Docket assignment belongs to. */
       resolve_docket_assignment_identity: {
         Args: { p_assignment_id: string };
