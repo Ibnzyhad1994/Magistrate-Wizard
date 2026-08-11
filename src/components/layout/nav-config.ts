@@ -6,6 +6,7 @@ import {
   Braces,
   StickyNote,
   Bookmark,
+  Search,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { NavItem } from "@/types";
@@ -51,5 +52,10 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Bookmarks",
     href: ROUTES.bookmarks,
     icon: Bookmark,
+  },
+  {
+    label: "Search",
+    href: ROUTES.search,
+    icon: Search,
   },
 ];

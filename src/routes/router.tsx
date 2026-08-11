@@ -19,6 +19,7 @@ import QuickCodesPage from "@/pages/quick-codes/quick-codes-page";
 import BenchNotesListPage from "@/pages/bench-notes/bench-notes-list-page";
 import BenchNoteDetailPage from "@/pages/bench-notes/bench-note-detail-page";
 import BookmarksPage from "@/pages/bookmarks/bookmarks-page";
+import SearchPage from "@/pages/search/search-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.benchNotes, element: <BenchNotesListPage /> },
           { path: "/bench-notes/:id", element: <BenchNoteDetailPage /> },
           { path: ROUTES.bookmarks, element: <BookmarksPage /> },
+          { path: ROUTES.search, element: <SearchPage /> },
         ],
       },
     ],
