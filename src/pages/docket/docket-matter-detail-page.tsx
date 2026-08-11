@@ -13,6 +13,7 @@ import { TagsSection } from "@/pages/docket/sections/tags-section";
 import { JudgmentsSection } from "@/pages/docket/sections/judgments-section";
 import { CaseLawSection } from "@/pages/docket/sections/case-law-section";
 import { DocumentsPanel } from "@/components/common/documents-panel";
+import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { ROUTES } from "@/routes/paths";
 
@@ -72,6 +73,7 @@ export default function DocketMatterDetailPage() {
           <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
             {matter.status}
           </Badge>
+          <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
         </div>
         <p className="text-sm text-muted-foreground">
           {matter.case_number}

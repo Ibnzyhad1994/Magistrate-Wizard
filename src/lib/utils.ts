@@ -56,19 +56,58 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Known Postgres/PostgREST error codes mapped to constraint-name substrings
+ * we can recognize, so common failures surface as plain English instead of
+ * raw Postgres exception text. Extend this map as new constraints are hit
+ * rather than displaying the raw driver message.
+ */
+const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
+  ["quick_codes_owner_code_word", "You already have a Quick Code with that code word."],
+  ["bookmarks_user_id_entity_type_entity_id", "You've already bookmarked this."],
+  ["docket_matter_tags", "That tag is already on this matter."],
+  ["judgment_tags", "That tag is already on this judgment."],
+];
+
+/**
  * Type guard for narrowing unknown errors (e.g. from catch blocks or
- * Supabase responses) down to something with a human-readable message.
+ * Supabase/PostgREST responses) down to a human-readable message. Where
+ * possible, recognizes common Postgres error codes (unique violations,
+ * RLS denials, missing foreign keys) and returns plain English instead of
+ * the raw driver/Postgres exception text.
  */
 export function getErrorMessage(error: unknown): string {
+  if (error && typeof error === "object") {
+    const code = "code" in error ? String((error as { code: unknown }).code) : undefined;
+    const rawMessage =
+      "message" in error && typeof (error as { message: unknown }).message === "string"
+        ? (error as { message: string }).message
+        : undefined;
+
+    if (code === "23505") {
+      const match = UNIQUE_VIOLATION_MESSAGES.find(([substring]) =>
+        rawMessage?.toLowerCase().includes(substring.toLowerCase()),
+      );
+      return match?.[1] ?? "That already exists.";
+    }
+    if (code === "42501") {
+      return "You don't have permission to do that.";
+    }
+    if (code === "23503") {
+      return "That's linked to something that no longer exists.";
+    }
+    if (code === "PGRST116") {
+      return "That record doesn't exist, or you don't have access to it.";
+    }
+    if (
+      typeof (error as { message?: unknown }).message === "string" &&
+      /network|fetch/i.test((error as { message: string }).message) &&
+      !navigator.onLine
+    ) {
+      return "You appear to be offline. Check your connection and try again.";
+    }
+    if (rawMessage) return rawMessage;
+  }
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof (error as { message: unknown }).message === "string"
-  ) {
-    return (error as { message: string }).message;
-  }
   return "An unexpected error occurred.";
 }

@@ -15,6 +15,10 @@ import JudgmentListPage from "@/pages/judgments/judgment-list-page";
 import JudgmentDetailPage from "@/pages/judgments/judgment-detail-page";
 import CaseLawListPage from "@/pages/case-law/case-law-list-page";
 import CaseLawDetailPage from "@/pages/case-law/case-law-detail-page";
+import QuickCodesPage from "@/pages/quick-codes/quick-codes-page";
+import BenchNotesListPage from "@/pages/bench-notes/bench-notes-list-page";
+import BenchNoteDetailPage from "@/pages/bench-notes/bench-note-detail-page";
+import BookmarksPage from "@/pages/bookmarks/bookmarks-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -48,6 +52,10 @@ export const router = createBrowserRouter([
           { path: "/judgments/:id", element: <JudgmentDetailPage /> },
           { path: ROUTES.caseLaw, element: <CaseLawListPage /> },
           { path: "/case-law/:id", element: <CaseLawDetailPage /> },
+          { path: ROUTES.quickCodes, element: <QuickCodesPage /> },
+          { path: ROUTES.benchNotes, element: <BenchNotesListPage /> },
+          { path: "/bench-notes/:id", element: <BenchNoteDetailPage /> },
+          { path: ROUTES.bookmarks, element: <BookmarksPage /> },
         ],
       },
     ],

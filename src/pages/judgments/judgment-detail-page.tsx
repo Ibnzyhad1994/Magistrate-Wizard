@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditor } from "@/components/common/rich-text-editor";
 import { DocumentsPanel } from "@/components/common/documents-panel";
+import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import {
   useDeleteJudgment,
   useFinalizeJudgment,
@@ -91,6 +92,7 @@ export default function JudgmentDetailPage() {
             {judgment.title}
           </h1>
           <Badge variant={isDraft ? "secondary" : "default"}>{judgment.status}</Badge>
+          <BookmarkToggle entityType="judgment" entityId={judgment.id} />
         </div>
         {!isDraft && judgment.finalized_at && (
           <p className="text-sm text-muted-foreground">

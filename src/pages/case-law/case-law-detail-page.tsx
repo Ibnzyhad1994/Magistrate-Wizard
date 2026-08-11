@@ -24,6 +24,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { DocumentsPanel } from "@/components/common/documents-panel";
+import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useCaseLawItem,
@@ -93,6 +94,7 @@ export default function CaseLawDetailPage() {
           <Badge variant={isCanonical ? "outline" : "secondary"}>
             {isCanonical ? "Canonical" : isOwner ? "My research" : "Discoverable"}
           </Badge>
+          <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />
         </div>
         <p className="text-sm text-muted-foreground">
           {caseLaw.citation} · {caseLaw.court}
