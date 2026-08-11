@@ -20,6 +20,7 @@ import {
   useDocuments,
   useUploadDocument,
 } from "@/hooks/use-documents";
+import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -29,6 +30,16 @@ interface DocumentsPanelProps {
   /** One of the six approved polymorphic parent types. */
   entityType: "docket_matter" | "judgment" | "case_law" | "quick_code" | "bench_note";
   entityId: string;
+  /**
+   * Whether the caller is currently allowed to attach documents here per
+   * the live `documents` INSERT policy (e.g. canonical Case Law can only
+   * be attached to by an admin — a personal-research owner or a
+   * discoverable-research viewer cannot). Defaults to true for parent
+   * types where the page context already guarantees edit access (a
+   * magistrate's own Quick Codes/Bench Notes, for instance). When false,
+   * the Upload control is hidden rather than shown-then-denied by RLS.
+   */
+  canUpload?: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -44,7 +55,8 @@ function formatBytes(bytes: number): string {
  * upload failure). One implementation instead of duplicating this
  * across Docket/Judgment/Case Law/Quick Code/Bench Note detail pages.
  */
-export function DocumentsPanel({ entityType, entityId }: DocumentsPanelProps) {
+export function DocumentsPanel({ entityType, entityId, canUpload = true }: DocumentsPanelProps) {
+  const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useDocuments(entityType, entityId);
   const upload = useUploadDocument(entityType, entityId);
   const del = useDeleteDocument(entityType, entityId);
@@ -66,30 +78,32 @@ export function DocumentsPanel({ entityType, entityId }: DocumentsPanelProps) {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex justify-end">
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) upload.mutate(file);
-            e.target.value = "";
-          }}
-        />
-        <Button
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={upload.isPending}
-        >
-          {upload.isPending ? (
-            <LoadingSpinner className="text-current" size={16} />
-          ) : (
-            <Upload className="h-4 w-4" />
-          )}
-          Upload document
-        </Button>
-      </div>
+      {canUpload && (
+        <div className="flex justify-end">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) upload.mutate(file);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={upload.isPending}
+          >
+            {upload.isPending ? (
+              <LoadingSpinner className="text-current" size={16} />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            Upload document
+          </Button>
+        </div>
+      )}
 
       {isPending ? (
         <Skeleton className="h-32 w-full" />
@@ -99,7 +113,11 @@ export function DocumentsPanel({ entityType, entityId }: DocumentsPanelProps) {
         <EmptyState
           icon={FileText}
           title="No documents attached"
-          description="Upload PDFs, images, or Word documents relevant to this record."
+          description={
+            canUpload
+              ? "Upload PDFs, images, or Word documents relevant to this record."
+              : "Nothing has been attached here."
+          }
         />
       ) : (
         <Table>
@@ -137,14 +155,16 @@ export function DocumentsPanel({ entityType, entityId }: DocumentsPanelProps) {
                       <Download className="h-4 w-4" />
                     )}
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Delete ${doc.file_name}`}
-                    onClick={() => setPendingDelete(doc)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {doc.uploaded_by === user?.id && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Delete ${doc.file_name}`}
+                      onClick={() => setPendingDelete(doc)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

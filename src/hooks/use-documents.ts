@@ -113,7 +113,14 @@ export function useDeleteDocument(entityType: string, entityId: string) {
         .from("documents")
         .delete()
         .eq("id", doc.id);
-      if (error) throw error;
+      if (error) {
+        // The blob is already gone from Storage at this point — don't let
+        // the UI imply nothing happened. This is a genuine partial
+        // failure, not a full success or a full no-op.
+        throw new Error(
+          `The file was removed from storage, but its record couldn't be cleaned up (${getErrorMessage(error)}). Refresh — if it still appears, it's now a broken link and can be safely deleted again.`,
+        );
+      }
     },
     onSuccess: () => {
       toast.success("Document deleted.");

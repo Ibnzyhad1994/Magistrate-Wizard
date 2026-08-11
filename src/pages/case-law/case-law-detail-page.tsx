@@ -139,7 +139,12 @@ export default function CaseLawDetailPage() {
           <AnnotationsPanel caseLawId={caseLaw.id} />
         </TabsContent>
         <TabsContent value="documents">
-          <DocumentsPanel entityType="case_law" entityId={caseLaw.id} />
+          {/* Attaching to canonical Case Law is Admin-only per the live
+              documents INSERT policy (can_edit_case_law) — hide Upload
+              rather than show a control that will always be RLS-denied
+              for an ordinary magistrate viewing canonical/discoverable
+              research they don't own. */}
+          <DocumentsPanel entityType="case_law" entityId={caseLaw.id} canUpload={isOwner} />
         </TabsContent>
       </Tabs>
 
