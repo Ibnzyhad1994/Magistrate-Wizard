@@ -15,7 +15,7 @@ import type { BookmarkEntityType } from "@/hooks/bookmarks/use-bookmarks";
 const TYPE_LABELS: Record<BookmarkEntityType, string> = {
   case: "Case",
   bench_note: "Bench Note",
-  statute: "Statute",
+  statute: "Legislation",
   case_law: "Case Law",
   docket_matter: "Docket Matter",
   judgment: "Judgment",

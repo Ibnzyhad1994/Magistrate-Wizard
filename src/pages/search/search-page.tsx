@@ -14,7 +14,7 @@ import type { SearchResult } from "@/types/database.types";
 const TYPE_LABELS: Record<string, string> = {
   case: "Case",
   bench_note: "Bench Note",
-  statute: "Statute",
+  statute: "Legislation",
   case_law: "Case Law",
   docket_matter: "Docket Matter",
   judgment: "Judgment",
@@ -102,7 +102,7 @@ export default function SearchPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Search</h1>
         <p className="text-sm text-muted-foreground">
           Search across Docket Matters, Judgments, Case Law, Quick Codes,
-          Bench Notes, Cases, and Statutes — results are limited to what
+          Bench Notes, Cases, and Legislation — results are limited to what
           you're already allowed to see.
         </p>
       </div>

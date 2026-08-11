@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, StickyNote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { useStatute } from "@/hooks/legislation/use-legislation";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { formatDate } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
+import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
 
 /**
  * Read-only reference view over the existing `statutes` row — no edit
@@ -24,6 +26,7 @@ export default function LegislationDetailPage() {
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.legislation, "Back to Legislation");
   const { data: statute, isPending, isError, error, refetch } = useStatute(id);
+  const [noteOpen, setNoteOpen] = useState(false);
 
   if (isPending) {
     return (
@@ -60,6 +63,13 @@ export default function LegislationDetailPage() {
           {[statute.code, statute.jurisdiction].filter(Boolean).join(" · ")}
           {statute.effective_date ? ` · Effective ${formatDate(statute.effective_date)}` : ""}
         </p>
+      </div>
+
+      <div>
+        <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
+          <StickyNote className="h-4 w-4" />
+          New Bench Note
+        </Button>
       </div>
 
       {statute.source_url && (
@@ -101,6 +111,12 @@ export default function LegislationDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <CreateBenchNoteDialog
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        defaultParent={{ entityType: "statute", entityId: statute.id, label: statute.title }}
+      />
     </div>
   );
 }

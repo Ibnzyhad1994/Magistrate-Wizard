@@ -26,6 +26,7 @@ interface QuickCodeInput {
   title: string | null;
   content: string;
   description: string | null;
+  category: string | null;
 }
 
 export function useCreateQuickCode() {

@@ -78,6 +78,7 @@ export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
                     variant="ghost"
                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                     title="Unlink"
+                    aria-label={`Unlink judgment ${judgment.title}`}
                     disabled={deleteLink.isPending}
                     onClick={() =>
                       deleteLink.mutate({ linkId: link.id, judgmentId: judgment.id })

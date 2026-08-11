@@ -120,11 +120,13 @@ export type Database = {
         ];
       };
       /**
-       * Polymorphic since 0040: `case_id` is GONE. Parent is
-       * `entity_type` ('docket_matter' | 'judgment' | 'case_law' |
-       * 'quick_code' | 'bench_note' | 'case') + `entity_id`. `is_private`
-       * is inert for visibility (author-only regardless); do not use it
-       * to gate display.
+       * Polymorphic parent since 0038, extended 0054. `entity_type`
+       * ('docket_matter' | 'judgment' | 'case_law' | 'statute') +
+       * `entity_id`, validated procedurally by bench_notes_entity_guard()
+       * (no declarative FK spans 4 tables). RLS is strictly author-only
+       * on all commands with no parent-access cascade — `is_private` is
+       * inert for visibility (author-only regardless); do not use it to
+       * gate display.
        */
       bench_notes: {
         Row: {
@@ -1466,6 +1468,7 @@ export type Database = {
       /** Owner-only CRUD, no Court/Docket/admin bypass — do not reopen. */
       quick_codes: {
         Row: {
+          category: string | null;
           code_word: string;
           content: string;
           created_at: string;
@@ -1477,6 +1480,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          category?: string | null;
           code_word: string;
           content: string;
           created_at?: string;
@@ -1488,6 +1492,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          category?: string | null;
           code_word?: string;
           content?: string;
           created_at?: string;

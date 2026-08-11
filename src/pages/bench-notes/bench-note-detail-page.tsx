@@ -34,12 +34,14 @@ const PARENT_TYPE_LABELS: Record<string, string> = {
   docket_matter: "Docket Matter",
   judgment: "Judgment",
   case_law: "Case Law",
+  statute: "Legislation",
 };
 
 const PARENT_ROUTE: Record<string, (id: string) => string> = {
   docket_matter: ROUTES.docketMatter,
   judgment: ROUTES.judgmentDetail,
   case_law: ROUTES.caseLawDetail,
+  statute: ROUTES.legislationDetail,
 };
 
 export default function BenchNoteDetailPage() {

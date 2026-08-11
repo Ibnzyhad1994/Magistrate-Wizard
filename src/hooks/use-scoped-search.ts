@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 /**
  * Module-scoped full-text search, shared by every list page that has its
  * own `search_X(p_query, p_limit)` RPC (see 0010/0047) — Docket Matters,
- * Judgments, Case Law, Quick Codes, and (later) Legislation. Each of
+ * Judgments, Case Law, Quick Codes, Bench Notes, and Legislation. Each of
  * these RPCs is `SECURITY INVOKER` and searches ONLY its own table, so a
  * query typed into e.g. the Judgments list can never surface Case Law or
  * Docket results — that scoping is enforced by which RPC is called, not
@@ -24,7 +24,8 @@ export function useScopedSearchIds(
     | "search_case_law"
     | "search_docket_matters"
     | "search_quick_codes"
-    | "search_statutes",
+    | "search_statutes"
+    | "search_bench_notes",
   query: string,
 ) {
   const trimmed = query.trim();

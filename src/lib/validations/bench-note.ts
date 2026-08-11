@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const BENCH_NOTE_PARENT_TYPES = ["docket_matter", "judgment", "case_law"] as const;
+export const BENCH_NOTE_PARENT_TYPES = [
+  "docket_matter",
+  "judgment",
+  "case_law",
+  "statute",
+] as const;
 export type BenchNoteParentType = (typeof BENCH_NOTE_PARENT_TYPES)[number];
 
 export const benchNoteCreateSchema = z.object({

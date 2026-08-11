@@ -27,6 +27,7 @@ import { useCreateBenchNote } from "@/hooks/bench-notes/use-bench-notes";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useCaseLawList } from "@/hooks/case-law/use-case-law";
+import { useStatutes } from "@/hooks/legislation/use-legislation";
 import {
   BENCH_NOTE_PARENT_TYPES,
   benchNoteCreateSchema,
@@ -40,28 +41,41 @@ const PARENT_TYPE_LABELS: Record<BenchNoteParentType, string> = {
   docket_matter: "Docket Matter",
   judgment: "Judgment",
   case_law: "Case Law",
+  statute: "Legislation",
 };
 
 interface CreateBenchNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Pre-fill "About" when opened from a specific record's page (e.g. a Legislation detail page's "New Bench Note" action) rather than the general Bench Notes list. */
+  defaultParent?: { entityType: BenchNoteParentType; entityId: string; label: string };
 }
 
-export function CreateBenchNoteDialog({ open, onOpenChange }: CreateBenchNoteDialogProps) {
+export function CreateBenchNoteDialog({
+  open,
+  onOpenChange,
+  defaultParent,
+}: CreateBenchNoteDialogProps) {
   const navigate = useNavigate();
   const createBenchNote = useCreateBenchNote();
   const [parentFilter, setParentFilter] = useState("");
 
   const form = useForm<BenchNoteCreateFormValues>({
     resolver: zodResolver(benchNoteCreateSchema),
-    defaultValues: { title: "", entity_type: "docket_matter", entity_id: "" },
+    defaultValues: {
+      title: "",
+      entity_type: defaultParent?.entityType ?? "docket_matter",
+      entity_id: defaultParent?.entityId ?? "",
+    },
   });
 
   const parentType = form.watch("entity_type");
+  const lockParent = !!defaultParent;
 
   const { data: matters } = useDocketMatters(parentType === "docket_matter" ? parentFilter : "");
   const { data: judgments } = useJudgments();
   const { data: caseLaw } = useCaseLawList();
+  const { data: statutes } = useStatutes();
 
   const options = useMemo(() => {
     const q = parentFilter.trim().toLowerCase();
@@ -77,10 +91,15 @@ export function CreateBenchNoteDialog({ open, onOpenChange }: CreateBenchNoteDia
         .filter((j) => !q || j.title.toLowerCase().includes(q))
         .map((j) => ({ id: j.id, label: j.title, subtitle: j.case_number }));
     }
+    if (parentType === "statute") {
+      return (statutes ?? [])
+        .filter((s) => !q || s.title.toLowerCase().includes(q))
+        .map((s) => ({ id: s.id, label: s.title, subtitle: s.code }));
+    }
     return (caseLaw ?? [])
       .filter((c) => !q || c.case_name.toLowerCase().includes(q))
       .map((c) => ({ id: c.id, label: c.case_name, subtitle: c.citation }));
-  }, [parentType, matters, judgments, caseLaw, parentFilter]);
+  }, [parentType, matters, judgments, caseLaw, statutes, parentFilter]);
 
   async function onSubmit(values: BenchNoteCreateFormValues) {
     try {
@@ -109,8 +128,9 @@ export function CreateBenchNoteDialog({ open, onOpenChange }: CreateBenchNoteDia
         <DialogHeader>
           <DialogTitle>New Bench Note</DialogTitle>
           <DialogDescription>
-            Attach a note to a Docket Matter, Judgment, or Case Law entry you
-            currently have access to.
+            {lockParent
+              ? `Attach a note to ${defaultParent.label}.`
+              : "Attach a note to a Docket Matter, Judgment, Case Law entry, or Act you currently have access to."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -128,71 +148,82 @@ export function CreateBenchNoteDialog({ open, onOpenChange }: CreateBenchNoteDia
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="entity_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>About</FormLabel>
-                  <FormControl>
-                    <Select
-                      value={field.value}
-                      onChange={(e) => {
-                        field.onChange(e.target.value as BenchNoteParentType);
-                        form.setValue("entity_id", "");
-                        setParentFilter("");
-                      }}
-                    >
-                      {BENCH_NOTE_PARENT_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {PARENT_TYPE_LABELS[t]}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="entity_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{PARENT_TYPE_LABELS[parentType]}</FormLabel>
-                  <Input
-                    placeholder={`Search ${PARENT_TYPE_LABELS[parentType].toLowerCase()}s…`}
-                    value={parentFilter}
-                    onChange={(e) => setParentFilter(e.target.value)}
-                  />
-                  <div className="mt-1 max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-border p-1">
-                    {options.length === 0 ? (
-                      <p className="p-2 text-sm text-muted-foreground">No matches.</p>
-                    ) : (
-                      options.slice(0, 50).map((opt) => (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => field.onChange(opt.id)}
-                          className={cn(
-                            "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-muted",
-                            field.value === opt.id && "bg-muted",
-                          )}
+            {lockParent ? (
+              <FormItem>
+                <FormLabel>About</FormLabel>
+                <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                  {PARENT_TYPE_LABELS[parentType]}: {defaultParent.label}
+                </div>
+              </FormItem>
+            ) : (
+              <>
+                <FormField
+                  control={form.control}
+                  name="entity_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>About</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onChange={(e) => {
+                            field.onChange(e.target.value as BenchNoteParentType);
+                            form.setValue("entity_id", "");
+                            setParentFilter("");
+                          }}
                         >
-                          <span>
-                            <span className="text-foreground">{opt.label}</span>
-                            {opt.subtitle && (
-                              <span className="text-muted-foreground"> · {opt.subtitle}</span>
-                            )}
-                          </span>
-                          {field.value === opt.id && <Check className="h-4 w-4 text-primary" />}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                          {BENCH_NOTE_PARENT_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {PARENT_TYPE_LABELS[t]}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="entity_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{PARENT_TYPE_LABELS[parentType]}</FormLabel>
+                      <Input
+                        placeholder={`Search ${PARENT_TYPE_LABELS[parentType].toLowerCase()}s…`}
+                        value={parentFilter}
+                        onChange={(e) => setParentFilter(e.target.value)}
+                      />
+                      <div className="mt-1 max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-border p-1">
+                        {options.length === 0 ? (
+                          <p className="p-2 text-sm text-muted-foreground">No matches.</p>
+                        ) : (
+                          options.slice(0, 50).map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => field.onChange(opt.id)}
+                              className={cn(
+                                "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-muted",
+                                field.value === opt.id && "bg-muted",
+                              )}
+                            >
+                              <span>
+                                <span className="text-foreground">{opt.label}</span>
+                                {opt.subtitle && (
+                                  <span className="text-muted-foreground"> · {opt.subtitle}</span>
+                                )}
+                              </span>
+                              {field.value === opt.id && <Check className="h-4 w-4 text-primary" />}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
             <DialogFooter>
               <Button
                 type="button"

@@ -6,6 +6,8 @@ import { Plus, Copy, Pencil, Trash2, Braces, Link2, Bookmark, BookmarkCheck } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -36,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { ControlledVocabSelect } from "@/components/common/controlled-vocab-select";
 import {
   useCreateQuickCode,
   useDeleteQuickCode,
@@ -48,6 +51,7 @@ import {
   useQuickCodeJudgments,
 } from "@/hooks/quick-codes/use-quick-code-associations";
 import {
+  QUICK_CODE_CATEGORIES,
   quickCodeFieldsSchema,
   type QuickCodeFieldsFormValues,
 } from "@/lib/validations/quick-code";
@@ -59,6 +63,7 @@ import { cn } from "@/lib/utils";
 export default function QuickCodesPage() {
   const { data, isPending, isError, error, refetch } = useQuickCodes();
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<QuickCode | null>(null);
   const [pendingDelete, setPendingDelete] = useState<QuickCode | null>(null);
@@ -92,16 +97,26 @@ export default function QuickCodesPage() {
     }
   }, [highlightId, data, setSearchParams]);
 
+  const categoriesInUse = useMemo(() => {
+    const present = new Set((data ?? []).map((qc) => qc.category).filter(Boolean) as string[]);
+    return Array.from(new Set([...QUICK_CODE_CATEGORIES, ...present])).sort((a, b) =>
+      a.localeCompare(b),
+    );
+  }, [data]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return data ?? [];
-    return (data ?? []).filter(
-      (qc) =>
+    return (data ?? []).filter((qc) => {
+      if (categoryFilter && (qc.category ?? "") !== categoryFilter) return false;
+      if (!q) return true;
+      return (
         qc.code_word.toLowerCase().includes(q) ||
         (qc.title ?? "").toLowerCase().includes(q) ||
-        (qc.description ?? "").toLowerCase().includes(q),
-    );
-  }, [data, query]);
+        (qc.description ?? "").toLowerCase().includes(q) ||
+        (qc.category ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [data, query, categoryFilter]);
 
   async function copyContent(qc: QuickCode) {
     try {
@@ -134,13 +149,30 @@ export default function QuickCodesPage() {
         </Button>
       </div>
 
-      <Input
-        className="max-w-sm"
-        placeholder="Filter by code word, title, or description…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        aria-label="Filter Quick Codes"
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input
+          className="max-w-sm"
+          placeholder="Filter by code word, title, or description…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Filter Quick Codes"
+        />
+        {categoriesInUse.length > 0 && (
+          <Select
+            className="w-full sm:w-48"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Filter by category"
+          >
+            <option value="">All categories</option>
+            {categoriesInUse.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        )}
+      </div>
 
       {isPending ? (
         <Skeleton className="h-64 w-full" />
@@ -183,6 +215,7 @@ export default function QuickCodesPage() {
                 <TableRow>
                   <TableHead>Code word</TableHead>
                   <TableHead>Title</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Preview</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -201,6 +234,13 @@ export default function QuickCodesPage() {
                       {qc.code_word}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{qc.title || "—"}</TableCell>
+                    <TableCell>
+                      {qc.category ? (
+                        <Badge variant="secondary">{qc.category}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">
                       {qc.content}
                     </TableCell>
@@ -345,6 +385,7 @@ function QuickCodeFormDialog({
       title: editing?.title ?? "",
       content: editing?.content ?? "",
       description: editing?.description ?? "",
+      category: editing?.category ?? "",
     },
   });
 
@@ -354,6 +395,7 @@ function QuickCodeFormDialog({
       title: values.title || null,
       content: values.content,
       description: values.description || null,
+      category: values.category || null,
     };
     try {
       if (editing) {
@@ -410,6 +452,24 @@ function QuickCodeFormDialog({
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category (optional)</FormLabel>
+                  <FormControl>
+                    <ControlledVocabSelect
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      options={QUICK_CODE_CATEGORIES}
+                      placeholder="No category"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="content"

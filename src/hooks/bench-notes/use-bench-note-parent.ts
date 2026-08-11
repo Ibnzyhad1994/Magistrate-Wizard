@@ -49,6 +49,15 @@ export function useBenchNoteParent(
         if (error) throw error;
         return data ? { label: data.case_name, subtitle: data.citation } : null;
       }
+      if (entityType === "statute") {
+        const { data, error } = await supabase
+          .from("statutes")
+          .select("title, code")
+          .eq("id", entityId as string)
+          .maybeSingle();
+        if (error) throw error;
+        return data ? { label: data.title, subtitle: data.code } : null;
+      }
       return null;
     },
     enabled: !!entityType && !!entityId,
