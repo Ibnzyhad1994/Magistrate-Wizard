@@ -29,6 +29,30 @@
  * text. This module NEVER claims OCR — an image-only/scanned PDF (no
  * FlateDecode text stream produced any readable text) is reported as
  * requiring OCR, not silently treated as empty or as a failure to guess.
+ *
+ * IMPORTANT — this module's own `hasTextLayer`/`requiresOcr` gate is a
+ * cheap, single-document sanity check, NOT the authoritative quality
+ * decision for the ingestion pipeline. `src/lib/extraction-quality.ts`
+ * runs a stricter, document-agnostic assessment (font/licensing
+ * boilerplate detection, replacement-character ratio, repeated-glyph
+ * detection, etc.) on whatever this module returns, and
+ * `src/lib/extraction-pipeline.ts` is the only place callers should treat
+ * as authoritative for "was this actually usable text." Real historical
+ * PDFs (see that pipeline's file header) showed this module's own gate
+ * alone was not sufficient — e.g. embedded font-license text is legitimate,
+ * highly "readable" ASCII by this module's own metric, yet is not
+ * judgment content at all.
+ *
+ * This module also has NO object-graph awareness — it does not know
+ * which streams are actually referenced by a Page's /Contents. It scans
+ * every `stream ... endstream` byte range in the file and filters out the
+ * kinds of non-content streams identified as false-positive sources
+ * during a real-PDF audit (compressed object streams, cross-reference
+ * streams, XMP metadata, embedded font program data — see the exclusion
+ * list in the main loop below). This measurably reduces, but does not
+ * eliminate, the risk of extracting non-content text from an
+ * unanticipated stream type; the quality gate downstream is the backstop
+ * for whatever this heuristic still lets through.
  */
 
 export interface PdfExtractionResult {
@@ -81,6 +105,43 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
       precedingDict.includes("/CCITTFaxDecode") ||
       precedingDict.includes("/JPXDecode") ||
       precedingDict.includes("/JBIG2Decode")
+    ) {
+      continue;
+    }
+    // Root-cause fix (real-PDF audit, "REAL CASE LAW PDF METADATA
+    // EXTRACTION REPAIR PASS"): this parser has no object-graph awareness
+    // — it scans every `stream ... endstream` byte range in the file, not
+    // just streams actually referenced as a Page's /Contents. Several
+    // OTHER kinds of FlateDecode-compressed streams are common in real
+    // PDF producers and are NOT page text, but decompress to bytes that
+    // can still contain "(" / ")" characters and pass the naive Tj/TJ
+    // scan below, producing exactly the observed "irrelevant embedded
+    // font/licensing material" and PDF-internal garbage:
+    //   - /Type /ObjStm (a "compressed object stream" holding OTHER PDF
+    //     objects' dictionary syntax — PDF 1.5+ producers use these
+    //     heavily; scanning one for literal strings extracts PDF syntax,
+    //     not document text).
+    //   - /Type /XRef (compressed cross-reference stream — pure binary
+    //     offset tables, never text).
+    //   - /Type /Metadata (XMP metadata packets — often DO contain
+    //     genuine, readable text, but it's copyright/license/producer
+    //     boilerplate about the PDF file itself, never the judgment).
+    //   - Embedded font PROGRAM data (the actual glyph outline binary,
+    //     as opposed to a font's ToUnicode CMap) — reliably identified by
+    //     /Length1 (a key that, per the PDF spec, only ever appears on a
+    //     FontFile stream dictionary) or a /Subtype naming an embedded
+    //     font program format.
+    // None of these are page content; excluding them removes an entire
+    // class of false-positive "extraction" before the text even reaches
+    // the confidence gate below.
+    if (
+      precedingDict.includes("/Type/ObjStm") || precedingDict.includes("/Type /ObjStm") ||
+      precedingDict.includes("/Type/XRef") || precedingDict.includes("/Type /XRef") ||
+      precedingDict.includes("/Type/Metadata") || precedingDict.includes("/Type /Metadata") ||
+      precedingDict.includes("/Length1") ||
+      precedingDict.includes("/Subtype/Type1C") || precedingDict.includes("/Subtype /Type1C") ||
+      precedingDict.includes("/Subtype/CIDFontType0C") || precedingDict.includes("/Subtype /CIDFontType0C") ||
+      precedingDict.includes("/Subtype/OpenType") || precedingDict.includes("/Subtype /OpenType")
     ) {
       continue;
     }

@@ -7,7 +7,6 @@ import {
   FileText,
   Landmark,
   Plus,
-  ScanEye,
   ScrollText,
   Sparkles,
   Trash2,
@@ -64,13 +63,20 @@ import {
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
 import { readFileAsText, extractCaseLawMetadata, normalizeWhitespace } from "@/lib/legal-extraction";
-import { extractPdfTextLayer, isPdfExtractionSupported } from "@/lib/pdf-text-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
   isPlaceholderValue,
   validateCaseLawForPublish,
   validateLegislationForPublish,
 } from "@/lib/publication-validation";
+import {
+  runPdfExtractionPipeline,
+  buildTextFileEnvelope,
+  buildManualPasteEnvelope,
+  emptyExtractionEnvelope,
+  type ExtractionEnvelope,
+  type ExtractionStatus as PipelineExtractionStatus,
+} from "@/lib/extraction-pipeline";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -105,7 +111,82 @@ type ReviewRow<T> = T & {
   proposed_tags: string[];
   uploaded_document_id: string | null;
   job_status: string | null;
+  /** import_jobs.extracted_metadata — deterministic proposal fields plus, under `_extraction`, the full ExtractionEnvelope (status/method/quality/warnings/ocrUsed). Machine-derived, always a proposal, never silently promoted to canonical (§Phase 7). */
+  extracted_metadata: unknown;
+  job_error_summary: string | null;
 };
+
+/** Pulls the ExtractionEnvelope this draft was created with out of `extracted_metadata._extraction`, if present — older drafts created before this pass have none, which is treated as "pending" rather than an error. */
+function readExtractionEnvelope(extractedMetadata: unknown): ExtractionEnvelope | null {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
+  const envelope = (extractedMetadata as Record<string, unknown>)._extraction;
+  if (!envelope || typeof envelope !== "object") return null;
+  return envelope as ExtractionEnvelope;
+}
+
+const EXTRACTION_STATUS_LABEL: Record<PipelineExtractionStatus, string> = {
+  pending: "No text yet",
+  extracted: "Extracted",
+  low_quality: "Low quality extraction",
+  requires_ocr: "OCR required",
+  failed: "Extraction failed",
+};
+
+/** Compact, reusable extraction-provenance readout — Review Queue §Phase 9: "What did the machine determine? What remains uncertain?" answered in one glance, without cluttering the card. */
+function ExtractionStatusPanel({ envelope }: { envelope: ExtractionEnvelope | null }) {
+  if (!envelope || envelope.status === "pending") {
+    return (
+      <p className="text-xs text-muted-foreground">
+        No document text was extracted for this draft — Document text (if any) was entered manually.
+      </p>
+    );
+  }
+  const methodLabel: Record<ExtractionEnvelope["method"], string> = {
+    pdf_text_layer: "PDF text layer",
+    txt_file: "Plain text file",
+    manual_paste: "Manually entered",
+    ocr: "OCR",
+    none: "—",
+  };
+  return (
+    <div className="space-y-1 rounded-md border border-border p-2.5">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge
+          variant={
+            envelope.status === "extracted"
+              ? "canonical"
+              : envelope.status === "failed"
+                ? "destructive"
+                : envelope.status === "requires_ocr"
+                  ? "outline"
+                  : "secondary"
+          }
+        >
+          {EXTRACTION_STATUS_LABEL[envelope.status]}
+        </Badge>
+        <span className="text-muted-foreground">Method: {methodLabel[envelope.method]}</span>
+        {envelope.qualityScore !== null && (
+          <span className="text-muted-foreground">Quality: {Math.round(envelope.qualityScore * 100)}%</span>
+        )}
+        <span className="text-muted-foreground">OCR used: {envelope.ocrUsed ? "Yes" : "No"}</span>
+        {envelope.charCount > 0 && <span className="text-muted-foreground">{envelope.charCount.toLocaleString()} characters</span>}
+      </div>
+      {envelope.warnings.length > 0 && (
+        <ul className="list-inside list-disc space-y-0.5 text-[11px] text-amber-700 dark:text-amber-400">
+          {envelope.warnings.map((w, i) => (
+            <li key={i}>{w}</li>
+          ))}
+        </ul>
+      )}
+      {(envelope.status === "requires_ocr" || envelope.status === "failed") && (
+        <p className="text-[11px] text-muted-foreground">
+          This document requires OCR or manual text entry. The original file has been preserved, but reliable text
+          could not be extracted automatically.
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * Compact chip-based tag reviewer shared by both Review Queue cards (§15/
@@ -512,13 +593,8 @@ function SourcesTab() {
 // New Import
 // ---------------------------------------------------------------------------
 
-type ExtractionStatus =
-  | "idle"
-  | "extracting"
-  | "extracted"
-  | "ocr_required"
-  | "unsupported"
-  | "read_text_file";
+const EMPTY_CASE_FIELDS = { case_name: "", citation: "", decided_date: "" };
+const EMPTY_STATUTE_FIELDS = { code: "", title: "", short_title: "" };
 
 function ImportTab() {
   const [contentType, setContentType] = useState<"case_law" | "legislation">("case_law");
@@ -528,14 +604,14 @@ function ImportTab() {
   const [courtId, setCourtId] = useState<string>("");
   const [jurisdictionId, setJurisdictionId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
-  const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus>("idle");
+  const [extractionEnvelope, setExtractionEnvelope] = useState<ExtractionEnvelope>(emptyExtractionEnvelope());
   // Case name/citation/decided date are the only free-text metadata the
   // curator ever types for Case Law now — Court/Jurisdiction are captured
   // ONCE via the canonical selects below, never as a second parallel
   // free-text pair (§2/§25: "should not have to catalog the same legal
   // authority twice").
-  const [caseFields, setCaseFields] = useState({ case_name: "", citation: "", decided_date: "" });
-  const [statuteFields, setStatuteFields] = useState({ code: "", title: "", short_title: "" });
+  const [caseFields, setCaseFields] = useState(EMPTY_CASE_FIELDS);
+  const [statuteFields, setStatuteFields] = useState(EMPTY_STATUTE_FIELDS);
 
   const ingestCaseLaw = useIngestCaseLaw();
   const ingestLegislation = useIngestLegislation();
@@ -546,8 +622,7 @@ function ImportTab() {
 
   // Source selection is about PROVENANCE (which repository the document
   // came from) and is entirely separate from Jurisdiction/Court (which
-  // court decided the case) — §7/§8/§12. A source may be left unassigned;
-  // the free-text Source URL field is preserved either way.
+  // court decided the case) — §7/§8/§12. A source may be left unassigned.
   const approvedSources = (sources ?? []).filter((s) => s.status === "approved");
   const otherSources = (sources ?? []).filter((s) => s.status !== "approved");
 
@@ -562,82 +637,123 @@ function ImportTab() {
     }
   }
 
+  /**
+   * DATA-INTEGRITY FIX (holistic ingestion repair, Phase 2): confirmed live
+   * bug — after a PDF's text/metadata was successfully extracted, selecting
+   * a DIFFERENT PDF that failed to extract left the FIRST document's case
+   * name, citation, court, and jurisdiction sitting in the form, with
+   * nothing to indicate they belonged to a different file. A curator could
+   * then unknowingly publish File B's original document paired with File
+   * A's metadata. This must be impossible: every field derived from a
+   * previously selected file is cleared SYNCHRONOUSLY, before any async
+   * extraction work starts for the new file — never conditionally, never
+   * only on the success path. Source Repository (`sourceId`) is the one
+   * deliberately-selected piece of provenance that survives a file switch
+   * (a curator legitimately batches several documents from the same
+   * repository); Source URL is per-document and is cleared with everything
+   * else.
+   */
+  function resetFileDerivedState() {
+    setText("");
+    setSourceUrl("");
+    setCourtId("");
+    setJurisdictionId("");
+    setCaseFields(EMPTY_CASE_FIELDS);
+    setStatuteFields(EMPTY_STATUTE_FIELDS);
+    setExtractionEnvelope(emptyExtractionEnvelope());
+  }
+
   async function handleFile(f: File) {
+    resetFileDerivedState();
     // The original file is ALWAYS kept and uploaded through the secure
     // documents Storage architecture on submit (uploadDocumentToEntity,
     // private bucket, signed URLs only) — selecting a PDF/DOCX never
-    // discards the file itself.
+    // discards the file itself, and a failed/low-quality extraction never
+    // prevents the file from being preserved.
     setFile(f);
     const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    const isTxt = f.type === "text/plain" || f.name.toLowerCase().endsWith(".txt");
 
-    if (f.type === "text/plain" || f.name.toLowerCase().endsWith(".txt")) {
-      const read = await readFileAsText(f);
-      setText(read);
-      setExtractionStatus("read_text_file");
+    if (isTxt) {
+      const raw = await readFileAsText(f);
+      const envelope = buildTextFileEnvelope(raw);
+      applyExtractionResult(envelope);
       toast.success("Original file will be uploaded and preserved. Text read automatically from the .txt file.");
       return;
     }
 
-    if (isPdf) {
-      if (!isPdfExtractionSupported()) {
-        setExtractionStatus("unsupported");
-        toast.message(
-          "Original file will be uploaded and preserved. This browser doesn't support automatic PDF text extraction — paste the extracted text below to continue.",
-        );
-        return;
-      }
-      setExtractionStatus("extracting");
-      try {
-        const result = await extractPdfTextLayer(f);
-        if (result.hasTextLayer && result.text) {
-          setText(result.text);
-          setExtractionStatus("extracted");
-          const proposed = extractCaseLawMetadata(normalizeWhitespace(result.text));
-          setCaseFields((cf) => ({
-            case_name: cf.case_name || proposed.case_name || "",
-            citation: cf.citation || proposed.reported_citation || proposed.neutral_citation || "",
-            decided_date: cf.decided_date || proposed.decided_date_guess || "",
-          }));
-          if (!courtId) {
-            // Only auto-select on "high"/"medium" confidence — a mention
-            // of some other court deep in the judgment body (a common
-            // pattern: Caribbean appellate judgments discussing further
-            // appeal rights to the Privy Council) must never outrank an
-            // explicit deciding-court heading, and a low-confidence guess
-            // is worse than leaving Court for the curator to set (§10).
-            const matched = matchCanonicalCourtScored(result.text, courts ?? []);
-            if (matched && matched.confidence !== "low") {
-              setCourtId(matched.court.id);
-              if (matched.court.jurisdiction_id) setJurisdictionId(matched.court.jurisdiction_id);
-              if (matched.confidence === "medium") {
-                toast.message(
-                  `Court proposed from extracted text: ${matched.court.canonical_name} — please confirm before publishing.`,
-                );
-              }
-            }
-          }
-          toast.success(
-            "Text extracted from the PDF's text layer. Case name, citation, and Court/Jurisdiction (where confidently identified) were proposed below — review before creating the draft.",
-          );
-        } else {
-          setExtractionStatus("ocr_required");
-          toast.message(
-            "This PDF does not appear to have an extractable text layer (likely a scanned/image-only document) — OCR is not implemented in this build. The original file will still be uploaded and preserved; paste the text below to continue.",
-          );
-        }
-      } catch {
-        setExtractionStatus("ocr_required");
-        toast.message(
-          "Could not extract text from this PDF automatically. The original file will still be uploaded and preserved — paste the text below to continue.",
-        );
-      }
+    if (!isPdf) {
+      toast.message(
+        "Original file will be uploaded and preserved. Automatic text extraction is only available for .txt and text-bearing .pdf files — paste the extracted text below to continue (or leave blank and paste it later from the Review Queue).",
+      );
       return;
     }
 
-    setExtractionStatus("unsupported");
-    toast.message(
-      "Original file will be uploaded and preserved. Automatic text extraction is only available for .txt and text-bearing .pdf files — paste the extracted text below to continue (or leave blank and paste it later from the Review Queue).",
-    );
+    setExtractionEnvelope((prev) => ({ ...prev, status: "pending" }));
+    const envelope = await runPdfExtractionPipeline(f);
+    applyExtractionResult(envelope);
+
+    if (envelope.status === "extracted" || envelope.status === "low_quality") {
+      toast.success(
+        envelope.status === "extracted"
+          ? "Text extracted from the PDF's text layer. Case name, citation, and Court/Jurisdiction (where confidently identified) were proposed below — review before creating the draft."
+          : "Text extracted, but the quality gate flagged it as low confidence — review it carefully below before creating the draft.",
+      );
+      if (contentType === "case_law") {
+        const proposed = extractCaseLawMetadata(normalizeWhitespace(envelope.text));
+        setCaseFields({
+          case_name: proposed.case_name ?? "",
+          citation: proposed.reported_citation ?? proposed.neutral_citation ?? "",
+          decided_date: proposed.decided_date_guess ?? "",
+        });
+        // Only auto-select on "high"/"medium" confidence — a mention of
+        // some other court deep in the judgment body (a common pattern:
+        // Caribbean appellate judgments discussing further appeal rights
+        // to the Privy Council) must never outrank an explicit
+        // deciding-court heading, and a low-confidence guess is worse
+        // than leaving Court for the curator to set (§10).
+        const matched = matchCanonicalCourtScored(envelope.text, courts ?? []);
+        if (matched && matched.confidence !== "low") {
+          setCourtId(matched.court.id);
+          if (matched.court.jurisdiction_id) setJurisdictionId(matched.court.jurisdiction_id);
+          if (matched.confidence === "medium") {
+            toast.message(
+              `Court proposed from extracted text: ${matched.court.canonical_name} — please confirm before publishing.`,
+            );
+          }
+        }
+      }
+      // Legislation: no automatic Act title/code proposal exists yet —
+      // deliberately not inventing a fixture-driven heuristic for this
+      // pass (Phase 12 wires the SAME extraction/quality/sanitize
+      // pipeline into Legislation ingestion; structural parsing of
+      // Parts/Sections already runs downstream in useIngestLegislation
+      // over whatever text this produces).
+      return;
+    }
+
+    if (envelope.status === "requires_ocr") {
+      toast.message(
+        "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically — paste the text below to continue, or leave it for later.",
+      );
+    } else if (envelope.status === "failed") {
+      toast.warning(
+        "Automatic extraction produced text that failed quality checks (it looks like embedded PDF/font data rather than document content) and was discarded. The original file has been preserved — paste the text below to continue.",
+      );
+    }
+  }
+
+  function applyExtractionResult(envelope: ExtractionEnvelope) {
+    setExtractionEnvelope(envelope);
+    setText(envelope.text);
+  }
+
+  /** Curator typing/pasting directly into Document text is trusted manual input, not a machine proposal — tracked as its own extraction method so the Review Queue shows "Manually entered" rather than a stale PDF-extraction status once the curator starts editing. */
+  function handleTextChange(value: string) {
+    setText(value);
+    if (extractionEnvelope.method !== "manual_paste") {
+      setExtractionEnvelope(buildManualPasteEnvelope(value));
+    }
   }
 
   const canSubmitCaseLaw = caseFields.citation.trim() && courtId && jurisdictionId;
@@ -685,25 +801,15 @@ function ImportTab() {
                 {file.name} — will be uploaded and preserved
               </span>
             )}
-            {extractionStatus === "extracting" && (
+            {extractionEnvelope.status === "pending" && file && (
               <Badge variant="secondary" className="gap-1">
                 <Sparkles className="h-3 w-3" />
                 Extracting text…
               </Badge>
             )}
-            {extractionStatus === "extracted" && (
-              <Badge variant="canonical" className="gap-1">
-                <Sparkles className="h-3 w-3" />
-                Text extracted from PDF — metadata proposed below
-              </Badge>
-            )}
-            {extractionStatus === "ocr_required" && (
-              <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400">
-                <ScanEye className="h-3 w-3" />
-                OCR required — no text layer found, paste text below
-              </Badge>
-            )}
           </div>
+
+          {file && extractionEnvelope.status !== "pending" && <ExtractionStatusPanel envelope={extractionEnvelope} />}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Source URL" hint="Optional — provenance only, not fetched.">
@@ -822,7 +928,7 @@ function ImportTab() {
           <Field label="Document text" hint="Auto-read for .txt uploads and text-bearing PDFs; paste manually otherwise.">
             <Textarea
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => handleTextChange(e.target.value)}
               rows={10}
             />
           </Field>
@@ -843,6 +949,7 @@ function ImportTab() {
                     {
                       text,
                       file,
+                      extractionEnvelope,
                       source_url: sourceUrl.trim() || null,
                       source_id: sourceId || null,
                       original_filename: file?.name ?? null,
@@ -883,6 +990,7 @@ function ImportTab() {
                     {
                       text,
                       file,
+                      extractionEnvelope,
                       source_url: sourceUrl.trim() || null,
                       source_id: sourceId || null,
                       original_filename: file?.name ?? null,
@@ -1138,6 +1246,12 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
           onSave={(names) => applyTags.mutate(names)}
         />
 
+        {/* EXTRACTION — what the machine determined and how confident it is (Phase 9) */}
+        <ExtractionStatusPanel envelope={readExtractionEnvelope(row.extracted_metadata)} />
+        {row.job_error_summary && (
+          <p className="text-xs text-destructive">Import job error: {row.job_error_summary}</p>
+        )}
+
         {/* PROVENANCE */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
           <span>Source repository: {sourceName ?? "unassigned"}</span>
@@ -1270,6 +1384,11 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{row.duplicate_warning}</span>
           </div>
+        )}
+
+        <ExtractionStatusPanel envelope={readExtractionEnvelope(row.extracted_metadata)} />
+        {row.job_error_summary && (
+          <p className="text-xs text-destructive">Import job error: {row.job_error_summary}</p>
         )}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">

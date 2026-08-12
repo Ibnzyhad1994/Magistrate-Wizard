@@ -81,7 +81,7 @@ export function useLegislationReviewQueue() {
       const { data, error } = await supabase
         .from("statutes")
         .select(
-          "*, import_jobs!statutes_import_job_id_fkey(duplicate_warning, proposed_tags, uploaded_document_id, status)",
+          "*, import_jobs!statutes_import_job_id_fkey(duplicate_warning, proposed_tags, uploaded_document_id, status, extracted_metadata, error_summary)",
         )
         .in("review_status", ["draft", "needs_review"])
         .order("updated_at", { ascending: false });
@@ -92,6 +92,8 @@ export function useLegislationReviewQueue() {
           proposed_tags: string[] | null;
           uploaded_document_id: string | null;
           status: string;
+          extracted_metadata: unknown;
+          error_summary: string | null;
         } | null;
         return {
           ...row,
@@ -99,6 +101,8 @@ export function useLegislationReviewQueue() {
           proposed_tags: job?.proposed_tags ?? [],
           uploaded_document_id: job?.uploaded_document_id ?? null,
           job_status: job?.status ?? null,
+          extracted_metadata: job?.extracted_metadata ?? null,
+          job_error_summary: job?.error_summary ?? null,
         };
       });
     },

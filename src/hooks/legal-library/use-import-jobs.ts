@@ -12,6 +12,8 @@ import {
   sha256File,
   sha256Text,
 } from "@/lib/legal-extraction";
+import { sanitizeExtractedText } from "@/lib/text-sanitize";
+import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
 import { uploadDocumentToEntity } from "@/hooks/use-documents";
 import { caseLawKeys } from "@/hooks/case-law/use-case-law";
 import { legislationKeys } from "@/hooks/legislation/use-legislation";
@@ -41,10 +43,25 @@ import type { Json } from "@/types/database.types";
  * the failure is surfaced to the caller/toast rather than swallowed; the
  * curator can attach the original from the Review Queue afterward.
  *
- * No AI is involved anywhere in this file. Automatic PDF/DOCX TEXT
- * extraction is NOT implemented -- see legal-extraction.ts header. The
- * curator supplies document text (pasted, or auto-read for .txt uploads)
- * separately from the original file upload; the two are never conflated.
+ * No AI is involved anywhere in this file. PDF text-layer extraction (via
+ * src/lib/extraction-pipeline.ts, a quality-gated wrapper around the
+ * dependency-free src/lib/pdf-text-extraction.ts parser) is best-effort
+ * and browser-only -- see that file's header for exactly what it can and
+ * cannot do. DOCX extraction is NOT implemented. Whatever `text` this
+ * hook receives -- machine-extracted-and-gated, or curator-pasted -- is
+ * defensively re-sanitized immediately below before it can reach
+ * Supabase, since PostgreSQL/jsonb cannot store certain byte sequences
+ * (NUL bytes, unpaired surrogates) regardless of where they came from.
+ * The original file upload and the document text are still two
+ * independent things and are never conflated: an original file can be
+ * preserved even when no usable text could be extracted from it.
+ *
+ * `p_extracted_metadata` carries both the deterministic metadata
+ * proposal AND (under the `_extraction` key) the full extraction
+ * provenance envelope -- status/method/quality/warnings/ocrUsed -- so the
+ * Review Queue can show the curator exactly what the machine did and did
+ * not manage to determine, without a schema migration (this column was
+ * already `jsonb`).
  */
 export const importJobKeys = {
   all: ["import-jobs"] as const,
@@ -111,6 +128,8 @@ interface IngestCaseLawInput {
   source_id: string | null;
   original_filename: string | null;
   batch_id: string | null;
+  /** Extraction provenance for `text` above — defaults to an empty/"pending" envelope when the caller doesn't have one (e.g. no file was ever selected). Never used to gate submission here; the Review Queue/publication validation are the gates. */
+  extractionEnvelope?: ExtractionEnvelope;
   /** Curator-supplied minimum fields; extraction proposes the rest but never overwrites what the curator explicitly typed. */
   known: {
     case_name?: string;
@@ -141,9 +160,22 @@ export function useIngestCaseLaw() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not signed in.");
 
-      const text = normalizeWhitespace(input.text);
-      const proposed = extractCaseLawMetadata(text);
-      const tags = proposeTags(text);
+      // Defensive sanitization boundary right before database submission
+      // (Phase 5) — catches BOTH the machine-extraction path (which
+      // should already be sanitized by extraction-pipeline.ts, but this
+      // hook must not simply trust that) and curator-typed/pasted text
+      // (a genuinely different corruption path — clipboard sources can
+      // carry unpaired surrogates that a PDF parser never would).
+      const text = normalizeWhitespace(sanitizeExtractedText(input.text).text);
+      const envelope = input.extractionEnvelope ?? emptyExtractionEnvelope();
+      // Metadata extraction only ever runs over text that has already
+      // passed the quality gate (envelope carries no text at all for
+      // "requires_ocr"/"failed"/"pending") or was manually supplied
+      // (method "manual_paste"/"txt_file", or no envelope at all --
+      // treated as trusted curator input, same as before this pass).
+      const usableForMetadata = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
+      const proposed = usableForMetadata ? extractCaseLawMetadata(text) : {};
+      const tags = usableForMetadata ? proposeTags(text) : [];
       // Prefer hashing the original file's bytes when one is attached (the
       // authoritative source); fall back to the pasted/typed text hash so a
       // PDF with no text yet still gets a real duplicate-detection signal
@@ -175,7 +207,7 @@ export function useIngestCaseLaw() {
         p_original_filename: input.original_filename,
         p_document_hash: hash,
         p_batch_id: input.batch_id,
-        p_extracted_metadata: proposed as unknown as Json,
+        p_extracted_metadata: { ...proposed, _extraction: envelope } as unknown as Json,
         p_proposed_tags: tags,
         p_duplicate_warning:
           duplicates.length > 0
@@ -235,6 +267,8 @@ interface IngestLegislationInput {
   source_id: string | null;
   original_filename: string | null;
   batch_id: string | null;
+  /** Same extraction provenance as Case Law (Phase 12: Legislation shares the same ingestion architecture, not a Case-Law-only dead end). */
+  extractionEnvelope?: ExtractionEnvelope;
   known: {
     code: string;
     title: string;
@@ -253,9 +287,11 @@ export function useIngestLegislation() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not signed in.");
 
-      const text = normalizeWhitespace(input.text);
-      const provisions = text ? extractLegislationHierarchy(text) : [];
-      const tags = proposeTags(text);
+      const text = normalizeWhitespace(sanitizeExtractedText(input.text).text);
+      const envelope = input.extractionEnvelope ?? emptyExtractionEnvelope();
+      const usableForMetadata = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
+      const provisions = usableForMetadata ? extractLegislationHierarchy(text) : [];
+      const tags = usableForMetadata ? proposeTags(text) : [];
       const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
       const duplicates = hash || text
@@ -278,7 +314,7 @@ export function useIngestLegislation() {
         p_original_filename: input.original_filename,
         p_document_hash: hash,
         p_batch_id: input.batch_id,
-        p_extracted_metadata: { provisionCount: provisions.length } as unknown as Json,
+        p_extracted_metadata: { provisionCount: provisions.length, _extraction: envelope } as unknown as Json,
         p_proposed_tags: tags,
         p_duplicate_warning:
           duplicates.length > 0
