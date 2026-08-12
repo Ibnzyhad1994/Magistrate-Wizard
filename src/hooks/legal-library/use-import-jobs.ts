@@ -119,6 +119,8 @@ interface IngestCaseLawInput {
     jurisdiction: string;
     court_id?: string | null;
     jurisdiction_id?: string | null;
+    /** Curator-confirmed decision date — takes priority over the deterministic extraction guess when supplied. */
+    decided_date?: string | null;
   };
 }
 
@@ -166,7 +168,7 @@ export function useIngestCaseLaw() {
         p_jurisdiction_id: input.known.jurisdiction_id ?? null,
         p_neutral_citation: proposed.neutral_citation ?? null,
         p_reported_citation: proposed.reported_citation ?? null,
-        p_decided_date: proposed.decided_date_guess ?? null,
+        p_decided_date: input.known.decided_date ?? proposed.decided_date_guess ?? null,
         p_full_text: text || null,
         p_source_url: input.source_url,
         p_source_id: input.source_id,

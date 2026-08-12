@@ -7,7 +7,9 @@ import {
   FileText,
   Landmark,
   Plus,
+  ScanEye,
   ScrollText,
+  Sparkles,
   Trash2,
   Upload,
   XCircle,
@@ -29,6 +31,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { DateOnlyInput } from "@/components/common/date-only-input";
+import { SaveIndicator, type SaveState } from "@/components/common/save-indicator";
 import { toast } from "sonner";
 import {
   useLegalSources,
@@ -59,11 +63,42 @@ import {
 } from "@/hooks/legislation/use-legislation";
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
-import { readFileAsText } from "@/lib/legal-extraction";
+import { readFileAsText, extractCaseLawMetadata, normalizeWhitespace } from "@/lib/legal-extraction";
+import { extractPdfTextLayer, isPdfExtractionSupported } from "@/lib/pdf-text-extraction";
+import { matchCanonicalCourt } from "@/lib/legal-taxonomy-match";
+import {
+  isPlaceholderValue,
+  validateCaseLawForPublish,
+  validateLegislationForPublish,
+} from "@/lib/publication-validation";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { CaseLaw, Statute } from "@/types/database.types";
+
+/** Small labeled-field wrapper — every editable Review Queue / New Import field renders through this so no field is ever identifiable only by placeholder text (§5). */
+function Field({
+  label,
+  hint,
+  required,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-muted-foreground">
+        {label}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
 
 type ReviewRow<T> = T & {
   duplicate_warning: string | null;
@@ -477,6 +512,14 @@ function SourcesTab() {
 // New Import
 // ---------------------------------------------------------------------------
 
+type ExtractionStatus =
+  | "idle"
+  | "extracting"
+  | "extracted"
+  | "ocr_required"
+  | "unsupported"
+  | "read_text_file";
+
 function ImportTab() {
   const [contentType, setContentType] = useState<"case_law" | "legislation">("case_law");
   const [text, setText] = useState("");
@@ -485,8 +528,14 @@ function ImportTab() {
   const [courtId, setCourtId] = useState<string>("");
   const [jurisdictionId, setJurisdictionId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
-  const [caseFields, setCaseFields] = useState({ case_name: "", citation: "", court: "", jurisdiction: "" });
-  const [statuteFields, setStatuteFields] = useState({ code: "", title: "", jurisdiction: "", short_title: "" });
+  const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus>("idle");
+  // Case name/citation/decided date are the only free-text metadata the
+  // curator ever types for Case Law now — Court/Jurisdiction are captured
+  // ONCE via the canonical selects below, never as a second parallel
+  // free-text pair (§2/§25: "should not have to catalog the same legal
+  // authority twice").
+  const [caseFields, setCaseFields] = useState({ case_name: "", citation: "", decided_date: "" });
+  const [statuteFields, setStatuteFields] = useState({ code: "", title: "", short_title: "" });
 
   const ingestCaseLaw = useIngestCaseLaw();
   const ingestLegislation = useIngestLegislation();
@@ -497,35 +546,92 @@ function ImportTab() {
 
   // Source selection is about PROVENANCE (which repository the document
   // came from) and is entirely separate from Jurisdiction/Court (which
-  // court decided the case) — §7/§8. A source may be left unassigned; the
-  // free-text Source URL field is preserved either way.
+  // court decided the case) — §7/§8/§12. A source may be left unassigned;
+  // the free-text Source URL field is preserved either way.
   const approvedSources = (sources ?? []).filter((s) => s.status === "approved");
   const otherSources = (sources ?? []).filter((s) => s.status !== "approved");
+
+  const selectedCourt = (courts ?? []).find((c) => c.id === courtId) ?? null;
+
+  /** Selecting a canonical Court auto-populates Jurisdiction where the court has one on file (§3/§4) — a national court like "Court of Appeal of Guyana" always carries its Jurisdiction; a regional/supranational court (CCJ, JCPC) has `jurisdiction_id: null` in the catalogue and is deliberately left for the curator to set explicitly rather than forcing one nation onto it. */
+  function handleCourtChange(newCourtId: string) {
+    setCourtId(newCourtId);
+    const court = (courts ?? []).find((c) => c.id === newCourtId);
+    if (court?.jurisdiction_id) {
+      setJurisdictionId(court.jurisdiction_id);
+    }
+  }
 
   async function handleFile(f: File) {
     // The original file is ALWAYS kept and uploaded through the secure
     // documents Storage architecture on submit (uploadDocumentToEntity,
-    // private bucket, signed URLs only) — selecting a PDF/DOCX no longer
-    // discards the file itself, only its automatic text extraction is
-    // unavailable. TXT can be deterministically read client-side; that is
-    // real text extraction for that one format, not a claim extended to
-    // PDF/DOCX.
+    // private bucket, signed URLs only) — selecting a PDF/DOCX never
+    // discards the file itself.
     setFile(f);
+    const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+
     if (f.type === "text/plain" || f.name.toLowerCase().endsWith(".txt")) {
       const read = await readFileAsText(f);
       setText(read);
+      setExtractionStatus("read_text_file");
       toast.success("Original file will be uploaded and preserved. Text read automatically from the .txt file.");
-    } else {
-      toast.message(
-        "Original file will be uploaded and preserved. Automatic text extraction is not yet available for PDF/DOC/DOCX — paste the extracted text below to continue (or leave blank and paste it later from the Review Queue).",
-      );
+      return;
     }
+
+    if (isPdf) {
+      if (!isPdfExtractionSupported()) {
+        setExtractionStatus("unsupported");
+        toast.message(
+          "Original file will be uploaded and preserved. This browser doesn't support automatic PDF text extraction — paste the extracted text below to continue.",
+        );
+        return;
+      }
+      setExtractionStatus("extracting");
+      try {
+        const result = await extractPdfTextLayer(f);
+        if (result.hasTextLayer && result.text) {
+          setText(result.text);
+          setExtractionStatus("extracted");
+          const proposed = extractCaseLawMetadata(normalizeWhitespace(result.text));
+          setCaseFields((cf) => ({
+            case_name: cf.case_name || proposed.case_name || "",
+            citation: cf.citation || proposed.reported_citation || proposed.neutral_citation || "",
+            decided_date: cf.decided_date || proposed.decided_date_guess || "",
+          }));
+          if (!courtId) {
+            const matched = matchCanonicalCourt(result.text, courts ?? []);
+            if (matched) {
+              setCourtId(matched.id);
+              if (matched.jurisdiction_id) setJurisdictionId(matched.jurisdiction_id);
+            }
+          }
+          toast.success(
+            "Text extracted from the PDF's text layer. Case name, citation, and Court/Jurisdiction (where confidently identified) were proposed below — review before creating the draft.",
+          );
+        } else {
+          setExtractionStatus("ocr_required");
+          toast.message(
+            "This PDF does not appear to have an extractable text layer (likely a scanned/image-only document) — OCR is not implemented in this build. The original file will still be uploaded and preserved; paste the text below to continue.",
+          );
+        }
+      } catch {
+        setExtractionStatus("ocr_required");
+        toast.message(
+          "Could not extract text from this PDF automatically. The original file will still be uploaded and preserved — paste the text below to continue.",
+        );
+      }
+      return;
+    }
+
+    setExtractionStatus("unsupported");
+    toast.message(
+      "Original file will be uploaded and preserved. Automatic text extraction is only available for .txt and text-bearing .pdf files — paste the extracted text below to continue (or leave blank and paste it later from the Review Queue).",
+    );
   }
 
-  const canSubmitCaseLaw =
-    caseFields.citation.trim() && caseFields.court.trim() && caseFields.jurisdiction.trim();
+  const canSubmitCaseLaw = caseFields.citation.trim() && courtId && jurisdictionId;
   const canSubmitStatute =
-    statuteFields.code.trim() && statuteFields.title.trim() && statuteFields.jurisdiction.trim();
+    statuteFields.code.trim() && statuteFields.title.trim() && jurisdictionId;
 
   return (
     <div className="space-y-4">
@@ -568,120 +674,147 @@ function ImportTab() {
                 {file.name} — will be uploaded and preserved
               </span>
             )}
+            {extractionStatus === "extracting" && (
+              <Badge variant="secondary" className="gap-1">
+                <Sparkles className="h-3 w-3" />
+                Extracting text…
+              </Badge>
+            )}
+            {extractionStatus === "extracted" && (
+              <Badge variant="canonical" className="gap-1">
+                <Sparkles className="h-3 w-3" />
+                Text extracted from PDF — metadata proposed below
+              </Badge>
+            )}
+            {extractionStatus === "ocr_required" && (
+              <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400">
+                <ScanEye className="h-3 w-3" />
+                OCR required — no text layer found, paste text below
+              </Badge>
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              placeholder="Source URL (optional — provenance only, not fetched)"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-            />
-            <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
-              <option value="">Source repository — unassigned</option>
-              {approvedSources.length > 0 && (
-                <optgroup label="Approved">
-                  {approvedSources.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {otherSources.length > 0 && (
-                <optgroup label="Not yet approved">
-                  {otherSources.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.status})
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </Select>
+            <Field label="Source URL" hint="Optional — provenance only, not fetched.">
+              <Input
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+              />
+            </Field>
+            <Field label="Source repository" hint="Where the document came from — does not decide the Jurisdiction or Court below.">
+              <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+                <option value="">Unassigned</option>
+                {approvedSources.length > 0 && (
+                  <optgroup label="Approved">
+                    {approvedSources.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {otherSources.length > 0 && (
+                  <optgroup label="Not yet approved">
+                    {otherSources.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.status})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </Select>
+            </Field>
           </div>
-          <p className="-mt-2 text-xs text-muted-foreground">
-            Source repository is where the document came from — it does not decide the
-            Jurisdiction or Court below; two copies of the same case can come from different
-            repositories.
-          </p>
 
           {contentType === "case_law" ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                placeholder="Case name (optional — proposed from text if left blank)"
-                value={caseFields.case_name}
-                onChange={(e) => setCaseFields((f) => ({ ...f, case_name: e.target.value }))}
-              />
-              <Input
-                placeholder="Citation *"
-                value={caseFields.citation}
-                onChange={(e) => setCaseFields((f) => ({ ...f, citation: e.target.value }))}
-              />
-              <Input
-                placeholder="Court * (free text, e.g. as printed on the judgment)"
-                value={caseFields.court}
-                onChange={(e) => setCaseFields((f) => ({ ...f, court: e.target.value }))}
-              />
-              <Input
-                placeholder="Jurisdiction * (free text)"
-                value={caseFields.jurisdiction}
-                onChange={(e) => setCaseFields((f) => ({ ...f, jurisdiction: e.target.value }))}
-              />
-              <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
-                <option value="">Canonical Jurisdiction — not set (needs review)</option>
-                {(jurisdictions ?? []).map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.name}
-                  </option>
-                ))}
-              </Select>
-              <Select value={courtId} onChange={(e) => setCourtId(e.target.value)}>
-                <option value="">Canonical deciding Court — not set (needs review)</option>
-                {(courts ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.canonical_name}
-                  </option>
-                ))}
-              </Select>
+              <Field label="Case name" hint="Proposed from extracted text if left blank.">
+                <Input
+                  value={caseFields.case_name}
+                  onChange={(e) => setCaseFields((f) => ({ ...f, case_name: e.target.value }))}
+                />
+              </Field>
+              <Field label="Citation" required>
+                <Input
+                  value={caseFields.citation}
+                  onChange={(e) => setCaseFields((f) => ({ ...f, citation: e.target.value }))}
+                />
+              </Field>
+              <Field label="Decision date">
+                <DateOnlyInput
+                  value={caseFields.decided_date}
+                  onChange={(v) => setCaseFields((f) => ({ ...f, decided_date: v }))}
+                />
+              </Field>
+              <Field
+                label="Jurisdiction"
+                required
+                hint={
+                  selectedCourt?.jurisdiction_id
+                    ? "Auto-set from the selected Court."
+                    : "This court spans multiple jurisdictions — set explicitly."
+                }
+              >
+                <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
+                  <option value="">Select Jurisdiction — needs review</option>
+                  {(jurisdictions ?? []).map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Court" required hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both.">
+                <Select value={courtId} onChange={(e) => handleCourtChange(e.target.value)}>
+                  <option value="">Select deciding Court — needs review</option>
+                  {(courts ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.canonical_name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                placeholder="Code * (short identifier, unique per jurisdiction)"
-                value={statuteFields.code}
-                onChange={(e) => setStatuteFields((f) => ({ ...f, code: e.target.value }))}
-              />
-              <Input
-                placeholder="Title *"
-                value={statuteFields.title}
-                onChange={(e) => setStatuteFields((f) => ({ ...f, title: e.target.value }))}
-              />
-              <Input
-                placeholder="Jurisdiction *"
-                value={statuteFields.jurisdiction}
-                onChange={(e) => setStatuteFields((f) => ({ ...f, jurisdiction: e.target.value }))}
-              />
-              <Input
-                placeholder="Short title (optional)"
-                value={statuteFields.short_title}
-                onChange={(e) => setStatuteFields((f) => ({ ...f, short_title: e.target.value }))}
-              />
-              <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
-                <option value="">Canonical Jurisdiction — not set (needs review)</option>
-                {(jurisdictions ?? []).map((j) => (
-                  <option key={j.id} value={j.id}>
-                    {j.name}
-                  </option>
-                ))}
-              </Select>
+              <Field label="Code" required hint="Short identifier, unique per jurisdiction.">
+                <Input
+                  value={statuteFields.code}
+                  onChange={(e) => setStatuteFields((f) => ({ ...f, code: e.target.value }))}
+                />
+              </Field>
+              <Field label="Title" required>
+                <Input
+                  value={statuteFields.title}
+                  onChange={(e) => setStatuteFields((f) => ({ ...f, title: e.target.value }))}
+                />
+              </Field>
+              <Field label="Short title">
+                <Input
+                  value={statuteFields.short_title}
+                  onChange={(e) => setStatuteFields((f) => ({ ...f, short_title: e.target.value }))}
+                />
+              </Field>
+              <Field label="Jurisdiction" required>
+                <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
+                  <option value="">Select Jurisdiction — needs review</option>
+                  {(jurisdictions ?? []).map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
           )}
 
-          <Textarea
-            placeholder="Document text (optional if the original file is attached) — auto-read for .txt uploads, pasted for PDF/DOCX…"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={10}
-          />
+          <Field label="Document text" hint="Auto-read for .txt uploads and text-bearing PDFs; paste manually otherwise.">
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={10}
+            />
+          </Field>
           {!text.trim() && !file && (
             <p className="text-xs text-muted-foreground">
               Provide either document text or an original file (or both) before creating the draft.
@@ -706,10 +839,18 @@ function ImportTab() {
                       known: {
                         case_name: caseFields.case_name.trim() || undefined,
                         citation: caseFields.citation.trim(),
-                        court: caseFields.court.trim(),
-                        jurisdiction: caseFields.jurisdiction.trim(),
+                        // Legacy free-text columns are NOT typed separately by
+                        // the curator — they're derived automatically from
+                        // the canonical selection above (§2/§3/§19: the
+                        // NOT NULL free-text columns stay populated for
+                        // backward compatibility without ever asking the
+                        // curator to catalog the same Court/Jurisdiction
+                        // twice).
+                        court: (courts ?? []).find((c) => c.id === courtId)?.canonical_name ?? "",
+                        jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
                         court_id: courtId || null,
                         jurisdiction_id: jurisdictionId || null,
+                        decided_date: caseFields.decided_date || null,
                       },
                     },
                     {
@@ -738,7 +879,7 @@ function ImportTab() {
                       known: {
                         code: statuteFields.code.trim(),
                         title: statuteFields.title.trim(),
-                        jurisdiction: statuteFields.jurisdiction.trim(),
+                        jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
                         short_title: statuteFields.short_title.trim() || undefined,
                         jurisdiction_id: jurisdictionId || null,
                       },
@@ -816,8 +957,7 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
   const [fields, setFields] = useState({
     case_name: row.case_name,
     citation: row.citation,
-    court: row.court,
-    jurisdiction: row.jurisdiction,
+    decided_date: row.decided_date ?? "",
     court_id: row.court_id,
     jurisdiction_id: row.jurisdiction_id,
   });
@@ -825,10 +965,64 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
   const dirty =
     fields.case_name !== row.case_name ||
     fields.citation !== row.citation ||
-    fields.court !== row.court ||
-    fields.jurisdiction !== row.jurisdiction ||
+    fields.decided_date !== (row.decided_date ?? "") ||
     fields.court_id !== row.court_id ||
     fields.jurisdiction_id !== row.jurisdiction_id;
+
+  // Save-state reflects the mutation's own pending/success/error status —
+  // never local "the user typed something" guessing (§17). Resets to
+  // "idle" the moment a further edit is made so a stale "Saved" doesn't
+  // linger over an un-persisted change.
+  const saveState: SaveState = dirty
+    ? "idle"
+    : update.status === "pending"
+      ? "saving"
+      : update.status === "success"
+        ? "saved"
+        : update.status === "error"
+          ? "error"
+          : "idle";
+
+  /** Selecting a canonical Court auto-populates Jurisdiction where the court has one on file (§3/§4) — regional/supranational courts (CCJ, JCPC) carry no fixed jurisdiction_id and are left for the curator to set explicitly. */
+  function handleCourtChange(newCourtId: string) {
+    const court = (courts ?? []).find((c) => c.id === newCourtId);
+    setFields((f) => ({
+      ...f,
+      court_id: newCourtId || null,
+      jurisdiction_id: court?.jurisdiction_id ?? f.jurisdiction_id,
+    }));
+  }
+
+  function handleSave() {
+    // Legacy free-text court/jurisdiction columns are never edited
+    // directly in this card — they're derived automatically from the
+    // canonical selection whenever it changes, so the NOT NULL legacy
+    // columns stay populated without the curator ever typing the same
+    // Court/Jurisdiction twice (§2/§3/§19).
+    const court = (courts ?? []).find((c) => c.id === fields.court_id)?.canonical_name ?? row.court;
+    const jurisdiction =
+      (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? row.jurisdiction;
+    update.mutate({
+      case_name: fields.case_name,
+      citation: fields.citation,
+      decided_date: fields.decided_date || null,
+      court_id: fields.court_id,
+      jurisdiction_id: fields.jurisdiction_id,
+      court,
+      jurisdiction,
+    });
+  }
+
+  const selectedCourt = (courts ?? []).find((c) => c.id === fields.court_id) ?? null;
+  const validationErrors = validateCaseLawForPublish({
+    case_name: fields.case_name,
+    citation: fields.citation,
+    court: (courts ?? []).find((c) => c.id === fields.court_id)?.canonical_name ?? row.court,
+    jurisdiction: (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? row.jurisdiction,
+    court_id: fields.court_id,
+    jurisdiction_id: fields.jurisdiction_id,
+  });
+  const canPublish = validationErrors.length === 0 && !dirty;
 
   const sourceName = row.source_id
     ? (sources ?? []).find((s) => s.id === row.source_id)?.name ?? "Unknown source"
@@ -845,6 +1039,12 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
             <CardTitle className="text-base">{row.case_name}</CardTitle>
             <Badge variant="outline">Case Law</Badge>
             {row.job_status && <Badge variant="secondary">{row.job_status}</Badge>}
+            {isPlaceholderValue(row.case_name) && (
+              <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-3 w-3" />
+                Case name requires review
+              </Badge>
+            )}
           </div>
           <CardDescription>
             {row.review_status === "needs_review" ? "Needs review" : "Draft"} · Created{" "}
@@ -855,7 +1055,7 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
           View full record
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {row.duplicate_warning && (
           <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -863,8 +1063,73 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>Source: {sourceName ?? "unassigned"}</span>
+        {/* METADATA */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Case name" required>
+            <Input
+              value={fields.case_name}
+              onChange={(e) => setFields((f) => ({ ...f, case_name: e.target.value }))}
+            />
+          </Field>
+          <Field label="Citation" required>
+            <Input
+              value={fields.citation}
+              onChange={(e) => setFields((f) => ({ ...f, citation: e.target.value }))}
+            />
+          </Field>
+          <Field label="Decision date">
+            <DateOnlyInput
+              value={fields.decided_date}
+              onChange={(v) => setFields((f) => ({ ...f, decided_date: v }))}
+            />
+          </Field>
+          <div />
+          <Field
+            label="Jurisdiction"
+            required
+            hint={
+              selectedCourt?.jurisdiction_id
+                ? "Auto-set from the selected Court."
+                : selectedCourt
+                  ? "This court spans multiple jurisdictions — set explicitly."
+                  : undefined
+            }
+          >
+            <Select
+              value={fields.jurisdiction_id ?? ""}
+              onChange={(e) => setFields((f) => ({ ...f, jurisdiction_id: e.target.value || null }))}
+            >
+              <option value="">Select Jurisdiction — needs review</option>
+              {(jurisdictions ?? []).map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Court" required hint="Selecting a Court automatically sets Jurisdiction where known.">
+            <Select value={fields.court_id ?? ""} onChange={(e) => handleCourtChange(e.target.value)}>
+              <option value="">Select deciding Court — needs review</option>
+              {(courts ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.canonical_name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        {/* CLASSIFICATION */}
+        <TagReviewEditor
+          proposed={row.proposed_tags}
+          applied={appliedTagNames}
+          isSaving={applyTags.isPending}
+          onSave={(names) => applyTags.mutate(names)}
+        />
+
+        {/* PROVENANCE */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+          <span>Source repository: {sourceName ?? "unassigned"}</span>
           {row.source_url && (
             <a href={row.source_url} target="_blank" rel="noopener noreferrer" className="underline">
               Source URL
@@ -873,62 +1138,12 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
           <OriginalDocumentLink documentId={row.uploaded_document_id} />
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Input
-            value={fields.case_name}
-            onChange={(e) => setFields((f) => ({ ...f, case_name: e.target.value }))}
-            placeholder="Case name"
-          />
-          <Input
-            value={fields.citation}
-            onChange={(e) => setFields((f) => ({ ...f, citation: e.target.value }))}
-            placeholder="Citation"
-          />
-          <Input
-            value={fields.court}
-            onChange={(e) => setFields((f) => ({ ...f, court: e.target.value }))}
-            placeholder="Court (free text)"
-          />
-          <Input
-            value={fields.jurisdiction}
-            onChange={(e) => setFields((f) => ({ ...f, jurisdiction: e.target.value }))}
-            placeholder="Jurisdiction (free text)"
-          />
-          <Select
-            value={fields.jurisdiction_id ?? ""}
-            onChange={(e) => setFields((f) => ({ ...f, jurisdiction_id: e.target.value || null }))}
-          >
-            <option value="">Canonical Jurisdiction — needs review</option>
-            {(jurisdictions ?? []).map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={fields.court_id ?? ""}
-            onChange={(e) => setFields((f) => ({ ...f, court_id: e.target.value || null }))}
-          >
-            <option value="">Canonical deciding Court — needs review</option>
-            {(courts ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.canonical_name}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        <TagReviewEditor
-          proposed={row.proposed_tags}
-          applied={appliedTagNames}
-          isSaving={applyTags.isPending}
-          onSave={(names) => applyTags.mutate(names)}
-        />
-
-        <div className="flex flex-wrap justify-end gap-2">
+        {/* ACTIONS */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <SaveIndicator state={saveState} onRetry={handleSave} />
           {dirty && (
-            <Button size="sm" variant="outline" disabled={update.isPending} onClick={() => update.mutate(fields)}>
-              Save edits
+            <Button size="sm" variant="outline" disabled={update.isPending} onClick={handleSave}>
+              Save changes
             </Button>
           )}
           <Button
@@ -940,14 +1155,24 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
             <XCircle className="h-4 w-4" />
             Reject
           </Button>
-          <Button
-            size="sm"
-            disabled={setStatus.isPending}
-            onClick={() => setStatus.mutate({ id: row.id, review_status: "published" })}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Publish
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              size="sm"
+              disabled={!canPublish || setStatus.isPending}
+              onClick={() => setStatus.mutate({ id: row.id, review_status: "published" })}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Publish
+            </Button>
+            {validationErrors.length > 0 && (
+              <p className="max-w-xs text-right text-[11px] text-destructive">
+                Cannot publish: {validationErrors.join(" ")}
+              </p>
+            )}
+            {validationErrors.length === 0 && dirty && (
+              <p className="text-[11px] text-muted-foreground">Save changes before publishing.</p>
+            )}
+          </div>
         </div>
       </CardContent>
       <AlertDialog
@@ -1000,6 +1225,15 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
   const appliedTagNames = (appliedTags ?? [])
     .map((t) => (t.tags as unknown as { name: string } | null)?.name)
     .filter((n): n is string => !!n);
+  // Same "tiny shared fix" placeholder-metadata gate as Case Law (§6/§15)
+  // — checked against the currently SAVED row, not the in-progress edit
+  // buffer, since Publish is also disabled while `dirty` is true.
+  const statuteValidationErrors = validateLegislationForPublish({
+    code: row.code,
+    title: row.title,
+    jurisdiction: row.jurisdiction,
+    jurisdiction_id: row.jurisdiction_id,
+  });
 
   return (
     <Card>
@@ -1078,7 +1312,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
           onSave={(names) => applyTags.mutate(names)}
         />
 
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {dirty && (
             <Button
               size="sm"
@@ -1100,14 +1334,21 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
             <XCircle className="h-4 w-4" />
             Reject
           </Button>
-          <Button
-            size="sm"
-            disabled={setStatus.isPending}
-            onClick={() => setStatus.mutate({ id: row.id, review_status: "published" })}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Publish
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              size="sm"
+              disabled={statuteValidationErrors.length > 0 || dirty || setStatus.isPending}
+              onClick={() => setStatus.mutate({ id: row.id, review_status: "published" })}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Publish
+            </Button>
+            {statuteValidationErrors.length > 0 && (
+              <p className="max-w-xs text-right text-[11px] text-destructive">
+                Cannot publish: {statuteValidationErrors.join(" ")}
+              </p>
+            )}
+          </div>
         </div>
       </CardContent>
       <AlertDialog
