@@ -1,15 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
+
+const tagsKey = (caseLawId: string) => ["case-law-tags", caseLawId] as const;
 
 /**
- * Read-only. `case_law_tags` assignment is Admin-only per backend RLS
- * (this is the shared canonical `tags` taxonomy, not the free-text
- * per-record tagging used by Docket Matters/Judgments) — the frontend
- * only ever displays these, never writes them.
+ * `case_law_tags` reads are open to any authenticated user (this is the
+ * shared canonical `tags` taxonomy, not the free-text per-record tagging
+ * used by Docket Matters/Judgments).
  */
 export function useCaseLawTags(caseLawId: string | undefined) {
   return useQuery({
-    queryKey: ["case-law-tags", caseLawId ?? ""],
+    queryKey: tagsKey(caseLawId ?? ""),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("case_law_tags")
@@ -19,5 +22,32 @@ export function useCaseLawTags(caseLawId: string | undefined) {
       return data;
     },
     enabled: !!caseLawId,
+  });
+}
+
+/**
+ * Admin-only, via `apply_case_law_tags` (0060). Reconciles case_law_tags
+ * to exactly the supplied tag NAME list -- an explicit reviewer decision,
+ * never automatic (see §15 of the ingestion repair: proposed tags from
+ * extraction are a SUGGESTION, not a classification, until a reviewer
+ * accepts them here).
+ */
+export function useApplyCaseLawTags(caseLawId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (tagNames: string[]) => {
+      const { error } = await supabase.rpc("apply_case_law_tags", {
+        p_case_law_id: caseLawId,
+        p_tag_names: tagNames,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tags saved.");
+      void queryClient.invalidateQueries({ queryKey: tagsKey(caseLawId) });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }

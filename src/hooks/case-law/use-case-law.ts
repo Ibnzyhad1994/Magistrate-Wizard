@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 
 export const caseLawKeys = {
   all: ["case-law"] as const,
   detail: (id: string) => ["case-law", "detail", id] as const,
   reviewQueue: ["case-law", "review-queue"] as const,
 };
+
+// Mirrors importJobKeys.all in use-import-jobs.ts (not imported directly --
+// that module imports caseLawKeys FROM this one, and a circular import back
+// here for one literal array isn't worth the fragility).
+const importJobsQueryKey = ["import-jobs"] as const;
 
 /**
  * Every Case Law row the caller can currently see — canonical (owner_id
@@ -22,6 +28,45 @@ export const caseLawKeys = {
  * `useCaseLawReviewQueue`. Personal research rows have review_status
  * 'published' by column default and are unaffected by this filter.
  */
+/**
+ * Court/Jurisdiction/Tag-scoped browse+search (0058 `search_case_law_scoped`)
+ * — used by the Case Law Browse UI (§12/§25): "Case Law → Privy Council"
+ * scopes results, then a text search within that scope stays scoped, and a
+ * Tag filter combines with both. SECURITY INVOKER, so this only ever
+ * returns rows the caller's own RLS already permits (same privacy
+ * boundary as every other Case Law read) — filtering happens in the
+ * database, not by fetching everything and filtering client-side.
+ */
+export function useCaseLawScopedSearch(params: {
+  query: string;
+  courtId: string | null;
+  jurisdictionId: string | null;
+  tagId: string | null;
+}) {
+  const active = !!params.query.trim() || !!params.courtId || !!params.jurisdictionId || !!params.tagId;
+  return useQuery({
+    queryKey: [
+      "case-law-scoped-search",
+      params.query.trim(),
+      params.courtId,
+      params.jurisdictionId,
+      params.tagId,
+    ],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("search_case_law_scoped", {
+        p_query: params.query.trim() || null,
+        p_court_id: params.courtId,
+        p_jurisdiction_id: params.jurisdictionId,
+        p_tag_id: params.tagId,
+        p_limit: 200,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: active,
+  });
+}
+
 export function useCaseLawList() {
   return useQuery({
     queryKey: caseLawKeys.all,
@@ -55,16 +100,27 @@ export function useCaseLawReviewQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("case_law")
-        .select("*, import_jobs!case_law_import_job_id_fkey(duplicate_warning)")
+        .select(
+          "*, import_jobs!case_law_import_job_id_fkey(duplicate_warning, proposed_tags, uploaded_document_id, status)",
+        )
         .in("review_status", ["draft", "needs_review"])
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((row) => ({
-        ...row,
-        duplicate_warning:
-          (row.import_jobs as unknown as { duplicate_warning: string | null } | null)
-            ?.duplicate_warning ?? null,
-      }));
+      return (data ?? []).map((row) => {
+        const job = row.import_jobs as unknown as {
+          duplicate_warning: string | null;
+          proposed_tags: string[] | null;
+          uploaded_document_id: string | null;
+          status: string;
+        } | null;
+        return {
+          ...row,
+          duplicate_warning: job?.duplicate_warning ?? null,
+          proposed_tags: job?.proposed_tags ?? [],
+          uploaded_document_id: job?.uploaded_document_id ?? null,
+          job_status: job?.status ?? null,
+        };
+      });
     },
   });
 }
@@ -127,6 +183,9 @@ interface CanonicalCaseLawInput {
   reported_citation: string | null;
   court: string;
   jurisdiction: string;
+  /** Canonical deciding-court/jurisdiction relationships (0058) — nullable, additive; `court`/`jurisdiction` free text above remains the display fallback whenever these are unset. Distinct from `source_id` (the SOURCE REPOSITORY the document came from, not the deciding court) -- never conflate the three. */
+  court_id: string | null;
+  jurisdiction_id: string | null;
   decided_date: string | null;
   judges: string | null;
   parties: string | null;
@@ -198,7 +257,15 @@ export function useUpdateCanonicalCaseLaw(id: string) {
   });
 }
 
-/** Admin-only: moves a draft/needs_review row through the review workflow, or rejects it (delete). */
+/**
+ * Admin-only: moves a draft/needs_review row through the review workflow.
+ * 'published' is routed through the dedicated `publish_case_law_import`
+ * RPC (0058), which atomically flips both case_law.review_status AND its
+ * linked import_jobs.status -- previously these drifted independently
+ * (the audit-confirmed §5 defect). The other three (draft/needs_review/
+ * ready) go through `set_case_law_review_status` (0059), which keeps the
+ * job's status in lockstep wherever the vocabularies overlap.
+ */
 export function useSetCaseLawReviewStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -209,10 +276,17 @@ export function useSetCaseLawReviewStatus() {
       id: string;
       review_status: "draft" | "needs_review" | "ready" | "published";
     }) => {
-      const { error } = await supabase
-        .from("case_law")
-        .update({ review_status })
-        .eq("id", id);
+      if (review_status === "published") {
+        const { error } = await supabase.rpc("publish_case_law_import", {
+          p_case_law_id: id,
+        });
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase.rpc("set_case_law_review_status", {
+        p_case_law_id: id,
+        p_status: review_status,
+      });
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
@@ -222,21 +296,61 @@ export function useSetCaseLawReviewStatus() {
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
 
-/** Admin-only: rejects (permanently deletes) a draft import that should not become canonical. */
+/**
+ * Admin-only: rejects a draft import via `reject_case_law_import` (0058),
+ * which atomically reconciles the linked import_jobs row (status='failed',
+ * error_summary set, target_case_law_id cleared) BEFORE deleting the
+ * case_law row itself -- the previous implementation deleted the row
+ * directly and never touched import_jobs, leaving it silently dangling
+ * (the audit-confirmed §5/§3 defect). The caller must remove any attached
+ * Storage object(s) FIRST (SQL cannot delete a Storage blob, only the
+ * `documents` metadata row, which cascades automatically on this delete).
+ */
 export function useRejectCanonicalCaseLaw() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("case_law").delete().eq("id", id);
+    mutationFn: async ({ id, reason }: { id: string; reason?: string | null }) => {
+      // Remove any attached documents' Storage objects first -- the RPC's
+      // cascade only removes the `documents` metadata row, never the
+      // underlying blob (SQL cannot touch Storage; see use-documents.ts).
+      const { data: docs, error: docsError } = await supabase
+        .from("documents")
+        .select("file_path")
+        .eq("entity_type", "case_law")
+        .eq("entity_id", id);
+      if (docsError) throw docsError;
+      if (docs && docs.length > 0) {
+        const { error: removeError } = await supabase.storage
+          .from("documents")
+          .remove(docs.map((d) => d.file_path));
+        if (removeError) {
+          throw new Error(
+            `Could not remove ${docs.length} attached file(s) from storage (${removeError.message}). The draft was left in place so nothing is silently lost -- retry rejection once storage cleanup succeeds.`,
+          );
+        }
+      }
+
+      const { error } = await supabase.rpc("reject_case_law_import", {
+        p_case_law_id: id,
+        p_reason: reason ?? null,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Draft rejected and removed.");
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
+      void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import type { TablesInsert, TablesUpdate } from "@/types/database.types";
+
+// Mirrors importJobKeys.all in use-import-jobs.ts (that module imports
+// legislationKeys FROM this one -- a circular import back here for one
+// literal array isn't worth the fragility).
+const importJobsQueryKey = ["import-jobs"] as const;
 
 /**
  * Frontend surface for the `statutes` table (0005, extended by 0055 with
@@ -74,16 +80,27 @@ export function useLegislationReviewQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("statutes")
-        .select("*, import_jobs!statutes_import_job_id_fkey(duplicate_warning)")
+        .select(
+          "*, import_jobs!statutes_import_job_id_fkey(duplicate_warning, proposed_tags, uploaded_document_id, status)",
+        )
         .in("review_status", ["draft", "needs_review"])
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((row) => ({
-        ...row,
-        duplicate_warning:
-          (row.import_jobs as unknown as { duplicate_warning: string | null } | null)
-            ?.duplicate_warning ?? null,
-      }));
+      return (data ?? []).map((row) => {
+        const job = row.import_jobs as unknown as {
+          duplicate_warning: string | null;
+          proposed_tags: string[] | null;
+          uploaded_document_id: string | null;
+          status: string;
+        } | null;
+        return {
+          ...row,
+          duplicate_warning: job?.duplicate_warning ?? null,
+          proposed_tags: job?.proposed_tags ?? [],
+          uploaded_document_id: job?.uploaded_document_id ?? null,
+          job_status: job?.status ?? null,
+        };
+      });
     },
   });
 }
@@ -142,6 +159,14 @@ export function useUpdateCanonicalStatute(id: string) {
   });
 }
 
+/**
+ * Admin-only: moves a draft/needs_review row through the review workflow.
+ * 'published' routes through `publish_legislation_import` (0058), which
+ * atomically flips both statutes.review_status AND its linked
+ * import_jobs.status. The other three go through
+ * `set_legislation_review_status` (0059), keeping the job's status in
+ * lockstep wherever the vocabularies overlap.
+ */
 export function useSetStatuteReviewStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -152,7 +177,17 @@ export function useSetStatuteReviewStatus() {
       id: string;
       review_status: "draft" | "needs_review" | "ready" | "published";
     }) => {
-      const { error } = await supabase.from("statutes").update({ review_status }).eq("id", id);
+      if (review_status === "published") {
+        const { error } = await supabase.rpc("publish_legislation_import", {
+          p_statute_id: id,
+        });
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase.rpc("set_legislation_review_status", {
+        p_statute_id: id,
+        p_status: review_status,
+      });
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
@@ -162,21 +197,56 @@ export function useSetStatuteReviewStatus() {
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: legislationKeys.all });
       void queryClient.invalidateQueries({ queryKey: legislationKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
 
-/** Admin-only: rejects (permanently deletes) a draft Act that should not become canonical. */
+/**
+ * Admin-only: rejects a draft Act via `reject_legislation_import` (0058),
+ * which atomically reconciles the linked import_jobs row BEFORE deleting
+ * the statutes row (statute_provisions cascade via their own FK; attached
+ * `documents` metadata cascades via the 0058-fixed trigger). The caller
+ * must remove any attached Storage object(s) FIRST -- SQL cannot delete a
+ * Storage blob, only the metadata row.
+ */
 export function useRejectCanonicalStatute() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("statutes").delete().eq("id", id);
+    mutationFn: async ({ id, reason }: { id: string; reason?: string | null }) => {
+      const { data: docs, error: docsError } = await supabase
+        .from("documents")
+        .select("file_path")
+        .eq("entity_type", "statute")
+        .eq("entity_id", id);
+      if (docsError) throw docsError;
+      if (docs && docs.length > 0) {
+        const { error: removeError } = await supabase.storage
+          .from("documents")
+          .remove(docs.map((d) => d.file_path));
+        if (removeError) {
+          throw new Error(
+            `Could not remove ${docs.length} attached file(s) from storage (${removeError.message}). The draft was left in place so nothing is silently lost -- retry rejection once storage cleanup succeeds.`,
+          );
+        }
+      }
+
+      const { error } = await supabase.rpc("reject_legislation_import", {
+        p_statute_id: id,
+        p_reason: reason ?? null,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Draft rejected and removed.");
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
+      void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

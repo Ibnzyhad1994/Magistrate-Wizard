@@ -37,44 +37,60 @@ export function useDocuments(entityType: string, entityId: string | undefined) {
   });
 }
 
+/**
+ * Core upload implementation, extracted so it can be called from contexts
+ * that don't know the target `entityId` until runtime (e.g. the Legal
+ * Library "draft-row-first" ingestion flow, which must create the
+ * `case_law`/`statutes` row via a transactional RPC FIRST to obtain a real
+ * id, then attach the original file to that real id) as well as from the
+ * `useUploadDocument` hook below, which is used everywhere the entityId is
+ * already known at render time. Same upload-then-insert-then-cleanup-on-
+ * failure behavior in both cases -- no divergence between the two paths.
+ */
+export async function uploadDocumentToEntity(
+  entityType: string,
+  entityId: string,
+  file: File,
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${user.id}/${entityType}/${entityId}/${Date.now()}-${safeName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(path, file, { upsert: false });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from("documents")
+    .insert({
+      uploaded_by: user.id,
+      file_name: file.name,
+      file_path: path,
+      file_size: file.size,
+      mime_type: file.type || "application/octet-stream",
+      entity_type: entityType,
+      entity_id: entityId,
+    })
+    .select()
+    .single();
+  if (error) {
+    // Metadata insert failed after a successful storage upload — clean
+    // up the now-unreferenced blob rather than leaving it orphaned.
+    await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
+    throw error;
+  }
+  return data;
+}
+
 export function useUploadDocument(entityType: string, entityId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not signed in.");
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${user.id}/${entityType}/${entityId}/${Date.now()}-${safeName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(DOCUMENTS_BUCKET)
-        .upload(path, file, { upsert: false });
-      if (uploadError) throw uploadError;
-
-      const { data, error } = await supabase
-        .from("documents")
-        .insert({
-          uploaded_by: user.id,
-          file_name: file.name,
-          file_path: path,
-          file_size: file.size,
-          mime_type: file.type || "application/octet-stream",
-          entity_type: entityType,
-          entity_id: entityId,
-        })
-        .select()
-        .single();
-      if (error) {
-        // Metadata insert failed after a successful storage upload — clean
-        // up the now-unreferenced blob rather than leaving it orphaned.
-        await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
-        throw error;
-      }
-      return data;
-    },
+    mutationFn: async (file: File) => uploadDocumentToEntity(entityType, entityId, file),
     onSuccess: () => {
       toast.success("Document uploaded.");
       void queryClient.invalidateQueries({

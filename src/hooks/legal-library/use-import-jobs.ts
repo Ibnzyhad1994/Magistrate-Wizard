@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import {
   extractCaseLawMetadata,
   extractLegislationHierarchy,
@@ -8,29 +9,42 @@ import {
   findStatuteDuplicates,
   normalizeWhitespace,
   proposeTags,
+  sha256File,
   sha256Text,
 } from "@/lib/legal-extraction";
+import { uploadDocumentToEntity } from "@/hooks/use-documents";
 import { caseLawKeys } from "@/hooks/case-law/use-case-law";
 import { legislationKeys } from "@/hooks/legislation/use-legislation";
 import type { Json } from "@/types/database.types";
 
 /**
  * Admin-only CRUD + orchestration over `import_jobs`/`import_batches`
- * (0055). The orchestration hooks (`useIngestCaseLaw`/`useIngestLegislation`)
- * implement the "draft-row-first" ingestion design: the real canonical
- * `case_law`/`statutes` row is created immediately as review_status='draft',
- * deterministic extraction (src/lib/legal-extraction.ts) runs against the
- * supplied text, and the results are written onto that SAME draft row plus
- * an audit `import_jobs` row pointing at it via target_case_law_id /
- * target_statute_id. "Publish" (see use-case-law.ts / use-legislation.ts
- * useSetCaseLawReviewStatus / useSetStatuteReviewStatus) is then a plain
- * review_status flip on the already-complete row -- there is no separate
- * copy-from-staging step.
+ * (0055) and the transactional ingestion RPCs added in 0058
+ * (`create_case_law_import`/`create_legislation_import`).
  *
- * No AI is involved anywhere in this file. Text extraction from PDF/DOCX
- * is NOT automatic (see legal-extraction.ts header) -- the curator supplies
- * document text (pasted, or auto-read for .txt uploads) before calling
- * these hooks.
+ * Ingestion design (0058 repair of the 725045c "draft-row-first" flow):
+ * the canonical `case_law`/`statutes` draft row, its `statute_provisions`
+ * (Legislation only), and the audit `import_jobs` row -- INCLUDING the
+ * bidirectional `import_job_id` back-link -- are created by ONE
+ * transactional SECURITY DEFINER RPC call, not a sequence of independent
+ * `supabase.from(...).insert()` calls. If the RPC raises, nothing is
+ * written; there is no partial-draft-without-a-job or job-without-a-
+ * backlink state possible from this flow.
+ *
+ * The ORIGINAL FILE (when supplied) is uploaded through the existing
+ * secure `documents` Storage architecture (`uploadDocumentToEntity`,
+ * private bucket, signed URLs only) as a SEPARATE step immediately after
+ * the RPC returns a real id -- Storage cannot participate in a Postgres
+ * transaction, so this is an honest, disclosed two-step boundary, not a
+ * false claim of end-to-end atomicity. If the RPC succeeds but the
+ * upload fails, the draft/job still exist (nothing is silently lost) and
+ * the failure is surfaced to the caller/toast rather than swallowed; the
+ * curator can attach the original from the Review Queue afterward.
+ *
+ * No AI is involved anywhere in this file. Automatic PDF/DOCX TEXT
+ * extraction is NOT implemented -- see legal-extraction.ts header. The
+ * curator supplies document text (pasted, or auto-read for .txt uploads)
+ * separately from the original file upload; the two are never conflated.
  */
 export const importJobKeys = {
   all: ["import-jobs"] as const,
@@ -64,6 +78,7 @@ export function useUpdateImportJob() {
         error_summary: string | null;
         retry_count: number;
         completed_at: string | null;
+        uploaded_document_id: string | null;
       }>;
     }) => {
       const { error } = await supabase.from("import_jobs").update(values).eq("id", id);
@@ -91,18 +106,28 @@ export function useDeleteImportJob() {
 
 interface IngestCaseLawInput {
   text: string;
+  file: File | null;
   source_url: string | null;
   source_id: string | null;
   original_filename: string | null;
   batch_id: string | null;
   /** Curator-supplied minimum fields; extraction proposes the rest but never overwrites what the curator explicitly typed. */
-  known: { case_name?: string; citation: string; court: string; jurisdiction: string };
+  known: {
+    case_name?: string;
+    citation: string;
+    court: string;
+    jurisdiction: string;
+    court_id?: string | null;
+    jurisdiction_id?: string | null;
+  };
 }
 
 /**
  * Runs deterministic extraction + duplicate detection over supplied Case
- * Law text, creates the canonical draft row, and records an audit
- * import_jobs row pointing at it. Returns the new case_law id so the
+ * Law text, then creates the canonical draft row + import_jobs row +
+ * bidirectional link atomically via `create_case_law_import` (0058).
+ * Uploads the original file (if supplied) to the secure documents Storage
+ * architecture as a follow-up step. Returns the new case_law id so the
  * caller can navigate straight to the Review Queue detail for that item.
  */
 export function useIngestCaseLaw() {
@@ -117,62 +142,75 @@ export function useIngestCaseLaw() {
       const text = normalizeWhitespace(input.text);
       const proposed = extractCaseLawMetadata(text);
       const tags = proposeTags(text);
-      const hash = await sha256Text(text);
+      // Prefer hashing the original file's bytes when one is attached (the
+      // authoritative source); fall back to the pasted/typed text hash so a
+      // PDF with no text yet still gets a real duplicate-detection signal
+      // instead of silently having none.
+      const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
-      const duplicates = await findCaseLawDuplicates({
-        documentHash: hash,
-        neutralCitation: proposed.neutral_citation,
-        caseName: input.known.case_name ?? proposed.case_name,
-        court: input.known.court,
-      });
+      const duplicates = hash || text
+        ? await findCaseLawDuplicates({
+            documentHash: hash ?? undefined,
+            neutralCitation: proposed.neutral_citation,
+            caseName: input.known.case_name ?? proposed.case_name,
+            court: input.known.court,
+          })
+        : [];
 
-      const { data: draft, error: draftError } = await supabase
-        .from("case_law")
-        .insert({
-          case_name: input.known.case_name ?? proposed.case_name ?? "Untitled (pending review)",
-          citation: input.known.citation,
-          neutral_citation: proposed.neutral_citation ?? null,
-          reported_citation: proposed.reported_citation ?? null,
-          court: input.known.court,
-          jurisdiction: input.known.jurisdiction,
-          decided_date: proposed.decided_date_guess ?? null,
-          full_text: text,
-          source_url: input.source_url,
-          source_id: input.source_id,
-          original_filename: input.original_filename,
-          document_hash: hash,
-          retrieved_at: new Date().toISOString(),
-          owner_id: null,
-          review_status: "needs_review",
-        })
-        .select()
-        .single();
-      if (draftError) throw draftError;
-
-      const { error: jobError } = await supabase.from("import_jobs").insert({
-        batch_id: input.batch_id,
-        content_type: "case_law",
-        source_id: input.source_id,
-        source_url: input.source_url,
-        status: "needs_review",
-        target_case_law_id: draft.id,
-        extracted_text: text,
-        extracted_metadata: proposed as unknown as Json,
-        proposed_tags: tags,
-        duplicate_warning:
+      const { data, error } = await supabase.rpc("create_case_law_import", {
+        p_case_name: input.known.case_name ?? proposed.case_name ?? "Untitled (pending review)",
+        p_citation: input.known.citation,
+        p_court: input.known.court,
+        p_jurisdiction: input.known.jurisdiction,
+        p_court_id: input.known.court_id ?? null,
+        p_jurisdiction_id: input.known.jurisdiction_id ?? null,
+        p_neutral_citation: proposed.neutral_citation ?? null,
+        p_reported_citation: proposed.reported_citation ?? null,
+        p_decided_date: proposed.decided_date_guess ?? null,
+        p_full_text: text || null,
+        p_source_url: input.source_url,
+        p_source_id: input.source_id,
+        p_original_filename: input.original_filename,
+        p_document_hash: hash,
+        p_batch_id: input.batch_id,
+        p_extracted_metadata: proposed as unknown as Json,
+        p_proposed_tags: tags,
+        p_duplicate_warning:
           duplicates.length > 0
             ? duplicates.map((d) => `${d.strength}: ${d.reason} (${d.existingLabel})`).join(" | ")
             : null,
-        created_by: user.id,
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
       });
-      if (jobError) throw jobError;
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row) throw new Error("create_case_law_import did not return an id.");
 
-      return { caseLawId: draft.id as string, duplicates, proposedTags: tags };
+      let uploadError: string | null = null;
+      if (input.file) {
+        try {
+          const doc = await uploadDocumentToEntity("case_law", row.case_law_id, input.file);
+          const { error: linkError } = await supabase
+            .from("import_jobs")
+            .update({ uploaded_document_id: doc.id })
+            .eq("id", row.import_job_id);
+          if (linkError) throw linkError;
+        } catch (e) {
+          uploadError = getErrorMessage(e);
+        }
+      }
+
+      return {
+        caseLawId: row.case_law_id as string,
+        duplicates,
+        proposedTags: tags,
+        uploadError,
+      };
     },
     onSuccess: (result) => {
-      if (result.duplicates.length > 0) {
+      if (result.uploadError) {
+        toast.warning(
+          `Draft created, but the original file could not be uploaded: ${result.uploadError}. Attach it again from the Review Queue.`,
+        );
+      } else if (result.duplicates.length > 0) {
         toast.warning(
           `Draft created with ${result.duplicates.length} possible duplicate warning(s) — review before publishing.`,
         );
@@ -182,16 +220,26 @@ export function useIngestCaseLaw() {
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 
 interface IngestLegislationInput {
   text: string;
+  file: File | null;
   source_url: string | null;
   source_id: string | null;
   original_filename: string | null;
   batch_id: string | null;
-  known: { code: string; title: string; jurisdiction: string; short_title?: string };
+  known: {
+    code: string;
+    title: string;
+    jurisdiction: string;
+    short_title?: string;
+    jurisdiction_id?: string | null;
+  };
 }
 
 export function useIngestLegislation() {
@@ -204,84 +252,76 @@ export function useIngestLegislation() {
       if (!user) throw new Error("Not signed in.");
 
       const text = normalizeWhitespace(input.text);
-      const provisions = extractLegislationHierarchy(text);
+      const provisions = text ? extractLegislationHierarchy(text) : [];
       const tags = proposeTags(text);
-      const hash = await sha256Text(text);
+      const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
-      const duplicates = await findStatuteDuplicates({
-        documentHash: hash,
-        title: input.known.title,
-        jurisdiction: input.known.jurisdiction,
-      });
+      const duplicates = hash || text
+        ? await findStatuteDuplicates({
+            documentHash: hash ?? undefined,
+            title: input.known.title,
+            jurisdiction: input.known.jurisdiction,
+          })
+        : [];
 
-      const { data: draft, error: draftError } = await supabase
-        .from("statutes")
-        .insert({
-          code: input.known.code,
-          title: input.known.title,
-          short_title: input.known.short_title ?? null,
-          jurisdiction: input.known.jurisdiction,
-          full_text: text,
-          source_url: input.source_url,
-          source_id: input.source_id,
-          original_filename: input.original_filename,
-          document_hash: hash,
-          retrieved_at: new Date().toISOString(),
-          review_status: "needs_review",
-        })
-        .select()
-        .single();
-      if (draftError) throw draftError;
-
-      if (provisions.length > 0) {
-        // Flat insert first (parent_provision_id left null — a line-based
-        // parser cannot reliably infer nesting depth from indentation
-        // alone across arbitrary source formatting). The curator can
-        // re-parent provisions in the structured reader/editor if the
-        // source has real Part > Section nesting; body text and numbering
-        // are preserved exactly either way.
-        const { error: provisionsError } = await supabase.from("statute_provisions").insert(
-          provisions.map((p) => ({
-            statute_id: draft.id,
-            level: p.level,
-            number: p.number,
-            heading: p.heading,
-            body_text: p.body_text,
-            sort_order: p.sort_order,
-          })),
-        );
-        if (provisionsError) throw provisionsError;
-      }
-
-      const { error: jobError } = await supabase.from("import_jobs").insert({
-        batch_id: input.batch_id,
-        content_type: "legislation",
-        source_id: input.source_id,
-        source_url: input.source_url,
-        status: "needs_review",
-        target_statute_id: draft.id,
-        extracted_text: text,
-        extracted_metadata: { provisionCount: provisions.length },
-        proposed_tags: tags,
-        duplicate_warning:
+      const { data, error } = await supabase.rpc("create_legislation_import", {
+        p_code: input.known.code,
+        p_title: input.known.title,
+        p_jurisdiction: input.known.jurisdiction,
+        p_jurisdiction_id: input.known.jurisdiction_id ?? null,
+        p_short_title: input.known.short_title ?? null,
+        p_full_text: text || null,
+        p_source_url: input.source_url,
+        p_source_id: input.source_id,
+        p_original_filename: input.original_filename,
+        p_document_hash: hash,
+        p_batch_id: input.batch_id,
+        p_extracted_metadata: { provisionCount: provisions.length } as unknown as Json,
+        p_proposed_tags: tags,
+        p_duplicate_warning:
           duplicates.length > 0
             ? duplicates.map((d) => `${d.strength}: ${d.reason} (${d.existingLabel})`).join(" | ")
             : null,
-        created_by: user.id,
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
+        p_provisions: provisions.map((p) => ({
+          level: p.level,
+          number: p.number,
+          heading: p.heading,
+          body_text: p.body_text,
+          sort_order: p.sort_order,
+        })) as unknown as Json,
       });
-      if (jobError) throw jobError;
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row) throw new Error("create_legislation_import did not return an id.");
+
+      let uploadError: string | null = null;
+      if (input.file) {
+        try {
+          const doc = await uploadDocumentToEntity("statute", row.statute_id, input.file);
+          const { error: linkError } = await supabase
+            .from("import_jobs")
+            .update({ uploaded_document_id: doc.id })
+            .eq("id", row.import_job_id);
+          if (linkError) throw linkError;
+        } catch (e) {
+          uploadError = getErrorMessage(e);
+        }
+      }
 
       return {
-        statuteId: draft.id as string,
+        statuteId: row.statute_id as string,
         duplicates,
         proposedTags: tags,
-        provisionCount: provisions.length,
+        provisionCount: row.provision_count as number,
+        uploadError,
       };
     },
     onSuccess: (result) => {
-      if (result.duplicates.length > 0) {
+      if (result.uploadError) {
+        toast.warning(
+          `Draft created (${result.provisionCount} provisions), but the original file could not be uploaded: ${result.uploadError}. Attach it again from the Review Queue.`,
+        );
+      } else if (result.duplicates.length > 0) {
         toast.warning(
           `Draft created (${result.provisionCount} provisions) with ${result.duplicates.length} possible duplicate warning(s) — review before publishing.`,
         );
@@ -290,6 +330,9 @@ export function useIngestLegislation() {
       }
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

@@ -220,6 +220,7 @@ export type Database = {
           case_name: string;
           citation: string;
           court: string;
+          court_id: string | null;
           created_at: string;
           created_by: string | null;
           decided_date: string | null;
@@ -232,6 +233,7 @@ export type Database = {
           issues: string | null;
           judges: string | null;
           jurisdiction: string;
+          jurisdiction_id: string | null;
           key_passages: string | null;
           neutral_citation: string | null;
           original_filename: string | null;
@@ -251,6 +253,7 @@ export type Database = {
           case_name: string;
           citation: string;
           court: string;
+          court_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           decided_date?: string | null;
@@ -263,6 +266,7 @@ export type Database = {
           issues?: string | null;
           judges?: string | null;
           jurisdiction: string;
+          jurisdiction_id?: string | null;
           key_passages?: string | null;
           neutral_citation?: string | null;
           original_filename?: string | null;
@@ -282,6 +286,7 @@ export type Database = {
           case_name?: string;
           citation?: string;
           court?: string;
+          court_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           decided_date?: string | null;
@@ -294,6 +299,7 @@ export type Database = {
           issues?: string | null;
           judges?: string | null;
           jurisdiction?: string;
+          jurisdiction_id?: string | null;
           key_passages?: string | null;
           neutral_citation?: string | null;
           original_filename?: string | null;
@@ -336,6 +342,20 @@ export type Database = {
             columns: ["import_job_id"];
             isOneToOne: false;
             referencedRelation: "import_jobs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_law_court_id_fkey";
+            columns: ["court_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_authority_courts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_law_jurisdiction_id_fkey";
+            columns: ["jurisdiction_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_jurisdictions";
             referencedColumns: ["id"];
           },
         ];
@@ -1676,6 +1696,7 @@ export type Database = {
           instrument_type: string | null;
           is_current_version: boolean;
           jurisdiction: string;
+          jurisdiction_id: string | null;
           original_filename: string | null;
           retrieved_at: string | null;
           review_status: string;
@@ -1705,6 +1726,7 @@ export type Database = {
           instrument_type?: string | null;
           is_current_version?: boolean;
           jurisdiction: string;
+          jurisdiction_id?: string | null;
           original_filename?: string | null;
           retrieved_at?: string | null;
           review_status?: string;
@@ -1734,6 +1756,7 @@ export type Database = {
           instrument_type?: string | null;
           is_current_version?: boolean;
           jurisdiction?: string;
+          jurisdiction_id?: string | null;
           original_filename?: string | null;
           retrieved_at?: string | null;
           review_status?: string;
@@ -1773,6 +1796,13 @@ export type Database = {
             columns: ["supersedes_statute_id"];
             isOneToOne: false;
             referencedRelation: "statutes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "statutes_jurisdiction_id_fkey";
+            columns: ["jurisdiction_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_jurisdictions";
             referencedColumns: ["id"];
           },
         ];
@@ -1830,6 +1860,116 @@ export type Database = {
             columns: ["parent_provision_id"];
             isOneToOne: false;
             referencedRelation: "statute_provisions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      legal_regional_groups: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          sort_order: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          sort_order?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
+      legal_jurisdictions: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          regional_group_id: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          regional_group_id: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          regional_group_id?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "legal_jurisdictions_regional_group_id_fkey";
+            columns: ["regional_group_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_regional_groups";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      legal_authority_courts: {
+        Row: {
+          aliases: string[];
+          canonical_name: string;
+          court_level: string | null;
+          created_at: string;
+          id: string;
+          is_active: boolean;
+          jurisdiction_id: string | null;
+          regional_group_id: string | null;
+          short_name: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          aliases?: string[];
+          canonical_name: string;
+          court_level?: string | null;
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          jurisdiction_id?: string | null;
+          regional_group_id?: string | null;
+          short_name?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          aliases?: string[];
+          canonical_name?: string;
+          court_level?: string | null;
+          created_at?: string;
+          id?: string;
+          is_active?: boolean;
+          jurisdiction_id?: string | null;
+          regional_group_id?: string | null;
+          short_name?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "legal_authority_courts_jurisdiction_id_fkey";
+            columns: ["jurisdiction_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_jurisdictions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "legal_authority_courts_regional_group_id_fkey";
+            columns: ["regional_group_id"];
+            isOneToOne: false;
+            referencedRelation: "legal_regional_groups";
             referencedColumns: ["id"];
           },
         ];
@@ -2143,6 +2283,110 @@ export type Database = {
           headline: string;
         }[];
       };
+      /** Court/Jurisdiction/Tag-scoped variant of search_case_law (0058) — used by the Browse-by-Court/Jurisdiction UI. p_query may be null/empty (browse with no text search); all filters are optional and AND together. */
+      search_case_law_scoped: {
+        Args: {
+          p_query?: string | null;
+          p_limit?: number;
+          p_court_id?: string | null;
+          p_jurisdiction_id?: string | null;
+          p_tag_id?: string | null;
+        };
+        Returns: {
+          id: string;
+          case_name: string;
+          citation: string;
+          court: string;
+          jurisdiction: string;
+          summary: string;
+          rank: number;
+          headline: string;
+        }[];
+      };
+      /** RLS-respecting (SECURITY INVOKER) result counts for the Browse-by-Court UI — never counts draft/inaccessible rows for a non-admin caller. */
+      case_law_counts_by_court: {
+        Args: Record<string, never>;
+        Returns: { court_id: string; result_count: number }[];
+      };
+      case_law_counts_by_jurisdiction: {
+        Args: Record<string, never>;
+        Returns: { jurisdiction_id: string; result_count: number }[];
+      };
+      /** Admin-only, SECURITY DEFINER, transactional (0058): creates the draft case_law row + import_jobs row + bidirectional link in one atomic operation. */
+      create_case_law_import: {
+        Args: {
+          p_case_name: string;
+          p_citation: string;
+          p_court: string;
+          p_jurisdiction: string;
+          p_court_id?: string | null;
+          p_jurisdiction_id?: string | null;
+          p_neutral_citation?: string | null;
+          p_reported_citation?: string | null;
+          p_decided_date?: string | null;
+          p_full_text?: string | null;
+          p_source_url?: string | null;
+          p_source_id?: string | null;
+          p_original_filename?: string | null;
+          p_document_hash?: string | null;
+          p_batch_id?: string | null;
+          p_extracted_metadata?: Json | null;
+          p_proposed_tags?: string[] | null;
+          p_duplicate_warning?: string | null;
+        };
+        Returns: { case_law_id: string; import_job_id: string }[];
+      };
+      /** Admin-only, SECURITY DEFINER, transactional (0058): creates the draft statutes row + statute_provisions (from a jsonb array) + import_jobs row + bidirectional link in one atomic operation. */
+      create_legislation_import: {
+        Args: {
+          p_code: string;
+          p_title: string;
+          p_jurisdiction: string;
+          p_jurisdiction_id?: string | null;
+          p_short_title?: string | null;
+          p_full_text?: string | null;
+          p_source_url?: string | null;
+          p_source_id?: string | null;
+          p_original_filename?: string | null;
+          p_document_hash?: string | null;
+          p_batch_id?: string | null;
+          p_extracted_metadata?: Json | null;
+          p_proposed_tags?: string[] | null;
+          p_duplicate_warning?: string | null;
+          p_provisions?: Json;
+        };
+        Returns: { statute_id: string; import_job_id: string; provision_count: number }[];
+      };
+      /** Admin-only, SECURITY DEFINER (0060): reconciles case_law_tags to exactly the supplied tag NAME list -- finds an existing `tags` row by case-insensitive exact match first, only creates a new canonical tag when none matches (prevents synonym duplicates), then adds/removes links atomically. */
+      apply_case_law_tags: {
+        Args: { p_case_law_id: string; p_tag_names: string[] };
+        Returns: undefined;
+      };
+      apply_statute_tags: {
+        Args: { p_statute_id: string; p_tag_names: string[] };
+        Returns: undefined;
+      };
+      /** Admin-only, SECURITY DEFINER (0059): sets case_law.review_status to draft/needs_review/ready and syncs the linked import_jobs.status when that value exists in both vocabularies (needs_review/ready). Use publish_case_law_import/reject_case_law_import for the terminal transitions instead. */
+      set_case_law_review_status: {
+        Args: { p_case_law_id: string; p_status: string };
+        Returns: undefined;
+      };
+      set_legislation_review_status: {
+        Args: { p_statute_id: string; p_status: string };
+        Returns: undefined;
+      };
+      /** Admin-only, SECURITY DEFINER (0058): review_status='published' on the record AND its linked import_jobs.status='published', atomically. */
+      publish_case_law_import: { Args: { p_case_law_id: string }; Returns: undefined };
+      publish_legislation_import: { Args: { p_statute_id: string }; Returns: undefined };
+      /** Admin-only, SECURITY DEFINER (0058): deletes the draft record (cascading provisions/documents-metadata) and reconciles its import_jobs row to status='failed' rather than leaving it orphaned/dangling. Caller must remove any Storage object(s) via the Storage API BEFORE calling this. */
+      reject_case_law_import: {
+        Args: { p_case_law_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      reject_legislation_import: {
+        Args: { p_statute_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
       search_cases: {
         Args: { p_limit?: number; p_query: string };
         Returns: {
@@ -2407,6 +2651,9 @@ export type BenchNote = Tables<"bench_notes">;
 export type Statute = Tables<"statutes">;
 export type StatuteProvision = Tables<"statute_provisions">;
 export type LegalSource = Tables<"legal_sources">;
+export type LegalRegionalGroup = Tables<"legal_regional_groups">;
+export type LegalJurisdiction = Tables<"legal_jurisdictions">;
+export type LegalAuthorityCourt = Tables<"legal_authority_courts">;
 export type ImportBatch = Tables<"import_batches">;
 export type ImportJob = Tables<"import_jobs">;
 export type CaseLaw = Tables<"case_law">;
