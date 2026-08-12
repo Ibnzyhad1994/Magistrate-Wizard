@@ -249,6 +249,16 @@ const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
   ["bookmarks_user_id_entity_type_entity_id", "You've already bookmarked this."],
   ["docket_matter_tags", "That tag is already on this matter."],
   ["judgment_tags", "That tag is already on this judgment."],
+  // A canonical Case Law citation collision (case_law_citation_canonical_
+  // unique_idx, 0035) — without this entry the generic "That already
+  // exists." fallback below fires instead, which is indistinguishable
+  // from a genuine processing failure in the bulk-import queue (found via
+  // live testing: 4/7 bulk PDFs sharing a citation with an already-
+  // published canonical record all surfaced as "Failed"). This mapping is
+  // a defense-in-depth backstop — the primary fix is the pre-insert
+  // citation-conflict check in use-import-jobs.ts, which should normally
+  // prevent this constraint from ever firing in practice.
+  ["case_law_citation_canonical_unique_idx", "A canonical case with this citation already exists."],
 ];
 
 /**

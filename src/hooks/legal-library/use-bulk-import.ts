@@ -22,7 +22,13 @@ import {
   emptyExtractionEnvelope,
 } from "@/lib/extraction-pipeline";
 import { useIngestCaseLaw } from "@/hooks/legal-library/use-import-jobs";
-import { useCreateImportBatch, checkExactDuplicateByHash } from "@/hooks/legal-library/use-import-jobs";
+import {
+  useCreateImportBatch,
+  checkExactDuplicateByHash,
+  checkCanonicalCitationConflict,
+  recordBulkNonDraftJob,
+  recordBulkRejectedJobs,
+} from "@/hooks/legal-library/use-import-jobs";
 import { sha256File } from "@/lib/legal-extraction";
 
 /**
@@ -94,6 +100,26 @@ export function useBulkImportCaseLaw() {
     }
 
     const processable = initial.filter((it) => it.status !== "rejected");
+    const rejected = initial.filter((it) => it.status === "rejected");
+    if (rejected.length > 0) {
+      // Persist rejections too (Section 6/23) — a curator returning to
+      // this batch later should see ALL 7 files' fates, including the
+      // ones rejected before processing even began, not just the subset
+      // that made it into the queue.
+      try {
+        await recordBulkRejectedJobs(
+          rejected.map((it) => ({
+            batch_id: batchId,
+            content_type: "case_law",
+            reason: it.error ?? "Rejected before processing.",
+            originalFilename: it.file.name,
+          })),
+        );
+      } catch {
+        // Non-fatal — the rejection is still shown live in this session's
+        // queue UI even if persisting it failed for some reason.
+      }
+    }
 
     await runBoundedConcurrent(
       processable,
@@ -103,10 +129,16 @@ export function useBulkImportCaseLaw() {
           const hash = await sha256File(item.file);
           const duplicate = await checkExactDuplicateByHash("case_law", hash);
           if (duplicate) {
-            patchItem(item.id, {
+            const reason = `Identical to an existing record: ${duplicate.label}`;
+            patchItem(item.id, { status: "duplicate", isDuplicate: true, duplicateReason: reason });
+            await recordBulkNonDraftJob({
+              batch_id: batchId,
+              content_type: "case_law",
               status: "duplicate",
-              isDuplicate: true,
-              duplicateReason: `Identical to an existing record: ${duplicate.label}`,
+              reason,
+              source_id: opts.sourceId,
+              originalFilename: item.file.name,
+              duplicateOfId: duplicate.id,
             });
             return;
           }
@@ -171,6 +203,38 @@ export function useBulkImportCaseLaw() {
             }
           }
 
+          // CANONICAL CITATION conflict pre-check — the actual root cause
+          // of the live "Duplicate shown as Failed" bug: case_law.citation
+          // has a unique index scoped to canonical rows
+          // (case_law_citation_canonical_unique_idx), but until this fix
+          // nothing checked it before calling create_case_law_import. A
+          // bulk item whose citation matches an existing canonical case
+          // (a different scan/report of the SAME case — a "possible
+          // record duplicate," Section 9/15, not a byte-identical file)
+          // would hit that raw Postgres constraint and surface as a
+          // generic "Failed" with the misleading message "That already
+          // exists." Checking it here means this is now a DUPLICATE
+          // outcome, never a failure, and the doomed insert is never
+          // attempted.
+          const finalCitation = reportedCitation ?? neutralCitation ?? "";
+          if (finalCitation) {
+            const citationConflict = await checkCanonicalCitationConflict(finalCitation);
+            if (citationConflict) {
+              const reason = `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported — review the existing record if this is a different source for the same case.`;
+              patchItem(item.id, { status: "duplicate", isDuplicate: true, duplicateReason: reason });
+              await recordBulkNonDraftJob({
+                batch_id: batchId,
+                content_type: "case_law",
+                status: "duplicate",
+                reason,
+                source_id: opts.sourceId,
+                originalFilename: item.file.name,
+                duplicateOfId: citationConflict.id,
+              });
+              return;
+            }
+          }
+
           const result = await ingestCaseLaw.mutateAsync({
             text: envelope.text,
             file: item.file,
@@ -182,7 +246,7 @@ export function useBulkImportCaseLaw() {
             known: {
               case_name: caseName,
               case_name_source: caseNameSource,
-              citation: reportedCitation ?? neutralCitation ?? "",
+              citation: finalCitation,
               // Legacy free-text columns. NEVER pass "" here even when
               // court_id/jurisdiction_id ARE confidently resolved -- ""
               // is itself one of publication-validation.ts's
@@ -206,7 +270,36 @@ export function useBulkImportCaseLaw() {
             caseLawId: result.caseLawId,
           });
         } catch (e) {
-          patchItem(item.id, { status: "failed", error: getErrorMessage(e) });
+          // Defense-in-depth for the citation-conflict pre-check above:
+          // two items in the SAME batch sharing a citation could both
+          // pass the pre-check concurrently (bounded concurrency runs up
+          // to DEFAULT_BULK_CONCURRENCY items at once, and neither exists
+          // in the DB yet when both check). Whichever inserts second still
+          // hits the real Postgres constraint — but getErrorMessage now
+          // recognizes it (see utils.ts), so this is reclassified as a
+          // duplicate rather than left as a generic, misleading failure.
+          const message = getErrorMessage(e);
+          const isCitationConflict = message.includes("A canonical case with this citation already exists");
+          patchItem(item.id, {
+            status: isCitationConflict ? "duplicate" : "failed",
+            isDuplicate: isCitationConflict,
+            duplicateReason: isCitationConflict ? message : null,
+            error: isCitationConflict ? null : message,
+          });
+          try {
+            await recordBulkNonDraftJob({
+              batch_id: batchId,
+              content_type: "case_law",
+              status: isCitationConflict ? "duplicate" : "failed",
+              reason: message,
+              source_id: opts.sourceId,
+              originalFilename: item.file.name,
+              duplicateOfId: null,
+            });
+          } catch {
+            // Best-effort — the outcome is still shown live in this
+            // session's queue UI even if persisting it failed too.
+          }
         }
       },
       DEFAULT_BULK_CONCURRENCY,

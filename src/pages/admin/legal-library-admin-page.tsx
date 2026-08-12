@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   Download,
   FileText,
   FolderUp,
   Landmark,
   Plus,
+  RefreshCw,
   ScrollText,
   Sparkles,
   Trash2,
@@ -30,6 +32,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
+import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { SaveIndicator, type SaveState } from "@/components/common/save-indicator";
@@ -46,6 +49,10 @@ import {
 import {
   useIngestCaseLaw,
   useIngestLegislation,
+  useImportBatches,
+  useImportBatchDetail,
+  readDuplicateOfId,
+  type ImportBatchJobRow,
 } from "@/hooks/legal-library/use-import-jobs";
 import { useBulkImportCaseLaw } from "@/hooks/legal-library/use-bulk-import";
 import {
@@ -452,7 +459,36 @@ function OriginalDocumentLink({ documentId }: { documentId: string | null }) {
  * - Tag proposals are keyword/rule-based, not AI. No AI classification is
  *   configured in this build.
  */
+const VALID_TABS = ["sources", "import", "batches", "review"] as const;
+type LegalLibraryTab = (typeof VALID_TABS)[number];
+
 export default function LegalLibraryAdminPage() {
+  // Controlled by the URL (not local-only state) specifically so a link
+  // FROM elsewhere — bulk-import results, a Batch Detail row, a
+  // Review-not-View action — can deep-link straight into the right tab
+  // (and, for Review Queue, the right card) instead of dumping the
+  // curator on the page and making them re-navigate. See
+  // ROUTES.adminLegalLibraryReviewCaseLaw/adminLegalLibraryBatch.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: LegalLibraryTab = VALID_TABS.includes(tabParam as LegalLibraryTab)
+    ? (tabParam as LegalLibraryTab)
+    : "import";
+  const highlightCaseLawId = searchParams.get("caseLaw");
+  const initialBatchId = searchParams.get("batch");
+
+  function handleTabChange(value: string) {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    // Switching tabs manually clears any deep-link target from a
+    // previous navigation so it doesn't keep re-highlighting/re-opening
+    // stale state after the curator has moved on.
+    if (value !== "review") next.delete("caseLaw");
+    if (value !== "review") next.delete("statute");
+    if (value !== "batches") next.delete("batch");
+    setSearchParams(next, { replace: true });
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -465,10 +501,11 @@ export default function LegalLibraryAdminPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="import">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="sources">Sources</TabsTrigger>
           <TabsTrigger value="import">New Import</TabsTrigger>
+          <TabsTrigger value="batches">Import Batches</TabsTrigger>
           <TabsTrigger value="review">Review Queue</TabsTrigger>
         </TabsList>
         <TabsContent value="sources">
@@ -477,8 +514,11 @@ export default function LegalLibraryAdminPage() {
         <TabsContent value="import">
           <ImportTab />
         </TabsContent>
+        <TabsContent value="batches">
+          <ImportBatchesTab initialBatchId={initialBatchId} />
+        </TabsContent>
         <TabsContent value="review">
-          <ReviewQueueTab />
+          <ReviewQueueTab highlightCaseLawId={highlightCaseLawId} />
         </TabsContent>
       </Tabs>
     </div>
@@ -1378,13 +1418,20 @@ function BulkImportPanel() {
                     )}
                     <Badge variant={BULK_STATUS_TONE[item.status]}>{BULK_STATUS_LABEL[item.status]}</Badge>
                     {item.caseLawId && (
+                      // Bulk import NEVER auto-publishes (§3/§21) — every
+                      // successful item is a DRAFT, so "View" (the
+                      // read-only canonical reader, which also cannot
+                      // edit a canonical/owner_id-null row at all) is
+                      // always the wrong destination here. "Review" opens
+                      // the same admin Review Queue workflow a curator
+                      // would reach by searching for it manually.
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-6 px-2 text-[11px]"
-                        onClick={() => navigate(ROUTES.caseLawDetail(item.caseLawId!))}
+                        onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(item.caseLawId!))}
                       >
-                        View
+                        Review
                       </Button>
                     )}
                   </div>
@@ -1395,6 +1442,249 @@ function BulkImportPanel() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Import Batches — persistent bulk-ingestion history + batch detail
+// ---------------------------------------------------------------------------
+
+/**
+ * Vocabulary for import_jobs.status (0055's original 8 values + 0063's
+ * 'duplicate') — a job processing status, genuinely distinct from
+ * review_status on the linked case_law/statutes row (which only exists
+ * once a draft was actually created). Kept local to this section since
+ * it's the only place a raw job status is rendered directly to a curator.
+ */
+const JOB_STATUS_LABEL: Record<string, string> = {
+  queued: "Queued",
+  fetching: "Fetching",
+  extracting: "Extracting",
+  structuring: "Structuring",
+  needs_review: "Needs review",
+  ready: "Ready",
+  published: "Published",
+  failed: "Failed",
+  duplicate: "Duplicate",
+};
+
+const JOB_STATUS_TONE: Record<string, "canonical" | "destructive" | "outline" | "secondary"> = {
+  queued: "secondary",
+  fetching: "secondary",
+  extracting: "secondary",
+  structuring: "secondary",
+  needs_review: "outline",
+  ready: "outline",
+  published: "canonical",
+  failed: "destructive",
+  duplicate: "outline",
+};
+
+/**
+ * Import Batches — the persistent operational view "what happened to the
+ * files I uploaded together?" (Section 6/21), distinct from Review Queue
+ * (Section 12: "the authoritative list of unpublished material"). Every
+ * batch and every job row here comes from a live query, not component
+ * state — leaving this tab, refreshing the browser, or coming back
+ * tomorrow all show the same data (Section 34's core product principle).
+ */
+function ImportBatchesTab({ initialBatchId }: { initialBatchId?: string | null }) {
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(initialBatchId ?? null);
+  const { data: batches, isPending, isError, error, refetch } = useImportBatches();
+
+  // A deep link (Section 21: click a batch → Batch Detail) always wins
+  // over whatever was previously selected in this session.
+  useEffect(() => {
+    if (initialBatchId) setSelectedBatchId(initialBatchId);
+  }, [initialBatchId]);
+
+  if (selectedBatchId) {
+    return <BatchDetailView batchId={selectedBatchId} onBack={() => setSelectedBatchId(null)} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Import batches</CardTitle>
+            <CardDescription>
+              Every bulk import you've run, with what happened to each file. Return to any batch after
+              navigating away or refreshing — nothing here is temporary.
+            </CardDescription>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => void refetch()}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        </CardHeader>
+      </Card>
+
+      {isPending ? (
+        <Skeleton className="h-32 w-full" />
+      ) : isError ? (
+        <InlineError error={error} onRetry={() => void refetch()} />
+      ) : !batches || batches.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={FolderUp}
+              className="border-0"
+              title="No import batches yet"
+              description="Batches created from Bulk Import (New Import → Bulk import) will appear here."
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {batches.map((b) => (
+            <Card
+              key={b.id}
+              className="cursor-pointer transition-colors hover:bg-muted/40"
+              onClick={() => setSelectedBatchId(b.id)}
+            >
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{b.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(b.created_at)} · {b.total} document{b.total === 1 ? "" : "s"} ·{" "}
+                    {b.content_type === "case_law" ? "Case Law" : "Legislation"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(b.counts).map(([status, count]) => (
+                    <Badge key={status} variant={JOB_STATUS_TONE[status] ?? "secondary"}>
+                      {JOB_STATUS_LABEL[status] ?? status}: {count}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => void }) {
+  const navigate = useNavigate();
+  const { data, isPending, isError, error, refetch } = useImportBatchDetail(batchId);
+
+  const rows = data?.rows ?? [];
+  const counts: Record<string, number> = {};
+  for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
+
+  // "Review" from a batch row jumps to that ONE record; "Next needs
+  // review" (Section 11) walks the curator through every remaining
+  // needs_review item in this SAME batch without making them return to
+  // Import Batches and reopen it each time.
+  const needsReviewIds = rows.filter((r) => r.status === "needs_review" && r.target_case_law_id).map((r) => r.target_case_law_id as string);
+
+  return (
+    <div className="space-y-4">
+      <Button size="sm" variant="ghost" className="-ml-2" onClick={onBack}>
+        <ArrowLeft className="h-4 w-4" />
+        Back to batches
+      </Button>
+
+      {isPending ? (
+        <Skeleton className="h-48 w-full" />
+      ) : isError || !data ? (
+        <InlineError error={error ?? new Error("Batch not found.")} onRetry={() => void refetch()} />
+      ) : (
+        <>
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base">{data.batch.label}</CardTitle>
+                <CardDescription>
+                  {formatDate(data.batch.created_at)} · {rows.length} document{rows.length === 1 ? "" : "s"}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {needsReviewIds.length > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(needsReviewIds[0]))}
+                  >
+                    Review next ({needsReviewIds.length} needs review)
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => void refetch()}>
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(counts).map(([status, count]) => (
+                  <Badge key={status} variant={JOB_STATUS_TONE[status] ?? "secondary"}>
+                    {JOB_STATUS_LABEL[status] ?? status}: {count}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-1.5">
+            {rows.map((row) => (
+              <BatchJobRow key={row.id} row={row} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One file's row in Batch Detail — the action shown always matches the
+ * job's REAL state (Section 7): a still-draft record gets "Review" (the
+ * curator editing workflow), a published one gets "View" (the canonical
+ * reader), a duplicate links to the record it collided with, and a
+ * failure just shows why (there is nothing to click through to — the
+ * original file was never uploaded for a failed/duplicate outcome, see
+ * this pass's final report on original-file preservation limitations).
+ */
+function BatchJobRow({ row }: { row: ImportBatchJobRow }) {
+  const navigate = useNavigate();
+  const duplicateOfId = readDuplicateOfId(row.extracted_metadata);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
+      <div className="min-w-0">
+        <p className="truncate font-medium text-foreground">{row.displayName ?? row.filename}</p>
+        {row.displayName && <p className="truncate text-xs text-muted-foreground">{row.filename}</p>}
+        {row.duplicate_warning && (
+          <p className="mt-0.5 max-w-xl text-xs text-amber-700 dark:text-amber-400">{row.duplicate_warning}</p>
+        )}
+        {row.error_summary && <p className="mt-0.5 max-w-xl text-xs text-destructive">{row.error_summary}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Badge variant={JOB_STATUS_TONE[row.status] ?? "secondary"}>{JOB_STATUS_LABEL[row.status] ?? row.status}</Badge>
+        {row.target_case_law_id && row.reviewStatus === "published" && (
+          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.caseLawDetail(row.target_case_law_id as string))}>
+            View
+          </Button>
+        )}
+        {row.target_case_law_id && row.reviewStatus !== "published" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(row.target_case_law_id as string))}
+          >
+            Review
+          </Button>
+        )}
+        {row.status === "duplicate" && duplicateOfId && (
+          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.caseLawDetail(duplicateOfId))}>
+            View existing
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1469,10 +1759,34 @@ function categorizeStatuteRow(row: ReviewRow<Statute>): ReviewCategory {
   return errors.length === 0 ? "ready_to_publish" : "needs_review";
 }
 
-function ReviewQueueTab() {
+/**
+ * Section 20: "Do not render hundreds of enormous editable forms
+ * simultaneously." The filter tabs (Section 19) already triage a large
+ * queue into smaller buckets, but even one bucket — or "All" — could
+ * still be large once bulk ingestion is used at real scale. Rather than a
+ * bigger redesign (pagination controls, virtualization, a compact-row +
+ * detail-drawer split), the smallest change that actually bounds DOM size
+ * is a simple reveal cap: render the first N full cards, offer "Show N
+ * more" for the rest. Cheap, restrained, and easy to remove later if a
+ * proper paginated query becomes worth the complexity.
+ */
+const REVIEW_PAGE_SIZE = 20;
+
+function ReviewQueueTab({ highlightCaseLawId }: { highlightCaseLawId?: string | null }) {
   const { data: caseLawQueue, isPending: caseLawPending } = useCaseLawReviewQueue();
   const { data: statuteQueue, isPending: statutePending } = useLegislationReviewQueue();
+  // Defaults to "All" (Section 10/11: a deep-linked "Review" target from
+  // bulk results/Batch Detail must never be hidden behind a filter tab
+  // that happens to exclude it — "All" guarantees it's always visible).
   const [activeCategory, setActiveCategory] = useState<ReviewCategory | "all">("all");
+  const [caseLawVisible, setCaseLawVisible] = useState(REVIEW_PAGE_SIZE);
+  const [statuteVisible, setStatuteVisible] = useState(REVIEW_PAGE_SIZE);
+  // Switching filters starts back at the cap — otherwise "Show more" state
+  // from a previous, unrelated filter would carry over confusingly.
+  useEffect(() => {
+    setCaseLawVisible(REVIEW_PAGE_SIZE);
+    setStatuteVisible(REVIEW_PAGE_SIZE);
+  }, [activeCategory]);
 
   const caseLawCategorized = (caseLawQueue ?? []).map((row) => ({ row, category: categorizeCaseLawRow(row) }));
   const statuteCategorized = (statuteQueue ?? []).map((row) => ({ row, category: categorizeStatuteRow(row) }));
@@ -1488,10 +1802,22 @@ function ReviewQueueTab() {
   for (const { category } of statuteCategorized) counts[category] += 1;
   const totalCount = caseLawCategorized.length + statuteCategorized.length;
 
-  const filteredCaseLaw =
+  const filteredCaseLawAll =
     activeCategory === "all" ? caseLawCategorized : caseLawCategorized.filter((c) => c.category === activeCategory);
-  const filteredStatute =
+  const filteredStatuteAll =
     activeCategory === "all" ? statuteCategorized : statuteCategorized.filter((c) => c.category === activeCategory);
+
+  // A deep-linked highlight target must stay visible even if it would
+  // otherwise fall past the reveal cap — never hide the one record the
+  // curator was specifically sent here to review.
+  const highlightIndex = highlightCaseLawId
+    ? filteredCaseLawAll.findIndex((c) => c.row.id === highlightCaseLawId)
+    : -1;
+  const effectiveCaseLawVisible =
+    highlightIndex >= 0 ? Math.max(caseLawVisible, highlightIndex + 1) : caseLawVisible;
+
+  const filteredCaseLaw = filteredCaseLawAll.slice(0, effectiveCaseLawVisible);
+  const filteredStatute = filteredStatuteAll.slice(0, statuteVisible);
 
   const activeLabel = activeCategory === "all" ? null : REVIEW_CATEGORY_LABEL[activeCategory].toLowerCase();
 
@@ -1532,15 +1858,26 @@ function ReviewQueueTab() {
         <h2 className="text-lg font-medium text-foreground">Case Law</h2>
         {caseLawPending ? (
           <Skeleton className="mt-2 h-24 w-full" />
-        ) : filteredCaseLaw.length === 0 ? (
+        ) : filteredCaseLawAll.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
             {activeLabel ? `No Case Law drafts in "${activeLabel}".` : "No Case Law drafts awaiting review."}
           </p>
         ) : (
           <div className="mt-2 space-y-3">
             {filteredCaseLaw.map(({ row }) => (
-              <CaseLawReviewCard key={row.id} row={row} />
+              <CaseLawReviewCard key={row.id} row={row} highlight={row.id === highlightCaseLawId} />
             ))}
+            {filteredCaseLawAll.length > effectiveCaseLawVisible && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCaseLawVisible((n) => n + REVIEW_PAGE_SIZE)}
+              >
+                Show {Math.min(REVIEW_PAGE_SIZE, filteredCaseLawAll.length - effectiveCaseLawVisible)} more (
+                {filteredCaseLawAll.length - effectiveCaseLawVisible} remaining)
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -1549,7 +1886,7 @@ function ReviewQueueTab() {
         <h2 className="text-lg font-medium text-foreground">Legislation</h2>
         {statutePending ? (
           <Skeleton className="mt-2 h-24 w-full" />
-        ) : filteredStatute.length === 0 ? (
+        ) : filteredStatuteAll.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
             {activeLabel ? `No Legislation drafts in "${activeLabel}".` : "No Legislation drafts awaiting review."}
           </p>
@@ -1558,6 +1895,17 @@ function ReviewQueueTab() {
             {filteredStatute.map(({ row }) => (
               <StatuteReviewCard key={row.id} row={row} />
             ))}
+            {filteredStatuteAll.length > statuteVisible && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setStatuteVisible((n) => n + REVIEW_PAGE_SIZE)}
+              >
+                Show {Math.min(REVIEW_PAGE_SIZE, filteredStatuteAll.length - statuteVisible)} more (
+                {filteredStatuteAll.length - statuteVisible} remaining)
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -1565,8 +1913,18 @@ function ReviewQueueTab() {
   );
 }
 
-function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
+function CaseLawReviewCard({ row, highlight = false }: { row: ReviewRow<CaseLaw>; highlight?: boolean }) {
   const navigate = useNavigate();
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Deep-link target from bulk results/Batch Detail (Section 10/11) —
+  // scrolled into view and briefly outlined once, on arrival, so the
+  // curator lands on the exact record rather than the top of a
+  // potentially long Review Queue list.
+  useEffect(() => {
+    if (highlight && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlight]);
   const update = useUpdateCanonicalCaseLaw(row.id);
   const setStatus = useSetCaseLawReviewStatus();
   const reject = useRejectCanonicalCaseLaw();
@@ -1581,6 +1939,16 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
     decided_date: row.decided_date ?? "",
     court_id: row.court_id,
     jurisdiction_id: row.jurisdiction_id,
+    // Section 4F/14: previously nowhere in the app could a curator fix a
+    // low-quality/missing extraction before publishing — the canonical
+    // detail page can't edit a canonical row at all (owner_id IS NULL),
+    // and this card didn't expose these two fields either, so "No
+    // summary or full text on record" had no path to resolution short of
+    // direct database access. useUpdateCanonicalCaseLaw already accepts
+    // any case_law column (it's `Partial<CanonicalCaseLawInput>`) — this
+    // was a UI gap, not a data-layer one.
+    summary: row.summary ?? "",
+    full_text: row.full_text ?? "",
   });
   const [confirmReject, setConfirmReject] = useState(false);
   const dirty =
@@ -1588,7 +1956,9 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
     fields.citation !== row.citation ||
     fields.decided_date !== (row.decided_date ?? "") ||
     fields.court_id !== row.court_id ||
-    fields.jurisdiction_id !== row.jurisdiction_id;
+    fields.jurisdiction_id !== row.jurisdiction_id ||
+    fields.summary !== (row.summary ?? "") ||
+    fields.full_text !== (row.full_text ?? "");
 
   // Save-state reflects the mutation's own pending/success/error status —
   // never local "the user typed something" guessing (§17). Resets to
@@ -1631,6 +2001,8 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
       jurisdiction_id: fields.jurisdiction_id,
       court,
       jurisdiction,
+      summary: fields.summary || null,
+      full_text: fields.full_text || null,
     });
   }
 
@@ -1653,7 +2025,7 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
     .filter((n): n is string => !!n);
 
   return (
-    <Card>
+    <Card ref={cardRef} className={highlight ? "ring-2 ring-primary transition-shadow" : undefined}>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1739,6 +2111,41 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
             </Select>
           </Field>
         </div>
+
+        {/* TEXT — editable here specifically because nowhere else in the
+            app can a curator fix this before publishing: the canonical
+            reader (case-law detail page) can never edit a canonical row,
+            and OCR/low-quality extraction can leave this genuinely empty
+            at ingest time (Section 14/4F — "No summary or full text on
+            record" previously had no path to resolution short of direct
+            database access). */}
+        <details className="rounded-md border border-border p-2.5 text-sm">
+          <summary className="cursor-pointer select-none text-sm font-medium text-foreground">
+            Summary and full text
+            {!fields.summary && !fields.full_text && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">— none on record yet</span>
+            )}
+          </summary>
+          <div className="mt-3 space-y-3">
+            <Field label="Summary" hint="Optional — a short curator-written synopsis, distinct from the full text below.">
+              <Textarea
+                value={fields.summary}
+                onChange={(e) => setFields((f) => ({ ...f, summary: e.target.value }))}
+                rows={2}
+              />
+            </Field>
+            <Field
+              label="Full text"
+              hint="What machine extraction captured, if any — paste or correct it here (e.g. after OCR required/low-quality extraction, or copying from the original file)."
+            >
+              <Textarea
+                value={fields.full_text}
+                onChange={(e) => setFields((f) => ({ ...f, full_text: e.target.value }))}
+                rows={6}
+              />
+            </Field>
+          </div>
+        </details>
 
         {/* CLASSIFICATION */}
         <TagReviewEditor

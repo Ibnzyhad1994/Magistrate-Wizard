@@ -119,6 +119,305 @@ export async function checkExactDuplicateByHash(
   return row ? { id: row.id, label: `${row.title} (${row.code})` } : null;
 }
 
+/**
+ * CANONICAL CITATION conflict pre-check — a genuinely different bug class
+ * from the exact-file-hash check above, and the actual root cause of a
+ * live bug found in bulk-import testing: `case_law.citation` has a unique
+ * index scoped to canonical rows (`case_law_citation_canonical_unique_idx`,
+ * owner_id IS NULL, migration 0035), but nothing checked it BEFORE calling
+ * `create_case_law_import` — so a bulk item whose citation matched an
+ * already-published canonical case (a different scan/report of the SAME
+ * case — Section 9/15's explicit "possible legal record duplicate"
+ * scenario, not a byte-identical file) hit the raw Postgres constraint,
+ * and the generic 23505 fallback message ("That already exists.") made it
+ * indistinguishable from a genuine extraction failure in the bulk queue.
+ *
+ * This does not decide whether the new file is "the same case" in any
+ * deep sense — it only answers the narrow, mechanical question "would
+ * inserting this citation as a new CANONICAL row violate the existing
+ * uniqueness constraint" — so the caller can skip the doomed insert and
+ * surface this as a duplicate/conflict for curator review instead of
+ * letting it fail. Personal (owner_id IS NOT NULL) rows are correctly
+ * excluded, matching the index's own scope.
+ */
+export async function checkCanonicalCitationConflict(
+  citation: string,
+): Promise<{ id: string; label: string } | null> {
+  const trimmed = citation.trim();
+  if (!trimmed) return null;
+  const { data } = await supabase
+    .from("case_law")
+    .select("id, case_name, citation")
+    .eq("citation", trimmed)
+    .is("owner_id", null)
+    .limit(1);
+  const row = data?.[0];
+  return row ? { id: row.id, label: `${row.case_name} (${row.citation})` } : null;
+}
+
+/**
+ * Records a BARE import_jobs row — one with no target_case_law_id/
+ * target_statute_id — for a bulk item that did NOT result in a new
+ * canonical draft: an exact-file-hash duplicate, a citation conflict, or
+ * a genuine processing failure. This is the core fix for "the batch
+ * disappears on refresh" (Section 6/23/28): previously the ONLY way an
+ * import_jobs row was ever created was via create_case_law_import/
+ * create_legislation_import, which ALSO always creates a case_law/
+ * statutes row — so a duplicate or failed bulk item left NO trace in the
+ * database at all, and the transient in-memory queue state was the only
+ * place that outcome ever existed. Every bulk outcome now gets a
+ * persisted row, so `import_jobs where batch_id = X` is a complete,
+ * accurate reconstruction of what happened to every file in a batch,
+ * survives navigation/refresh, and is the data source for the Batch
+ * Detail view.
+ *
+ * A direct table insert (not an RPC) is deliberate and sufficient: the
+ * existing RLS policy "Admins can create import jobs" already permits
+ * exactly this (`is_admin() and created_by = auth.uid()`), and no
+ * companion case_law/statutes row needs to be created transactionally
+ * here — that is the whole point of a "bare" job row.
+ */
+export async function recordBulkNonDraftJob(input: {
+  batch_id: string | null;
+  content_type: "case_law" | "legislation";
+  status: "duplicate" | "failed";
+  reason: string;
+  source_id: string | null;
+  originalFilename: string;
+  /** The existing canonical record this item collided with, when known (Section 8: a duplicate row should link to the existing record). */
+  duplicateOfId?: string | null;
+}): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+
+  const { error } = await supabase.from("import_jobs").insert({
+    batch_id: input.batch_id,
+    content_type: input.content_type,
+    source_id: input.source_id,
+    status: input.status,
+    error_summary: input.status === "failed" ? input.reason : null,
+    duplicate_warning: input.status === "duplicate" ? input.reason : null,
+    created_by: user.id,
+    started_at: new Date().toISOString(),
+    completed_at: new Date().toISOString(),
+    // No case_law/statutes row exists for this outcome, so the original
+    // filename and (for duplicates) the conflicting record's id are the
+    // only way Batch Detail can identify which file this row is about —
+    // stored under extracted_metadata (already a flexible jsonb used for
+    // exactly this kind of provenance elsewhere in this file), not a new
+    // column, since this is the only place these two fields are needed.
+    extracted_metadata: {
+      _originalFilename: input.originalFilename,
+      _duplicateOfId: input.duplicateOfId ?? null,
+    } as unknown as Json,
+  });
+  if (error) throw error;
+}
+
+/** Same bare-row insert as recordBulkNonDraftJob, but for the pre-processing "rejected" outcome (Section 27: a file rejected by client-side validation, e.g. oversized or wrong type, before any processing was even attempted) — batched as one multi-row insert since these are cheap, synchronous rejections with no per-item async work. */
+export async function recordBulkRejectedJobs(
+  items: { batch_id: string | null; content_type: "case_law" | "legislation"; reason: string; originalFilename: string }[],
+): Promise<void> {
+  if (items.length === 0) return;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+
+  const rows = items.map((item) => ({
+    batch_id: item.batch_id,
+    content_type: item.content_type,
+    source_id: null,
+    status: "failed" as const,
+    error_summary: item.reason,
+    duplicate_warning: null,
+    created_by: user.id,
+    started_at: new Date().toISOString(),
+    completed_at: new Date().toISOString(),
+    extracted_metadata: { _originalFilename: item.originalFilename, _rejectedBeforeProcessing: true } as unknown as Json,
+  }));
+  const { error } = await supabase.from("import_jobs").insert(rows);
+  if (error) throw error;
+}
+
+/** Reads the filename recorded on a bare (non-draft-creating) job row — see recordBulkNonDraftJob. `null` for a normal draft-creating job (its filename lives on the linked case_law/statutes row instead, via original_filename). */
+export function readBareJobFilename(extractedMetadata: unknown): string | null {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
+  const v = (extractedMetadata as Record<string, unknown>)._originalFilename;
+  return typeof v === "string" ? v : null;
+}
+
+/** Reads the existing record id a "duplicate" bare job row conflicted with — see recordBulkNonDraftJob. */
+export function readDuplicateOfId(extractedMetadata: unknown): string | null {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
+  const v = (extractedMetadata as Record<string, unknown>)._duplicateOfId;
+  return typeof v === "string" ? v : null;
+}
+
+export interface ImportBatchSummary {
+  id: string;
+  label: string;
+  content_type: string;
+  created_at: string;
+  counts: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Persistent batch HISTORY list (Section 6/21: "Legal Library → Import
+ * Batches... date / source / count / status summary"). Deliberately no
+ * new columns on import_batches for the counts — they're computed by
+ * aggregating import_jobs.status client-side, so there is no redundant
+ * denormalized count that could drift out of sync with the real per-job
+ * rows (Section 30: prefer the existing schema over adding structure that
+ * merely mirrors data already derivable from it).
+ */
+export function useImportBatches() {
+  return useQuery({
+    queryKey: [...importJobKeys.all, "batches"] as const,
+    queryFn: async () => {
+      const { data: batches, error: batchError } = await supabase
+        .from("import_batches")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (batchError) throw batchError;
+      if (!batches || batches.length === 0) return [] as ImportBatchSummary[];
+
+      const ids = batches.map((b) => b.id);
+      const { data: jobs, error: jobsError } = await supabase
+        .from("import_jobs")
+        .select("batch_id, status")
+        .in("batch_id", ids);
+      if (jobsError) throw jobsError;
+
+      return batches.map((b): ImportBatchSummary => {
+        const counts: Record<string, number> = {};
+        let total = 0;
+        for (const j of jobs ?? []) {
+          if (j.batch_id !== b.id) continue;
+          counts[j.status] = (counts[j.status] ?? 0) + 1;
+          total += 1;
+        }
+        return { id: b.id, label: b.label, content_type: b.content_type, created_at: b.created_at, counts, total };
+      });
+    },
+  });
+}
+
+export interface ImportBatchJobRow {
+  id: string;
+  status: string;
+  error_summary: string | null;
+  duplicate_warning: string | null;
+  target_case_law_id: string | null;
+  target_statute_id: string | null;
+  extracted_metadata: unknown;
+  created_at: string;
+  /** Resolved display fields — filename/case name/citation — from whichever source actually has them (the linked draft, or the bare-job metadata for a duplicate/failed outcome). */
+  filename: string;
+  displayName: string | null;
+  reviewStatus: string | null;
+}
+
+/**
+ * Persistent Batch Detail (Section 7): every import_job for one batch,
+ * enriched with a resolved filename/display name regardless of whether it
+ * resulted in a draft (target_case_law_id set) or not (bare job row).
+ * This is what makes "leave the page mid-batch, come back later, open
+ * the same batch" (Section 34, product principle) actually work — the
+ * whole view is a query over persisted rows, not component state.
+ */
+export function useImportBatchDetail(batchId: string | null) {
+  return useQuery({
+    queryKey: [...importJobKeys.all, "batch-detail", batchId] as const,
+    enabled: !!batchId,
+    queryFn: async () => {
+      const { data: batch, error: batchError } = await supabase
+        .from("import_batches")
+        .select("*")
+        .eq("id", batchId as string)
+        .single();
+      if (batchError) throw batchError;
+
+      const { data: jobs, error: jobsError } = await supabase
+        .from("import_jobs")
+        .select("*")
+        .eq("batch_id", batchId as string)
+        .order("created_at", { ascending: true });
+      if (jobsError) throw jobsError;
+
+      const caseLawIds = (jobs ?? []).map((j) => j.target_case_law_id).filter((id): id is string => !!id);
+      const statuteIds = (jobs ?? []).map((j) => j.target_statute_id).filter((id): id is string => !!id);
+
+      const [caseLawRows, statuteRows] = await Promise.all([
+        caseLawIds.length > 0
+          ? supabase.from("case_law").select("id, case_name, citation, original_filename, review_status").in("id", caseLawIds)
+          : Promise.resolve({ data: [] as { id: string; case_name: string; citation: string; original_filename: string | null; review_status: string }[] }),
+        statuteIds.length > 0
+          ? supabase.from("statutes").select("id, title, code, original_filename, review_status").in("id", statuteIds)
+          : Promise.resolve({ data: [] as { id: string; title: string; code: string; original_filename: string | null; review_status: string }[] }),
+      ]);
+
+      const caseLawById = new Map((caseLawRows.data ?? []).map((r) => [r.id, r]));
+      const statuteById = new Map((statuteRows.data ?? []).map((r) => [r.id, r]));
+
+      const rows: ImportBatchJobRow[] = (jobs ?? []).map((j) => {
+        if (j.target_case_law_id) {
+          const cl = caseLawById.get(j.target_case_law_id);
+          return {
+            id: j.id,
+            status: j.status,
+            error_summary: j.error_summary,
+            duplicate_warning: j.duplicate_warning,
+            target_case_law_id: j.target_case_law_id,
+            target_statute_id: null,
+            extracted_metadata: j.extracted_metadata,
+            created_at: j.created_at,
+            filename: cl?.original_filename ?? "(unknown file)",
+            displayName: cl ? `${cl.case_name} — ${cl.citation}` : null,
+            reviewStatus: cl?.review_status ?? null,
+          };
+        }
+        if (j.target_statute_id) {
+          const st = statuteById.get(j.target_statute_id);
+          return {
+            id: j.id,
+            status: j.status,
+            error_summary: j.error_summary,
+            duplicate_warning: j.duplicate_warning,
+            target_case_law_id: null,
+            target_statute_id: j.target_statute_id,
+            extracted_metadata: j.extracted_metadata,
+            created_at: j.created_at,
+            filename: st?.original_filename ?? "(unknown file)",
+            displayName: st ? `${st.title} (${st.code})` : null,
+            reviewStatus: st?.review_status ?? null,
+          };
+        }
+        // Bare job row (duplicate/failed/rejected) — no linked draft.
+        return {
+          id: j.id,
+          status: j.status,
+          error_summary: j.error_summary,
+          duplicate_warning: j.duplicate_warning,
+          target_case_law_id: null,
+          target_statute_id: null,
+          extracted_metadata: j.extracted_metadata,
+          created_at: j.created_at,
+          filename: readBareJobFilename(j.extracted_metadata) ?? "(unknown file)",
+          displayName: null,
+          reviewStatus: null,
+        };
+      });
+
+      return { batch, rows };
+    },
+  });
+}
+
 export function useImportJobs() {
   return useQuery({
     queryKey: importJobKeys.all,
