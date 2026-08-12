@@ -141,9 +141,12 @@ export function useDeleteDocument(entityType: string, entityId: string) {
         .from(DOCUMENTS_BUCKET)
         .remove([doc.file_path]);
       if (storageError) {
+        // Deliberately does not interpolate storageError.message -- that's
+        // raw Supabase Storage API text, not something a user should ever
+        // see (Section 38: no raw internals in user-facing errors).
+        console.error("Storage removal failed while deleting document:", storageError);
         throw new Error(
-          `Could not remove the file from storage (${storageError.message}). ` +
-            "The document record was left in place — please retry.",
+          "Could not remove the file from storage. The document record was left in place — please retry.",
         );
       }
       const { error } = await supabase

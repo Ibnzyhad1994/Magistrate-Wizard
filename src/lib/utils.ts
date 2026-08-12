@@ -259,6 +259,13 @@ const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
   // citation-conflict check in use-import-jobs.ts, which should normally
   // prevent this constraint from ever firing in practice.
   ["case_law_citation_canonical_unique_idx", "A canonical case with this citation already exists."],
+  // Legislation's equivalent collision (statutes_code_jurisdiction_idx,
+  // 0005) — same defense-in-depth rationale as the case-law entry above.
+  // Legislation ingestion has no pre-insert conflict check yet (unlike
+  // case law's checkCanonicalCitationConflict), so this mapping is
+  // currently the ONLY thing standing between a Code+Jurisdiction
+  // collision and the generic "That already exists." fallback.
+  ["statutes_code_jurisdiction_idx", "An Act with this Code already exists for this jurisdiction."],
 ];
 
 /**

@@ -16,9 +16,11 @@ export const ROUTES = {
   legislationProvision: (statuteId: string, provisionId: string) =>
     `/legislation/${statuteId}/section/${provisionId}`,
   adminLegalLibrary: "/admin/legal-library",
-  /** Deep link straight into the Review Queue tab for one specific draft — the correct destination for anything not yet published (see legal-library-admin-page.tsx's handling of the `tab`/`caseLaw` search params). Never use `caseLawDetail` for a draft/needs_review record — that route is the read-only canonical reader and cannot edit a canonical (owner_id IS NULL) row at all. */
-  adminLegalLibraryReviewCaseLaw: (caseLawId: string) => `/admin/legal-library?tab=review&caseLaw=${caseLawId}`,
-  adminLegalLibraryReviewStatute: (statuteId: string) => `/admin/legal-library?tab=review&statute=${statuteId}`,
+  /** Deep link straight into the Review Queue tab for one specific draft — the correct destination for anything not yet published (see legal-library-admin-page.tsx's handling of the `tab`/`caseLaw` search params). Never use `caseLawDetail` for a draft/needs_review record — that route is the read-only canonical reader and cannot edit a canonical (owner_id IS NULL) row at all. `fromBatchId` (optional) carries the originating batch through so the Review Queue card can offer "Back to batch" instead of stranding the curator with only the generic Review Queue list to return to (Section 12). */
+  adminLegalLibraryReviewCaseLaw: (caseLawId: string, fromBatchId?: string) =>
+    `/admin/legal-library?tab=review&caseLaw=${caseLawId}${fromBatchId ? `&batch=${fromBatchId}` : ""}`,
+  adminLegalLibraryReviewStatute: (statuteId: string, fromBatchId?: string) =>
+    `/admin/legal-library?tab=review&statute=${statuteId}${fromBatchId ? `&batch=${fromBatchId}` : ""}`,
   adminLegalLibraryBatch: (batchId: string) => `/admin/legal-library?tab=batches&batch=${batchId}`,
   quickCodes: "/quick-codes",
   benchNotes: "/bench-notes",

@@ -108,6 +108,10 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
   try {
     raw = await extractPdfTextLayer(file);
   } catch (e) {
+    // Deliberately does not interpolate the raw parser exception into the
+    // user-facing warning -- that's internal pdf.js/parser detail, not a
+    // safe explanation (Section 38). Log it for debugging instead.
+    console.error("PDF text-layer extraction threw an unexpected error:", e);
     return {
       status: "failed",
       method: "pdf_text_layer",
@@ -116,7 +120,7 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       qualityScore: null,
       characterQuality: null,
       structuralQuality: null,
-      warnings: [`PDF extraction threw an unexpected error: ${e instanceof Error ? e.message : String(e)}`],
+      warnings: ["Could not process this PDF — the file may be corrupted or use an unsupported internal format."],
       ocrUsed: false,
       requiresReview: true,
       pages: [],

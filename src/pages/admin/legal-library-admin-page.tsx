@@ -59,6 +59,7 @@ import {
   summarizeBulkQueue,
   BULK_STATUS_LABEL,
   type BulkItemStatus,
+  validateFileForUpload,
 } from "@/lib/bulk-ingestion-queue";
 import {
   useCaseLawReviewQueue,
@@ -91,7 +92,7 @@ import {
   type ExtractionEnvelope,
 } from "@/lib/extraction-pipeline";
 import { ROUTES } from "@/routes/paths";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { CaseLaw, Statute } from "@/types/database.types";
 
@@ -430,7 +431,13 @@ function OriginalDocumentLink({ documentId }: { documentId: string | null }) {
           const url = await getDocumentViewUrl(data.file_path);
           window.open(url, "_blank", "noopener,noreferrer");
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Could not open the original file.");
+          // Deliberately does not surface e.message -- that's raw
+          // Supabase/Storage internals, not a safe user-facing string
+          // (Section 38). Log the detail for debugging instead.
+          console.error("Could not open original document:", e);
+          toast.error(
+            "Could not open the original file — it may have been removed from storage, or your session may have expired. Try again.",
+          );
         } finally {
           setLoading(false);
         }
@@ -476,6 +483,11 @@ export default function LegalLibraryAdminPage() {
     : "import";
   const highlightCaseLawId = searchParams.get("caseLaw");
   const initialBatchId = searchParams.get("batch");
+  // Same `batch` param, read again under a name that makes sense on the
+  // Review Queue tab: "which batch did this deep link come FROM" (so the
+  // card can offer "Back to batch") rather than "which batch to OPEN"
+  // (ImportBatchesTab's meaning for the same param, above).
+  const reviewFromBatchId = activeTab === "review" ? initialBatchId : null;
 
   function handleTabChange(value: string) {
     const next = new URLSearchParams(searchParams);
@@ -518,7 +530,7 @@ export default function LegalLibraryAdminPage() {
           <ImportBatchesTab initialBatchId={initialBatchId} />
         </TabsContent>
         <TabsContent value="review">
-          <ReviewQueueTab highlightCaseLawId={highlightCaseLawId} />
+          <ReviewQueueTab highlightCaseLawId={highlightCaseLawId} fromBatchId={reviewFromBatchId} />
         </TabsContent>
       </Tabs>
     </div>
@@ -535,6 +547,32 @@ const SOURCE_STATUS_VARIANT: Record<string, "outline" | "default" | "secondary" 
   approved: "default",
   disabled: "outline",
   failed: "destructive",
+};
+
+/** Human labels for raw `legal_sources.status` values (Section 23: no raw enum tokens in the UI). */
+const SOURCE_STATUS_LABEL: Record<string, string> = {
+  proposed: "Proposed",
+  testing: "Testing",
+  approved: "Approved",
+  disabled: "Disabled",
+  failed: "Failed",
+};
+
+/** Mirrors the option labels in the "Register a source" form below — reused here so the Sources list shows the same human wording instead of the raw `source_type` token (Section 23). */
+const SOURCE_TYPE_LABEL: Record<string, string> = {
+  case_law: "Case Law source",
+  legislation: "Legislation source",
+  mixed: "Mixed (both)",
+};
+
+/** Mirrors the option labels in the "Register a source" form below — reused here so the Sources list shows the same human wording instead of the raw `connector_type` token (Section 23). */
+const CONNECTOR_TYPE_LABEL: Record<string, string> = {
+  manual: "Manual",
+  direct_document: "Direct document",
+  html_document: "HTML document",
+  index_page: "Index page",
+  structured_feed: "Structured feed",
+  custom_adapter: "Custom adapter",
 };
 
 function SourcesTab() {
@@ -687,12 +725,18 @@ function SourcesTab() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-foreground">{s.name}</p>
                     <Badge variant={SOURCE_STATUS_VARIANT[s.status] ?? "outline"}>
-                      {s.status}
+                      {SOURCE_STATUS_LABEL[s.status] ?? s.status}
                     </Badge>
                     {s.canonical_trusted && <Badge variant="canonical">Trusted</Badge>}
                   </div>
                   <p className="truncate text-xs text-muted-foreground">
-                    {[s.jurisdiction, s.source_type, s.connector_type].filter(Boolean).join(" · ")}
+                    {[
+                      s.jurisdiction,
+                      SOURCE_TYPE_LABEL[s.source_type] ?? s.source_type,
+                      CONNECTOR_TYPE_LABEL[s.connector_type] ?? s.connector_type,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                     {s.base_url ? ` · ${s.base_url}` : ""}
                   </p>
                 </div>
@@ -840,6 +884,15 @@ function SingleImportPanel() {
   }
 
   async function handleFile(f: File) {
+    // Same client-side pre-check bulk mode already runs (Section 38): catch
+    // an oversized/empty/unsupported file here, with a specific message,
+    // rather than letting it fail later at the Storage upload boundary with
+    // a raw Storage API error the curator can't act on.
+    const validation = validateFileForUpload(f);
+    if (!validation.ok) {
+      toast.error(validation.reason ?? "This file can't be used.");
+      return;
+    }
     resetFileDerivedState();
     // The original file is ALWAYS kept and uploaded through the secure
     // documents Storage architecture on submit (uploadDocumentToEntity,
@@ -1034,7 +1087,7 @@ function SingleImportPanel() {
                   <optgroup label="Not yet approved">
                     {otherSources.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name} ({s.status})
+                        {s.name} ({SOURCE_STATUS_LABEL[s.status] ?? s.status})
                       </option>
                     ))}
                   </optgroup>
@@ -1260,7 +1313,7 @@ function BulkSummaryChip({
  * INGESTION IS NOT BULK PUBLICATION").
  */
 function BulkImportPanel() {
-  const { items, isRunning, startBulkImport, reset } = useBulkImportCaseLaw();
+  const { items, isRunning, startBulkImport, reset, lastBatchId, retryItem } = useBulkImportCaseLaw();
   const [sourceId, setSourceId] = useState<string>("");
   const { data: sources } = useLegalSources();
   const { data: jurisdictions } = useLegalJurisdictions();
@@ -1276,8 +1329,10 @@ function BulkImportPanel() {
   function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
     const files = Array.from(fileList);
+    const sourceName = (sources ?? []).find((s) => s.id === sourceId)?.name ?? null;
     void startBulkImport(files, {
       sourceId: sourceId || null,
+      sourceName,
       courts: courts ?? [],
       jurisdictions: (jurisdictions ?? []).map((j) => ({ id: j.id, name: j.name })),
     });
@@ -1373,6 +1428,15 @@ function BulkImportPanel() {
               Processing…
             </Badge>
           )}
+          {hasItems && !isRunning && lastBatchId && (
+            // The persistent record (Import Batches), not this temporary
+            // in-memory list, is where this batch actually lives once the
+            // curator navigates away (Section 18) — offer the handoff
+            // immediately rather than leaving them to find it themselves.
+            <Button size="sm" onClick={() => navigate(ROUTES.adminLegalLibraryBatch(lastBatchId))}>
+              Open batch
+            </Button>
+          )}
           {hasItems && !isRunning && (
             <Button size="sm" variant="ghost" onClick={reset}>
               Clear
@@ -1429,9 +1493,31 @@ function BulkImportPanel() {
                         size="sm"
                         variant="ghost"
                         className="h-6 px-2 text-[11px]"
-                        onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(item.caseLawId!))}
+                        onClick={() =>
+                          navigate(ROUTES.adminLegalLibraryReviewCaseLaw(item.caseLawId!, lastBatchId ?? undefined))
+                        }
                       >
                         Review
+                      </Button>
+                    )}
+                    {item.status === "failed" && (
+                      // Same-session-only (Section 17): the original File
+                      // object only survives while this queue is still in
+                      // memory, so Retry cannot appear once the curator
+                      // has left/reloaded the page — Batch Detail's rows
+                      // (persisted, cross-session) intentionally have no
+                      // Retry button for that reason. Reuses the exact
+                      // same batch_id and pipeline as the original attempt,
+                      // so a successful retry lands in the same batch
+                      // rather than creating a disconnected one.
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[11px]"
+                        disabled={isRunning}
+                        onClick={() => void retryItem(item.id)}
+                      >
+                        Retry
                       </Button>
                     )}
                   </div>
@@ -1479,6 +1565,44 @@ const JOB_STATUS_TONE: Record<string, "canonical" | "destructive" | "outline" | 
   failed: "destructive",
   duplicate: "outline",
 };
+
+/**
+ * The batch accounting invariant (Section 5), rendered honestly:
+ *  - `expected_file_count === null` — this batch predates the persistent
+ *    bare-job-row architecture (0063/0064); its true original selection
+ *    size was never recorded and cannot be reconstructed. Say so, rather
+ *    than silently showing a job count that looks like the whole story.
+ *  - `total < expected_file_count` — should not happen for a completed
+ *    batch going forward, but if it does (still processing, or a rare
+ *    persistence failure), show both numbers rather than pretend nothing
+ *    is missing.
+ *  - otherwise — the invariant holds; show the plain count.
+ */
+function BatchCountSummary({
+  batch,
+}: {
+  batch: { total: number; expected_file_count: number | null; isLegacyIncomplete: boolean; isFullyAccounted: boolean };
+}) {
+  if (batch.isLegacyIncomplete) {
+    return (
+      <span title="Created before per-file outcomes were persisted for every result — some files' fates were never recorded.">
+        {batch.total} document{batch.total === 1 ? "" : "s"} on record (legacy — incomplete history)
+      </span>
+    );
+  }
+  if (!batch.isFullyAccounted) {
+    return (
+      <span title="Still processing, or an outcome failed to save — refresh to check for updates.">
+        {batch.total} of {batch.expected_file_count} documents recorded
+      </span>
+    );
+  }
+  return (
+    <span>
+      {batch.total} document{batch.total === 1 ? "" : "s"}
+    </span>
+  );
+}
 
 /**
  * Import Batches — the persistent operational view "what happened to the
@@ -1547,7 +1671,7 @@ function ImportBatchesTab({ initialBatchId }: { initialBatchId?: string | null }
                 <div className="min-w-0">
                   <p className="truncate font-medium text-foreground">{b.label}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(b.created_at)} · {b.total} document{b.total === 1 ? "" : "s"} ·{" "}
+                    {formatDateTime(b.created_at)} · <BatchCountSummary batch={b} /> ·{" "}
                     {b.content_type === "case_law" ? "Case Law" : "Legislation"}
                   </p>
                 </div>
@@ -1599,14 +1723,22 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
               <div>
                 <CardTitle className="text-base">{data.batch.label}</CardTitle>
                 <CardDescription>
-                  {formatDate(data.batch.created_at)} · {rows.length} document{rows.length === 1 ? "" : "s"}
+                  {formatDateTime(data.batch.created_at)} ·{" "}
+                  <BatchCountSummary
+                    batch={{
+                      total: rows.length,
+                      expected_file_count: data.expected_file_count,
+                      isLegacyIncomplete: data.isLegacyIncomplete,
+                      isFullyAccounted: data.isFullyAccounted,
+                    }}
+                  />
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 {needsReviewIds.length > 0 && (
                   <Button
                     size="sm"
-                    onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(needsReviewIds[0]))}
+                    onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(needsReviewIds[0], batchId))}
                   >
                     Review next ({needsReviewIds.length} needs review)
                   </Button>
@@ -1630,7 +1762,7 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
 
           <div className="space-y-1.5">
             {rows.map((row) => (
-              <BatchJobRow key={row.id} row={row} />
+              <BatchJobRow key={row.id} row={row} batchId={batchId} />
             ))}
           </div>
         </>
@@ -1648,7 +1780,7 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
  * original file was never uploaded for a failed/duplicate outcome, see
  * this pass's final report on original-file preservation limitations).
  */
-function BatchJobRow({ row }: { row: ImportBatchJobRow }) {
+function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string }) {
   const navigate = useNavigate();
   const duplicateOfId = readDuplicateOfId(row.extracted_metadata);
 
@@ -1673,7 +1805,7 @@ function BatchJobRow({ row }: { row: ImportBatchJobRow }) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(row.target_case_law_id as string))}
+            onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(row.target_case_law_id as string, batchId))}
           >
             Review
           </Button>
@@ -1772,7 +1904,14 @@ function categorizeStatuteRow(row: ReviewRow<Statute>): ReviewCategory {
  */
 const REVIEW_PAGE_SIZE = 20;
 
-function ReviewQueueTab({ highlightCaseLawId }: { highlightCaseLawId?: string | null }) {
+function ReviewQueueTab({
+  highlightCaseLawId,
+  fromBatchId,
+}: {
+  highlightCaseLawId?: string | null;
+  /** The batch this deep link came from (Section 12), if any — passed through to CaseLawReviewCard so it can offer "Back to batch" instead of only "Review Queue" as the only way out. */
+  fromBatchId?: string | null;
+}) {
   const { data: caseLawQueue, isPending: caseLawPending } = useCaseLawReviewQueue();
   const { data: statuteQueue, isPending: statutePending } = useLegislationReviewQueue();
   // Defaults to "All" (Section 10/11: a deep-linked "Review" target from
@@ -1865,7 +2004,12 @@ function ReviewQueueTab({ highlightCaseLawId }: { highlightCaseLawId?: string | 
         ) : (
           <div className="mt-2 space-y-3">
             {filteredCaseLaw.map(({ row }) => (
-              <CaseLawReviewCard key={row.id} row={row} highlight={row.id === highlightCaseLawId} />
+              <CaseLawReviewCard
+                key={row.id}
+                row={row}
+                highlight={row.id === highlightCaseLawId}
+                fromBatchId={fromBatchId}
+              />
             ))}
             {filteredCaseLawAll.length > effectiveCaseLawVisible && (
               <Button
@@ -1913,7 +2057,16 @@ function ReviewQueueTab({ highlightCaseLawId }: { highlightCaseLawId?: string | 
   );
 }
 
-function CaseLawReviewCard({ row, highlight = false }: { row: ReviewRow<CaseLaw>; highlight?: boolean }) {
+function CaseLawReviewCard({
+  row,
+  highlight = false,
+  fromBatchId = null,
+}: {
+  row: ReviewRow<CaseLaw>;
+  highlight?: boolean;
+  /** Batch this card was reached from (Section 12) — renders "Back to batch" alongside "View full record" when set, so a curator who arrived via Batch Detail isn't left with only the full, unfiltered Review Queue to return to. */
+  fromBatchId?: string | null;
+}) {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   // Deep-link target from bulk results/Batch Detail (Section 10/11) —
@@ -2031,7 +2184,7 @@ function CaseLawReviewCard({ row, highlight = false }: { row: ReviewRow<CaseLaw>
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-base">{row.case_name}</CardTitle>
             <Badge variant="outline">Case Law</Badge>
-            {row.job_status && <Badge variant="secondary">{row.job_status}</Badge>}
+            {row.job_status && <Badge variant="secondary">{JOB_STATUS_LABEL[row.job_status] ?? row.job_status}</Badge>}
             {isPlaceholderValue(row.case_name) && (
               <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="h-3 w-3" />
@@ -2044,9 +2197,17 @@ function CaseLawReviewCard({ row, highlight = false }: { row: ReviewRow<CaseLaw>
             {formatDate(row.created_at)}
           </CardDescription>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.caseLawDetail(row.id))}>
-          View full record
-        </Button>
+        <div className="flex items-center gap-1">
+          {fromBatchId && (
+            <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.adminLegalLibraryBatch(fromBatchId))}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to batch
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.caseLawDetail(row.id))}>
+            View full record
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {row.duplicate_warning && (
@@ -2280,7 +2441,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-base">{row.title}</CardTitle>
             <Badge variant="outline">Legislation</Badge>
-            {row.job_status && <Badge variant="secondary">{row.job_status}</Badge>}
+            {row.job_status && <Badge variant="secondary">{JOB_STATUS_LABEL[row.job_status] ?? row.job_status}</Badge>}
           </div>
           <CardDescription>
             {row.review_status === "needs_review" ? "Needs review" : "Draft"} · Created{" "}
@@ -2365,7 +2526,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
                 update.mutate({ ...fields, chapter_number: fields.chapter_number || null })
               }
             >
-              Save edits
+              Save changes
             </Button>
           )}
           <Button

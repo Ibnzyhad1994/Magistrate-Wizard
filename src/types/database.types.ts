@@ -2038,6 +2038,7 @@ export type Database = {
           content_type: string;
           created_at: string;
           created_by: string | null;
+          expected_file_count: number | null;
           id: string;
           label: string;
         };
@@ -2045,6 +2046,7 @@ export type Database = {
           content_type: string;
           created_at?: string;
           created_by?: string | null;
+          expected_file_count?: number | null;
           id?: string;
           label: string;
         };
@@ -2052,6 +2054,7 @@ export type Database = {
           content_type?: string;
           created_at?: string;
           created_by?: string | null;
+          expected_file_count?: number | null;
           id?: string;
           label?: string;
         };

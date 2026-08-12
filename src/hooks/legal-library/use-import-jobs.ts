@@ -73,17 +73,32 @@ export const importJobKeys = {
  * bulk import can be identified and returned to later — "Bulk import —
  * 12 August 2026 — 143 documents" (Section 13). Admin-only via RLS,
  * same as every other write in this file.
+ *
+ * `expected_file_count` (0064) is the one authoritative number the batch
+ * accounting invariant is checked against: how many files the curator
+ * actually selected, recorded once here and never touched again. Every
+ * one of those files — including ones rejected by client-side validation
+ * before processing even began — must end up as exactly one persisted
+ * `import_jobs` row (see `recordBulkRejectedJobs`/`recordBulkNonDraftJob`
+ * below). Batches created before this column existed have it `null`; the
+ * UI must treat `null` as "legacy, per-file history not reconstructable"
+ * rather than silently comparing against zero.
  */
 export function useCreateImportBatch() {
   return useMutation({
-    mutationFn: async (input: { label: string; content_type: "case_law" | "legislation" }) => {
+    mutationFn: async (input: { label: string; content_type: "case_law" | "legislation"; expected_file_count: number }) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not signed in.");
       const { data, error } = await supabase
         .from("import_batches")
-        .insert({ label: input.label, content_type: input.content_type, created_by: user.id })
+        .insert({
+          label: input.label,
+          content_type: input.content_type,
+          created_by: user.id,
+          expected_file_count: input.expected_file_count,
+        })
         .select()
         .single();
       if (error) throw error;
@@ -263,16 +278,24 @@ export interface ImportBatchSummary {
   created_at: string;
   counts: Record<string, number>;
   total: number;
+  /** How many files the curator originally selected (0064) — null for batches created before this was tracked. See `isLegacyIncomplete`/`isFullyAccounted` below for how to interpret it. */
+  expected_file_count: number | null;
+  /** True when this batch predates the persistent bare-job-row architecture (expected_file_count was never recorded) — its per-file history cannot be reconstructed and the UI must say so rather than imply completeness it can't back up. */
+  isLegacyIncomplete: boolean;
+  /** True when every originally-selected file has a matching persisted outcome — the batch accounting invariant (Section 5) holds for this batch. False while a batch is still processing, or (should never happen going forward) if an outcome failed to persist. */
+  isFullyAccounted: boolean;
 }
 
 /**
  * Persistent batch HISTORY list (Section 6/21: "Legal Library → Import
- * Batches... date / source / count / status summary"). Deliberately no
- * new columns on import_batches for the counts — they're computed by
- * aggregating import_jobs.status client-side, so there is no redundant
+ * Batches... date / source / count / status summary"). Status counts are
+ * computed by aggregating import_jobs.status client-side (no redundant
  * denormalized count that could drift out of sync with the real per-job
- * rows (Section 30: prefer the existing schema over adding structure that
- * merely mirrors data already derivable from it).
+ * rows — Section 30). `expected_file_count` (0064) IS a stored column,
+ * deliberately: unlike the status counts, "how many files did the curator
+ * originally select" is not derivable from import_jobs after the fact if
+ * some outcomes never got persisted (exactly the legacy-batch problem this
+ * column exists to make legible instead of silently confusing).
  */
 export function useImportBatches() {
   return useQuery({
@@ -301,7 +324,18 @@ export function useImportBatches() {
           counts[j.status] = (counts[j.status] ?? 0) + 1;
           total += 1;
         }
-        return { id: b.id, label: b.label, content_type: b.content_type, created_at: b.created_at, counts, total };
+        const expected = (b as { expected_file_count: number | null }).expected_file_count;
+        return {
+          id: b.id,
+          label: b.label,
+          content_type: b.content_type,
+          created_at: b.created_at,
+          counts,
+          total,
+          expected_file_count: expected,
+          isLegacyIncomplete: expected === null,
+          isFullyAccounted: expected !== null && total >= expected,
+        };
       });
     },
   });
@@ -413,7 +447,14 @@ export function useImportBatchDetail(batchId: string | null) {
         };
       });
 
-      return { batch, rows };
+      const expected = (batch as { expected_file_count: number | null }).expected_file_count;
+      return {
+        batch,
+        rows,
+        expected_file_count: expected,
+        isLegacyIncomplete: expected === null,
+        isFullyAccounted: expected !== null && rows.length >= expected,
+      };
     },
   });
 }

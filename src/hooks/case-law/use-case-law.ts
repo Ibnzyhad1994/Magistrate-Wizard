@@ -336,8 +336,12 @@ export function useRejectCanonicalCaseLaw() {
           .from("documents")
           .remove(docs.map((d) => d.file_path));
         if (removeError) {
+          // Deliberately does not interpolate removeError.message -- that's
+          // raw Supabase Storage API text, not something a curator should
+          // ever see (Section 38: no raw internals in user-facing errors).
+          console.error("Storage cleanup failed during case law rejection:", removeError);
           throw new Error(
-            `Could not remove ${docs.length} attached file(s) from storage (${removeError.message}). The draft was left in place so nothing is silently lost -- retry rejection once storage cleanup succeeds.`,
+            `Could not remove ${docs.length} attached file(s) from storage. The draft was left in place so nothing is silently lost -- retry rejection once storage cleanup succeeds.`,
           );
         }
       }
