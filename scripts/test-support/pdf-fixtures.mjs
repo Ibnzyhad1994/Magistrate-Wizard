@@ -219,6 +219,73 @@ export function makeBodyCitationTrapPdf(name = "body-citation-trap.pdf") {
   return toFile(assemblePdf([streamObj]), name);
 }
 
+/**
+ * A multi-page PDF: each page gets its own `1 0 obj << /Type /Page ...
+ * >>` dictionary object IMMEDIATELY FOLLOWED by its own content stream
+ * object — the real-world producer pattern the page-attribution
+ * heuristic in pdf-text-extraction.ts (findPageMarkerOffsets/
+ * resolvePageIndex) relies on. `pagesText` is an array of arrays of
+ * lines (one inner array per page).
+ */
+export function makeMultiPagePdf(pagesText, name = "multi-page.pdf") {
+  const objects = [];
+  let objNum = 1;
+  for (const lines of pagesText) {
+    // The Page dictionary object itself — no text content, just the
+    // marker findPageMarkerOffsets scans for. Not a `stream` object, so
+    // it doesn't participate in findStreamByteRanges at all; it exists
+    // purely to mark "a new page starts here" in file-byte order.
+    objects.push({ dict: null, isPageMarker: true, bytes: null });
+    const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+    const content = `BT /F1 12 Tf ${ops} ET`;
+    const compressed = deflate(content);
+    objects.push({ dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed });
+  }
+  void objNum;
+  return toFile(assembleMultiObjectPdf(objects), name);
+}
+
+/** Same assembly as assemblePdf, but understands a `{ isPageMarker: true }` pseudo-object (emits a real `<< /Type /Page /Contents N 0 R >>` dictionary object with no stream) interleaved with real stream objects — needed by makeMultiPagePdf above. */
+function assembleMultiObjectPdf(objects) {
+  const parts = ["%PDF-1.4\n"];
+  let objNum = 1;
+  for (const obj of objects) {
+    if (obj.isPageMarker) {
+      parts.push(`${objNum} 0 obj\n<< /Type /Page /Contents ${objNum + 1} 0 R >>\nendobj\n`);
+    } else {
+      parts.push(`${objNum} 0 obj\n<< ${obj.dict} >>\nstream\n`);
+      parts.push(obj.bytes.toString("latin1"));
+      parts.push("\nendstream\nendobj\n");
+    }
+    objNum += 1;
+  }
+  parts.push("trailer\n<< /Root 1 0 R >>\n%%EOF");
+  return Buffer.from(parts.join(""), "latin1");
+}
+
+/**
+ * Reproduces the live-tested Ramsingh gluing pattern: two Tj text runs
+ * back to back with NO Td/T* between them (absolute-positioned text, as
+ * many real "print to PDF" law-report producers emit for running
+ * headers/footers like page numbers) — "...138" immediately followed by
+ * "Page 4 of 72" immediately followed by "DPP v Beard...", all as
+ * separate Tj calls with zero separator. Proves the word-boundary
+ * spacing heuristic (pushWithSpacingHeuristic) inserts the lost spaces.
+ */
+export function makeGluedTextPdf(name = "glued-text.pdf") {
+  // The glued run itself is short (reproducing the real running-header/
+  // footer pattern exactly) — padded with an ordinary trailing sentence
+  // (via a normal Td-separated Tj, i.e. NOT part of the glued run) so the
+  // combined extracted text clears extraction-quality.ts's MIN_LENGTH (200
+  // chars) hard-fail floor and this fixture actually reaches the
+  // structural-quality/spacing-heuristic code path under test, rather than
+  // being rejected earlier as "too short" for an unrelated reason.
+  const content = `BT /F1 12 Tf (The State v Dhannie Ramsingh) Tj T* ((1973) 20 WIR 138) Tj (Page 4 of 72) Tj (DPP v Beard and another matter entirely) Tj T* (The Court considered the relevant authorities at length before making its ruling in this matter and dismissing the appeal.) Tj ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
 /** No text operators at all, an image /Subtype declared — a scanned/image-only page, correctly requires OCR. */
 export function makeImageOnlyPdf(name = "image-only.pdf") {
   const fakeJpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8]);

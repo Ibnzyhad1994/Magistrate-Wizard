@@ -55,8 +55,15 @@
  * for whatever this heuristic still lets through.
  */
 
+export interface PdfPageResult {
+  /** 1-based, matching how curators/judgments refer to page numbers ("at page 4"), never 0-based. */
+  pageNumber: number;
+  text: string;
+  characterCount: number;
+}
+
 export interface PdfExtractionResult {
-  /** Best-effort extracted text, in approximate document order. Empty string if none could be confidently extracted. */
+  /** Best-effort extracted text, in approximate document order. Empty string if none could be confidently extracted. Equal to `pages` joined with a page-boundary separator. */
   text: string;
   /** True only when `text` is non-empty AND passed the readable-character confidence check. */
   hasTextLayer: boolean;
@@ -65,6 +72,27 @@ export interface PdfExtractionResult {
   /** Diagnostic only, not shown to the curator as a hard guarantee. */
   streamsFound: number;
   textStreamsDecoded: number;
+  /**
+   * Page-aware breakdown (Task 5: "PRODUCTION DOCUMENT INGESTION PHASE").
+   * HONESTY BOUNDARY: this parser has no real object-graph/xref awareness
+   * (see the module header) — it cannot resolve a Page object's /Contents
+   * reference(s) authoritatively. Page attribution here is a documented
+   * heuristic (see findPageMarkerOffsets below): it locates `/Type /Page`
+   * dictionary occurrences in file-byte order and attributes each
+   * surviving content stream to the most recent one before it. This holds
+   * for the common case (a page's own dictionary is emitted immediately
+   * before its content stream — true of essentially every word-processor/
+   * "print to PDF" producer), but is NOT guaranteed for every PDF
+   * producer (e.g. one that groups all page dictionaries via compressed
+   * object streams separately from content streams). When zero `/Type
+   * /Page` markers are found at all, every extracted stream is attributed
+   * to a single implicit page 1 — this is what makes this heuristic 100%
+   * backward compatible with every existing single-page-shaped fixture
+   * and is a safe, honest fallback rather than a guess.
+   */
+  pages: PdfPageResult[];
+  /** Number of `/Type /Page` markers found (>= 1 whenever any text was extracted — see the implicit-page-1 fallback above). 0 only when nothing was extracted at all. */
+  pageCount: number;
 }
 
 const MIN_CONFIDENT_CHARS = 80;
@@ -90,8 +118,11 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
   const raw = new TextDecoder("iso-8859-1").decode(bytes);
 
   const streamRanges = findStreamByteRanges(raw);
+  const pageMarkerOffsets = findPageMarkerOffsets(raw);
   let textStreamsDecoded = 0;
-  const textChunks: string[] = [];
+  // Bucketed by page index (0-based) rather than one flat array — see
+  // PdfExtractionResult.pages for the attribution heuristic.
+  const pageChunks: string[][] = pageMarkerOffsets.length > 0 ? pageMarkerOffsets.map(() => []) : [[]];
 
   for (const range of streamRanges) {
     const precedingDict = raw.slice(Math.max(0, range.dictStart), range.start);
@@ -192,7 +223,8 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
       const extracted = extractTextFromContentStream(content);
       if (extracted.trim()) {
         textStreamsDecoded += 1;
-        textChunks.push(extracted);
+        const pageIndex = resolvePageIndex(pageMarkerOffsets, range.start);
+        pageChunks[pageIndex].push(extracted);
       }
     } catch {
       // Not actually valid zlib/Flate data (e.g. a mis-detected filter
@@ -203,7 +235,17 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
     }
   }
 
-  const combined = normalizeExtractedText(textChunks.join("\n"));
+  const pages: PdfPageResult[] = pageChunks.map((chunks, i) => {
+    const text = normalizeExtractedText(chunks.join("\n"));
+    return { pageNumber: i + 1, text, characterCount: text.length };
+  });
+  // A clear, unambiguous page-boundary separator (never produced by
+  // normalizeExtractedText itself, which collapses 3+ newlines down to 2)
+  // — this is what prevents the reported "138Page 4 of 72DPP v Beard"
+  // class of gluing from happening AT PAGE BOUNDARIES specifically (the
+  // within-page gluing is handled separately by the word-boundary
+  // spacing heuristic in extractTextFromContentStream).
+  const combined = normalizeExtractedText(pages.map((p) => p.text).join("\n\n"));
   const confidence = assessConfidence(combined);
 
   return {
@@ -212,6 +254,8 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
     requiresOcr: !confidence.confident,
     streamsFound: streamRanges.length,
     textStreamsDecoded,
+    pages: confidence.confident ? pages.filter((p) => p.text.length > 0) : [],
+    pageCount: confidence.confident ? pages.length : 0,
   };
 }
 
@@ -272,6 +316,39 @@ function findStreamByteRanges(raw: string): StreamRange[] {
   }
 
   return ranges;
+}
+
+/**
+ * Locates every `/Type /Page` dictionary marker in file-byte order —
+ * deliberately excluding `/Type /Pages` (the page TREE node, matched via
+ * a negative lookahead so `/Type /Page` doesn't also match the "Page" in
+ * "Pages"). This is the page-attribution heuristic's only signal (see
+ * PdfExtractionResult.pages for the full honesty disclaimer): it does NOT
+ * resolve indirect object references, so it cannot prove which content
+ * stream belongs to which page — it relies on the near-universal
+ * real-world PDF producer pattern of emitting a page's own dictionary
+ * immediately before that page's content stream.
+ */
+function findPageMarkerOffsets(raw: string): number[] {
+  const offsets: number[] = [];
+  const re = /\/Type\s*\/Page(?!s)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw))) {
+    offsets.push(m.index);
+    if (offsets.length > 5000) break; // safety cap against pathological input
+  }
+  return offsets;
+}
+
+/** Given the sorted `/Type /Page` marker offsets and a stream's start offset, returns the 0-based index of the page whose marker most recently precedes the stream (clamped to the last page if the stream comes after all markers; attributed to page 0 if it comes before all of them — e.g. a stray stream ahead of any page dictionary). Returns 0 unconditionally when there are no markers at all (single implicit page). */
+function resolvePageIndex(pageMarkerOffsets: number[], streamStart: number): number {
+  if (pageMarkerOffsets.length === 0) return 0;
+  let index = 0;
+  for (let i = 0; i < pageMarkerOffsets.length; i++) {
+    if (pageMarkerOffsets[i] <= streamStart) index = i;
+    else break;
+  }
+  return index;
 }
 
 /** Inflates zlib/FlateDecode-compressed bytes using the Web Compression Streams API (`'deflate'` = zlib-wrapped DEFLATE, matching PDF's FlateDecode filter exactly — not `'deflate-raw'`). */
@@ -347,7 +424,7 @@ function extractTextFromContentStream(content: string): string {
       if (arrayDepth === 0 && arrayBuffer !== null) {
         const afterOp = peekOperator(content, i, "TJ");
         if (afterOp !== null) {
-          out.push(...arrayBuffer);
+          for (const t of arrayBuffer) pushWithSpacingHeuristic(out, t);
           i = afterOp;
         }
         // else: not TJ-terminated -- discard, never treated as text.
@@ -373,7 +450,7 @@ function extractTextFromContentStream(content: string): string {
       // leak into the extracted result, no matter how readable it looks.
       const afterOp = peekOperator(content, endIndex, "Tj");
       if (afterOp !== null) {
-        out.push(text);
+        pushWithSpacingHeuristic(out, text);
         i = afterOp;
         continue;
       }
@@ -468,6 +545,49 @@ function scanLiteralString(s: string, start: number): { value: string; endIndex:
     j += 1;
   }
   return { value, endIndex: j };
+}
+
+/**
+ * TEXT RECONSTRUCTION FIX (Task 5, "PRODUCTION DOCUMENT INGESTION
+ * PHASE" — live-tested Ramsingh result showed "...(1973) 20 WIR 138,
+ * (1973) 20 WIR 138Page 4 of 72DPP v Beard..."). Two adjacent Tj/TJ text
+ * runs with no intervening Td/TD/T* (absolute-positioned text, common
+ * when a producer repositions the cursor via a text matrix this parser
+ * doesn't track) get concatenated with zero separation. Rather than
+ * attempt full text-matrix tracking (a much larger undertaking with real
+ * risk of new bugs), this applies a narrow, generic word-boundary
+ * heuristic: when the shape of the junction strongly implies a lost
+ * space — a digit immediately followed by a letter ("138Page", "72DPP"),
+ * a letter immediately followed by a digit ("Page4"), or a lowercase
+ * letter immediately followed by an uppercase one ("...inghOverview",
+ * effectively camelCase, which does not occur in ordinary English legal
+ * prose) — a single space is inserted. This never fires on ordinary
+ * within-word or within-number text (no letter-letter or digit-digit
+ * transition ever triggers it).
+ */
+function pushWithSpacingHeuristic(out: string[], text: string): void {
+  if (out.length > 0 && text.length > 0) {
+    const prev = out[out.length - 1];
+    const lastChar = prev[prev.length - 1];
+    const firstChar = text[0];
+    if (lastChar && looksLikeMissingWordBoundary(lastChar, firstChar)) {
+      out.push(" ");
+    }
+  }
+  out.push(text);
+}
+
+function looksLikeMissingWordBoundary(a: string, b: string): boolean {
+  const aIsDigit = /[0-9]/.test(a);
+  const bIsDigit = /[0-9]/.test(b);
+  const aIsLetter = /[A-Za-z]/.test(a);
+  const bIsLetter = /[A-Za-z]/.test(b);
+  const aIsLower = /[a-z]/.test(a);
+  const bIsUpper = /[A-Z]/.test(b);
+  if (aIsDigit && bIsLetter) return true;
+  if (aIsLetter && bIsDigit) return true;
+  if (aIsLower && bIsUpper) return true;
+  return false;
 }
 
 /** Resolves PDF literal-string escapes: \\n \\r \\t \\b \\f \\( \\) \\\\ and octal \\ddd. */

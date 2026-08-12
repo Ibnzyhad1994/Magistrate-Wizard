@@ -25,12 +25,29 @@ export type QualityHardFailReason =
   | "control_chars"
   | "structural_incoherence";
 
+/** Coarse, UI-facing quality bucket — deliberately just 3 values, never a precise percentage (PRODUCTION DOCUMENT INGESTION PHASE, Section 7: "Do not overwhelm the normal UI with technical scores"). */
+export type QualityBucket = "good" | "fair" | "poor";
+
 export interface QualityAssessment {
   /** 0-1. Not shown to the curator as a precise number — used only to choose between "extracted" and "low_quality". */
   score: number;
   passed: boolean;
   /** Set only when `passed` is false — used by the caller to decide between a "failed" (wrong content) vs. "requires_ocr" (nothing usable) status. */
   hardFailReason?: QualityHardFailReason;
+  /**
+   * Section 7: "Distinguish CHARACTER QUALITY from STRUCTURAL QUALITY
+   * from METADATA CONFIDENCE" — these two are the first half of that
+   * split (metadata confidence lives separately in legal-extraction.ts's
+   * MetadataConfidence, since it depends on the metadata-extraction
+   * heuristics, not the raw text). CHARACTER quality asks "are these the
+   * right KIND of characters" (printable, few control/replacement
+   * chars); STRUCTURAL quality asks "does this look like genuine
+   * word-broken prose in reading order," independent of character
+   * composition — the exact distinction that let the CMap-artifact false
+   * success happen before this phase's fixes.
+   */
+  characterQuality: QualityBucket;
+  structuralQuality: QualityBucket;
   warnings: string[];
   metrics: {
     length: number;
@@ -108,6 +125,23 @@ const MAX_PLAUSIBLE_AVG_WORD_LENGTH = 30;
 /** A text this long that contains not one ordinary sentence-ending boundary AND has abnormal average word length is not coherent prose/legislative text. Length-gated so short/list-only fragments aren't penalized. */
 const STRUCTURAL_CHECK_MIN_LENGTH = 400;
 
+/** Character-level bucket from printable/control/replacement ratios alone — independent of structure. */
+function classifyCharacterQuality(printableRatio: number, controlRatio: number, replacementRatio: number): QualityBucket {
+  if (printableRatio < MIN_PRINTABLE_RATIO || controlRatio > MAX_CONTROL_RATIO || replacementRatio > MAX_REPLACEMENT_RATIO) {
+    return "poor";
+  }
+  if (printableRatio >= 0.97 && controlRatio === 0 && replacementRatio === 0) return "good";
+  return "fair";
+}
+
+/** Structural bucket from word-shape/sentence-boundary signals alone — independent of character composition (this is precisely the dimension a character-only gate cannot see). */
+function classifyStructuralQuality(length: number, avgWordLength: number, sentenceBoundaryCount: number): QualityBucket {
+  if (length < STRUCTURAL_CHECK_MIN_LENGTH) return "fair"; // too short to judge structure confidently either way
+  if (avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH) return "poor";
+  if (sentenceBoundaryCount === 0) return "fair"; // readable words, but no confirmed sentence structure
+  return "good";
+}
+
 function classifyHardFailReason(
   length: number,
   printableRatio: number,
@@ -142,6 +176,8 @@ export function assessExtractionQuality(text: string): QualityAssessment {
       passed: false,
       hardFailReason: "too_short",
       warnings: [`Extracted text is too short (${length} characters) to reliably represent a judgment or legislative document.`],
+      characterQuality: "poor",
+      structuralQuality: "poor",
       metrics: {
         length,
         printableRatio: 0,
@@ -252,6 +288,8 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     score,
     passed: hardFailReason === undefined,
     hardFailReason,
+    characterQuality: classifyCharacterQuality(printableRatio, controlRatio, replacementRatio),
+    structuralQuality: classifyStructuralQuality(length, avgWordLength, sentenceBoundaryCount),
     warnings,
     metrics: {
       length,

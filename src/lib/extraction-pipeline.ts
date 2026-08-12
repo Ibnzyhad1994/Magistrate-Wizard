@@ -26,9 +26,9 @@
  * replace it.
  */
 
-import { extractPdfTextLayer, isPdfExtractionSupported } from "@/lib/pdf-text-extraction";
+import { extractPdfTextLayer, isPdfExtractionSupported, type PdfPageResult } from "@/lib/pdf-text-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
-import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality";
+import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, type QualityBucket } from "@/lib/extraction-quality";
 
 export type ExtractionStatus = "pending" | "extracted" | "low_quality" | "requires_ocr" | "failed";
 
@@ -43,10 +43,25 @@ export interface ExtractionEnvelope {
   charCount: number;
   /** 0-1, or null when no quality assessment ran (e.g. no text layer was found at all). Not shown to the curator as a precise number. */
   qualityScore: number | null;
+  /** Section 7: character quality and structural quality shown as separate, coarse, plain-language signals — never a raw percentage. `null` when no quality assessment ran. */
+  characterQuality: QualityBucket | null;
+  structuralQuality: QualityBucket | null;
   warnings: string[];
   ocrUsed: boolean;
   /** True whenever status is anything other than "extracted" — the Review Queue uses this to prompt closer curator attention, independent of the publication-validation gate. */
   requiresReview: boolean;
+  /**
+   * Page-aware breakdown (PRODUCTION DOCUMENT INGESTION PHASE, Section 5).
+   * Only populated for method "pdf_text_layer" — a .txt file or manually
+   * pasted text has no genuine page concept, so this is `[]`/`0` for
+   * those methods rather than a fabricated single page. See
+   * PdfPageResult/PdfExtractionResult in pdf-text-extraction.ts for the
+   * attribution heuristic and its honesty boundary. Stored inside the
+   * existing `extracted_metadata` jsonb column (no migration) — see
+   * use-import-jobs.ts.
+   */
+  pages: PdfPageResult[];
+  pageCount: number;
 }
 
 function pendingEnvelope(): ExtractionEnvelope {
@@ -56,9 +71,13 @@ function pendingEnvelope(): ExtractionEnvelope {
     text: "",
     charCount: 0,
     qualityScore: null,
+    characterQuality: null,
+    structuralQuality: null,
     warnings: [],
     ocrUsed: false,
     requiresReview: true,
+    pages: [],
+    pageCount: 0,
   };
 }
 
@@ -75,9 +94,13 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       text: "",
       charCount: 0,
       qualityScore: null,
+      characterQuality: null,
+      structuralQuality: null,
       warnings: ["This browser does not support automatic PDF text extraction (Web Compression Streams API unavailable)."],
       ocrUsed: false,
       requiresReview: true,
+      pages: [],
+      pageCount: 0,
     };
   }
 
@@ -91,9 +114,13 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       text: "",
       charCount: 0,
       qualityScore: null,
+      characterQuality: null,
+      structuralQuality: null,
       warnings: [`PDF extraction threw an unexpected error: ${e instanceof Error ? e.message : String(e)}`],
       ocrUsed: false,
       requiresReview: true,
+      pages: [],
+      pageCount: 0,
     };
   }
 
@@ -104,11 +131,15 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       text: "",
       charCount: 0,
       qualityScore: null,
+      characterQuality: null,
+      structuralQuality: null,
       warnings: [
         "No extractable text layer was found — this is likely a scanned/image-only document, or uses a font encoding this parser cannot resolve. OCR is required but not available in this build.",
       ],
       ocrUsed: false,
       requiresReview: true,
+      pages: [],
+      pageCount: 0,
     };
   }
 
@@ -140,22 +171,37 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       text: "",
       charCount: 0,
       qualityScore: quality.score,
+      characterQuality: quality.characterQuality,
+      structuralQuality: quality.structuralQuality,
       warnings,
       ocrUsed: false,
       requiresReview: true,
+      pages: [],
+      pageCount: 0,
     };
   }
 
   const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality";
+  // Each page's own text is sanitized the same way as the full text — a
+  // page carrying unsafe bytes must not leak them just because the
+  // DOCUMENT-level sanitized text happened to look fine overall.
+  const pages: PdfPageResult[] = raw.pages.map((p) => {
+    const pageSanitized = sanitizeExtractedText(p.text);
+    return { pageNumber: p.pageNumber, text: pageSanitized.text, characterCount: pageSanitized.text.length };
+  });
   return {
     status,
     method: "pdf_text_layer",
     text: sanitized.text,
     charCount: sanitized.text.length,
     qualityScore: quality.score,
+    characterQuality: quality.characterQuality,
+    structuralQuality: quality.structuralQuality,
     warnings,
     ocrUsed: false,
     requiresReview: status !== "extracted",
+    pages,
+    pageCount: pages.length,
   };
 }
 
@@ -172,9 +218,13 @@ export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
       text: sanitized.text,
       charCount: sanitized.text.length,
       qualityScore: quality.score,
+      characterQuality: quality.characterQuality,
+      structuralQuality: quality.structuralQuality,
       warnings,
       ocrUsed: false,
       requiresReview: true,
+      pages: [],
+      pageCount: 0,
     };
   }
   const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality";
@@ -184,9 +234,13 @@ export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
     text: sanitized.text,
     charCount: sanitized.text.length,
     qualityScore: quality.score,
+    characterQuality: quality.characterQuality,
+    structuralQuality: quality.structuralQuality,
     warnings,
     ocrUsed: false,
     requiresReview: status !== "extracted",
+    pages: [],
+    pageCount: 0,
   };
 }
 
@@ -203,9 +257,13 @@ export function buildManualPasteEnvelope(rawText: string): ExtractionEnvelope {
     text: sanitized.text,
     charCount: sanitized.text.length,
     qualityScore: null,
+    characterQuality: null,
+    structuralQuality: null,
     warnings,
     ocrUsed: false,
     requiresReview: false,
+    pages: [],
+    pageCount: 0,
   };
 }
 
@@ -226,9 +284,13 @@ export async function runOcr(_file: File): Promise<ExtractionEnvelope> {
     text: "",
     charCount: 0,
     qualityScore: null,
+    characterQuality: null,
+    structuralQuality: null,
     warnings: ["OCR is not implemented in this build. No OCR engine or service is installed, configured, or reachable."],
     ocrUsed: false,
     requiresReview: true,
+    pages: [],
+    pageCount: 0,
   };
 }
 

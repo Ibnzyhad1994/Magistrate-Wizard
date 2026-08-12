@@ -67,6 +67,58 @@ export const importJobKeys = {
   all: ["import-jobs"] as const,
 };
 
+/**
+ * Creates an `import_batches` row (0055 — already existed before this
+ * phase; bulk ingestion is the first feature to actually USE it) so a
+ * bulk import can be identified and returned to later — "Bulk import —
+ * 12 August 2026 — 143 documents" (Section 13). Admin-only via RLS,
+ * same as every other write in this file.
+ */
+export function useCreateImportBatch() {
+  return useMutation({
+    mutationFn: async (input: { label: string; content_type: "case_law" | "legislation" }) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not signed in.");
+      const { data, error } = await supabase
+        .from("import_batches")
+        .insert({ label: input.label, content_type: input.content_type, created_by: user.id })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/**
+ * EXACT file-hash duplicate pre-check (Section 15) — run BEFORE the
+ * expensive extraction/OCR work for a bulk item, not just after draft
+ * creation (findCaseLawDuplicates/findStatuteDuplicates in
+ * legal-extraction.ts still run at draft-creation time too, as a second
+ * layer, for the single-import path and for the "possible same case,
+ * different file" signal bulk mode also needs). This one check answers
+ * only "is this the identical file, byte for byte, as something already
+ * on record" — never "is this possibly the same case" (that distinction
+ * matters: Section 15 explicitly warns two different scans/report
+ * versions of the same case must NOT be silently treated as the same
+ * file).
+ */
+export async function checkExactDuplicateByHash(
+  contentType: "case_law" | "legislation",
+  hash: string,
+): Promise<{ id: string; label: string } | null> {
+  if (contentType === "case_law") {
+    const { data } = await supabase.from("case_law").select("id, case_name, citation").eq("document_hash", hash).limit(1);
+    const row = data?.[0];
+    return row ? { id: row.id, label: `${row.case_name} (${row.citation})` } : null;
+  }
+  const { data } = await supabase.from("statutes").select("id, title, code").eq("document_hash", hash).limit(1);
+  const row = data?.[0];
+  return row ? { id: row.id, label: `${row.title} (${row.code})` } : null;
+}
+
 export function useImportJobs() {
   return useQuery({
     queryKey: importJobKeys.all,
@@ -140,6 +192,18 @@ interface IngestCaseLawInput {
     jurisdiction_id?: string | null;
     /** Curator-confirmed decision date — takes priority over the deterministic extraction guess when supplied. */
     decided_date?: string | null;
+    /**
+     * Provenance for `case_name` above, when the CALLER already resolved
+     * it (bulk mode) rather than leaving it for this hook's own
+     * `extraction.caseNameConfidence === "high"` fallback below (Section
+     * 16/17: filename-derived metadata is SECONDARY support and must be
+     * recorded as such, never presented as if it came from the document
+     * text). `"curator"` covers the single-import form, where a
+     * non-empty `case_name` was typed by a human. Left undefined when the
+     * caller has no opinion — this hook then falls back to its own
+     * document-text-confidence-based label.
+     */
+    case_name_source?: "document" | "filename" | "curator";
   };
 }
 
@@ -185,8 +249,12 @@ export function useIngestCaseLaw() {
       // p_case_name fallback below, which only ever falls through to the
       // proposal on "high" confidence, otherwise to the honest
       // placeholder that publication validation blocks on.
+      // Page-aware prioritization (Section 34): normalize each page's text
+      // the same way the flat `text` above was normalized, so the head
+      // window built from pages is consistent with the rest of this flow.
+      const normalizedPages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
       const extraction = usableForMetadata
-        ? extractCaseLawMetadataWithConfidence(text)
+        ? extractCaseLawMetadataWithConfidence(text, normalizedPages)
         : { fields: {}, caseNameConfidence: "none" as const };
       const proposed = extraction.fields;
       const tags = usableForMetadata ? proposeTags(text) : [];
@@ -227,7 +295,20 @@ export function useIngestCaseLaw() {
         p_extracted_metadata: {
           ...proposed,
           _extraction: envelope,
-          _metadataConfidence: { caseName: extraction.caseNameConfidence },
+          _metadataConfidence: {
+            caseName: extraction.caseNameConfidence,
+            // Records WHERE the final case_name actually came from, not
+            // just how confident the document-text extraction was —
+            // these can differ (e.g. a bulk item with low/none document
+            // confidence whose name was filled in from the filename
+            // instead). Falls back to "document"/"curator" heuristically
+            // only when the caller (single-import form) didn't already
+            // know: a non-empty known.case_name with no explicit source
+            // came from a human typing into the form.
+            caseNameSource:
+              input.known.case_name_source ??
+              (input.known.case_name ? "curator" : extraction.caseNameConfidence === "high" ? "document" : undefined),
+          },
         } as unknown as Json,
         p_proposed_tags: tags,
         p_duplicate_warning:

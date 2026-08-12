@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  FolderUp,
   Landmark,
   Plus,
   ScrollText,
@@ -46,6 +47,12 @@ import {
   useIngestCaseLaw,
   useIngestLegislation,
 } from "@/hooks/legal-library/use-import-jobs";
+import { useBulkImportCaseLaw } from "@/hooks/legal-library/use-bulk-import";
+import {
+  summarizeBulkQueue,
+  BULK_STATUS_LABEL,
+  type BulkItemStatus,
+} from "@/lib/bulk-ingestion-queue";
 import {
   useCaseLawReviewQueue,
   useUpdateCanonicalCaseLaw,
@@ -75,7 +82,6 @@ import {
   buildManualPasteEnvelope,
   emptyExtractionEnvelope,
   type ExtractionEnvelope,
-  type ExtractionStatus as PipelineExtractionStatus,
 } from "@/lib/extraction-pipeline";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
@@ -133,12 +139,50 @@ function readCaseNameConfidence(extractedMetadata: unknown): "high" | "low" | "n
   return caseName === "high" || caseName === "low" || caseName === "none" ? caseName : null;
 }
 
-const EXTRACTION_STATUS_LABEL: Record<PipelineExtractionStatus, string> = {
-  pending: "No text yet",
-  extracted: "Text extracted",
-  low_quality: "Text extracted — low confidence",
-  requires_ocr: "OCR required",
-  failed: "Extraction failed",
+/** Pulls WHERE the case name actually came from (`_metadataConfidence.caseNameSource` — Section 16/17/35-J: filename-derived metadata must be recorded and shown as such, never presented as if it came from the document text). `null` = not recorded (older draft, no case name at all, or Legislation). */
+function readCaseNameSource(extractedMetadata: unknown): "document" | "filename" | "curator" | null {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
+  const confidence = (extractedMetadata as Record<string, unknown>)._metadataConfidence;
+  if (!confidence || typeof confidence !== "object") return null;
+  const source = (confidence as Record<string, unknown>).caseNameSource;
+  return source === "document" || source === "filename" || source === "curator" ? source : null;
+}
+
+/**
+ * A single, plain-language PRIMARY state — deliberately just this
+ * vocabulary (PRODUCTION DOCUMENT INGESTION PHASE, Section 7) and never a
+ * raw score. Distinguishes CHARACTER quality (folded into the underlying
+ * "extracted"/"low_quality"/"failed" status, since garbled characters
+ * were always a hard-fail condition upstream) from STRUCTURAL quality
+ * (envelope.structuralQuality — genuinely readable text that still isn't
+ * reliable reading order) from METADATA confidence (caseNameConfidence —
+ * a separate question about whether the PROPOSED case name specifically
+ * can be trusted). This is exactly the three-way split the real Ramsingh
+ * "100% quality, wrong case name" false success violated.
+ */
+type IngestionUiTone = "good" | "warn" | "bad" | "neutral";
+
+function deriveIngestionUiState(
+  envelope: ExtractionEnvelope,
+  caseNameConfidence: "high" | "low" | "none" | null,
+): { label: string; tone: IngestionUiTone } {
+  if (envelope.status === "pending") return { label: "No text yet", tone: "neutral" };
+  if (envelope.status === "failed") return { label: "Extraction failed", tone: "bad" };
+  if (envelope.status === "requires_ocr") return { label: "OCR required", tone: "warn" };
+  // "extracted" or "low_quality" from here — genuinely usable text exists.
+  if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
+    return { label: "Text extracted — formatting requires review", tone: "warn" };
+  }
+  if (caseNameConfidence === "low") return { label: "Metadata confidence low — review required", tone: "warn" };
+  if (caseNameConfidence === "none") return { label: "Metadata partially identified", tone: "warn" };
+  return { label: "Text extracted successfully", tone: "good" };
+}
+
+const TONE_BADGE_VARIANT: Record<IngestionUiTone, "canonical" | "destructive" | "outline" | "secondary"> = {
+  good: "canonical",
+  bad: "destructive",
+  warn: "outline",
+  neutral: "secondary",
 };
 
 /**
@@ -146,24 +190,29 @@ const EXTRACTION_STATUS_LABEL: Record<PipelineExtractionStatus, string> = {
  * "What did the machine determine? What remains uncertain?" answered in
  * one glance, without cluttering the card.
  *
- * WORDING FIX (Task 4, Phase 8): this used to show a bare "Quality: N%"
- * figure taken directly from the character-level quality score — which is
- * exactly how a document with clean, readable, but WRONG text (the real
- * Ramsingh false-success case) could display "Quality: 100%" right next
- * to an incorrect proposed case name, misleadingly implying the whole
- * extraction — including the proposed metadata — was fully trustworthy.
- * This panel now shows plain-language status for TWO independent things
- * (per Phase 3's architecture): whether TEXT was usably extracted, and
- * separately, how confident the proposed CASE NAME is — never a bare
- * percentage presented as if it meant "this is correct."
+ * WORDING FIX (Task 4, then PRODUCTION DOCUMENT INGESTION PHASE Section 7):
+ * this used to show a bare "Quality: N%" figure taken directly from the
+ * character-level quality score — which is exactly how a document with
+ * clean, readable, but WRONG text (the real Ramsingh false-success case)
+ * could display "Quality: 100%" right next to an incorrect proposed case
+ * name, misleadingly implying the whole extraction — including the
+ * proposed metadata — was fully trustworthy. This panel now shows ONE
+ * plain-language primary state (see deriveIngestionUiState) drawn from
+ * three genuinely independent signals — character quality, structural
+ * quality, and metadata confidence — never a percentage. Technical detail
+ * (warnings, page count, raw method) lives behind a collapsed "Extraction
+ * details" disclosure so the normal card stays uncluttered.
  */
 function ExtractionStatusPanel({
   envelope,
   caseNameConfidence = null,
+  caseNameSource = null,
 }: {
   envelope: ExtractionEnvelope | null;
   /** Only meaningful for Case Law; omitted entirely for Legislation (no case-name concept). `null`/undefined = not recorded (older draft, or Legislation). */
   caseNameConfidence?: "high" | "low" | "none" | null;
+  /** Where the case name displayed on this draft actually came from (Section 16/17/35-J). A filename-derived name is real, useful information — but must never be shown as if the document text itself confirmed it. */
+  caseNameSource?: "document" | "filename" | "curator" | null;
 }) {
   if (!envelope || envelope.status === "pending") {
     return (
@@ -179,58 +228,59 @@ function ExtractionStatusPanel({
     ocr: "OCR",
     none: "—",
   };
-  // Plain-language text-quality phrase — never a raw percentage. The
-  // underlying qualityScore still exists (see envelope.qualityScore) for
-  // internal "extracted" vs. "low_quality" routing, but is deliberately
-  // not surfaced to the curator as if it were a precision measurement.
-  const textQualityPhrase =
-    envelope.qualityScore === null
-      ? null
-      : envelope.qualityScore >= 0.9
-        ? "Text reads cleanly"
-        : envelope.qualityScore >= 0.75
-          ? "Text mostly readable"
-          : "Text partially readable";
+  const state = deriveIngestionUiState(envelope, caseNameConfidence);
+  const hasTechnicalDetail =
+    envelope.warnings.length > 0 ||
+    envelope.charCount > 0 ||
+    envelope.pageCount > 0 ||
+    (caseNameConfidence !== null && caseNameConfidence !== "high");
+
   return (
     <div className="space-y-1.5 rounded-md border border-border p-2.5">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge
-          variant={
-            envelope.status === "extracted"
-              ? "canonical"
-              : envelope.status === "failed"
-                ? "destructive"
-                : envelope.status === "requires_ocr"
-                  ? "outline"
-                  : "secondary"
-          }
-        >
-          {EXTRACTION_STATUS_LABEL[envelope.status]}
-        </Badge>
-        <span className="text-muted-foreground">Method: {methodLabel[envelope.method]}</span>
-        {textQualityPhrase && <span className="text-muted-foreground">{textQualityPhrase}</span>}
-        <span className="text-muted-foreground">OCR used: {envelope.ocrUsed ? "Yes" : "No"}</span>
-        {envelope.charCount > 0 && <span className="text-muted-foreground">{envelope.charCount.toLocaleString()} characters</span>}
+        <Badge variant={TONE_BADGE_VARIANT[state.tone]}>{state.label}</Badge>
+        <span className="text-muted-foreground">Source: {methodLabel[envelope.method]}</span>
+        {envelope.pageCount > 0 && (
+          <span className="text-muted-foreground">
+            {envelope.pageCount} page{envelope.pageCount === 1 ? "" : "s"}
+          </span>
+        )}
       </div>
-      {caseNameConfidence && caseNameConfidence !== "high" && (
-        <p className="text-[11px] text-amber-700 dark:text-amber-400">
-          {caseNameConfidence === "low"
-            ? "Case name confidence: Low — the proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
-            : "Case name confidence: None — no case name could be confidently identified. Please enter it manually."}
-        </p>
-      )}
-      {envelope.warnings.length > 0 && (
-        <ul className="list-inside list-disc space-y-0.5 text-[11px] text-amber-700 dark:text-amber-400">
-          {envelope.warnings.map((w, i) => (
-            <li key={i}>{w}</li>
-          ))}
-        </ul>
-      )}
       {(envelope.status === "requires_ocr" || envelope.status === "failed") && (
         <p className="text-[11px] text-muted-foreground">
           This document requires OCR or manual text entry. The original file has been preserved, but reliable text
           could not be extracted automatically.
         </p>
+      )}
+      {caseNameSource === "filename" && (
+        <p className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          Case name proposed from the file name, not the document text — please verify against the original before
+          publishing.
+        </p>
+      )}
+      {hasTechnicalDetail && (
+        <details className="text-[11px] text-muted-foreground">
+          <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">Extraction details</summary>
+          <div className="mt-1 space-y-1 pl-3">
+            <p>OCR used: {envelope.ocrUsed ? "Yes" : "No"}</p>
+            {envelope.charCount > 0 && <p>{envelope.charCount.toLocaleString()} characters extracted</p>}
+            {caseNameConfidence && caseNameConfidence !== "high" && (
+              <p className="text-amber-700 dark:text-amber-400">
+                {caseNameConfidence === "low"
+                  ? "Case name confidence: Low — the proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
+                  : "Case name confidence: None — no case name could be confidently identified. Please enter it manually."}
+              </p>
+            )}
+            {envelope.warnings.length > 0 && (
+              <ul className="list-inside list-disc space-y-0.5 text-amber-700 dark:text-amber-400">
+                {envelope.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </details>
       )}
     </div>
   );
@@ -645,6 +695,41 @@ const EMPTY_CASE_FIELDS = { case_name: "", citation: "", decided_date: "" };
 const EMPTY_STATUTE_FIELDS = { code: "", title: "", short_title: "" };
 
 function ImportTab() {
+  // Single-document import (the original flow) vs. Bulk import (Section
+  // 10-13: select 1, 20, 200, or a whole folder at once). Deliberately a
+  // sub-mode of the same tab rather than a brand-new top-level tab — New
+  // Import is still fundamentally one workflow with two entry points, and
+  // single-document import must not become more cumbersome to reach.
+  const [importMode, setImportMode] = useState<"single" | "bulk">("single");
+
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex rounded-md border border-border p-0.5">
+        <button
+          type="button"
+          onClick={() => setImportMode("single")}
+          className={`rounded px-3 py-1.5 text-sm transition-colors ${
+            importMode === "single" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Single document
+        </button>
+        <button
+          type="button"
+          onClick={() => setImportMode("bulk")}
+          className={`rounded px-3 py-1.5 text-sm transition-colors ${
+            importMode === "bulk" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Bulk import
+        </button>
+      </div>
+      {importMode === "single" ? <SingleImportPanel /> : <BulkImportPanel />}
+    </div>
+  );
+}
+
+function SingleImportPanel() {
   const [contentType, setContentType] = useState<"case_law" | "legislation">("case_law");
   const [text, setText] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -751,8 +836,10 @@ function ImportTab() {
           : "Text extracted, but the quality gate flagged it as low confidence — review it carefully below before creating the draft.",
       );
       if (contentType === "case_law") {
+        const normalizedPages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
         const { fields: proposed, caseNameConfidence: computedConfidence } = extractCaseLawMetadataWithConfidence(
           normalizeWhitespace(envelope.text),
+          normalizedPages,
         );
         setCaseNameConfidence(computedConfidence);
         // Phase 3 (Task 4): a case-name PROPOSAL is only auto-filled into
@@ -1093,25 +1180,365 @@ function ImportTab() {
   );
 }
 
+const BULK_STATUS_TONE: Record<BulkItemStatus, "canonical" | "destructive" | "outline" | "secondary"> = {
+  queued: "secondary",
+  hashing: "secondary",
+  duplicate: "outline",
+  extracting: "secondary",
+  needs_review: "outline",
+  ready: "canonical",
+  failed: "destructive",
+  completed: "canonical",
+  rejected: "destructive",
+};
+
+function BulkSummaryChip({
+  label,
+  count,
+  tone,
+}: {
+  label: string;
+  count: number;
+  tone: "canonical" | "destructive" | "outline" | "secondary";
+}) {
+  if (count === 0) return null;
+  return (
+    <Badge variant={tone} className="gap-1">
+      {label}: {count}
+    </Badge>
+  );
+}
+
+/**
+ * Bulk import — Case Law only for this pass (Section 22: the architecture
+ * is generic, but only Case Law's per-file metadata proposal is wired into
+ * the bulk worker so far; Legislation's structural Part/Section parsing
+ * stays on the single-document flow). Deliberately reuses the exact same
+ * per-file pipeline as SingleImportPanel via useBulkImportCaseLaw — see
+ * that hook's doc comment. Every file becomes its own draft in the Review
+ * Queue; nothing here ever publishes anything (Section 3/21: "BULK
+ * INGESTION IS NOT BULK PUBLICATION").
+ */
+function BulkImportPanel() {
+  const { items, isRunning, startBulkImport, reset } = useBulkImportCaseLaw();
+  const [sourceId, setSourceId] = useState<string>("");
+  const { data: sources } = useLegalSources();
+  const { data: jurisdictions } = useLegalJurisdictions();
+  const { data: courts } = useLegalAuthorityCourts();
+  const navigate = useNavigate();
+
+  const approvedSources = (sources ?? []).filter((s) => s.status === "approved");
+  const otherSources = (sources ?? []).filter((s) => s.status !== "approved");
+
+  const summary = summarizeBulkQueue(items);
+  const hasItems = items.length > 0;
+
+  function handleFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    void startBulkImport(files, {
+      sourceId: sourceId || null,
+      courts: courts ?? [],
+      jurisdictions: (jurisdictions ?? []).map((j) => ({ id: j.id, name: j.name })),
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Bulk import — Case Law</CardTitle>
+        <CardDescription>
+          Select many judgments at once — individual files or an entire folder. Each file is preserved,
+          hashed, and processed independently with bounded concurrency; one bad file never stops the batch.
+          Every file becomes its own draft in the Review Queue — nothing is published automatically.
+          Legislation bulk import isn&apos;t available yet; use Single document for Acts.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Field
+          label="Source repository"
+          hint="Applied to every file in this batch — does not decide Jurisdiction or Court."
+        >
+          <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="max-w-xs">
+            <option value="">Unassigned</option>
+            {approvedSources.length > 0 && (
+              <optgroup label="Approved">
+                {approvedSources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {otherSources.length > 0 && (
+              <optgroup label="Not yet approved">
+                {otherSources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.status})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </Select>
+        </Field>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            className={`inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted ${
+              isRunning ? "pointer-events-none opacity-50" : "cursor-pointer"
+            }`}
+          >
+            <Upload className="h-4 w-4" />
+            Upload files
+            <input
+              type="file"
+              multiple
+              accept=".txt,.pdf"
+              className="hidden"
+              disabled={isRunning}
+              onChange={(e) => {
+                handleFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <label
+            className={`inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted ${
+              isRunning ? "pointer-events-none opacity-50" : "cursor-pointer"
+            }`}
+          >
+            <FolderUp className="h-4 w-4" />
+            Upload folder
+            <input
+              type="file"
+              multiple
+              // Non-standard attribute, not in React's JSX typings, but
+              // supported by Chromium/Firefox/Safari file pickers — where
+              // unsupported it degrades to a normal multi-file picker, so
+              // basic multi-file selection still works everywhere (§10:
+              // folder selection must not be the ONLY mechanism).
+              // @ts-expect-error -- webkitdirectory is non-standard
+              webkitdirectory=""
+              className="hidden"
+              disabled={isRunning}
+              onChange={(e) => {
+                handleFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {isRunning && (
+            <Badge variant="secondary" className="gap-1">
+              <Sparkles className="h-3 w-3" />
+              Processing…
+            </Badge>
+          )}
+          {hasItems && !isRunning && (
+            <Button size="sm" variant="ghost" onClick={reset}>
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {hasItems && (
+          <>
+            <div className="flex flex-wrap gap-1.5">
+              <BulkSummaryChip label="Ready" count={summary.ready + summary.completed} tone="canonical" />
+              <BulkSummaryChip label="Needs review" count={summary.needs_review} tone="outline" />
+              <BulkSummaryChip label="Duplicates" count={summary.duplicate} tone="outline" />
+              <BulkSummaryChip
+                label="Processing"
+                count={summary.queued + summary.hashing + summary.extracting}
+                tone="secondary"
+              />
+              <BulkSummaryChip label="Failed" count={summary.failed} tone="destructive" />
+              <BulkSummaryChip label="Rejected" count={summary.rejected} tone="destructive" />
+            </div>
+
+            <div className="max-h-[28rem] space-y-1 overflow-y-auto rounded-md border border-border p-2">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate font-medium text-foreground">{item.file.name}</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {item.error && (
+                      <span className="max-w-[16rem] truncate text-destructive" title={item.error}>
+                        {item.error}
+                      </span>
+                    )}
+                    {item.duplicateReason && (
+                      <span className="max-w-[16rem] truncate text-muted-foreground" title={item.duplicateReason}>
+                        {item.duplicateReason}
+                      </span>
+                    )}
+                    <Badge variant={BULK_STATUS_TONE[item.status]}>{BULK_STATUS_LABEL[item.status]}</Badge>
+                    {item.caseLawId && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() => navigate(ROUTES.caseLawDetail(item.caseLawId!))}
+                      >
+                        View
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Review Queue
 // ---------------------------------------------------------------------------
 
+/**
+ * Review Queue scaling (Section 19/20): bulk ingestion can put hundreds of
+ * drafts here, and one giant flat list of full editable cards does not
+ * scale. Rather than a new query, a new schema, or a wholesale redesign
+ * (Section 19: "make the smallest architectural/UI change required"),
+ * this filters the SAME already-fetched rows client-side into named
+ * buckets with counts — mirroring the example vocabulary from the spec
+ * ("Needs Review (38), Ready to Publish (105), OCR Required (41), Failed
+ * (3), Possible Duplicates (13)"). Opening a card for full editing is
+ * unchanged.
+ *
+ * Bucket priority is deliberately a strict, mutually-exclusive ladder so
+ * every row lands in exactly one tab (besides "All"): a failed extraction
+ * is more actionable to know about than a duplicate warning, which is more
+ * urgent than "just needs a Court/Jurisdiction pick." This ordering is a
+ * triage convenience for the filter tabs only — it does not change what a
+ * curator sees once a card is open (every relevant warning is still shown
+ * there regardless of which bucket it landed in here).
+ */
+type ReviewCategory = "failed" | "ocr_required" | "possible_duplicate" | "ready_to_publish" | "needs_review";
+
+const REVIEW_CATEGORY_LABEL: Record<ReviewCategory, string> = {
+  needs_review: "Needs review",
+  ready_to_publish: "Ready to publish",
+  ocr_required: "OCR required",
+  possible_duplicate: "Possible duplicates",
+  failed: "Failed",
+};
+
+const REVIEW_CATEGORY_ORDER: ReviewCategory[] = [
+  "needs_review",
+  "ready_to_publish",
+  "ocr_required",
+  "possible_duplicate",
+  "failed",
+];
+
+function categorizeCaseLawRow(row: ReviewRow<CaseLaw>): ReviewCategory {
+  const envelope = readExtractionEnvelope(row.extracted_metadata);
+  if (row.job_error_summary || envelope?.status === "failed") return "failed";
+  if (envelope?.status === "requires_ocr") return "ocr_required";
+  if (row.duplicate_warning) return "possible_duplicate";
+  const errors = validateCaseLawForPublish({
+    case_name: row.case_name,
+    citation: row.citation,
+    court: row.court,
+    jurisdiction: row.jurisdiction,
+    court_id: row.court_id,
+    jurisdiction_id: row.jurisdiction_id,
+  });
+  return errors.length === 0 ? "ready_to_publish" : "needs_review";
+}
+
+function categorizeStatuteRow(row: ReviewRow<Statute>): ReviewCategory {
+  const envelope = readExtractionEnvelope(row.extracted_metadata);
+  if (row.job_error_summary || envelope?.status === "failed") return "failed";
+  if (envelope?.status === "requires_ocr") return "ocr_required";
+  if (row.duplicate_warning) return "possible_duplicate";
+  const errors = validateLegislationForPublish({
+    code: row.code,
+    title: row.title,
+    jurisdiction: row.jurisdiction,
+    jurisdiction_id: row.jurisdiction_id,
+  });
+  return errors.length === 0 ? "ready_to_publish" : "needs_review";
+}
+
 function ReviewQueueTab() {
   const { data: caseLawQueue, isPending: caseLawPending } = useCaseLawReviewQueue();
   const { data: statuteQueue, isPending: statutePending } = useLegislationReviewQueue();
+  const [activeCategory, setActiveCategory] = useState<ReviewCategory | "all">("all");
+
+  const caseLawCategorized = (caseLawQueue ?? []).map((row) => ({ row, category: categorizeCaseLawRow(row) }));
+  const statuteCategorized = (statuteQueue ?? []).map((row) => ({ row, category: categorizeStatuteRow(row) }));
+
+  const counts: Record<ReviewCategory, number> = {
+    needs_review: 0,
+    ready_to_publish: 0,
+    ocr_required: 0,
+    possible_duplicate: 0,
+    failed: 0,
+  };
+  for (const { category } of caseLawCategorized) counts[category] += 1;
+  for (const { category } of statuteCategorized) counts[category] += 1;
+  const totalCount = caseLawCategorized.length + statuteCategorized.length;
+
+  const filteredCaseLaw =
+    activeCategory === "all" ? caseLawCategorized : caseLawCategorized.filter((c) => c.category === activeCategory);
+  const filteredStatute =
+    activeCategory === "all" ? statuteCategorized : statuteCategorized.filter((c) => c.category === activeCategory);
+
+  const activeLabel = activeCategory === "all" ? null : REVIEW_CATEGORY_LABEL[activeCategory].toLowerCase();
 
   return (
     <div className="space-y-6">
+      {totalCount > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveCategory("all")}
+            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+              activeCategory === "all"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            All ({totalCount})
+          </button>
+          {REVIEW_CATEGORY_ORDER.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              disabled={counts[cat] === 0}
+              className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                activeCategory === cat
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {REVIEW_CATEGORY_LABEL[cat]} ({counts[cat]})
+            </button>
+          ))}
+        </div>
+      )}
+
       <div>
         <h2 className="text-lg font-medium text-foreground">Case Law</h2>
         {caseLawPending ? (
           <Skeleton className="mt-2 h-24 w-full" />
-        ) : !caseLawQueue || caseLawQueue.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No Case Law drafts awaiting review.</p>
+        ) : filteredCaseLaw.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {activeLabel ? `No Case Law drafts in "${activeLabel}".` : "No Case Law drafts awaiting review."}
+          </p>
         ) : (
           <div className="mt-2 space-y-3">
-            {caseLawQueue.map((row) => (
+            {filteredCaseLaw.map(({ row }) => (
               <CaseLawReviewCard key={row.id} row={row} />
             ))}
           </div>
@@ -1122,11 +1549,13 @@ function ReviewQueueTab() {
         <h2 className="text-lg font-medium text-foreground">Legislation</h2>
         {statutePending ? (
           <Skeleton className="mt-2 h-24 w-full" />
-        ) : !statuteQueue || statuteQueue.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No Legislation drafts awaiting review.</p>
+        ) : filteredStatute.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {activeLabel ? `No Legislation drafts in "${activeLabel}".` : "No Legislation drafts awaiting review."}
+          </p>
         ) : (
           <div className="mt-2 space-y-3">
-            {statuteQueue.map((row) => (
+            {filteredStatute.map(({ row }) => (
               <StatuteReviewCard key={row.id} row={row} />
             ))}
           </div>
@@ -1323,6 +1752,7 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
         <ExtractionStatusPanel
           envelope={readExtractionEnvelope(row.extracted_metadata)}
           caseNameConfidence={readCaseNameConfidence(row.extracted_metadata)}
+          caseNameSource={readCaseNameSource(row.extracted_metadata)}
         />
         {row.job_error_summary && (
           <p className="text-xs text-destructive">Import job error: {row.job_error_summary}</p>

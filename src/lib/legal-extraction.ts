@@ -198,7 +198,13 @@ function cleanCaseNameCandidate(raw: string): string | undefined {
     candidate = candidate.slice(0, pinciteInside.index);
   }
 
-  candidate = candidate.replace(/[|:\-–—]+$/, "").replace(/\s{2,}/g, " ").trim();
+  // Trim whitespace FIRST, then strip trailing punctuation, then trim
+  // again — a window ending "...State - " (dash followed by trailing
+  // whitespace, common when a filename/header separator like " - " gets
+  // caught at the very end of a candidate) previously left the dash
+  // behind because the punctuation-strip regex anchors on the true end
+  // of the string and a trailing space defeated it.
+  candidate = candidate.replace(/\s{2,}/g, " ").trim().replace(/[|:\-–—]+$/, "").trim();
   // Strip a leading fragment up to the last sentence-ending punctuation —
   // a window that starts mid-sentence (bounded only by a fixed character
   // count, not a real boundary) commonly carries a trailing clause from
@@ -318,6 +324,45 @@ function extractCaseNameCandidate(head: string): CaseNameCandidateResult | undef
   return { name: cleaned, citationIndex: null, citationText: null, citationType: null };
 }
 
+export interface FilenameProposal {
+  case_name?: string;
+  neutral_citation?: string;
+  reported_citation?: string;
+}
+
+/**
+ * SECONDARY-support-only filename parsing (PRODUCTION DOCUMENT INGESTION
+ * PHASE, Section 16): many source files have informative names — "Diaz_
+ * (Anthony)_v_The_State_-_(1989)_42_WIR_4.pdf", "The State v Dhannie
+ * Ramsingh (1973) 20 WIR 138.pdf" — that can help propose a case name/
+ * citation when document text is unavailable or not confident (e.g.
+ * `requires_ocr`). Deliberately reuses the SAME citation-adjacent
+ * scoring logic as document-text extraction (extractCaseNameCandidate)
+ * rather than a separate parser — a filename is just a very short "head"
+ * window once underscores/hyphens are normalized to spaces. NEVER
+ * authoritative: the caller (use-bulk-import.ts) must only use this to
+ * fill a gap, never to override a value already found in document text,
+ * and must record the result's provenance as "filename", not
+ * "document_text", wherever that distinction is surfaced to the curator.
+ */
+export function extractCaseNameFromFilename(filename: string): FilenameProposal | undefined {
+  const withoutExtension = filename.replace(/\.[a-zA-Z0-9]{1,5}$/, "");
+  const cleaned = withoutExtension
+    .replace(/[_]+/g, " ")
+    .replace(/\s*-\s*/g, " - ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!cleaned) return undefined;
+
+  const candidate = extractCaseNameCandidate(cleaned);
+  if (!candidate) return undefined;
+
+  const result: FilenameProposal = { case_name: candidate.name };
+  if (candidate.citationType === "reported" && candidate.citationText) result.reported_citation = candidate.citationText;
+  else if (candidate.citationType === "neutral" && candidate.citationText) result.neutral_citation = candidate.citationText;
+  return result;
+}
+
 /**
  * Decision-indicating language searched near a date candidate before it's
  * trusted as the decided date, rather than any date found anywhere in the
@@ -381,14 +426,46 @@ export interface CaseLawExtractionResult {
   caseNameConfidence: MetadataConfidence;
 }
 
+/** Minimal shape needed from an ExtractionEnvelope's page breakdown — declared locally rather than importing extraction-pipeline.ts's type, so this module has no dependency in that direction. */
+export interface PageLike {
+  pageNumber: number;
+  text: string;
+}
+
+/**
+ * Builds the metadata-extraction "head" window from a page-aware
+ * breakdown when one is available (PRODUCTION DOCUMENT INGESTION PHASE,
+ * Section 34: "metadata extraction prioritizes early pages... body
+ * citations on later pages do not outrank document-header metadata").
+ * Prefers page 1 alone — real judgment headers are on the first page —
+ * only pulling in subsequent pages if page 1 is too short to plausibly
+ * contain a header (a short/blank cover page happens occasionally).
+ * Falls back to the old flat-character-slice behavior when no page
+ * breakdown is available (e.g. .txt/manual-paste text, or a PDF where
+ * page attribution wasn't possible), so this is a strict enhancement,
+ * never a regression for text without page information.
+ */
+function buildHeadWindow(text: string, pages?: PageLike[]): string {
+  if (!pages || pages.length === 0) return text.slice(0, 2000);
+  let combined = pages[0]?.text ?? "";
+  let i = 1;
+  while (combined.length < 400 && i < pages.length) {
+    combined += "\n\n" + pages[i].text;
+    i += 1;
+  }
+  return combined.slice(0, 2000);
+}
+
 /**
  * Best-effort, clearly-labeled-as-proposed extraction, WITH an explicit
  * confidence signal for the case-name proposal specifically (Phase 3).
  * Never invents a value it can't find — leaves fields undefined rather
- * than guessing.
+ * than guessing. `pages`, when supplied, is used to prioritize early
+ * pages for header signals (see buildHeadWindow above) — optional and
+ * backward compatible.
  */
-export function extractCaseLawMetadataWithConfidence(text: string): CaseLawExtractionResult {
-  const head = text.slice(0, 2000);
+export function extractCaseLawMetadataWithConfidence(text: string, pages?: PageLike[]): CaseLawExtractionResult {
+  const head = buildHeadWindow(text, pages);
   const result: ProposedCaseLawFields = {};
   let caseNameConfidence: MetadataConfidence = "none";
 
