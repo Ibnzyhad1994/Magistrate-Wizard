@@ -65,7 +65,7 @@ import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-sta
 import { getDocumentViewUrl } from "@/hooks/use-documents";
 import { readFileAsText, extractCaseLawMetadata, normalizeWhitespace } from "@/lib/legal-extraction";
 import { extractPdfTextLayer, isPdfExtractionSupported } from "@/lib/pdf-text-extraction";
-import { matchCanonicalCourt } from "@/lib/legal-taxonomy-match";
+import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
   isPlaceholderValue,
   validateCaseLawForPublish,
@@ -599,10 +599,21 @@ function ImportTab() {
             decided_date: cf.decided_date || proposed.decided_date_guess || "",
           }));
           if (!courtId) {
-            const matched = matchCanonicalCourt(result.text, courts ?? []);
-            if (matched) {
-              setCourtId(matched.id);
-              if (matched.jurisdiction_id) setJurisdictionId(matched.jurisdiction_id);
+            // Only auto-select on "high"/"medium" confidence — a mention
+            // of some other court deep in the judgment body (a common
+            // pattern: Caribbean appellate judgments discussing further
+            // appeal rights to the Privy Council) must never outrank an
+            // explicit deciding-court heading, and a low-confidence guess
+            // is worse than leaving Court for the curator to set (§10).
+            const matched = matchCanonicalCourtScored(result.text, courts ?? []);
+            if (matched && matched.confidence !== "low") {
+              setCourtId(matched.court.id);
+              if (matched.court.jurisdiction_id) setJurisdictionId(matched.court.jurisdiction_id);
+              if (matched.confidence === "medium") {
+                toast.message(
+                  `Court proposed from extracted text: ${matched.court.canonical_name} — please confirm before publishing.`,
+                );
+              }
             }
           }
           toast.success(

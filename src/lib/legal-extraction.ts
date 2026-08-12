@@ -89,15 +89,136 @@ const MONTHS: Record<string, string> = {
   july: "07", august: "08", september: "09", october: "10", november: "11", december: "12",
 };
 
+/**
+ * Header/navigation fragments that real-world "print to PDF" law-report
+ * pages commonly glue directly onto the case name with NO whitespace at
+ * all (confirmed against the real Ramsingh PDF: extracted text began
+ * "The State v Dhannie RamsinghOverview | (1973) 20 WIR 138..."). A
+ * `\b`-bounded regex cannot see a token boundary between two glued
+ * letters ("...inghOverview..." has no non-word character to anchor on),
+ * so this is a deliberate case-insensitive substring search instead.
+ * Kept short and curated — this is NOT a general "cut at any capital
+ * letter" heuristic, which would mutilate legitimate party names.
+ */
+const CASE_NAME_NOISE_MARKERS = [
+  "overview",
+  "court of",
+  "judgment",
+  "headnote",
+  "held:",
+  "summary",
+  "coram",
+  "citation:",
+  "download",
+  "print |",
+  "share |",
+  "home |",
+];
+
+/** Trims a raw case-name candidate down to a clean "Party v Party" string, or returns undefined if it doesn't survive cleanup. Never used to invent a case name — only to clean one already found. */
+function cleanCaseNameCandidate(raw: string): string | undefined {
+  let candidate = raw;
+
+  let cutAt = candidate.length;
+  const lower = candidate.toLowerCase();
+  for (const marker of CASE_NAME_NOISE_MARKERS) {
+    const idx = lower.indexOf(marker);
+    if (idx !== -1 && idx < cutAt) cutAt = idx;
+  }
+  candidate = candidate.slice(0, cutAt);
+
+  // Defensive: also cut at any citation pattern that slipped into the
+  // window (should be rare given how the window is chosen below, but
+  // cheap to guard against).
+  const citationInside = REPORTED_CITATION_RE.exec(candidate) ?? NEUTRAL_CITATION_RE.exec(candidate);
+  if (citationInside && citationInside.index > 0) {
+    candidate = candidate.slice(0, citationInside.index);
+  }
+
+  candidate = candidate.replace(/[|:\-–—]+$/, "").replace(/\s{2,}/g, " ").trim();
+  if (!candidate || candidate.length < 5) return undefined;
+  if (!/ v[s]?\.? /i.test(candidate)) return undefined;
+  return candidate.length > 300 ? candidate.slice(0, 300).trim() : candidate;
+}
+
+/**
+ * Locates a clean case-name candidate by preferring the text immediately
+ * PRECEDING a citation occurrence over "the first line containing ' v '".
+ * Real law-report headers commonly repeat the case title verbatim right
+ * next to the formal citation (as the real Ramsingh PDF does: "...(1973)
+ * 20 WIR 138The State v Dhannie Ramsingh (1973) 20 WIR 138COURT OF
+ * APPEAL..." — the SECOND "Name (Year) Vol Rep Page" pairing is a much
+ * cleaner boundary than the first, navigation-adjacent one). Scans every
+ * citation occurrence found in `head`, latest first, and returns the
+ * first one whose immediately-preceding text (bounded by the end of any
+ * earlier citation, so two adjacent title/citation pairs never bleed
+ * into each other) cleans up into a valid "Party v Party" string.
+ */
+function extractCaseName(head: string): string | undefined {
+  const matches: { index: number; end: number }[] = [];
+  for (const re of [REPORTED_CITATION_RE, NEUTRAL_CITATION_RE]) {
+    const global = new RegExp(re.source, "g");
+    let m: RegExpExecArray | null;
+    while ((m = global.exec(head))) {
+      matches.push({ index: m.index, end: m.index + m[0].length });
+      if (matches.length > 20) break; // safety cap against pathological input
+    }
+  }
+  matches.sort((a, b) => a.index - b.index);
+
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    const prevEnd = i > 0 ? matches[i - 1].end : 0;
+    const windowStart = Math.max(prevEnd, m.index - 200);
+    const candidate = cleanCaseNameCandidate(head.slice(windowStart, m.index));
+    if (candidate) return candidate;
+  }
+
+  // No citation-adjacent candidate found — fall back to the original
+  // "first line containing ' v '" heuristic, still boundary-cleaned.
+  const firstLine = head.split("\n").map((l) => l.trim()).find((l) => l.length > 3 && / v[s]?\.? /i.test(l));
+  return firstLine ? cleanCaseNameCandidate(firstLine) : undefined;
+}
+
+/**
+ * Decision-indicating language searched near a date candidate before it's
+ * trusted as the decided date, rather than any date found anywhere in the
+ * header — real judgments frequently print a cluster of HEARING dates
+ * (e.g. "5, 6, 7, 9, 12, 14 February; 22 March 1973" — confirmed present
+ * in the real Ramsingh PDF) that are not the decision date.
+ */
+const DECISION_CONTEXT_RE =
+  /(judgment\s+delivered|delivered\s+on|delivered\s+judgment|date\s+of\s+judgment|decided\s+on|decision\s+delivered|judgment:|decided:)/i;
+
+/**
+ * Only proposes a decided date when a decision-indicating anchor (e.g.
+ * "delivered on") appears near the date — never merely because A date
+ * pattern exists somewhere in the header. §12: "Correct uncertainty is
+ * preferable to incorrect metadata" — a judgment with several hearing
+ * dates and no clear "delivered"/"decided" anchor is left blank rather
+ * than guessing which date is the formal decision date.
+ */
+function extractDecidedDate(head: string): string | undefined {
+  const global = new RegExp(DATE_RE.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = global.exec(head))) {
+    const context = head.slice(Math.max(0, m.index - 60), Math.min(head.length, m.index + m[0].length + 40));
+    if (DECISION_CONTEXT_RE.test(context)) {
+      const [, day, month, year] = m;
+      const mm = MONTHS[month.toLowerCase()];
+      if (mm) return `${year}-${mm}-${day.padStart(2, "0")}`;
+    }
+  }
+  return undefined;
+}
+
 /** Best-effort, clearly-labeled-as-proposed extraction. Never invents a value it can't find — leaves fields undefined rather than guessing. */
 export function extractCaseLawMetadata(text: string): ProposedCaseLawFields {
   const head = text.slice(0, 2000);
   const result: ProposedCaseLawFields = {};
 
-  const firstLine = head.split("\n").map((l) => l.trim()).find((l) => l.length > 3);
-  if (firstLine && / v[s]?\.? /i.test(firstLine)) {
-    result.case_name = firstLine.replace(/\s{2,}/g, " ").slice(0, 300);
-  }
+  const caseName = extractCaseName(head);
+  if (caseName) result.case_name = caseName;
 
   const neutral = head.match(NEUTRAL_CITATION_RE);
   if (neutral) result.neutral_citation = neutral[0];
@@ -105,12 +226,8 @@ export function extractCaseLawMetadata(text: string): ProposedCaseLawFields {
   const reported = head.match(REPORTED_CITATION_RE);
   if (reported) result.reported_citation = reported[0];
 
-  const dateMatch = head.match(DATE_RE);
-  if (dateMatch) {
-    const [, day, month, year] = dateMatch;
-    const mm = MONTHS[month.toLowerCase()];
-    if (mm) result.decided_date_guess = `${year}-${mm}-${day.padStart(2, "0")}`;
-  }
+  const decidedDate = extractDecidedDate(head);
+  if (decidedDate) result.decided_date_guess = decidedDate;
 
   return result;
 }
