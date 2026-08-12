@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import {
-  extractCaseLawMetadata,
+  extractCaseLawMetadataWithConfidence,
   extractLegislationHierarchy,
   findCaseLawDuplicates,
   findStatuteDuplicates,
@@ -174,7 +174,21 @@ export function useIngestCaseLaw() {
       // (method "manual_paste"/"txt_file", or no envelope at all --
       // treated as trusted curator input, same as before this pass).
       const usableForMetadata = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
-      const proposed = usableForMetadata ? extractCaseLawMetadata(text) : {};
+      // Phase 3 (Task 4): text quality and metadata confidence are
+      // separate gates. `usableForMetadata` answers "was there clean
+      // enough TEXT to even attempt metadata extraction" — but a
+      // case-name PROPOSAL is only trusted enough to silently become the
+      // canonical p_case_name below when caseNameConfidence is "high". A
+      // "low"/"none" confidence proposal is still surfaced (via
+      // _extraction.metadataConfidence, read by the Review Queue) but
+      // NEVER substituted for a curator-confirmed name — see the
+      // p_case_name fallback below, which only ever falls through to the
+      // proposal on "high" confidence, otherwise to the honest
+      // placeholder that publication validation blocks on.
+      const extraction = usableForMetadata
+        ? extractCaseLawMetadataWithConfidence(text)
+        : { fields: {}, caseNameConfidence: "none" as const };
+      const proposed = extraction.fields;
       const tags = usableForMetadata ? proposeTags(text) : [];
       // Prefer hashing the original file's bytes when one is attached (the
       // authoritative source); fall back to the pasted/typed text hash so a
@@ -192,7 +206,10 @@ export function useIngestCaseLaw() {
         : [];
 
       const { data, error } = await supabase.rpc("create_case_law_import", {
-        p_case_name: input.known.case_name ?? proposed.case_name ?? "Untitled (pending review)",
+        p_case_name:
+          input.known.case_name ??
+          (extraction.caseNameConfidence === "high" ? proposed.case_name : undefined) ??
+          "Untitled (pending review)",
         p_citation: input.known.citation,
         p_court: input.known.court,
         p_jurisdiction: input.known.jurisdiction,
@@ -207,7 +224,11 @@ export function useIngestCaseLaw() {
         p_original_filename: input.original_filename,
         p_document_hash: hash,
         p_batch_id: input.batch_id,
-        p_extracted_metadata: { ...proposed, _extraction: envelope } as unknown as Json,
+        p_extracted_metadata: {
+          ...proposed,
+          _extraction: envelope,
+          _metadataConfidence: { caseName: extraction.caseNameConfidence },
+        } as unknown as Json,
         p_proposed_tags: tags,
         p_duplicate_warning:
           duplicates.length > 0

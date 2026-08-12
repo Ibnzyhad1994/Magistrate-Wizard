@@ -115,6 +115,62 @@ const CASE_NAME_NOISE_MARKERS = [
   "home |",
 ];
 
+/**
+ * A "pincite" — a page/paragraph reference INTO a citation (e.g. "at 142",
+ * "at p. 42", "at para 6") — is a hallmark of a BODY reference to some
+ * other case ("...the decision at 142 R v Someone Else (1967)..."), never
+ * of a genuine document header. Generic across every jurisdiction (this
+ * is standard common-law citation practice, not specific to any one
+ * court/reporter series), so cutting the candidate window here is not a
+ * fixture-specific hack.
+ */
+const PINCITE_RE = /\bat\s+(p\.?\s*|page\s+|para\.?\s*|paras?\.?\s*)?\d{1,4}\b/i;
+
+/**
+ * Generic signals that a citation-adjacent text window is a BODY
+ * reference to some OTHER case (a cited authority, a "see also", a digest
+ * entry) rather than the document's own header — confirmed by the real
+ * Task 4 regression ("at 142R v Ferguson and Willoughby..." was proposed
+ * as the case name because it was simply the LAST citation-adjacent
+ * window found, with no signal distinguishing "this is a citation the
+ * judgment is discussing" from "this is the judgment's own title").
+ * Deliberately generic phrases every common-law judgment might use when
+ * citing other authorities — never a party name, citation, or
+ * jurisdiction name.
+ */
+const BODY_REFERENCE_MARKERS = [
+  "see also",
+  "see ",
+  "cf.",
+  "cf ",
+  "supra",
+  "ibid",
+  "digest",
+  "cited in",
+  "reported at",
+  "noted at",
+  "following ",
+  "applying ",
+  "distinguishing ",
+  "referred to",
+  "considered in",
+  "the decision",
+  "the authority",
+  "the case of",
+  "the earlier",
+];
+
+/**
+ * Sentence-continuation connectors — a genuine case-name/party string
+ * never legitimately starts with one of these; their presence means the
+ * window began mid-sentence, not at a title. Deliberately EXCLUDES "The"/
+ * "This"/"That"/"It" — extremely common genuine case-name openings in
+ * Commonwealth practice ("The State v...", "The Queen v...", "The King
+ * v...", "The Attorney General v...") must never be disqualified by this
+ * check.
+ */
+const CONTINUATION_START_RE = /^(and|also|further|moreover|in addition|likewise|similarly|but|however|thus|hence|therefore)\b/i;
+
 /** Trims a raw case-name candidate down to a clean "Party v Party" string, or returns undefined if it doesn't survive cleanup. Never used to invent a case name — only to clean one already found. */
 function cleanCaseNameCandidate(raw: string): string | undefined {
   let candidate = raw;
@@ -135,49 +191,131 @@ function cleanCaseNameCandidate(raw: string): string | undefined {
     candidate = candidate.slice(0, citationInside.index);
   }
 
+  // Cut at a pincite reference ("at 142", "at p. 42") that slipped into
+  // the window — a genuine title never contains one of these.
+  const pinciteInside = PINCITE_RE.exec(candidate);
+  if (pinciteInside && pinciteInside.index > 0) {
+    candidate = candidate.slice(0, pinciteInside.index);
+  }
+
   candidate = candidate.replace(/[|:\-–—]+$/, "").replace(/\s{2,}/g, " ").trim();
+  // Strip a leading fragment up to the last sentence-ending punctuation —
+  // a window that starts mid-sentence (bounded only by a fixed character
+  // count, not a real boundary) commonly carries a trailing clause from
+  // the previous sentence ahead of the true candidate start.
+  const lastBoundary = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("; "), candidate.lastIndexOf("\n"));
+  if (lastBoundary !== -1 && lastBoundary < candidate.length - 5) {
+    candidate = candidate.slice(lastBoundary + 2).trim();
+  }
   if (!candidate || candidate.length < 5) return undefined;
   if (!/ v[s]?\.? /i.test(candidate)) return undefined;
   return candidate.length > 300 ? candidate.slice(0, 300).trim() : candidate;
 }
 
 /**
- * Locates a clean case-name candidate by preferring the text immediately
- * PRECEDING a citation occurrence over "the first line containing ' v '".
- * Real law-report headers commonly repeat the case title verbatim right
- * next to the formal citation (as the real Ramsingh PDF does: "...(1973)
- * 20 WIR 138The State v Dhannie Ramsingh (1973) 20 WIR 138COURT OF
- * APPEAL..." — the SECOND "Name (Year) Vol Rep Page" pairing is a much
- * cleaner boundary than the first, navigation-adjacent one). Scans every
- * citation occurrence found in `head`, latest first, and returns the
- * first one whose immediately-preceding text (bounded by the end of any
- * earlier citation, so two adjacent title/citation pairs never bleed
- * into each other) cleans up into a valid "Party v Party" string.
+ * Structural scoring for a cleaned case-name candidate — does it look
+ * like a genuine document TITLE, or a body reference to some OTHER case?
+ * Deliberately content-agnostic: every signal here is about SHAPE
+ * (starting letter case, connector words, count of " v " occurrences,
+ * known body-reference phrasing, distance from document start), never a
+ * specific party/court/citation string. Returns `disqualified: true` for
+ * a hard structural red flag (never proposed, regardless of how early it
+ * appears); otherwise a `positionScore` where smaller `citationIndex`
+ * (closer to the start of the document) is preferred, matching how real
+ * judgment headers are laid out.
  */
-function extractCaseName(head: string): string | undefined {
-  const matches: { index: number; end: number }[] = [];
-  for (const re of [REPORTED_CITATION_RE, NEUTRAL_CITATION_RE]) {
+function scoreCaseNameCandidate(candidate: string, citationIndex: number): { disqualified: boolean; positionScore: number } {
+  const lower = candidate.toLowerCase();
+  let disqualified = false;
+
+  if (BODY_REFERENCE_MARKERS.some((marker) => lower.includes(marker))) disqualified = true;
+  if (CONTINUATION_START_RE.test(candidate.trim())) disqualified = true;
+  // A genuine case name / party string starts with a capital letter, a
+  // digit (rare but possible), or an opening quote/bracket — never a
+  // lowercase letter (which means the window began mid-word/mid-sentence,
+  // e.g. the observed "at 142R v Ferguson..." fragment).
+  if (/^[a-z]/.test(candidate.trim())) disqualified = true;
+  // More than one " v "/" vs " inside a single candidate suggests several
+  // distinct citations/party pairs got concatenated (a digest-style list
+  // of authorities), not one case's own name.
+  const vCount = (lower.match(/\sv[s]?\.?\s/g) ?? []).length;
+  if (vCount > 1) disqualified = true;
+
+  return { disqualified, positionScore: -citationIndex };
+}
+
+/**
+ * Locates a clean case-name candidate by scoring EVERY citation-adjacent
+ * text window in `head`, not just returning the first (or last) one that
+ * happens to clean up into a valid "Party v Party" string. Real law-report
+ * headers commonly repeat the case title verbatim right next to the
+ * formal citation (confirmed against the real Ramsingh PDF), and real
+ * judgments commonly cite several OTHER authorities within the same
+ * ~2000-character head window (confirmed by the real Task 4 regression,
+ * where a body citation — "at 142 R v Ferguson and Willoughby..." — was
+ * proposed instead of the genuine header). Candidates are disqualified by
+ * generic structural red flags (see scoreCaseNameCandidate) and, among
+ * survivors, the one closest to the start of the document wins — never a
+ * fixture-specific rule.
+ */
+interface CaseNameCandidateResult {
+  name: string;
+  /** Character offset (within `head`) of the citation this name was anchored to — the primary confidence signal (Task 4, Phase 3): a name anchored very close to the document start is far more likely to be the genuine header than one anchored deep into the head window. `null` when found via the citation-independent fallback path (no anchor at all — always treated as low confidence). */
+  citationIndex: number | null;
+  /** The exact citation text this name was paired with — reused by extractCaseLawMetadata so the proposed citation field is genuinely the SAME citation the case name was validated against, not an independently (and possibly differently) matched one. */
+  citationText: string | null;
+  citationType: "reported" | "neutral" | null;
+}
+
+function extractCaseNameCandidate(head: string): CaseNameCandidateResult | undefined {
+  const matches: { index: number; end: number; text: string; type: "reported" | "neutral" }[] = [];
+  for (const { re, type } of [
+    { re: REPORTED_CITATION_RE, type: "reported" as const },
+    { re: NEUTRAL_CITATION_RE, type: "neutral" as const },
+  ]) {
     const global = new RegExp(re.source, "g");
     let m: RegExpExecArray | null;
     while ((m = global.exec(head))) {
-      matches.push({ index: m.index, end: m.index + m[0].length });
+      matches.push({ index: m.index, end: m.index + m[0].length, text: m[0], type });
       if (matches.length > 20) break; // safety cap against pathological input
     }
   }
   matches.sort((a, b) => a.index - b.index);
 
-  for (let i = matches.length - 1; i >= 0; i--) {
+  const survivors: { candidate: string; positionScore: number; match: (typeof matches)[number] }[] = [];
+  for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
     const prevEnd = i > 0 ? matches[i - 1].end : 0;
     const windowStart = Math.max(prevEnd, m.index - 200);
     const candidate = cleanCaseNameCandidate(head.slice(windowStart, m.index));
-    if (candidate) return candidate;
+    if (!candidate) continue;
+    const { disqualified, positionScore } = scoreCaseNameCandidate(candidate, m.index);
+    if (disqualified) continue;
+    survivors.push({ candidate, positionScore, match: m });
   }
 
-  // No citation-adjacent candidate found — fall back to the original
-  // "first line containing ' v '" heuristic, still boundary-cleaned.
+  if (survivors.length > 0) {
+    survivors.sort((a, b) => b.positionScore - a.positionScore);
+    const winner = survivors[0];
+    return {
+      name: winner.candidate,
+      citationIndex: winner.match.index,
+      citationText: winner.match.text,
+      citationType: winner.match.type,
+    };
+  }
+
+  // No qualifying citation-adjacent candidate found — fall back to the
+  // original "first line containing ' v '" heuristic, still
+  // boundary-cleaned and still subject to the same disqualification
+  // check (a fallback must not be less careful than the primary path).
+  // No citation anchor exists for this path, so it is always reported as
+  // low confidence by the caller.
   const firstLine = head.split("\n").map((l) => l.trim()).find((l) => l.length > 3 && / v[s]?\.? /i.test(l));
-  return firstLine ? cleanCaseNameCandidate(firstLine) : undefined;
+  if (!firstLine) return undefined;
+  const cleaned = cleanCaseNameCandidate(firstLine);
+  if (!cleaned || scoreCaseNameCandidate(cleaned, 0).disqualified) return undefined;
+  return { name: cleaned, citationIndex: null, citationText: null, citationType: null };
 }
 
 /**
@@ -212,24 +350,87 @@ function extractDecidedDate(head: string): string | undefined {
   return undefined;
 }
 
-/** Best-effort, clearly-labeled-as-proposed extraction. Never invents a value it can't find — leaves fields undefined rather than guessing. */
-export function extractCaseLawMetadata(text: string): ProposedCaseLawFields {
+/**
+ * Metadata confidence — deliberately SEPARATE from `src/lib/extraction-
+ * quality.ts` (Task 4, Phase 3: "architecturally separate TEXT quality
+ * assessment from METADATA confidence assessment"). A document's TEXT can
+ * be perfectly clean, well-structured, 100%-readable prose and still
+ * yield a case-name proposal that should NOT be trusted automatically —
+ * text quality answers "is this readable text," metadata confidence
+ * answers "is this SPECIFIC proposed value actually the document's own
+ * header, not something else in the document." These are independent
+ * questions and must never be conflated into one score.
+ */
+export type MetadataConfidence = "high" | "low" | "none";
+
+/**
+ * A case-name candidate anchored to a citation within this many
+ * characters of the document start is treated as high confidence — real
+ * judgment headers are essentially always at or very near the top of the
+ * extracted text. Anything found further in (still structurally valid,
+ * still not disqualified — see scoreCaseNameCandidate) is surfaced as a
+ * proposal but deliberately NOT auto-populated, per Task 4's explicit
+ * instruction: "When uncertain: FAIL SAFE -> NEEDS REVIEW... Do not
+ * manufacture confidence."
+ */
+const HIGH_CONFIDENCE_CITATION_WINDOW = 600;
+
+export interface CaseLawExtractionResult {
+  fields: ProposedCaseLawFields;
+  /** Confidence in `fields.case_name` specifically — case name is the field most prone to a "false success" (a plausible-LOOKING but wrong proposal), per Task 4. Citation/date fields are direct pattern matches (or, when available, the exact citation the case name itself was validated against) rather than a positional judgment call, so they are not gated the same way. */
+  caseNameConfidence: MetadataConfidence;
+}
+
+/**
+ * Best-effort, clearly-labeled-as-proposed extraction, WITH an explicit
+ * confidence signal for the case-name proposal specifically (Phase 3).
+ * Never invents a value it can't find — leaves fields undefined rather
+ * than guessing.
+ */
+export function extractCaseLawMetadataWithConfidence(text: string): CaseLawExtractionResult {
   const head = text.slice(0, 2000);
   const result: ProposedCaseLawFields = {};
+  let caseNameConfidence: MetadataConfidence = "none";
 
-  const caseName = extractCaseName(head);
-  if (caseName) result.case_name = caseName;
+  const nameResult = extractCaseNameCandidate(head);
+  if (nameResult) {
+    result.case_name = nameResult.name;
+    // Reuse the EXACT citation the name was validated against, rather
+    // than independently re-matching the head — keeps the two fields
+    // genuinely paired instead of each picking a possibly different
+    // citation occurrence.
+    if (nameResult.citationType === "reported" && nameResult.citationText) {
+      result.reported_citation = nameResult.citationText;
+    } else if (nameResult.citationType === "neutral" && nameResult.citationText) {
+      result.neutral_citation = nameResult.citationText;
+    }
+    caseNameConfidence =
+      nameResult.citationIndex !== null && nameResult.citationIndex <= HIGH_CONFIDENCE_CITATION_WINDOW ? "high" : "low";
+  }
 
-  const neutral = head.match(NEUTRAL_CITATION_RE);
-  if (neutral) result.neutral_citation = neutral[0];
-
-  const reported = head.match(REPORTED_CITATION_RE);
-  if (reported) result.reported_citation = reported[0];
+  // Fill in whichever citation TYPE the winning case-name anchor did not
+  // already supply — a document can genuinely carry both a neutral and a
+  // reported citation for the same case, and a document with no
+  // confident case name at all should still surface whatever citation
+  // pattern the text contains.
+  if (!result.neutral_citation) {
+    const neutral = head.match(NEUTRAL_CITATION_RE);
+    if (neutral) result.neutral_citation = neutral[0];
+  }
+  if (!result.reported_citation) {
+    const reported = head.match(REPORTED_CITATION_RE);
+    if (reported) result.reported_citation = reported[0];
+  }
 
   const decidedDate = extractDecidedDate(head);
   if (decidedDate) result.decided_date_guess = decidedDate;
 
-  return result;
+  return { fields: result, caseNameConfidence };
+}
+
+/** Backward-compatible convenience wrapper — same extraction, without the confidence detail. Prefer `extractCaseLawMetadataWithConfidence` for any call site that auto-populates a form field, per Phase 3. */
+export function extractCaseLawMetadata(text: string): ProposedCaseLawFields {
+  return extractCaseLawMetadataWithConfidence(text).fields;
 }
 
 // ---------------------------------------------------------------------------

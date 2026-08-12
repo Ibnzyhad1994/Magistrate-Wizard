@@ -62,7 +62,7 @@ import {
 } from "@/hooks/legislation/use-legislation";
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
-import { readFileAsText, extractCaseLawMetadata, normalizeWhitespace } from "@/lib/legal-extraction";
+import { readFileAsText, extractCaseLawMetadataWithConfidence, normalizeWhitespace } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
   isPlaceholderValue,
@@ -124,16 +124,47 @@ function readExtractionEnvelope(extractedMetadata: unknown): ExtractionEnvelope 
   return envelope as ExtractionEnvelope;
 }
 
+/** Pulls the case-name metadata confidence recorded at ingest time (Phase 3/8) out of `extracted_metadata._metadataConfidence.caseName`, if present — older drafts created before this pass have none. */
+function readCaseNameConfidence(extractedMetadata: unknown): "high" | "low" | "none" | null {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
+  const confidence = (extractedMetadata as Record<string, unknown>)._metadataConfidence;
+  if (!confidence || typeof confidence !== "object") return null;
+  const caseName = (confidence as Record<string, unknown>).caseName;
+  return caseName === "high" || caseName === "low" || caseName === "none" ? caseName : null;
+}
+
 const EXTRACTION_STATUS_LABEL: Record<PipelineExtractionStatus, string> = {
   pending: "No text yet",
-  extracted: "Extracted",
-  low_quality: "Low quality extraction",
+  extracted: "Text extracted",
+  low_quality: "Text extracted — low confidence",
   requires_ocr: "OCR required",
   failed: "Extraction failed",
 };
 
-/** Compact, reusable extraction-provenance readout — Review Queue §Phase 9: "What did the machine determine? What remains uncertain?" answered in one glance, without cluttering the card. */
-function ExtractionStatusPanel({ envelope }: { envelope: ExtractionEnvelope | null }) {
+/**
+ * Compact, reusable extraction-provenance readout — Review Queue §Phase 9:
+ * "What did the machine determine? What remains uncertain?" answered in
+ * one glance, without cluttering the card.
+ *
+ * WORDING FIX (Task 4, Phase 8): this used to show a bare "Quality: N%"
+ * figure taken directly from the character-level quality score — which is
+ * exactly how a document with clean, readable, but WRONG text (the real
+ * Ramsingh false-success case) could display "Quality: 100%" right next
+ * to an incorrect proposed case name, misleadingly implying the whole
+ * extraction — including the proposed metadata — was fully trustworthy.
+ * This panel now shows plain-language status for TWO independent things
+ * (per Phase 3's architecture): whether TEXT was usably extracted, and
+ * separately, how confident the proposed CASE NAME is — never a bare
+ * percentage presented as if it meant "this is correct."
+ */
+function ExtractionStatusPanel({
+  envelope,
+  caseNameConfidence = null,
+}: {
+  envelope: ExtractionEnvelope | null;
+  /** Only meaningful for Case Law; omitted entirely for Legislation (no case-name concept). `null`/undefined = not recorded (older draft, or Legislation). */
+  caseNameConfidence?: "high" | "low" | "none" | null;
+}) {
   if (!envelope || envelope.status === "pending") {
     return (
       <p className="text-xs text-muted-foreground">
@@ -148,8 +179,20 @@ function ExtractionStatusPanel({ envelope }: { envelope: ExtractionEnvelope | nu
     ocr: "OCR",
     none: "—",
   };
+  // Plain-language text-quality phrase — never a raw percentage. The
+  // underlying qualityScore still exists (see envelope.qualityScore) for
+  // internal "extracted" vs. "low_quality" routing, but is deliberately
+  // not surfaced to the curator as if it were a precision measurement.
+  const textQualityPhrase =
+    envelope.qualityScore === null
+      ? null
+      : envelope.qualityScore >= 0.9
+        ? "Text reads cleanly"
+        : envelope.qualityScore >= 0.75
+          ? "Text mostly readable"
+          : "Text partially readable";
   return (
-    <div className="space-y-1 rounded-md border border-border p-2.5">
+    <div className="space-y-1.5 rounded-md border border-border p-2.5">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge
           variant={
@@ -165,12 +208,17 @@ function ExtractionStatusPanel({ envelope }: { envelope: ExtractionEnvelope | nu
           {EXTRACTION_STATUS_LABEL[envelope.status]}
         </Badge>
         <span className="text-muted-foreground">Method: {methodLabel[envelope.method]}</span>
-        {envelope.qualityScore !== null && (
-          <span className="text-muted-foreground">Quality: {Math.round(envelope.qualityScore * 100)}%</span>
-        )}
+        {textQualityPhrase && <span className="text-muted-foreground">{textQualityPhrase}</span>}
         <span className="text-muted-foreground">OCR used: {envelope.ocrUsed ? "Yes" : "No"}</span>
         {envelope.charCount > 0 && <span className="text-muted-foreground">{envelope.charCount.toLocaleString()} characters</span>}
       </div>
+      {caseNameConfidence && caseNameConfidence !== "high" && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+          {caseNameConfidence === "low"
+            ? "Case name confidence: Low — the proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
+            : "Case name confidence: None — no case name could be confidently identified. Please enter it manually."}
+        </p>
+      )}
       {envelope.warnings.length > 0 && (
         <ul className="list-inside list-disc space-y-0.5 text-[11px] text-amber-700 dark:text-amber-400">
           {envelope.warnings.map((w, i) => (
@@ -605,6 +653,8 @@ function ImportTab() {
   const [jurisdictionId, setJurisdictionId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [extractionEnvelope, setExtractionEnvelope] = useState<ExtractionEnvelope>(emptyExtractionEnvelope());
+  /** Case-name metadata confidence for the CURRENT file (Phase 3/8) — surfaced live in the New Import panel, not just after the draft is created. `null` = not yet computed / no case name found at all. */
+  const [caseNameConfidence, setCaseNameConfidence] = useState<"high" | "low" | "none" | null>(null);
   // Case name/citation/decided date are the only free-text metadata the
   // curator ever types for Case Law now — Court/Jurisdiction are captured
   // ONCE via the canonical selects below, never as a second parallel
@@ -661,6 +711,7 @@ function ImportTab() {
     setCaseFields(EMPTY_CASE_FIELDS);
     setStatuteFields(EMPTY_STATUTE_FIELDS);
     setExtractionEnvelope(emptyExtractionEnvelope());
+    setCaseNameConfidence(null);
   }
 
   async function handleFile(f: File) {
@@ -696,16 +747,33 @@ function ImportTab() {
     if (envelope.status === "extracted" || envelope.status === "low_quality") {
       toast.success(
         envelope.status === "extracted"
-          ? "Text extracted from the PDF's text layer. Case name, citation, and Court/Jurisdiction (where confidently identified) were proposed below — review before creating the draft."
+          ? "Text extracted from the PDF's text layer. Citation, Case name, and Court/Jurisdiction were proposed below where confidently identified — review before creating the draft."
           : "Text extracted, but the quality gate flagged it as low confidence — review it carefully below before creating the draft.",
       );
       if (contentType === "case_law") {
-        const proposed = extractCaseLawMetadata(normalizeWhitespace(envelope.text));
+        const { fields: proposed, caseNameConfidence: computedConfidence } = extractCaseLawMetadataWithConfidence(
+          normalizeWhitespace(envelope.text),
+        );
+        setCaseNameConfidence(computedConfidence);
+        // Phase 3 (Task 4): a case-name PROPOSAL is only auto-filled into
+        // the form when it is high confidence (anchored to a citation
+        // near the very start of the extracted text). A low-confidence
+        // proposal is real information but must not be silently treated
+        // as if the machine were sure — "DO NOT AUTOMATICALLY PROPOSE
+        // LEGAL METADATA FROM TEXT UNLESS THE SYSTEM HAS REASONABLE
+        // EVIDENCE THAT THE TEXT IS ACTUALLY USABLE." The curator sees
+        // the full extracted text below regardless and can copy the name
+        // themselves if the low-confidence guess does happen to be right.
         setCaseFields({
-          case_name: proposed.case_name ?? "",
+          case_name: computedConfidence === "high" ? (proposed.case_name ?? "") : "",
           citation: proposed.reported_citation ?? proposed.neutral_citation ?? "",
           decided_date: proposed.decided_date_guess ?? "",
         });
+        if (proposed.case_name && computedConfidence !== "high") {
+          toast.message(
+            `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill — please review the extracted text and enter the case name manually.`,
+          );
+        }
         // Only auto-select on "high"/"medium" confidence — a mention of
         // some other court deep in the judgment body (a common pattern:
         // Caribbean appellate judgments discussing further appeal rights
@@ -809,7 +877,12 @@ function ImportTab() {
             )}
           </div>
 
-          {file && extractionEnvelope.status !== "pending" && <ExtractionStatusPanel envelope={extractionEnvelope} />}
+          {file && extractionEnvelope.status !== "pending" && (
+            <ExtractionStatusPanel
+              envelope={extractionEnvelope}
+              caseNameConfidence={contentType === "case_law" ? caseNameConfidence : null}
+            />
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Source URL" hint="Optional — provenance only, not fetched.">
@@ -1247,7 +1320,10 @@ function CaseLawReviewCard({ row }: { row: ReviewRow<CaseLaw> }) {
         />
 
         {/* EXTRACTION — what the machine determined and how confident it is (Phase 9) */}
-        <ExtractionStatusPanel envelope={readExtractionEnvelope(row.extracted_metadata)} />
+        <ExtractionStatusPanel
+          envelope={readExtractionEnvelope(row.extracted_metadata)}
+          caseNameConfidence={readCaseNameConfidence(row.extracted_metadata)}
+        />
         {row.job_error_summary && (
           <p className="text-xs text-destructive">Import job error: {row.job_error_summary}</p>
         )}

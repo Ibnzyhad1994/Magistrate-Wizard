@@ -165,6 +165,30 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
       } else {
         content = raw.slice(range.start, range.end);
       }
+      // Defense-in-depth exclusion (Task 4 root-cause fix): a PDF's
+      // ToUnicode CMap stream carries NO distinguishing /Type or /Subtype
+      // marker of its own (unlike a font PROGRAM stream, which has
+      // /Length1 — see the dict-based exclusions above), so it cannot be
+      // filtered out before decompression. Once decompressed, though, a
+      // CMap stream is unambiguous: it is Adobe's CMap resource format,
+      // always containing the literal PostScript-like keywords
+      // "begincmap"/"endcmap" per the PDF spec (ISO 32000-1 §9.7.5.3) —
+      // this is true for EVERY PDF that embeds a ToUnicode CMap,
+      // regardless of jurisdiction/document/font, so checking for it here
+      // is a generic structural exclusion, not a fixture-specific one.
+      // This is what a real-world CMap stream looks like inside:
+      //   /CIDInit /ProcSet findresource begin
+      //   12 dict begin begincmap
+      //   /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS2) ... >> def
+      //   ... endcmap end end
+      // The literal strings "(Adobe)" / "(UCS2)" above are genuine PDF
+      // literal-string syntax (not any different from Tj text), so the
+      // Tj/TJ-operand check below is not by itself sufficient to exclude
+      // this whole stream type early — this check is the primary
+      // defense for it.
+      if (content.includes("begincmap") || content.includes("/CIDSystemInfo")) {
+        continue;
+      }
       const extracted = extractTextFromContentStream(content);
       if (extracted.trim()) {
         textStreamsDecoded += 1;
@@ -282,37 +306,77 @@ async function inflateZlib(input: Uint8Array): Promise<Uint8Array> {
 // the same purpose), not a spec requirement.
 const TJ_WORD_GAP_THRESHOLD = -80;
 
+/**
+ * ARCHITECTURAL FIX (Task 4, false-success prevention): the previous
+ * version of this function kept EVERY parenthesized literal string found
+ * anywhere in an eligible stream, on the stated theory that "non-text
+ * parenthesized operands are rare" — a real Ramsingh-class PDF proved that
+ * assumption wrong (a ToUnicode CMap's `/Registry (Adobe) /Ordering
+ * (UCS2)` literal-string dictionary values are genuine PDF literal-string
+ * syntax, extracted verbatim as "AdobeUCS2" text). This version only
+ * keeps a literal string when it is a CONFIRMED operand of a real
+ * text-showing operator — `Tj` for a bare literal, or `TJ` for an array —
+ * by buffering candidates and only committing them once the operator that
+ * follows is actually seen. Nothing about this is document/jurisdiction-
+ * specific: it is a correctness fix to PDF operator parsing that applies
+ * identically to every PDF this parser ever processes.
+ */
 function extractTextFromContentStream(content: string): string {
   const out: string[] = [];
   const n = content.length;
   let i = 0;
   let arrayDepth = 0;
+  // Non-null only while arrayDepth > 0 -- literals collected here are
+  // committed to `out` only if the array's closing `]` is immediately
+  // followed by `TJ`; otherwise the whole buffer is discarded (the array
+  // was some other operator's operand, e.g. a dash pattern for `d`).
+  let arrayBuffer: string[] | null = null;
 
   while (i < n) {
     const ch = content[i];
 
     if (ch === "[") {
       arrayDepth += 1;
+      if (arrayDepth === 1) arrayBuffer = [];
       i += 1;
       continue;
     }
     if (ch === "]") {
       arrayDepth = Math.max(0, arrayDepth - 1);
       i += 1;
+      if (arrayDepth === 0 && arrayBuffer !== null) {
+        const afterOp = peekOperator(content, i, "TJ");
+        if (afterOp !== null) {
+          out.push(...arrayBuffer);
+          i = afterOp;
+        }
+        // else: not TJ-terminated -- discard, never treated as text.
+        arrayBuffer = null;
+      }
       continue;
     }
 
     if (ch === "(") {
       const { value, endIndex } = scanLiteralString(content, i);
-      // Only keep it if followed (after whitespace/array punctuation) by
-      // a text-showing context -- but tracking full array vs. bare Tj
-      // context precisely requires a real tokenizer; as a pragmatic
-      // middle ground we keep every parenthesized string found in the
-      // stream. Non-text parenthesized operands are rare relative to
-      // actual text runs in a typical content stream, and the
-      // confidence check downstream catches streams where this
-      // assumption fails badly.
-      out.push(unescapePdfLiteral(value));
+      const text = unescapePdfLiteral(value);
+      if (arrayDepth > 0 && arrayBuffer !== null) {
+        // Provisional -- only kept if the enclosing array turns out to be
+        // a genuine TJ operand (checked above at the matching `]`).
+        arrayBuffer.push(text);
+        i = endIndex;
+        continue;
+      }
+      // Bare (non-array) literal -- only a confirmed `Tj` operand is kept.
+      // A literal NOT followed by Tj (e.g. a dictionary value inside
+      // embedded CMap/PostScript-like stream syntax, or any other
+      // operator's string operand) is never document text and must not
+      // leak into the extracted result, no matter how readable it looks.
+      const afterOp = peekOperator(content, endIndex, "Tj");
+      if (afterOp !== null) {
+        out.push(text);
+        i = afterOp;
+        continue;
+      }
       i = endIndex;
       continue;
     }
@@ -328,12 +392,15 @@ function extractTextFromContentStream(content: string): string {
     // negative value indicates the producer opened up a word-sized gap
     // rather than just tightening letter spacing; insert a space so
     // "Citation:(1973)" doesn't get silently glued into one token.
-    if (arrayDepth > 0 && (ch === "-" || (ch >= "0" && ch <= "9"))) {
+    // Buffered into arrayBuffer (not `out` directly) for the same reason
+    // as the literals above -- it must not survive if the array isn't
+    // actually a TJ operand.
+    if (arrayDepth > 0 && arrayBuffer !== null && (ch === "-" || (ch >= "0" && ch <= "9"))) {
       const numMatch = /^-?\d+(\.\d+)?/.exec(content.slice(i));
       if (numMatch) {
         const val = parseFloat(numMatch[0]);
-        if (val <= TJ_WORD_GAP_THRESHOLD && out.length > 0 && !out[out.length - 1].endsWith(" ")) {
-          out.push(" ");
+        if (val <= TJ_WORD_GAP_THRESHOLD && arrayBuffer.length > 0 && !arrayBuffer[arrayBuffer.length - 1].endsWith(" ")) {
+          arrayBuffer.push(" ");
         }
         i += numMatch[0].length;
         continue;
@@ -351,6 +418,24 @@ function matchesWordOp(content: string, i: number, op: string): boolean {
   const before = i > 0 ? content[i - 1] : " ";
   const after = content[i + op.length] ?? " ";
   return /\s/.test(before) && (/\s/.test(after) || after === "");
+}
+
+/**
+ * Skips whitespace starting at `from` and checks whether the operator
+ * `op` (e.g. "Tj", "TJ") appears there as a genuine token (word-bounded,
+ * not a prefix of a longer identifier). Returns the index just past the
+ * operator if matched, or null otherwise. This is what turns "keep every
+ * parenthesized string" into "keep only confirmed text-showing operands"
+ * — the core of this pass's false-success fix.
+ */
+function peekOperator(content: string, from: number, op: string): number | null {
+  let j = from;
+  const n = content.length;
+  while (j < n && /\s/.test(content[j])) j += 1;
+  if (content.slice(j, j + op.length) !== op) return null;
+  const after = content[j + op.length] ?? " ";
+  if (/[A-Za-z0-9]/.test(after)) return null;
+  return j + op.length;
 }
 
 /** Scans a PDF literal string starting at `s[start] === '('`, respecting escaped and balanced-unescaped parens per the PDF spec. Returns the raw (still-escaped) inner text and the index just past the closing paren. */

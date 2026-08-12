@@ -17,7 +17,13 @@
  * away from.
  */
 
-export type QualityHardFailReason = "too_short" | "printable_ratio" | "replacement_chars" | "boilerplate" | "control_chars";
+export type QualityHardFailReason =
+  | "too_short"
+  | "printable_ratio"
+  | "replacement_chars"
+  | "boilerplate"
+  | "control_chars"
+  | "structural_incoherence";
 
 export interface QualityAssessment {
   /** 0-1. Not shown to the curator as a precise number — used only to choose between "extracted" and "low_quality". */
@@ -34,6 +40,21 @@ export interface QualityAssessment {
     alphabeticRatio: number;
     whitespaceRatio: number;
     boilerplateMarkerHits: number;
+    /**
+     * STRUCTURAL dimension (Task 4, Phase 2 — deliberately separate from
+     * the CHARACTER-level metrics above). A text can be composed entirely
+     * of printable, readable characters and still be structurally
+     * incoherent — not real prose in reading order at all (e.g. PDF
+     * internal syntax, or, before this pass's pdf-text-extraction.ts fix,
+     * a CMap dictionary's literal-string values glued together with no
+     * word breaks). This measures the SHAPE of the text — average "word"
+     * length and presence of ordinary sentence-ending punctuation —
+     * independent of character composition. Document-agnostic: applies
+     * identically to prose judgments and to more list/heading-heavy
+     * legislative text.
+     */
+    avgWordLength: number;
+    sentenceBoundaryCount: number;
   };
 }
 
@@ -75,18 +96,32 @@ const BOILERPLATE_MARKERS = [
 /** Repeated missing-glyph / "tofu box" markers a broken font decode commonly produces. */
 const BOX_GLYPH_RE = /[□❑❒�]/g;
 
+/**
+ * A "word" (whitespace-delimited token) longer than this essentially
+ * never occurs in real prose or legislative text — even long compound/
+ * technical terms rarely exceed this. Text whose AVERAGE token length
+ * clears this bar is not word-broken text at all — a strong, generic
+ * (jurisdiction/document-agnostic) signal that word-space characters were
+ * never genuinely present in the source stream, only glued syntax.
+ */
+const MAX_PLAUSIBLE_AVG_WORD_LENGTH = 30;
+/** A text this long that contains not one ordinary sentence-ending boundary AND has abnormal average word length is not coherent prose/legislative text. Length-gated so short/list-only fragments aren't penalized. */
+const STRUCTURAL_CHECK_MIN_LENGTH = 400;
+
 function classifyHardFailReason(
   length: number,
   printableRatio: number,
   replacementRatio: number,
   controlRatio: number,
   boilerplateHits: number,
+  avgWordLength: number,
 ): QualityHardFailReason | undefined {
   if (length < MIN_LENGTH) return "too_short";
   if (boilerplateHits >= 2) return "boilerplate";
   if (replacementRatio > MAX_REPLACEMENT_RATIO) return "replacement_chars";
   if (controlRatio > MAX_CONTROL_RATIO) return "control_chars";
   if (printableRatio < MIN_PRINTABLE_RATIO) return "printable_ratio";
+  if (length >= STRUCTURAL_CHECK_MIN_LENGTH && avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH) return "structural_incoherence";
   return undefined;
 }
 
@@ -115,6 +150,8 @@ export function assessExtractionQuality(text: string): QualityAssessment {
         alphabeticRatio: 0,
         whitespaceRatio: 0,
         boilerplateMarkerHits: 0,
+        avgWordLength: 0,
+        sentenceBoundaryCount: 0,
       },
     };
   }
@@ -150,6 +187,13 @@ export function assessExtractionQuality(text: string): QualityAssessment {
   const lower = text.toLowerCase();
   const boilerplateMarkerHits = BOILERPLATE_MARKERS.filter((m) => lower.includes(m)).length;
 
+  // Structural dimension — see the MAX_PLAUSIBLE_AVG_WORD_LENGTH comment
+  // above for why this is a separate, content-agnostic check from the
+  // character-level ratios above it.
+  const words = text.split(/\s+/).filter(Boolean);
+  const avgWordLength = words.length > 0 ? words.reduce((sum, w) => sum + w.length, 0) / words.length : 0;
+  const sentenceBoundaryCount = (text.match(/[.!?](\s+[A-Z]|\s*$)/g) ?? []).length;
+
   if (printableRatio < MIN_PRINTABLE_RATIO) {
     warnings.push(
       `Only ${(printableRatio * 100).toFixed(0)}% of characters are printable/expected text — likely a garbled or binary-derived extraction.`,
@@ -177,8 +221,27 @@ export function assessExtractionQuality(text: string): QualityAssessment {
   if (punctuationCount / length > 0.35) {
     warnings.push("Unusually high punctuation density for prose text.");
   }
+  if (length >= STRUCTURAL_CHECK_MIN_LENGTH && avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH) {
+    warnings.push(
+      `Average "word" length (${avgWordLength.toFixed(1)} characters) is far outside normal prose — text does not appear to be genuine word-broken content.`,
+    );
+  } else if (length >= STRUCTURAL_CHECK_MIN_LENGTH && sentenceBoundaryCount === 0 && whitespaceRatio > 0.05 && whitespaceRatio < 0.5) {
+    // Softer signal, warning-only (not a hard fail): plenty of normal
+    // word breaks, but not one ordinary sentence-ending boundary in
+    // several hundred+ characters. Legitimate for some legislative
+    // fragments (a long list of undivided defined terms, for example),
+    // so this only nudges the score down rather than hard-failing.
+    warnings.push("No ordinary sentence-ending punctuation found despite the text's length — reading order may be unreliable.");
+  }
 
-  const hardFailReason = classifyHardFailReason(length, printableRatio, replacementRatio, controlRatio, boilerplateMarkerHits);
+  const hardFailReason = classifyHardFailReason(
+    length,
+    printableRatio,
+    replacementRatio,
+    controlRatio,
+    boilerplateMarkerHits,
+    avgWordLength,
+  );
 
   // Soft score: start at 1.0, subtract a fixed penalty per triggered
   // warning. Only used to distinguish "extracted" from "low_quality" once
@@ -190,7 +253,17 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     passed: hardFailReason === undefined,
     hardFailReason,
     warnings,
-    metrics: { length, printableRatio, replacementRatio, controlRatio, alphabeticRatio, whitespaceRatio, boilerplateMarkerHits },
+    metrics: {
+      length,
+      printableRatio,
+      replacementRatio,
+      controlRatio,
+      alphabeticRatio,
+      whitespaceRatio,
+      boilerplateMarkerHits,
+      avgWordLength,
+      sentenceBoundaryCount,
+    },
   };
 }
 

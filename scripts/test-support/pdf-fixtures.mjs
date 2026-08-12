@@ -102,6 +102,123 @@ export function makeBinaryGarbagePdf(name = "binary-garbage.pdf") {
   return toFile(assemblePdf([streamObj]), name);
 }
 
+/**
+ * Reproduces the real Task-4 regression: a genuine header/body text
+ * content stream (real judgment-shaped text, "The State v Test Appellant
+ * (1973) 20 XYZ 138 ... COURT OF APPEAL") PLUS a separate ToUnicode CMap
+ * stream — structurally identical to what real PDF producers embed for
+ * every non-base14 font, with NO distinguishing /Type or /Subtype marker
+ * of its own (so the object-dict-based exclusions in
+ * pdf-text-extraction.ts cannot catch it — only the content-based
+ * begincmap/CIDSystemInfo check can). Before this pass's fix, the CMap
+ * stream's literal `/Registry (Adobe) /Ordering (UCS2)` values leaked
+ * into the extracted text as "AdobeUCS2" garbage ahead of the real
+ * content. This fixture proves the fix generically (no case-specific
+ * text), independent of any particular jurisdiction/case name.
+ */
+export function makeCmapPollutedPdf(name = "cmap-polluted.pdf") {
+  const cmapContent = [
+    "/CIDInit /ProcSet findresource begin",
+    "12 dict begin",
+    "begincmap",
+    "/CIDSystemInfo",
+    "<< /Registry (Adobe)",
+    "/Ordering (UCS2)",
+    "/Supplement 0",
+    ">> def",
+    "/CMapName /Adobe-Identity-UCS2 def",
+    "1 begincodespacerange",
+    "<0000> <FFFF>",
+    "endcodespacerange",
+    "endcmap",
+    "CMapName currentdict /CMap defineresource pop",
+    "end",
+    "end",
+  ].join("\n");
+  const cmapCompressed = deflate(cmapContent);
+  // Deliberately no /Type or /Subtype in this stream's own dictionary —
+  // matches how real ToUnicode CMap stream objects are declared.
+  const cmapStreamObj = { dict: "/Length " + cmapCompressed.length + " /Filter /FlateDecode", bytes: cmapCompressed };
+
+  const bodyLines = [
+    "The State v Test Appellant",
+    "(1973) 20 XYZ 138",
+    "COURT OF APPEAL OF TESTLAND",
+    "The appellant was convicted following a trial in the High Court.",
+    "Counsel submitted that certain admissions were wrongly admitted as hearsay evidence at trial.",
+    "The Court considered the relevant authorities before dismissing the appeal in this matter.",
+  ];
+  const ops = bodyLines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+  const bodyContent = `BT /F1 12 Tf ${ops} ET`;
+  const bodyCompressed = deflate(bodyContent);
+  const bodyStreamObj = { dict: "/Length " + bodyCompressed.length + " /Filter /FlateDecode", bytes: bodyCompressed };
+
+  // CMap stream ordered FIRST -- reproduces the observed real-world byte
+  // order where the polluting stream appears ahead of the actual page
+  // content stream in the file.
+  return toFile(assemblePdf([cmapStreamObj, bodyStreamObj]), name);
+}
+
+/**
+ * A genuine `[ (...) N (...) N ... ] TJ` array — the kerned-text form real
+ * word-processor/typesetting PDF producers commonly emit instead of a
+ * bare `Tj` per word. Used to confirm the Tj/TJ-operand-confirmation
+ * rewrite still extracts genuine array text (not just bare Tj strings).
+ */
+export function makeTjArrayPdf(name = "tj-array.pdf") {
+  const content = `BT /F1 12 Tf [(Hello) -250 (World) -300 (Testing)] TJ ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
+/**
+ * A non-TJ array (e.g. a dash pattern for the `d` operator) that happens
+ * to contain parenthesized-looking content is NOT constructed here since
+ * real dash-pattern arrays only ever contain numbers -- instead this
+ * fixture proves the negative case directly: a bare literal NOT followed
+ * by Tj (simulating any other operator's string operand, e.g. a color
+ * space name or an XObject-adjacent literal) must never be kept as text.
+ */
+export function makeBareLiteralNotTjPdf(name = "bare-literal-not-tj.pdf") {
+  const content = `BT /F1 12 Tf (Real Shown Text) Tj (Not Shown) Tf ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
+/**
+ * The "body citation trap": a genuine, well-formed header (case name +
+ * citation + court, exactly like a real judgment) followed immediately by
+ * MANY body citations of OTHER cases in typical "cited authorities"
+ * prose, including a pincite-style reference ("... at 142 R v Someone
+ * Else (1967) 62 ABC 408 ...") — the real shape of the reported "at 142R
+ * v Ferguson and Willoughby" false-positive. Proves extractCaseName picks
+ * the genuine header, not a body/cited-authority citation, regardless of
+ * how many body citations exist before the 2000-character head window
+ * ends. No case-specific text is asserted on by name in the fixture
+ * itself — this is a structural pattern (header-then-many-citations), not
+ * a fixture pinned to one jurisdiction.
+ */
+export function makeBodyCitationTrapPdf(name = "body-citation-trap.pdf") {
+  const lines = [
+    "The Queen v Test Respondent",
+    "(1985) 33 ABC 210",
+    "COURT OF APPEAL OF SOMEWHERE",
+    "The appellant was convicted of an offence and now appeals against conviction and sentence.",
+    "Counsel for the appellant relied on a number of authorities in support of the submissions made.",
+    "See in particular the decision at 142 R v Ferguson and Someone (1967) 62 DEF 408, Digest of Cases,",
+    "and also the earlier authority of R v Whitfield (1971) 15 GHI 92, and further R v Alonso (1962) 8 JKL 44,",
+    "each of which considered similar questions of admissibility of hearsay evidence in criminal trials.",
+    "The Court considered these authorities at length before dismissing the appeal in this matter.",
+  ];
+  const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+  const content = `BT /F1 12 Tf ${ops} ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
 /** No text operators at all, an image /Subtype declared — a scanned/image-only page, correctly requires OCR. */
 export function makeImageOnlyPdf(name = "image-only.pdf") {
   const fakeJpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8]);
