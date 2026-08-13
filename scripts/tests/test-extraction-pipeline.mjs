@@ -17,6 +17,9 @@ import {
   makeFontBoilerplatePdf,
   makeBinaryGarbagePdf,
   makeImageOnlyPdf,
+  makeHexTextPdf,
+  makeCompositeFontHexPdf,
+  makeEncryptedPdf,
 } from "../test-support/pdf-fixtures.mjs";
 
 const NUL_CHAR = String.fromCharCode(0);
@@ -104,6 +107,67 @@ async function main() {
     await check("5. image-only PDF status is requires_ocr", envelope.status, "requires_ocr");
     await check("5. image-only PDF ocrUsed is false (OCR is not implemented)", envelope.ocrUsed, false);
     await check("5. image-only PDF text withheld", envelope.text, "");
+    await check("5. image-only PDF unreadableReason is no_text_found", envelope.unreadableReason, "no_text_found");
+  }
+
+  // 6. Simple-font PDF using HEX STRING Tj operands (Phase A/D root-cause
+  // fix, this pass): no composite/Type0 font marker anywhere in the file,
+  // so these hex operands should decode exactly like a literal string and
+  // extraction should succeed -- the real defect this pass fixed (real
+  // Canadian court PDFs using this encoding were previously reported as
+  // "OCR required" because hex operands were never decoded at all).
+  {
+    const lines = [
+      "The State v Test Appellant",
+      "(1969) 1 XYZ 525",
+      "SUPREME COURT OF TESTLAND",
+      "The appellant was convicted following a trial and now appeals against that conviction.",
+      "Counsel for the appellant submitted that the trial judge erred in several respects.",
+      "The Court considered the relevant authorities at length before dismissing the appeal.",
+    ];
+    const file = makeHexTextPdf(lines);
+    const envelope = await runPdfExtractionPipeline(file);
+    await check(
+      "6. hex-string simple-font PDF is usable (extracted or low_quality)",
+      envelope.status === "extracted" || envelope.status === "low_quality",
+      true,
+    );
+    await check("6. hex-string simple-font PDF text is non-empty", envelope.text.length > 0, true);
+    await check("6. hex-string simple-font PDF text contains the decoded case name", envelope.text.includes("Test Appellant"), true);
+    await check("6. hex-string simple-font PDF unreadableReason is null", envelope.unreadableReason, null);
+  }
+
+  // 7. Composite/Type0 (CID-keyed) font PDF using HEX STRING Tj operands
+  // (Phase A/D root-cause fix, this pass, false-success guard): the hex
+  // operands must be WITHHELD, never decoded as raw character codes --
+  // proves the parser distinguishes "hex text I can safely decode" from
+  // "hex text that would require a ToUnicode CMap I don't have", honestly
+  // reporting unreadableReason "unsupported_font_encoding" instead of
+  // fabricating wrong text just because characters could technically be
+  // produced.
+  {
+    const file = makeCompositeFontHexPdf();
+    const envelope = await runPdfExtractionPipeline(file);
+    await check("7. composite-font hex PDF status is requires_ocr", envelope.status, "requires_ocr");
+    await check("7. composite-font hex PDF text withheld", envelope.text, "");
+    await check(
+      "7. composite-font hex PDF unreadableReason is unsupported_font_encoding",
+      envelope.unreadableReason,
+      "unsupported_font_encoding",
+    );
+  }
+
+  // 8. Encrypted PDF (/Encrypt in the trailer, content stream bytes not
+  // valid deflate data -- Phase A/D root-cause fix, this pass): must be
+  // honestly reported as "encrypted", the most specific and actionable of
+  // the three requires_ocr reasons, not lumped in with a genuinely scanned
+  // document.
+  {
+    const file = makeEncryptedPdf();
+    const envelope = await runPdfExtractionPipeline(file);
+    await check("8. encrypted PDF status is requires_ocr", envelope.status, "requires_ocr");
+    await check("8. encrypted PDF text withheld", envelope.text, "");
+    await check("8. encrypted PDF unreadableReason is encrypted", envelope.unreadableReason, "encrypted");
   }
 
   console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

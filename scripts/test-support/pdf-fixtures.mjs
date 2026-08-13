@@ -286,6 +286,88 @@ export function makeGluedTextPdf(name = "glued-text.pdf") {
   return toFile(assemblePdf([streamObj]), name);
 }
 
+/** Encodes a latin1 string as PDF hex-string digits (2 hex chars per byte, matching what a 1-byte-per-character SIMPLE font's hex-string Tj/TJ operand looks like in a real content stream). */
+function hexEncode(str) {
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    out += str.charCodeAt(i).toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+/**
+ * Phase A/D regression fixture: a SIMPLE (non-composite) font PDF whose
+ * text-showing operators use HEX STRING operands (`<...> Tj`) rather than
+ * literal `(...)` strings — a real, spec-legal encoding choice some PDF
+ * producers make, and the root cause (alongside encryption, see
+ * makeEncryptedPdf below) this pass identified for why real Canadian
+ * court PDFs were reported as "OCR required" despite having a genuine text
+ * layer. No composite/Type0 font marker appears anywhere in this file, so
+ * pdf-text-extraction.ts should decode these hex operands exactly like a
+ * literal string (1 byte = 1 character) and extraction should succeed.
+ */
+export function makeHexTextPdf(lines, name = "hex-text.pdf") {
+  const ops = lines.map((line) => `<${hexEncode(line)}> Tj T*`).join("\n");
+  const content = `BT /F1 12 Tf ${ops} ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
+/**
+ * The composite/CID-keyed-font counterpart to makeHexTextPdf: a genuine
+ * `/Subtype /Type0 /Encoding /Identity-H` font resource object declared
+ * elsewhere in the file (exactly how a real embedded composite font
+ * resource is declared — a separate, non-stream object, not inside the
+ * content stream itself), alongside a hex-string Tj operand in the content
+ * stream. Proves the parser DELIBERATELY WITHHOLDS these hex operands
+ * (never decodes them as raw character codes, which would silently
+ * fabricate wrong text from CID/glyph codes) and honestly reports
+ * `unreadableReason: "unsupported_font_encoding"` rather than a false
+ * success. The encoded line is deliberately long enough that a wrongly-
+ * decoded result would clear extraction-quality.ts's MIN_LENGTH floor —
+ * this fixture would incorrectly PASS a naive "did we get non-empty text"
+ * test if the false-success guard were ever removed.
+ */
+export function makeCompositeFontHexPdf(name = "composite-font-hex.pdf") {
+  const longLine =
+    "This text is CID-encoded under a composite Type0 font and must never be decoded as raw character codes " +
+    "because doing so without the font's ToUnicode CMap would silently produce wrong text instead of an honest failure.";
+  const content = `BT /F1 12 Tf <${hexEncode(longLine)}> Tj ET`;
+  const compressed = deflate(content);
+  const parts = ["%PDF-1.4\n"];
+  parts.push("1 0 obj\n<< /Type /Font /Subtype /Type0 /BaseFont /TestCIDFont /Encoding /Identity-H >>\nendobj\n");
+  parts.push(`2 0 obj\n<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`);
+  parts.push(compressed.toString("latin1"));
+  parts.push("\nendstream\nendobj\n");
+  parts.push("trailer\n<< /Root 1 0 R >>\n%%EOF");
+  return toFile(Buffer.from(parts.join(""), "latin1"), name);
+}
+
+/**
+ * Phase A/D regression fixture: a PDF whose trailer declares an /Encrypt
+ * dictionary reference — the real PDF-spec signal that this file's stream
+ * bytes are encrypted (this synthetic fixture does not implement actual
+ * RC4/AES PDF encryption; the point under test is DETECTING and honestly
+ * REPORTING the /Encrypt marker, not decrypting real cipher output). The
+ * content stream's bytes are deliberately NOT valid deflate data — exactly
+ * the real symptom an encrypted-but-/FlateDecode-declared stream produces
+ * (decompression throws and is silently skipped) — proving isEncrypted
+ * detection correctly reports this as `unreadableReason: "encrypted"`
+ * rather than the same generic "no_text_found" every other zero-text case
+ * gets.
+ */
+export function makeEncryptedPdf(name = "encrypted.pdf") {
+  const notValidDeflateData = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  const parts = ["%PDF-1.4\n"];
+  parts.push(`1 0 obj\n<< /Length ${notValidDeflateData.length} /Filter /FlateDecode >>\nstream\n`);
+  parts.push(notValidDeflateData.toString("latin1"));
+  parts.push("\nendstream\nendobj\n");
+  parts.push("2 0 obj\n<< /Filter /Standard /V 2 /R 3 /O (garbageowner) /U (garbageuser) /P -4 >>\nendobj\n");
+  parts.push("trailer\n<< /Root 1 0 R /Encrypt 2 0 R >>\n%%EOF");
+  return toFile(Buffer.from(parts.join(""), "latin1"), name);
+}
+
 /** No text operators at all, an image /Subtype declared — a scanned/image-only page, correctly requires OCR. */
 export function makeImageOnlyPdf(name = "image-only.pdf") {
   const fakeJpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8]);

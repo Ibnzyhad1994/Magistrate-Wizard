@@ -170,13 +170,32 @@ function readCaseNameSource(extractedMetadata: unknown): "document" | "filename"
  */
 type IngestionUiTone = "good" | "warn" | "bad" | "neutral";
 
+/**
+ * SIMPLE AND TIGHT ingestion pass: a "requires_ocr" document is not always
+ * the same kind of problem — a protected PDF, a PDF using a font this
+ * parser can't decode, and a genuinely scanned/image-only document are
+ * three different situations with three different (specific, honest,
+ * plain-language) primary labels, rather than one generic "OCR required"
+ * badge for every case (see PdfUnreadableReason in pdf-text-extraction.ts
+ * for the underlying diagnostic). `unreadableReason` is only ever set for
+ * PDF text-layer extraction, so anything else (e.g. a non-PDF method, or no
+ * reason recorded at all) falls back to the same honest default label.
+ */
+const OCR_REASON_LABEL: Record<string, string> = {
+  encrypted: "Protected document",
+  unsupported_font_encoding: "Could not read this document",
+  no_text_found: "Scanned document — text recognition needed",
+};
+
 function deriveIngestionUiState(
   envelope: ExtractionEnvelope,
   caseNameConfidence: "high" | "low" | "none" | null,
 ): { label: string; tone: IngestionUiTone } {
   if (envelope.status === "pending") return { label: "No text yet", tone: "neutral" };
   if (envelope.status === "failed") return { label: "Extraction failed", tone: "bad" };
-  if (envelope.status === "requires_ocr") return { label: "OCR required", tone: "warn" };
+  if (envelope.status === "requires_ocr") {
+    return { label: OCR_REASON_LABEL[envelope.unreadableReason ?? ""] ?? "Could not read this document", tone: "warn" };
+  }
   // "extracted" or "low_quality" from here — genuinely usable text exists.
   if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
     return { label: "Text extracted — formatting requires review", tone: "warn" };
@@ -256,8 +275,16 @@ function ExtractionStatusPanel({
       </div>
       {(envelope.status === "requires_ocr" || envelope.status === "failed") && (
         <p className="text-[11px] text-muted-foreground">
-          This document requires OCR or manual text entry. The original file has been preserved, but reliable text
-          could not be extracted automatically.
+          {
+            // The pipeline already builds a specific, honest, plain-language
+            // reason (see reasonMessage in extraction-pipeline.ts) as the
+            // first warning whenever nothing usable was extracted — show it
+            // directly rather than one generic sentence for every cause.
+            // Falls back to the original generic wording only if no
+            // specific reason was recorded (should not normally happen).
+            envelope.warnings[0] ??
+              "This document requires OCR or manual text entry. The original file has been preserved, but reliable text could not be extracted automatically."
+          }
         </p>
       )}
       {caseNameSource === "filename" && (
@@ -981,8 +1008,14 @@ function SingleImportPanel() {
     }
 
     if (envelope.status === "requires_ocr") {
+      // Same specific, honest, plain-language reason ExtractionStatusPanel
+      // shows in the Review Queue (see reasonMessage in extraction-
+      // pipeline.ts) — a protected PDF, a font this parser can't decode,
+      // and a genuinely scanned document are three different situations,
+      // not one generic "requires OCR" message.
       toast.message(
-        "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically — paste the text below to continue, or leave it for later.",
+        envelope.warnings[0] ??
+          "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically — paste the text below to continue, or leave it for later.",
       );
     } else if (envelope.status === "failed") {
       toast.warning(
@@ -1325,6 +1358,15 @@ function BulkImportPanel() {
 
   const summary = summarizeBulkQueue(items);
   const hasItems = items.length > 0;
+  // Phase P (Section 20): "simple progress presentation... not queue
+  // internals" — a plain "Processing 18 of 50 documents..." readout rather
+  // than a static, uninformative "Processing…" badge with no indication of
+  // how far through a large batch the run actually is. A document counts
+  // as "done" once it has reached any terminal per-item status (ready,
+  // needs_review, duplicate, failed, rejected, completed) — still queued/
+  // hashing/extracting counts as in progress.
+  const doneCount =
+    summary.ready + summary.completed + summary.needs_review + summary.duplicate + summary.failed + summary.rejected;
 
   function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
@@ -1425,7 +1467,7 @@ function BulkImportPanel() {
           {isRunning && (
             <Badge variant="secondary" className="gap-1">
               <Sparkles className="h-3 w-3" />
-              Processing…
+              {items.length > 0 ? `Processing ${doneCount} of ${items.length}…` : "Processing…"}
             </Badge>
           )}
           {hasItems && !isRunning && lastBatchId && (

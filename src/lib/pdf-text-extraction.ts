@@ -4,13 +4,17 @@
  * HONESTY BOUNDARY (read before changing confidence thresholds): this is a
  * minimal, hand-written parser of the PDF content-stream text-showing
  * operators (Tj/TJ) inside FlateDecode-compressed streams — it is NOT a
- * spec-complete PDF interpreter. It does not resolve custom/CID font
- * encodings via ToUnicode CMaps, does not handle encrypted PDFs, and does
- * not walk the full object/xref graph (it scans for `stream ... endstream`
- * byte ranges directly, which finds the real content streams for the
- * overwhelming majority of PDFs produced by word processors and
- * "print to PDF" — the common case for typed judgments — but is not
- * guaranteed for every PDF producer). This module was written because no
+ * spec-complete PDF interpreter. It does not resolve CID/composite-font
+ * text via ToUnicode CMaps (SIMPLE-font hex-string operands ARE decoded —
+ * see decodeHexOperand below — but a hex operand belonging to a detected
+ * Type0/CID font is deliberately left undecoded rather than guessed), does
+ * not handle encrypted PDFs (detected and reported as a specific reason,
+ * never silently attempted), and does not walk the full object/xref graph
+ * (it scans for `stream ... endstream` byte ranges directly, which finds
+ * the real content streams for the overwhelming majority of PDFs produced
+ * by word processors and "print to PDF" — the common case for typed
+ * judgments — but is not guaranteed for every PDF producer). This module
+ * was written because no
  * PDF library (e.g. pdfjs-dist) can be installed in this project's sandbox
  * (`npm install` returns 403 — no registry access), and the explicit
  * instruction was "if a reliable text-layer PDF parser can be added
@@ -62,6 +66,35 @@ export interface PdfPageResult {
   characterCount: number;
 }
 
+/**
+ * WHY nothing usable was extracted (only meaningful when `hasTextLayer` is
+ * false) — added during the "SIMPLE AND TIGHT" ingestion pass specifically
+ * so the pipeline/UI can give an honest, SPECIFIC reason instead of
+ * lumping every non-extraction under one generic "OCR required" message.
+ * This is diagnostic, not a new top-level status: `requiresOcr` remains
+ * the single bucket a downstream caller branches on (no enum explosion),
+ * this field only changes what reason text is shown.
+ *   - "encrypted": the PDF declares an `/Encrypt` entry (owner-password/
+ *     permissions-restricted PDFs commonly open and display fine with no
+ *     password prompt, yet every content stream's bytes are encrypted —
+ *     this parser has no decryption, so it correctly reports nothing
+ *     rather than attempting to inflate encrypted bytes as if they were
+ *     plain FlateDecode data).
+ *   - "unsupported_font_encoding": text-showing operators exist and use
+ *     hex-string operands (`<...> Tj`/`TJ`), but the file also declares a
+ *     composite/Type0 (CID-keyed) font — decoding hex bytes as characters
+ *     in that case would silently produce WRONG text (CID codes are not
+ *     character codes without the font's CMap), so this parser correctly
+ *     declines rather than guess. This is genuinely a different situation
+ *     from "no text layer at all" and is worth saying so.
+ *   - "no_text_found": no text-showing operators produced any confident
+ *     text at all — consistent with (but not provably confirming) a
+ *     scanned/image-only document; the honest, most common case.
+ *   - null: a text layer WAS found (hasTextLayer is true) — this field is
+ *     only populated on the failure path.
+ */
+export type PdfUnreadableReason = "encrypted" | "unsupported_font_encoding" | "no_text_found";
+
 export interface PdfExtractionResult {
   /** Best-effort extracted text, in approximate document order. Empty string if none could be confidently extracted. Equal to `pages` joined with a page-boundary separator. */
   text: string;
@@ -69,6 +102,8 @@ export interface PdfExtractionResult {
   hasTextLayer: boolean;
   /** True when no confident text layer was found — the PDF is likely scanned/image-only, or uses an encoding this parser cannot resolve. Never true at the same time as hasTextLayer. */
   requiresOcr: boolean;
+  /** See PdfUnreadableReason. Always null when hasTextLayer is true. */
+  unreadableReason: PdfUnreadableReason | null;
   /** Diagnostic only, not shown to the curator as a hard guarantee. */
   streamsFound: number;
   textStreamsDecoded: number;
@@ -117,9 +152,29 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
   // would mangle raw PDF bytes that aren't valid UTF-8).
   const raw = new TextDecoder("iso-8859-1").decode(bytes);
 
+  // Encryption check (SIMPLE AND TIGHT ingestion pass): a document
+  // dictionary key, not free text — `/Encrypt` essentially never appears
+  // in a PDF for any other reason, so a plain substring check is safe and
+  // bounded. Checked once, up front, rather than per-stream: an encrypted
+  // PDF's content streams would still declare /FlateDecode but their
+  // bytes are cipher output, not zlib data — attempting to inflate them
+  // would just throw and be silently skipped by the per-stream catch
+  // below, indistinguishable from "no text at all" without this check.
+  const isEncrypted = /\/Encrypt\b/.test(raw);
+
+  // Composite/CID-keyed (Type0) font detection — a file-level signal, not
+  // per-stream, since a content stream's own bytes give no indication of
+  // which font a hex-string text operand is being shown in without
+  // resolving the font resource dictionary (which this parser does not
+  // do). A PDF that declares ANY composite font is treated conservatively
+  // for ALL its hex-string operands, rather than trying to prove which
+  // specific stream uses which specific font — see decodeHexOperand.
+  const hasCompositeFont = /\/Subtype\s*\/Type0\b/.test(raw) || /\/Encoding\s*\/Identity-H\b/.test(raw);
+
   const streamRanges = findStreamByteRanges(raw);
   const pageMarkerOffsets = findPageMarkerOffsets(raw);
   let textStreamsDecoded = 0;
+  let hexOperandsSkipped = 0;
   // Bucketed by page index (0-based) rather than one flat array — see
   // PdfExtractionResult.pages for the attribution heuristic.
   const pageChunks: string[][] = pageMarkerOffsets.length > 0 ? pageMarkerOffsets.map(() => []) : [[]];
@@ -220,11 +275,12 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
       if (content.includes("begincmap") || content.includes("/CIDSystemInfo")) {
         continue;
       }
-      const extracted = extractTextFromContentStream(content);
-      if (extracted.trim()) {
+      const result = extractTextFromContentStream(content, !hasCompositeFont);
+      hexOperandsSkipped += result.hexOperandsSkipped;
+      if (result.text.trim()) {
         textStreamsDecoded += 1;
         const pageIndex = resolvePageIndex(pageMarkerOffsets, range.start);
-        pageChunks[pageIndex].push(extracted);
+        pageChunks[pageIndex].push(result.text);
       }
     } catch {
       // Not actually valid zlib/Flate data (e.g. a mis-detected filter
@@ -248,10 +304,22 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
   const combined = normalizeExtractedText(pages.map((p) => p.text).join("\n\n"));
   const confidence = assessConfidence(combined);
 
+  // Reason precedence when nothing confident was extracted: encryption is
+  // checked first (it structurally prevents reading ANY content stream, so
+  // it's the most specific and most actionable explanation when present);
+  // then undecoded composite-font hex operands (a genuine text layer this
+  // parser specifically can't decode, as opposed to no text layer at all);
+  // then the honest default.
+  let unreadableReason: PdfUnreadableReason | null = null;
+  if (!confidence.confident) {
+    unreadableReason = isEncrypted ? "encrypted" : hexOperandsSkipped > 0 ? "unsupported_font_encoding" : "no_text_found";
+  }
+
   return {
     text: confidence.confident ? combined : "",
     hasTextLayer: confidence.confident,
     requiresOcr: !confidence.confident,
+    unreadableReason,
     streamsFound: streamRanges.length,
     textStreamsDecoded,
     pages: confidence.confident ? pages.filter((p) => p.text.length > 0) : [],
@@ -368,12 +436,15 @@ async function inflateZlib(input: Uint8Array): Promise<Uint8Array> {
  * for the PDF text-showing operators `Tj` (single literal string) and
  * `TJ` (array of strings/kerning numbers), plus `Td`/`TD`/`T*` (text
  * position moves, treated as line breaks — a heuristic, not true layout
- * reconstruction). Hex strings (`<...>Tj`, used by some embedded/CID
- * fonts) are deliberately NOT decoded — without the font's ToUnicode
- * CMap, decoding hex glyph codes as characters produces silently wrong
- * text, which is worse than omitting it; a PDF that stores all its text
- * as hex strings will correctly fall through to a low-confidence result
- * below rather than emit garbage.
+ * reconstruction). Hex strings (`<...>Tj`/`TJ`) are now decoded, but ONLY
+ * when `decodeHex` is true (the caller passes `!hasCompositeFont` — see
+ * extractPdfTextLayer) — for a SIMPLE font, a hex string is just an
+ * alternate encoding of the same one-byte-per-character text a literal
+ * string would carry, so decoding it the identical way is safe. For a
+ * composite/Type0 (CID-keyed) font, a hex string's bytes are glyph/CID
+ * codes, not character codes — decoding them without the font's ToUnicode
+ * CMap would produce silently WRONG text, which is worse than omitting
+ * it, so `decodeHex=false` counts and skips them instead of guessing.
  */
 // Kerning/advance adjustments inside a `TJ` array are expressed in
 // thousandths of a text-space unit; real PDF producers commonly emit a
@@ -398,11 +469,15 @@ const TJ_WORD_GAP_THRESHOLD = -80;
  * specific: it is a correctness fix to PDF operator parsing that applies
  * identically to every PDF this parser ever processes.
  */
-function extractTextFromContentStream(content: string): string {
+function extractTextFromContentStream(
+  content: string,
+  decodeHex: boolean,
+): { text: string; hexOperandsSkipped: number } {
   const out: string[] = [];
   const n = content.length;
   let i = 0;
   let arrayDepth = 0;
+  let hexOperandsSkipped = 0;
   // Non-null only while arrayDepth > 0 -- literals collected here are
   // committed to `out` only if the array's closing `]` is immediately
   // followed by `TJ`; otherwise the whole buffer is discarded (the array
@@ -458,6 +533,36 @@ function extractTextFromContentStream(content: string): string {
       continue;
     }
 
+    // Hex string operand (`<48656C6C6F> Tj` / inside a TJ array). Only
+    // decoded when `decodeHex` is true (no composite/Type0 font detected
+    // anywhere in this file — see the module header and
+    // extractPdfTextLayer) — otherwise every hex operand's bytes are
+    // skipped and merely counted, never guessed at as characters, exactly
+    // mirroring the confirmed-operand discipline literal strings already
+    // follow (only a genuine Tj/TJ operand is ever treated as text).
+    if (ch === "<" && content[i + 1] !== "<") {
+      const { value, endIndex } = scanHexString(content, i);
+      const isProvisionalArrayMember = arrayDepth > 0 && arrayBuffer !== null;
+      const afterOp = isProvisionalArrayMember ? null : peekOperator(content, endIndex, "Tj");
+      const isConfirmedBareOperand = !isProvisionalArrayMember && afterOp !== null;
+      if (isProvisionalArrayMember || isConfirmedBareOperand) {
+        if (decodeHex) {
+          const text = decodeHexOperand(value);
+          if (isProvisionalArrayMember) {
+            arrayBuffer!.push(text);
+          } else {
+            pushWithSpacingHeuristic(out, text);
+          }
+        } else {
+          hexOperandsSkipped += 1;
+        }
+        i = isConfirmedBareOperand ? (afterOp as number) : endIndex;
+        continue;
+      }
+      i = endIndex;
+      continue;
+    }
+
     if (matchesWordOp(content, i, "Td") || matchesWordOp(content, i, "TD") || matchesWordOp(content, i, "T*")) {
       out.push("\n");
       i += 2;
@@ -487,7 +592,7 @@ function extractTextFromContentStream(content: string): string {
     i += 1;
   }
 
-  return out.join("");
+  return { text: out.join(""), hexOperandsSkipped };
 }
 
 function matchesWordOp(content: string, i: number, op: string): boolean {
@@ -545,6 +650,50 @@ function scanLiteralString(s: string, start: number): { value: string; endIndex:
     j += 1;
   }
   return { value, endIndex: j };
+}
+
+/**
+ * Scans a PDF hex string starting at `s[start] === '<'` (already confirmed
+ * not to be `<<`, a dictionary open, by the caller). Per the PDF spec, hex
+ * strings may contain whitespace between digit pairs and an odd trailing
+ * digit is padded with an implicit 0 — both handled here. Returns the raw
+ * hex digits (whitespace stripped) and the index just past the closing
+ * `>`. Does not decode the digits into characters — see decodeHexOperand,
+ * called separately only once the caller has confirmed this is a genuine
+ * Tj/TJ operand (mirroring scanLiteralString's own division of labor).
+ */
+function scanHexString(s: string, start: number): { value: string; endIndex: number } {
+  let j = start + 1;
+  const n = s.length;
+  let digits = "";
+  while (j < n && s[j] !== ">") {
+    if (/[0-9A-Fa-f]/.test(s[j])) digits += s[j];
+    j += 1;
+  }
+  if (j < n) j += 1; // consume the closing '>'
+  return { value: digits, endIndex: j };
+}
+
+/**
+ * Decodes a SIMPLE-font hex string's digits into characters — one byte
+ * (two hex digits) per character, identical in spirit to how a literal
+ * string's raw bytes are treated elsewhere in this file (both ultimately
+ * pass through as Latin-1/WinAnsi-range code points; this parser has no
+ * broader font-encoding table, matching its existing, documented,
+ * disclosed scope). ONLY called when the caller has already established
+ * decodeHex=true (no composite/Type0 font detected in this file) — never
+ * called for a hex operand that might belong to a CID-keyed font, since
+ * that would silently produce wrong text (see the module header and
+ * extractTextFromContentStream's decodeHex parameter).
+ */
+function decodeHexOperand(hexDigits: string): string {
+  const padded = hexDigits.length % 2 === 1 ? hexDigits + "0" : hexDigits;
+  let out = "";
+  for (let k = 0; k < padded.length; k += 2) {
+    const byte = parseInt(padded.slice(k, k + 2), 16);
+    if (!Number.isNaN(byte)) out += String.fromCharCode(byte);
+  }
+  return out;
 }
 
 /**

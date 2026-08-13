@@ -16,7 +16,7 @@
 // user's specified patterns, since no other real judgment PDFs were
 // available in this sandbox.
 
-import { extractCaseLawMetadata } from "@/lib/legal-extraction";
+import { extractCaseLawMetadata, extractCaseNameFromFilename } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 
 let failures = 0;
@@ -152,6 +152,60 @@ const COURTS = [
   const text = "Some Case v Another (1999) 1 WLR 55\nCOURT OF APPEAL\n\nJudgment delivered on 3 June 1999.";
   const meta = extractCaseLawMetadata(text);
   check("Decision date proposed with clear anchor", meta.decided_date_guess, "1999-06-03");
+}
+
+// ---------------------------------------------------------------------------
+// Phase F/G (generalized citation formats) — the citation regex family was
+// broadened to cover period-delimited reporter abbreviations and the
+// unbracketed "YYYY ABBREV NUM" medium-neutral-citation layout used by
+// CanLII, Canadian appellate courts, the CCJ, and the UK/NI/Ireland neutral
+// citation scheme, on top of the previously-supported bracketed/reported
+// forms. Deliberately generic fixtures — none is Ramsingh/Diaz/Canada-
+// specific, per the explicit anti-overfitting instruction (Phase S).
+// ---------------------------------------------------------------------------
+{
+  const periodDelimited = extractCaseLawMetadata("Some Case [1969] S.C.R. 525\nSUPREME COURT OF CANADA");
+  check("Citation generalization — period-delimited bracketed reporter", periodDelimited.neutral_citation, "[1969] S.C.R. 525");
+
+  const canlii = extractCaseLawMetadata("Some Case 1987 CanLII 16\nCOURT OF APPEAL FOR ONTARIO");
+  check("Citation generalization — unbracketed CanLII", canlii.neutral_citation, "1987 CanLII 16");
+
+  const nsca = extractCaseLawMetadata("Some Case 2011 NSCA 42\nNOVA SCOTIA COURT OF APPEAL");
+  check("Citation generalization — unbracketed NSCA", nsca.neutral_citation, "2011 NSCA 42");
+
+  const ccj = extractCaseLawMetadata("Some Case 2020 CCJ 1\nCARIBBEAN COURT OF JUSTICE");
+  check("Citation generalization — unbracketed CCJ", ccj.neutral_citation, "2020 CCJ 1");
+
+  // False-positive guard: an ordinary capitalized word directly after a
+  // bare year must NOT be mistaken for a court/reporter abbreviation —
+  // this is the entire reason the unbracketed alternative requires at
+  // least two uppercase letters in the abbreviation token.
+  const ordinaryProse = extractCaseLawMetadata(
+    "This dispute traces back to events described in 1987 Somewhere in the record, long before the hearing.",
+  );
+  check("Citation generalization — no false positive on ordinary prose", ordinaryProse.neutral_citation, undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Phase G (filename fallback) — a filename with a citation but no " v "
+// party string (common for real archives that name files after the
+// citation alone) must still surface the citation as a low-confidence,
+// clearly-secondary proposal, independent of case-name detection.
+// ---------------------------------------------------------------------------
+{
+  const spacedCitationOnly = extractCaseNameFromFilename("1969 SCR 525.pdf");
+  check("Filename fallback — bare unbracketed citation, no case name", spacedCitationOnly, { neutral_citation: "1969 SCR 525" });
+
+  // A filename with the year/abbreviation/number run together with no
+  // separator at all cannot be split without a hard-coded dictionary of
+  // known reporter abbreviations — deliberately NOT attempted (Phase S:
+  // do not build fixture-specific hacks). Confirms this stays an honest
+  // "nothing found" rather than a guessed/garbled result.
+  const gluedCitationOnly = extractCaseNameFromFilename("1987canlii16.pdf");
+  check("Filename fallback — glued citation with no separator yields nothing (not guessed)", gluedCitationOnly, undefined);
+
+  const noSignal = extractCaseNameFromFilename("scan0042.pdf");
+  check("Filename fallback — no case name or citation signal yields nothing", noSignal, undefined);
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

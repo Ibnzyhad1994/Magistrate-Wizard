@@ -26,7 +26,12 @@
  * replace it.
  */
 
-import { extractPdfTextLayer, isPdfExtractionSupported, type PdfPageResult } from "@/lib/pdf-text-extraction";
+import {
+  extractPdfTextLayer,
+  isPdfExtractionSupported,
+  type PdfPageResult,
+  type PdfUnreadableReason,
+} from "@/lib/pdf-text-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
 import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, type QualityBucket } from "@/lib/extraction-quality";
 
@@ -62,6 +67,8 @@ export interface ExtractionEnvelope {
    */
   pages: PdfPageResult[];
   pageCount: number;
+  /** SIMPLE AND TIGHT ingestion pass: why nothing usable was extracted, when applicable (see PdfUnreadableReason) — lets a UI show a specific, honest, plain-language reason ("This PDF is protected"/"Uses a font we can't read yet"/"Looks like a scanned document") instead of one generic "OCR required" message for every case. `null` whenever status is "extracted"/"low_quality"/"pending", or for non-PDF methods. */
+  unreadableReason: PdfUnreadableReason | null;
 }
 
 function pendingEnvelope(): ExtractionEnvelope {
@@ -78,6 +85,7 @@ function pendingEnvelope(): ExtractionEnvelope {
     requiresReview: true,
     pages: [],
     pageCount: 0,
+    unreadableReason: null,
   };
 }
 
@@ -101,6 +109,7 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       requiresReview: true,
       pages: [],
       pageCount: 0,
+      unreadableReason: null,
     };
   }
 
@@ -125,10 +134,25 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       requiresReview: true,
       pages: [],
       pageCount: 0,
+      unreadableReason: null,
     };
   }
 
   if (!raw.hasTextLayer || !raw.text) {
+    // SIMPLE AND TIGHT ingestion pass: raw.unreadableReason distinguishes
+    // WHY nothing was extracted (see pdf-text-extraction.ts) so the
+    // curator gets an honest, specific, plain-language reason instead of
+    // one generic message for "genuinely scanned," "encrypted," and
+    // "uses a font this parser can't decode" alike — three different
+    // situations with different implications for what to do next.
+    const reasonMessage: Record<PdfUnreadableReason, string> = {
+      encrypted:
+        "This PDF is protected/encrypted, so its text could not be read automatically. If you have an unprotected copy, try uploading that instead — otherwise paste the text manually.",
+      unsupported_font_encoding:
+        "This PDF has a text layer, but uses an embedded font encoding this parser cannot decode yet. The original file has been preserved — paste the text manually, or try a different copy of the same document if one is available.",
+      no_text_found:
+        "No extractable text layer was found — this looks like a scanned/image document. The original file has been preserved, but reliable text could not be extracted automatically.",
+    };
     return {
       status: "requires_ocr",
       method: "pdf_text_layer",
@@ -137,13 +161,12 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       qualityScore: null,
       characterQuality: null,
       structuralQuality: null,
-      warnings: [
-        "No extractable text layer was found — this is likely a scanned/image-only document, or uses a font encoding this parser cannot resolve. OCR is required but not available in this build.",
-      ],
+      warnings: [reasonMessage[raw.unreadableReason ?? "no_text_found"]],
       ocrUsed: false,
       requiresReview: true,
       pages: [],
       pageCount: 0,
+      unreadableReason: raw.unreadableReason,
     };
   }
 
@@ -182,6 +205,7 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       requiresReview: true,
       pages: [],
       pageCount: 0,
+      unreadableReason: status === "requires_ocr" ? "no_text_found" : null,
     };
   }
 
@@ -206,6 +230,7 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
     requiresReview: status !== "extracted",
     pages,
     pageCount: pages.length,
+    unreadableReason: null,
   };
 }
 
@@ -229,6 +254,7 @@ export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
       requiresReview: true,
       pages: [],
       pageCount: 0,
+      unreadableReason: null,
     };
   }
   const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality";
@@ -245,6 +271,7 @@ export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
     requiresReview: status !== "extracted",
     pages: [],
     pageCount: 0,
+    unreadableReason: null,
   };
 }
 
@@ -268,6 +295,7 @@ export function buildManualPasteEnvelope(rawText: string): ExtractionEnvelope {
     requiresReview: false,
     pages: [],
     pageCount: 0,
+    unreadableReason: null,
   };
 }
 
@@ -295,6 +323,7 @@ export async function runOcr(_file: File): Promise<ExtractionEnvelope> {
     requiresReview: true,
     pages: [],
     pageCount: 0,
+    unreadableReason: null,
   };
 }
 

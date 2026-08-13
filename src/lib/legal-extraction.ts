@@ -79,7 +79,41 @@ export interface ProposedCaseLawFields {
   decided_date_guess?: string;
 }
 
-const NEUTRAL_CITATION_RE = /\[(\d{4})\]\s?[A-Z]{2,10}\s?\d+/;
+/**
+ * Medium-neutral citation, e.g. "[1969] SCR 525", "[2015] UKSC 20", or
+ * "[1969] S.C.R. 525" — the reporter/court abbreviation may be written as
+ * one unbroken token or with a period after each letter/group, both of
+ * which are common, jurisdiction-generic conventions rather than specific
+ * to any one reporter series (Phase F/S: generalize, don't hard-code a
+ * single format observed in one test file).
+ *
+ * A second alternative (no brackets around the year at all) covers the
+ * other standard medium-neutral-citation layout used across Commonwealth
+ * practice — CanLII ("1987 CanLII 16"), Canadian appellate courts ("2011
+ * NSCA 42"), the Caribbean Court of Justice ("2020 CCJ 1"), and the UK/NI/
+ * Ireland neutral citation scheme ("2015 UKSC 20") all print "YYYY ABBREV
+ * NUM" with no enclosing brackets or parentheses. The abbreviation token is
+ * required to contain at least two uppercase letters (not merely start
+ * with one) specifically so this alternative does not fire on ordinary
+ * capitalized prose immediately following a bare year ("In 1987 Something
+ * happened...") — every real court/reporter abbreviation observed across
+ * Commonwealth Caribbean and wider common-law practice satisfies this,
+ * while an ordinary capitalized English word essentially never does.
+ *
+ * SECURITY (Phase O): the "at least two uppercase letters" check is written
+ * with explicitly BOUNDED quantifiers (`{0,9}`/`{0,8}`, matching the token's
+ * own `{2,10}` length cap) rather than unbounded `*` stars specifically to
+ * avoid the classic nested-quantifier catastrophic-backtracking shape
+ * (`[A-Za-z]*[A-Z][A-Za-z]*[A-Z]`) that could otherwise cost O(length^2)
+ * work on an adversarial run of thousands of letters with no second
+ * uppercase. Every call site already bounds its input to a small "head"
+ * window (~2000 characters, see buildHeadWindow) before this regex ever
+ * runs, so this was not independently exploitable — bounding the
+ * quantifiers here as well is defense-in-depth, not a response to a
+ * reachable DoS.
+ */
+const NEUTRAL_CITATION_RE =
+  /\[(\d{4})\]\s?[A-Z]{1,4}(?:\.[A-Z]{1,4})*\.?\s?\d+|\b(?:19|20)\d{2}\s+(?=[A-Za-z]{0,9}[A-Z][A-Za-z]{0,8}[A-Z])[A-Za-z]{2,10}\s+\d{1,5}\b/;
 const REPORTED_CITATION_RE = /\(\d{4}\)\s?\d+\s?[A-Z][A-Za-z.]*\s?\d+/;
 const DATE_RE =
   /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/i;
@@ -355,12 +389,31 @@ export function extractCaseNameFromFilename(filename: string): FilenameProposal 
   if (!cleaned) return undefined;
 
   const candidate = extractCaseNameCandidate(cleaned);
-  if (!candidate) return undefined;
+  if (candidate) {
+    const result: FilenameProposal = { case_name: candidate.name };
+    if (candidate.citationType === "reported" && candidate.citationText) result.reported_citation = candidate.citationText;
+    else if (candidate.citationType === "neutral" && candidate.citationText) result.neutral_citation = candidate.citationText;
+    return result;
+  }
 
-  const result: FilenameProposal = { case_name: candidate.name };
-  if (candidate.citationType === "reported" && candidate.citationText) result.reported_citation = candidate.citationText;
-  else if (candidate.citationType === "neutral" && candidate.citationText) result.neutral_citation = candidate.citationText;
-  return result;
+  // No " v "-shaped party string in the filename (Phase G: many real
+  // archives name files after the citation alone, e.g. "1969 SCR 525.pdf"
+  // or "2011 NSCA 42.pdf", with no party names at all) — independently
+  // check for a bare citation pattern before giving up entirely. This is
+  // deliberately generic (reuses the exact same citation regexes as
+  // document-text extraction, not a filename-specific parser) and still
+  // only ever a low-confidence, clearly-secondary proposal, same as the
+  // case-name path above. A filename with the year/abbreviation/number run
+  // together with no separator at all (e.g. "1987canlii16.pdf") is NOT
+  // parsed here — doing so would require a hard-coded dictionary of known
+  // reporter abbreviations to find the split points, which is exactly the
+  // kind of fixture-specific hack this pass must not introduce; those
+  // cases are left for document-text extraction or manual review instead.
+  const reported = cleaned.match(REPORTED_CITATION_RE);
+  const neutral = cleaned.match(NEUTRAL_CITATION_RE);
+  if (reported) return { reported_citation: reported[0] };
+  if (neutral) return { neutral_citation: neutral[0] };
+  return undefined;
 }
 
 /**
