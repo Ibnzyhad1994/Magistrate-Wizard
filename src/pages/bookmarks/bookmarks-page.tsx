@@ -51,8 +51,9 @@ const TYPE_TONE: Record<BookmarkEntityType, TitleCardTone> = {
 export default function BookmarksPage() {
   const navigate = useNavigate();
   const { data, isPending, isError, error, refetch } = useBookmarks();
-  const { data: labels } = useBookmarkLabels(data);
+  const { data: labels, isPending: labelsPending } = useBookmarkLabels(data);
   const removeBookmark = useRemoveBookmark();
+  const waitingForLabels = Boolean(data && data.length > 0 && labelsPending);
 
   return (
     <BrowsePage>
@@ -61,7 +62,7 @@ export default function BookmarksPage() {
         description="Quick links to matters, judgments, research, and more you've saved."
       />
 
-      {isPending ? (
+      {isPending || waitingForLabels ? (
         <div className="flex flex-wrap gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton

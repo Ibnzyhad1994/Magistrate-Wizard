@@ -16,7 +16,7 @@
 // user's specified patterns, since no other real judgment PDFs were
 // available in this sandbox.
 
-import { extractCaseLawMetadata, extractCaseNameFromFilename } from "@/lib/legal-extraction";
+import { extractCaseLawMetadata, extractCaseNameFromFilename, shouldAutoFillCaseName } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 
 let failures = 0;
@@ -206,6 +206,12 @@ const COURTS = [
 
   const noSignal = extractCaseNameFromFilename("scan0042.pdf");
   check("Filename fallback — no case name or citation signal yields nothing", noSignal, undefined);
+}
+
+{
+  check("OCR never auto-fills case name even at high confidence", shouldAutoFillCaseName("high", true), false);
+  check("text-layer high confidence still auto-fills", shouldAutoFillCaseName("high", false), true);
+  check("low confidence never auto-fills", shouldAutoFillCaseName("low", false), false);
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

@@ -1,4 +1,4 @@
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,15 +62,6 @@ export function UserMenu({ compact = false }: UserMenuProps) {
             )}
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <UserIcon />
-          Profile
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <Settings />
-          Settings
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={(event) => {

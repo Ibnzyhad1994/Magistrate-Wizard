@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" role="img">
+  <rect width="1400" height="900" fill="#ffffff"/>
+  <text x="48" y="44" font-family="Georgia, serif" font-size="26" fill="#1e40af" font-weight="700">Entity map - who relates to whom</text>
+  <text x="48" y="70" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Boxes are tables. Crow's-feet mean "many". Dashed lines are association-only (a pin, not a key).</text>
+
+  <rect x="40" y="100" width="200" height="54" rx="8" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="140" y="134" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">profiles</text>
+
+  <rect x="40" y="200" width="200" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="140" y="234" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">magisterial_districts</text>
+
+  <rect x="40" y="300" width="200" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="140" y="334" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">courts</text>
+
+  <rect x="320" y="200" width="220" height="54" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="430" y="234" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#92400e" font-weight="700">magistrate_courts</text>
+
+  <rect x="320" y="380" width="220" height="70" rx="8" fill="#3b82f6" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="430" y="410" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#ffffff" font-weight="700">docket_matters</text>
+  <text x="430" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#dbeafe">no owner_id</text>
+
+  <rect x="620" y="280" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="310" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_events</text>
+  <rect x="620" y="340" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="370" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_matter_parties</text>
+  <rect x="620" y="400" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_matter_tags</text>
+  <rect x="620" y="460" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="490" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">assignments (retain)</text>
+  <rect x="620" y="520" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="550" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">shares</text>
+
+  <rect x="920" y="160" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">judgments</text>
+  <rect x="920" y="240" width="210" height="54" rx="8" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1025" y="274" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">case_law</text>
+  <rect x="920" y="320" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="354" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">quick_codes</text>
+  <rect x="920" y="400" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="434" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">bench_notes</text>
+  <rect x="920" y="480" width="210" height="54" rx="8" fill="#faf5ff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1025" y="514" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">statutes</text>
+  <rect x="920" y="560" width="210" height="54" rx="8" fill="#faf5ff" stroke="#6d28d9"/>
+  <text x="1025" y="594" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6">statute_provisions</text>
+  <rect x="920" y="640" width="210" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f"/>
+  <text x="1025" y="674" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">documents / bookmarks</text>
+
+  <rect x="1170" y="220" width="190" height="48" rx="8" fill="#ffffff" stroke="#6d28d9"/>
+  <text x="1265" y="250" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5b21b6">annotations</text>
+  <rect x="1170" y="160" width="190" height="48" rx="8" fill="#ffffff" stroke="#047857"/>
+  <text x="1265" y="190" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#065f46">judgment_tags</text>
+
+  <!-- solid links -->
+  <path d="M140 154 L140 200" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M140 254 L140 300" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M240 327 L320 227" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M240 327 L320 415" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M140 154 L320 227" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 304" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 364" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 424" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 484" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 544" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M480 154 L1025 160" stroke="#047857" stroke-width="1.5"/>
+  <path d="M240 127 L1025 347" stroke="#047857" stroke-width="1.5"/>
+  <path d="M1025 534 L1025 560" stroke="#6d28d9" stroke-width="1.5"/>
+  <path d="M1130 187 L1170 184" stroke="#047857" stroke-width="1.5"/>
+  <path d="M1130 267 L1170 244" stroke="#6d28d9" stroke-width="1.5"/>
+
+  <!-- dashed association -->
+  <path d="M540 400 L920 187" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M540 400 L920 267" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M540 415 L920 347" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <rect x="40" y="760" width="1320" height="100" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="64" y="798" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">Solid line</text>
+  <text x="160" y="798" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">parent / child or ownership</text>
+  <text x="64" y="826" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">Dashed line</text>
+  <text x="170" y="826" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">association table - BOTH sides already readable, never confers access</text>
+  <text x="64" y="852" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Legacy cases / case_parties omitted - unused by new development. legal_authority_courts is a separate "reported court" list, not courts.</text>
+</svg>

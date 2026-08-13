@@ -2,8 +2,8 @@
 -- / `supabase db reset`. Not for production.
 --
 -- Logins (email confirmation is disabled in config.toml):
---   admin@benchbook.local      / password123  (admin + Georgetown Court 1)
---   magistrate@benchbook.local / password123  (magistrate + Georgetown Court 1)
+--   admin@magistrate-wizard.local      / password123  (admin + Georgetown Court 1)
+--   magistrate@magistrate-wizard.local / password123  (magistrate + Georgetown Court 1)
 
 create extension if not exists pgcrypto;
 
@@ -35,7 +35,7 @@ values
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     'authenticated',
     'authenticated',
-    'admin@benchbook.local',
+    'admin@magistrate-wizard.local',
     crypt('password123', gen_salt('bf')),
     now(),
     now(),
@@ -53,7 +53,7 @@ values
     'b1ffcd00-8d1c-4ef8-bb6d-6bb9bd380a22',
     'authenticated',
     'authenticated',
-    'magistrate@benchbook.local',
+    'magistrate@magistrate-wizard.local',
     crypt('password123', gen_salt('bf')),
     now(),
     now(),
@@ -84,7 +84,7 @@ values
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     jsonb_build_object(
       'sub', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      'email', 'admin@benchbook.local',
+      'email', 'admin@magistrate-wizard.local',
       'email_verified', true
     ),
     'email',
@@ -98,7 +98,7 @@ values
     'b1ffcd00-8d1c-4ef8-bb6d-6bb9bd380a22',
     jsonb_build_object(
       'sub', 'b1ffcd00-8d1c-4ef8-bb6d-6bb9bd380a22',
-      'email', 'magistrate@benchbook.local',
+      'email', 'magistrate@magistrate-wizard.local',
       'email_verified', true
     ),
     'email',

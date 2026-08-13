@@ -1,4 +1,4 @@
--- BenchBook — seed East Bank Demerara Magisterial District
+-- Magistrate Wizard — seed East Bank Demerara Magisterial District
 -- The eleventh Magisterial District, newly constituted since the ten
 -- seeded in migration 0014. Added as its own forward migration rather
 -- than rewriting the already-applied seed, per the project's

@@ -78,7 +78,7 @@ import {
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
-import { readFileAsText, extractCaseLawMetadataWithConfidence, normalizeWhitespace } from "@/lib/legal-extraction";
+import { extractCaseLawMetadataWithConfidence, normalizeWhitespace, shouldAutoFillCaseName } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
   isPlaceholderValue,
@@ -86,12 +86,15 @@ import {
   validateLegislationForPublish,
 } from "@/lib/publication-validation";
 import {
-  runPdfExtractionPipeline,
-  buildTextFileEnvelope,
-  buildManualPasteEnvelope,
   emptyExtractionEnvelope,
   type ExtractionEnvelope,
 } from "@/lib/extraction-pipeline";
+import {
+  ingestDocument,
+  ingestPastedText,
+  ingestSuccessToast,
+  INGEST_FILE_ACCEPT,
+} from "@/lib/ingest-document";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -197,6 +200,12 @@ function deriveIngestionUiState(
   if (envelope.status === "requires_ocr") {
     return { label: OCR_REASON_LABEL[envelope.unreadableReason ?? ""] ?? "Could not read this document", tone: "warn" };
   }
+  if (envelope.ocrUsed) {
+    if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
+      return { label: "Scan recognized — please verify against the original", tone: "warn" };
+    }
+    return { label: "Text recognized from scan — please verify", tone: "warn" };
+  }
   // "extracted" or "low_quality" from here — genuinely usable text exists.
   if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
     return { label: "Text extracted — formatting requires review", tone: "warn" };
@@ -244,14 +253,21 @@ function ExtractionStatusPanel({
 }) {
   if (!envelope || envelope.status === "pending") {
     return (
-      <p className="text-xs text-muted-foreground">
-        No document text was extracted for this draft — Document text (if any) was entered manually.
-      </p>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          No document text was extracted for this draft — Document text (if any) was entered manually.
+        </p>
+        {envelope?.warnings[0] && (
+          <p className="text-xs text-muted-foreground">{envelope.warnings[0]}</p>
+        )}
+      </div>
     );
   }
   const methodLabel: Record<ExtractionEnvelope["method"], string> = {
     pdf_text_layer: "PDF text layer",
     txt_file: "Plain text file",
+    markdown: "Markdown file",
+    docx: "Word document",
     manual_paste: "Manually entered",
     ocr: "OCR",
     none: "—",
@@ -485,9 +501,10 @@ function OriginalDocumentLink({ documentId }: { documentId: string | null }) {
  * and nav-config.ts).
  *
  * Honesty notes surfaced directly in this UI (never silently glossed over):
- * - No PDF/DOCX text extraction library is available in this build. A
- *   .txt upload is read automatically; PDF/DOCX require the curator to
- *   paste text (e.g. copied from the in-app PDF viewer).
+ * - PDF, .txt, Markdown, and .docx are extracted locally in the browser.
+ *   Scanned PDFs and images use on-device OCR. Word 97–2003 (.doc) cannot
+ *   be parsed — paste the text or save as .docx. Short files stay pending
+ *   until the curator pastes usable text.
  * - URL/source-adapter fetching is NOT implemented (no verified safe
  *   server-side fetch infrastructure in this environment) — Sources here
  *   are a reviewable REGISTRY only; adding one does not trigger a crawl.
@@ -923,34 +940,12 @@ function SingleImportPanel() {
     // discards the file itself, and a failed/low-quality extraction never
     // prevents the file from being preserved.
     setFile(f);
-    const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
-    const isTxt = f.type === "text/plain" || f.name.toLowerCase().endsWith(".txt");
-
-    if (isTxt) {
-      const raw = await readFileAsText(f);
-      const envelope = buildTextFileEnvelope(raw);
-      applyExtractionResult(envelope);
-      toast.success("Original file will be uploaded and preserved. Text read automatically from the .txt file.");
-      return;
-    }
-
-    if (!isPdf) {
-      toast.message(
-        "Original file will be uploaded and preserved. Automatic text extraction is only available for .txt and text-bearing .pdf files — paste the extracted text below to continue (or leave blank and paste it later from the Review Queue).",
-      );
-      return;
-    }
-
     setExtractionEnvelope((prev) => ({ ...prev, status: "pending" }));
-    const envelope = await runPdfExtractionPipeline(f);
+    const envelope = await ingestDocument(f);
     applyExtractionResult(envelope);
 
     if (envelope.status === "extracted" || envelope.status === "low_quality") {
-      toast.success(
-        envelope.status === "extracted"
-          ? "Text extracted from the PDF's text layer. Citation, Case name, and Court/Jurisdiction were proposed below where confidently identified — review before creating the draft."
-          : "Text extracted, but the quality gate flagged it as low confidence — review it carefully below before creating the draft.",
-      );
+      toast.success(ingestSuccessToast(envelope));
       if (contentType === "case_law") {
         const normalizedPages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
         const { fields: proposed, caseNameConfidence: computedConfidence } = extractCaseLawMetadataWithConfidence(
@@ -958,23 +953,17 @@ function SingleImportPanel() {
           normalizedPages,
         );
         setCaseNameConfidence(computedConfidence);
-        // Phase 3 (Task 4): a case-name PROPOSAL is only auto-filled into
-        // the form when it is high confidence (anchored to a citation
-        // near the very start of the extracted text). A low-confidence
-        // proposal is real information but must not be silently treated
-        // as if the machine were sure — "DO NOT AUTOMATICALLY PROPOSE
-        // LEGAL METADATA FROM TEXT UNLESS THE SYSTEM HAS REASONABLE
-        // EVIDENCE THAT THE TEXT IS ACTUALLY USABLE." The curator sees
-        // the full extracted text below regardless and can copy the name
-        // themselves if the low-confidence guess does happen to be right.
+        const autoFillName = shouldAutoFillCaseName(computedConfidence, envelope.ocrUsed);
         setCaseFields({
-          case_name: computedConfidence === "high" ? (proposed.case_name ?? "") : "",
+          case_name: autoFillName ? (proposed.case_name ?? "") : "",
           citation: proposed.reported_citation ?? proposed.neutral_citation ?? "",
           decided_date: proposed.decided_date_guess ?? "",
         });
-        if (proposed.case_name && computedConfidence !== "high") {
+        if (proposed.case_name && !autoFillName) {
           toast.message(
-            `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill — please review the extracted text and enter the case name manually.`,
+            envelope.ocrUsed
+              ? `A possible case name was recognized ("${proposed.case_name}") but was not auto-filled because this text came from a scan — please verify it against the original.`
+              : `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill — please review the extracted text and enter the case name manually.`,
           );
         }
         // Only auto-select on "high"/"medium" confidence — a mention of
@@ -1017,6 +1006,11 @@ function SingleImportPanel() {
       toast.warning(
         "Automatic extraction produced text that failed quality checks (it looks like embedded PDF/font data rather than document content) and was discarded. The original file has been preserved — paste the text below to continue.",
       );
+    } else if (envelope.status === "pending") {
+      toast.message(
+        envelope.warnings[0] ??
+          "Original file will be uploaded and preserved. Paste the text below to continue, or leave it for later from the Review Queue.",
+      );
     }
   }
 
@@ -1029,7 +1023,7 @@ function SingleImportPanel() {
   function handleTextChange(value: string) {
     setText(value);
     if (extractionEnvelope.method !== "manual_paste") {
-      setExtractionEnvelope(buildManualPasteEnvelope(value));
+      setExtractionEnvelope(ingestPastedText(value));
     }
   }
 
@@ -1065,7 +1059,7 @@ function SingleImportPanel() {
               <input
                 type="file"
                 className="hidden"
-                accept=".txt,.pdf,.doc,.docx"
+                accept={INGEST_FILE_ACCEPT}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) void handleFile(f);
@@ -1207,7 +1201,7 @@ function SingleImportPanel() {
             </div>
           )}
 
-          <Field label="Document text" hint="Auto-read for .txt uploads and text-bearing PDFs; paste manually otherwise.">
+          <Field label="Document text" hint="Read automatically from PDFs, Word (.docx), Markdown, text files, and images. Paste manually for Word 97–2003 (.doc) or when extraction needs a check.">
             <Textarea
               value={text}
               onChange={(e) => handleTextChange(e.target.value)}
@@ -1426,7 +1420,7 @@ function BulkImportPanel() {
             <input
               type="file"
               multiple
-              accept=".txt,.pdf"
+              accept={INGEST_FILE_ACCEPT}
               className="hidden"
               disabled={isRunning}
               onChange={(e) => {
@@ -1903,6 +1897,7 @@ function categorizeCaseLawRow(row: ReviewRow<CaseLaw>): ReviewCategory {
   const envelope = readExtractionEnvelope(row.extracted_metadata);
   if (row.job_error_summary || envelope?.status === "failed") return "failed";
   if (envelope?.status === "requires_ocr") return "ocr_required";
+  if (envelope?.ocrUsed) return "needs_review";
   if (row.duplicate_warning) return "possible_duplicate";
   const errors = validateCaseLawForPublish({
     case_name: row.case_name,
@@ -1919,6 +1914,7 @@ function categorizeStatuteRow(row: ReviewRow<Statute>): ReviewCategory {
   const envelope = readExtractionEnvelope(row.extracted_metadata);
   if (row.job_error_summary || envelope?.status === "failed") return "failed";
   if (envelope?.status === "requires_ocr") return "ocr_required";
+  if (envelope?.ocrUsed) return "needs_review";
   if (row.duplicate_warning) return "possible_duplicate";
   const errors = validateLegislationForPublish({
     code: row.code,

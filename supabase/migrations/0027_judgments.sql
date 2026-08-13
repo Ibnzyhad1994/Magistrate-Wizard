@@ -45,7 +45,7 @@ comment on table public.judgments is
 comment on column public.judgments.owner_id is
   'Ownership AND authorship identity combined for 0027. Forced to auth.uid() at creation by a guard trigger (cannot be forged) and immutable thereafter -- an owner cannot transfer a Judgment to another profile by UPDATE. Future collaboration uses explicit sharing (the future shares migration), never ownership transfer. ON DELETE RESTRICT matches the docket_matters.created_by provenance convention -- a profile that owns a Judgment cannot be hard-deleted.';
 comment on column public.judgments.court_name is
-  'Optional free text, deliberately NOT an FK to courts. A Judgment is independent authored work product and may concern a historical or external Court not represented in the active BenchBook Court reference structure.';
+  'Optional free text, deliberately NOT an FK to courts. A Judgment is independent authored work product and may concern a historical or external Court not represented in the active Magistrate Wizard Court reference structure.';
 comment on column public.judgments.case_number is 'Optional official case/reference number for display and future search metadata. No global uniqueness imposed.';
 comment on column public.judgments.citation is 'Optional citation/reference identifier. No uniqueness imposed.';
 comment on column public.judgments.content is 'Structured rich-text/editor representation. Editor implementation not designed in this migration.';

@@ -1,4 +1,4 @@
--- BenchBook — index docket_matter_assignments.granted_by
+-- Magistrate Wizard — index docket_matter_assignments.granted_by
 -- Addresses the single new performance-advisor finding attributable to
 -- migration 0022: docket_matter_assignments_granted_by_fkey (the FK from
 -- docket_matter_assignments.granted_by to profiles.id) had no covering

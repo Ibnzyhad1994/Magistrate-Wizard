@@ -1,4 +1,4 @@
--- BenchBook — storage buckets & policies
+-- Magistrate Wizard — storage buckets & policies
 -- Two buckets:
 --   documents — private; case/bench-note attachments. Path convention is
 --     {uploader_user_id}/{case_id-or-bench_note_id}/{filename}. Storage

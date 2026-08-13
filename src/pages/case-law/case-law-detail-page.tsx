@@ -87,6 +87,7 @@ export default function CaseLawDetailPage() {
   return (
     <>
       <Billboard
+        variant="detail"
         eyebrow={caseLaw.citation}
         title={caseLaw.case_name}
         description={[caseLaw.court, caseLaw.jurisdiction].filter(Boolean).join(" · ") || undefined}
@@ -94,7 +95,7 @@ export default function CaseLawDetailPage() {
         tone="case-law"
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
       />
-      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
+      <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant={isCanonical ? "canonical" : "secondary"}>
             {isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"}

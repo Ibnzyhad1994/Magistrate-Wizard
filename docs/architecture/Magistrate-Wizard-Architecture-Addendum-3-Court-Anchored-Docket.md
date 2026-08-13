@@ -1,4 +1,4 @@
-# BenchBook Architecture Addendum 3 — Court-Anchored Docket, Reference-Data Administration, and Assignment History
+# Magistrate Wizard Architecture Addendum 3 — Court-Anchored Docket, Reference-Data Administration, and Assignment History
 
 **Status:** Read-only recommendation. Nothing implemented. No SQL executed, no migrations written or applied beyond the already-applied `0013`/`0014`, no application code changed, no Git action taken. This addendum, once approved, will supersede the owner-based Docket RLS design in the authoritative spec's §4/§6 (Docket section)/§14 (RLS model) — those sections are not yet edited; that happens only after your approval, matching how Addendum 2 was handled before consolidation.
 

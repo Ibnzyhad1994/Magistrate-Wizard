@@ -1,5 +1,5 @@
 // Regression tests for the PERSISTENT BULK INGESTION LIFECYCLE pass
-// (BENCHBOOK — AUTONOMOUS DEVELOPMENT, DEBUGGING, TESTING & PERSISTENT
+// (Magistrate Wizard — AUTONOMOUS DEVELOPMENT, DEBUGGING, TESTING & PERSISTENT
 // BULK INGESTION PASS). Covers the PURE, dependency-free layer only —
 // error-message mapping (src/lib/utils.ts) and the bare-job-row read
 // helpers (src/hooks/legal-library/use-import-jobs.ts). Everything else

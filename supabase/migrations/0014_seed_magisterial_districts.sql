@@ -1,4 +1,4 @@
--- BenchBook — seed magisterial districts
+-- Magistrate Wizard — seed magisterial districts
 -- Inserts Guyana's ten Magisterial Districts, per the Supreme Court of
 -- Judicature's Annual Reports. Only the official name is stored — the
 -- current magisterial_districts schema (0013) has no head-office/

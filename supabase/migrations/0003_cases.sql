@@ -1,4 +1,4 @@
--- BenchBook — cases & case parties
+-- Magistrate Wizard — cases & case parties
 -- Core case tracking, scoped to a court. `user_can_access_case()` is the
 -- shared authorization primitive reused by case_parties, documents,
 -- comments, tags, and the search RPCs added in later migrations.
@@ -41,7 +41,7 @@ create table public.cases (
   )
 );
 
-comment on table public.cases is 'Court cases tracked within BenchBook, scoped to a court for RLS.';
+comment on table public.cases is 'Court cases tracked within Magistrate Wizard, scoped to a court for RLS.';
 comment on column public.cases.created_by is 'References the profile that filed the case record; ON DELETE RESTRICT preserves accountability for judicial records.';
 
 create unique index cases_court_case_number_idx on public.cases (court_id, case_number);

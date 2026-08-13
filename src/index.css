@@ -165,3 +165,9 @@
     padding-right: 4vw;
   }
 }
+
+@layer utilities {
+  .font-brand {
+    font-family: Cinzel, "Palatino Linotype", Palatino, ui-serif, Georgia, serif;
+  }
+}

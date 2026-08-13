@@ -1,4 +1,4 @@
-# BenchBook Architecture Reconciliation Report
+# Magistrate Wizard Architecture Reconciliation Report
 
 **Status:** Read-only analysis. No SQL executed, no migrations applied or edited, no application code changed, no Git actions taken. Everything below is a proposal awaiting your approval.
 
@@ -10,7 +10,7 @@ The existing implementation is a real, working foundation — not a stub. The fr
 
 But the backend was built around the wrong tenancy model. It implements **court-level shared tenancy** — every magistrate at the same court sees every other magistrate's cases and notes, gated by `court_id`. The authoritative requirements you've now provided describe **individual ownership with opt-in sharing**: each magistrate has a private workspace, and material becomes visible to others only through explicit sharing or deliberate discoverability. These are structurally different products, not a small tweak.
 
-Two entities central to BenchBook's actual purpose — **judgments** and **Quick Codes** — don't exist in the schema at all. Sharing, view/edit permissions, and the discoverable pool don't exist either. No frontend feature pages exist yet for anything (confirmed in the prior audit — only auth screens and an empty dashboard shell are built), so the UI is greenfield regardless of which backend direction is chosen.
+Two entities central to Magistrate Wizard's actual purpose — **judgments** and **Quick Codes** — don't exist in the schema at all. Sharing, view/edit permissions, and the discoverable pool don't exist either. No frontend feature pages exist yet for anything (confirmed in the prior audit — only auth screens and an empty dashboard shell are built), so the UI is greenfield regardless of which backend direction is chosen.
 
 **Bottom line recommendation:** keep roughly 70% of the existing schema (its architectural patterns — generated search vectors, polymorphic entity tables, the audit trigger, the storage bucket design — are sound and reusable), rewrite the access-control layer from court-scoped to ownership+sharing+discoverable, and add judgments, Quick Codes, and sharing as new migrations layered on top of 0001–0012 rather than editing history. Details follow.
 
@@ -38,7 +38,7 @@ Two entities central to BenchBook's actual purpose — **judgments** and **Quick
 | `courts` | **MODIFY** | Keep the table, but demote it from an access-control boundary to directory/metadata. See Section 6 for why courts should not gate visibility. |
 | `cases` | **MODIFY** | Add `owner_id` (repurpose `created_by`), `citation`, `court_origin` (free text — distinct from the `courts` FK), `year`, `category`, `key_holdings`, `source_url`, `is_discoverable`. Existing docket fields (`case_number`, `status`, `filed_date`, `assigned_magistrate_id`) retained as optional, not removed. RLS fully rewritten (owner/share/discoverable, not court). |
 | `case_parties` | **MODIFY** | Shape unchanged; RLS rewritten to route through the new `user_can_access_case()`. |
-| `bench_notes` | **MODIFY** | Retained as BenchBook's personal-notes/annotation system, per your instruction to evaluate it for that role. RLS rewritten: `is_private` now means "visible only to me" vs. "visible to whoever this note's case is shared with" — not "visible to my whole court," which is what it currently means. |
+| `bench_notes` | **MODIFY** | Retained as Magistrate Wizard's personal-notes/annotation system, per your instruction to evaluate it for that role. RLS rewritten: `is_private` now means "visible only to me" vs. "visible to whoever this note's case is shared with" — not "visible to my whole court," which is what it currently means. |
 | `statutes` | **KEEP** | Maps directly to "shared reference legal library." Admin-curated, org-wide read, no ownership model needed. No changes required. |
 | `case_law` | **KEEP** | Same reasoning — this is the shared/reference half of the "distinguish curated vs. reference" requirement. No changes required. |
 | `tags` | **KEEP** (with an open question) | Shared vocabulary is reusable across cases/judgments/Quick Codes/statutes/case law as specified. Whether *personal-only* tags are also needed is a genuine open question — see Section 13. |
@@ -90,7 +90,7 @@ All existing triggers (`set_*_updated_at`, `audit_*`, `validate_bookmark_entity_
 |---|---|---|
 | `documents` | **KEEP** (policies MODIFY) | Private bucket, signed-URL-appropriate architecture is already correct. RLS policies need the same ownership/share/discoverable rewrite as the tables they reference, and need to recognize judgments (and possibly Quick Codes) as valid parents once `documents` goes polymorphic. |
 | `avatars` | **KEEP** | Public-read profile pictures, unaffected by any of this. |
-| `legal-documents` | **REMOVE** (not urgent) | Pre-existing, orphaned bucket unrelated to BenchBook, empty, still can't be deleted via SQL (Supabase blocks that) — recommend deleting via the Dashboard whenever convenient. Not part of the reconciliation work itself. |
+| `legal-documents` | **REMOVE** (not urgent) | Pre-existing, orphaned bucket unrelated to Magistrate Wizard, empty, still can't be deleted via SQL (Supabase blocks that) — recommend deleting via the Dashboard whenever convenient. Not part of the reconciliation work itself. |
 
 ---
 
@@ -308,7 +308,7 @@ Each is small, single-purpose, and independently reviewable — matching the gra
 
 Checked `.gitignore` (already present in the project) — it already excludes `.env`, `.env.local`, `node_modules`, `dist`, and Supabase's local `.branches`/`.temp` directories, so it's safe to `git init` without risk of committing your Supabase keys. Recommended flow once approved:
 
-1. `git init` in `/Users/teriqmohammed/Desktop/benchbook`, initial commit of the current state (foundation + 12 migrations) as a clean baseline.
+1. `git init` in `/Users/teriqmohammed/Desktop/Magistrate-Wizard`, initial commit of the current state (foundation + 12 migrations) as a clean baseline.
 2. Create a GitHub repository (private, given this handles legal-workflow data) and push.
 3. Link the Supabase CLI to the project (`supabase link --project-ref gipijpeahkznfwitjccy`) so `supabase db push`/`supabase migration new` become the way new migrations get written and applied going forward, instead of ad hoc `execute_sql` calls — this gives you the `local dev → git commit → GitHub → supabase migration` pipeline you described, with the migrations directory as the single source of truth and Supabase's own migration-history table as the applied-state ledger.
 4. Optional, later: a GitHub Action that runs `supabase db push` against a staging project on merge to `main`, keeping production promotion manual until you're comfortable automating it.

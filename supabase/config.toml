@@ -23,7 +23,7 @@ max_rows = 1000
 # without explicit GRANTs. When unset, new entities are NOT auto-exposed, matching the new cloud
 # default. Set to `true` to keep the legacy behaviour of auto-exposing new entities; this is
 # deprecated and the field is removed on 2026-10-30 once the always-revoked behaviour is permanent.
-# BenchBook migrations were written against the legacy auto-expose behaviour
+# Magistrate Wizard migrations were written against the legacy auto-expose behaviour
 # (RLS is the access control; they do not GRANT every table individually).
 auto_expose_new_tables = true
 

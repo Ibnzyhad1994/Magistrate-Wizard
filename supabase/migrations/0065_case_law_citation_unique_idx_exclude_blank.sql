@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 0065_case_law_citation_unique_idx_exclude_blank.sql
 --
--- BenchBook Legal Library stabilization pass, Section 30/34/50-C.
+-- Magistrate Wizard Legal Library stabilization pass, Section 30/34/50-C.
 --
 -- REAL DEFECT FOUND during this session's synthetic 13-item bulk lifecycle
 -- test (not the user-reported batch-accounting bug -- a separate, latent

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard workflows — plain language</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard workflows — plain language</h1>
+    <p class="lede">How magistrates, clerks, and administrators actually use the system. Written for a first-day colleague, not for the database.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  <div class="chapter"><h1>Hero diagrams</h1>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img">
+  <rect width="1280" height="640" fill="#ffffff"/>
+  <text x="64" y="48" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">System context</text>
+  <text x="64" y="74" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">Magistrate Wizard is one web app. Supabase is the only backend. Outlook is future.</text>
+
+  <!-- People -->
+  <ellipse cx="160" cy="220" rx="88" ry="48" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="160" y="216" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">Magistrate</text>
+  <text x="160" y="236" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#9a3412">sits  ·  writes  ·  researches</text>
+
+  <ellipse cx="160" cy="340" rx="88" ry="48" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="160" y="336" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#92400e" font-weight="700">Clerk</text>
+  <text x="160" y="356" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#92400e">share recipient today</text>
+
+  <ellipse cx="160" cy="460" rx="88" ry="48" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="160" y="456" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">Admin</text>
+  <text x="160" y="476" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#5b21b6">roster + library</text>
+
+  <!-- System -->
+  <rect x="420" y="200" width="360" height="280" rx="16" fill="#dbeafe" stroke="#1e3a5f" stroke-width="3"/>
+  <text x="600" y="250" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#1e3a5f" font-weight="700">Magistrate Wizard</text>
+  <text x="600" y="280" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e40af">React SPA   ·   Magistrate Wizard</text>
+  <text x="600" y="330" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Court-anchored Docket</text>
+  <text x="600" y="354" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Personally owned work product</text>
+  <text x="600" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Published legal library</text>
+  <text x="600" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Privacy is enforced in the database</text>
+
+  <!-- Externals -->
+  <rect x="940" y="140" width="260" height="80" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="1070" y="174" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Supabase Auth</text>
+  <text x="1070" y="196" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">email session  ·  profiles</text>
+
+  <rect x="940" y="250" width="260" height="80" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="1070" y="284" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Postgres + RLS</text>
+  <text x="1070" y="306" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">product of record</text>
+
+  <rect x="940" y="360" width="260" height="80" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="1070" y="394" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Storage</text>
+  <text x="1070" y="416" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">documents private  ·  avatars public</text>
+
+  <rect x="940" y="470" width="260" height="80" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="1070" y="504" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b" font-weight="700">Outlook (future)</text>
+  <text x="1070" y="526" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">appearance times only</text>
+
+  <path d="M248 220 L420 300" stroke="#c2410c" stroke-width="2" fill="none"/>
+  <path d="M248 340 L420 340" stroke="#b45309" stroke-width="2" fill="none"/>
+  <path d="M248 460 L420 400" stroke="#6d28d9" stroke-width="2" fill="none"/>
+  <path d="M780 260 L940 180" stroke="#1e3a5f" stroke-width="2" fill="none"/>
+  <path d="M780 330 L940 290" stroke="#1e3a5f" stroke-width="2" fill="none"/>
+  <path d="M780 400 L940 400" stroke="#1e3a5f" stroke-width="2" fill="none"/>
+  <path d="M780 450 L940 500" stroke="#64748b" stroke-width="2" fill="none" stroke-dasharray="6 4"/>
+
+  <text x="64" y="610" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">No Edge Functions in production today. Search and ingestion RPCs run inside Postgres.</text>
+</svg>
+<figcaption>System context — people, the app, and Supabase</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="t d">
+  <title id="t">Three paths onto a Docket Matter</title>
+  <desc id="d">Court assignment, retained part-heard assignment, and explicit share all OR together. Admin is not a path.</desc>
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="56" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">How someone opens a Docket Matter</text>
+  <text x="64" y="86" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">Three lawful paths. Any one is enough. Administrator is not a fourth path.</text>
+
+  <!-- Matter -->
+  <rect x="490" y="300" width="300" height="100" rx="12" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="640" y="340" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#1e3a5f" font-weight="700">Docket Matter</text>
+  <text x="640" y="366" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Belongs to the Court, not a person</text>
+
+  <!-- Path 1 Court -->
+  <rect x="64" y="160" width="280" height="88" rx="10" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="204" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#9a3412" font-weight="700">1  ·  Current Court sitting</text>
+  <text x="204" y="218" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#9a3412">magistrate_courts  ·  ended_at empty</text>
+  <path d="M344 204 L490 330" fill="none" stroke="#c2410c" stroke-width="2.5" marker-end="url(#arr1)"/>
+
+  <!-- Path 2 Retained -->
+  <rect x="64" y="316" width="280" height="88" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="204" y="350" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#92400e" font-weight="700">2  ·  Retained / part-heard</text>
+  <text x="204" y="374" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#92400e">this one matter only  ·  self-granted</text>
+  <path d="M344 360 L490 350" fill="none" stroke="#b45309" stroke-width="2.5" marker-end="url(#arr2)"/>
+
+  <!-- Path 3 Share -->
+  <rect x="64" y="472" width="280" height="88" rx="10" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="204" y="506" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#5b21b6" font-weight="700">3  ·  Named share</text>
+  <text x="204" y="530" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5b21b6">view or edit  ·  revoked_at empty</text>
+  <path d="M344 516 L490 370" fill="none" stroke="#6d28d9" stroke-width="2.5" marker-end="url(#arr3)"/>
+
+  <!-- OR badge -->
+  <circle cx="430" cy="350" r="22" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="430" y="356" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">OR</text>
+
+  <!-- Admin blocked -->
+  <rect x="900" y="160" width="300" height="88" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="1050" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#991b1b" font-weight="700">Administrator role</text>
+  <text x="1050" y="218" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#991b1b">Roster and library only - no back door</text>
+  <path d="M1050 248 L1050 300" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="1050" y="292" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#dc2626" font-weight="700">-</text>
+
+  <!-- Children inherit -->
+  <rect x="860" y="430" width="360" height="150" rx="12" fill="#f8fafc" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="1040" y="462" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e40af" font-weight="700">These inherit the same three paths</text>
+  <text x="1040" y="492" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Hearings  ·  Parties  ·  Matter tags  ·  Documents</text>
+  <text x="1040" y="518" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Judgment and Case Law pins still need</text>
+  <text x="1040" y="540" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">independent access to both sides</text>
+
+  <path d="M790 350 L860 490" fill="none" stroke="#1e3a5f" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+  <text x="64" y="680" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Magistrate Wizard  ·  Court-Anchored Docket  ·  can_access_court OR has_retained_assignment OR has_docket_share</text>
+
+  <defs>
+    <marker id="arr1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#c2410c"/></marker>
+    <marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#b45309"/></marker>
+    <marker id="arr3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#6d28d9"/></marker>
+    <marker id="arr4" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1e3a5f"/></marker>
+  </defs>
+</svg>
+<figcaption>Three paths onto a Docket Matter</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img">
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="52" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">Three cabinets, three lock types</text>
+  <text x="64" y="80" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">A pin between cabinets never copies the keys.</text>
+
+  <!-- Court cabinet -->
+  <rect x="48" y="120" width="380" height="520" rx="16" fill="#eff6ff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="238" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#1e3a5f" font-weight="700">The Court's cabinet</text>
+  <text x="238" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Opened by sitting, retain, or share</text>
+  <rect x="80" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#3b82f6"/>
+  <text x="238" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Docket matters</text>
+  <rect x="80" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="238" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Hearings  ·  parties  ·  tags</text>
+  <rect x="80" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="238" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Cover and identification photos</text>
+  <text x="238" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Never a public / discoverable pool</text>
+  <text x="238" y="454" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">History is archived, not erased</text>
+  <text x="238" y="500" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e40af" font-weight="600">When you leave the Court,</text>
+  <text x="238" y="522" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e40af">the cabinet stays for the next sitter</text>
+
+  <!-- Personal desk -->
+  <rect x="450" y="120" width="380" height="520" rx="16" fill="#f0fdf4" stroke="#047857" stroke-width="2"/>
+  <text x="640" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#047857" font-weight="700">Your desk</text>
+  <text x="640" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Owner only - no admin bypass</text>
+  <rect x="482" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#047857"/>
+  <text x="640" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Judgments (optional discoverable)</text>
+  <rect x="482" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Quick codes - never shared</text>
+  <rect x="482" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Bench notes - always private</text>
+  <rect x="482" y="414" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="444" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Personal case law + annotations</text>
+  <text x="640" y="510" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#047857" font-weight="600">Leaving a Court does not</text>
+  <text x="640" y="532" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#047857">hand this desk to a successor</text>
+
+  <!-- Library -->
+  <rect x="852" y="120" width="380" height="520" rx="16" fill="#faf5ff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1042" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#6d28d9" font-weight="700">Shared library</text>
+  <text x="1042" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Admin writes  ·  all may read published</text>
+  <rect x="884" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#6d28d9"/>
+  <text x="1042" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Published case law</text>
+  <rect x="884" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1042" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Published legislation + sections</text>
+  <rect x="884" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1042" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Topics / tags  ·  sources registry</text>
+  <text x="1042" y="440" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Drafts stay invisible until publish</text>
+  <text x="1042" y="510" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#6d28d9" font-weight="600">Your annotations on a library case</text>
+  <text x="1042" y="532" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#6d28d9">remain on your desk, not in the book</text>
+
+  <!-- Association arrows -->
+  <path d="M428 250 L450 250" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M830 250 L852 250" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="640" y="680" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Dashed idea: a link is a pin, not a key   ·   BOTH sides must already be readable</text>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker>
+  </defs>
+</svg>
+<figcaption>Court cabinet, personal desk, shared library</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" role="img">
+  <rect width="1400" height="900" fill="#ffffff"/>
+  <text x="48" y="44" font-family="Georgia, serif" font-size="26" fill="#1e40af" font-weight="700">Entity map - who relates to whom</text>
+  <text x="48" y="70" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Boxes are tables. Crow's-feet mean "many". Dashed lines are association-only (a pin, not a key).</text>
+
+  <rect x="40" y="100" width="200" height="54" rx="8" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="140" y="134" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">profiles</text>
+
+  <rect x="40" y="200" width="200" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="140" y="234" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">magisterial_districts</text>
+
+  <rect x="40" y="300" width="200" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="140" y="334" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">courts</text>
+
+  <rect x="320" y="200" width="220" height="54" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="430" y="234" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#92400e" font-weight="700">magistrate_courts</text>
+
+  <rect x="320" y="380" width="220" height="70" rx="8" fill="#3b82f6" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="430" y="410" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#ffffff" font-weight="700">docket_matters</text>
+  <text x="430" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#dbeafe">no owner_id</text>
+
+  <rect x="620" y="280" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="310" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_events</text>
+  <rect x="620" y="340" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="370" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_matter_parties</text>
+  <rect x="620" y="400" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_matter_tags</text>
+  <rect x="620" y="460" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="490" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">assignments (retain)</text>
+  <rect x="620" y="520" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="550" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">shares</text>
+
+  <rect x="920" y="160" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">judgments</text>
+  <rect x="920" y="240" width="210" height="54" rx="8" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1025" y="274" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">case_law</text>
+  <rect x="920" y="320" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="354" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">quick_codes</text>
+  <rect x="920" y="400" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="434" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">bench_notes</text>
+  <rect x="920" y="480" width="210" height="54" rx="8" fill="#faf5ff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1025" y="514" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">statutes</text>
+  <rect x="920" y="560" width="210" height="54" rx="8" fill="#faf5ff" stroke="#6d28d9"/>
+  <text x="1025" y="594" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6">statute_provisions</text>
+  <rect x="920" y="640" width="210" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f"/>
+  <text x="1025" y="674" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">documents / bookmarks</text>
+
+  <rect x="1170" y="220" width="190" height="48" rx="8" fill="#ffffff" stroke="#6d28d9"/>
+  <text x="1265" y="250" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5b21b6">annotations</text>
+  <rect x="1170" y="160" width="190" height="48" rx="8" fill="#ffffff" stroke="#047857"/>
+  <text x="1265" y="190" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#065f46">judgment_tags</text>
+
+  <!-- solid links -->
+  <path d="M140 154 L140 200" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M140 254 L140 300" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M240 327 L320 227" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M240 327 L320 415" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M140 154 L320 227" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 304" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 364" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 424" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 484" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 544" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M480 154 L1025 160" stroke="#047857" stroke-width="1.5"/>
+  <path d="M240 127 L1025 347" stroke="#047857" stroke-width="1.5"/>
+  <path d="M1025 534 L1025 560" stroke="#6d28d9" stroke-width="1.5"/>
+  <path d="M1130 187 L1170 184" stroke="#047857" stroke-width="1.5"/>
+  <path d="M1130 267 L1170 244" stroke="#6d28d9" stroke-width="1.5"/>
+
+  <!-- dashed association -->
+  <path d="M540 400 L920 187" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M540 400 L920 267" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M540 415 L920 347" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <rect x="40" y="760" width="1320" height="100" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="64" y="798" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">Solid line</text>
+  <text x="160" y="798" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">parent / child or ownership</text>
+  <text x="64" y="826" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">Dashed line</text>
+  <text x="170" y="826" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">association table - BOTH sides already readable, never confers access</text>
+  <text x="64" y="852" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Legacy cases / case_parties omitted - unused by new development. legal_authority_courts is a separate "reported court" list, not courts.</text>
+</svg>
+<figcaption>Entity map</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img">
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="48" font-family="Georgia, serif" font-size="26" fill="#1e40af" font-weight="700">A sitting day vs an admin day</text>
+  <text x="64" y="74" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Left to right in time. Same product, different keys.</text>
+
+  <!-- Lane headers -->
+  <rect x="48" y="100" width="140" height="180" rx="8" fill="#fed7aa" stroke="#c2410c"/>
+  <text x="118" y="198" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">Magistrate</text>
+  <rect x="48" y="292" width="140" height="180" rx="8" fill="#ddd6fe" stroke="#6d28d9"/>
+  <text x="118" y="390" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">Administrator</text>
+  <rect x="48" y="484" width="140" height="160" rx="8" fill="#dbeafe" stroke="#1e3a5f"/>
+  <text x="118" y="572" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Database</text>
+
+  <!-- Magistrate steps -->
+  <rect x="220" y="130" width="200" height="70" rx="8" fill="#ffffff" stroke="#c2410c" stroke-width="2"/>
+  <text x="320" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#9a3412" font-weight="600">Sign in</text>
+  <text x="320" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">Dashboard</text>
+
+  <rect x="450" y="130" width="200" height="70" rx="8" fill="#ffffff" stroke="#c2410c" stroke-width="2"/>
+  <text x="550" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#9a3412" font-weight="600">Open today's list</text>
+  <text x="550" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">Court docket + retained</text>
+
+  <rect x="680" y="130" width="200" height="70" rx="8" fill="#ffffff" stroke="#c2410c" stroke-width="2"/>
+  <text x="780" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#9a3412" font-weight="600">Hear the matter</text>
+  <text x="780" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">event  ·  parties  ·  orders</text>
+
+  <rect x="910" y="130" width="200" height="70" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1010" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#065f46" font-weight="600">Write / pin / note</text>
+  <text x="1010" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#047857">judgment stays yours</text>
+
+  <path d="M420 165 L450 165" stroke="#c2410c" stroke-width="2" marker-end="url(#m)"/>
+  <path d="M650 165 L680 165" stroke="#c2410c" stroke-width="2" marker-end="url(#m)"/>
+  <path d="M880 165 L910 165" stroke="#c2410c" stroke-width="2" marker-end="url(#m)"/>
+
+  <!-- Admin steps -->
+  <rect x="220" y="330" width="200" height="70" rx="8" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="320" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6" font-weight="600">Seat a magistrate</text>
+  <text x="320" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">Court Assignments</text>
+
+  <rect x="450" y="330" width="200" height="70" rx="8" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="550" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6" font-weight="600">Import an authority</text>
+  <text x="550" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">hidden draft</text>
+
+  <rect x="680" y="330" width="200" height="70" rx="8" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="780" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6" font-weight="600">Review metadata</text>
+  <text x="780" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">court  ·  citation  ·  tags</text>
+
+  <rect x="910" y="330" width="200" height="70" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1010" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#065f46" font-weight="600">Publish</text>
+  <text x="1010" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#047857">library becomes readable</text>
+
+  <path d="M420 365 L450 365" stroke="#6d28d9" stroke-width="2" marker-end="url(#p)"/>
+  <path d="M650 365 L680 365" stroke="#6d28d9" stroke-width="2" marker-end="url(#p)"/>
+  <path d="M880 365 L910 365" stroke="#6d28d9" stroke-width="2" marker-end="url(#p)"/>
+
+  <!-- DB -->
+  <rect x="220" y="520" width="430" height="90" rx="8" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="435" y="556" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="600">RLS filters every read and write</text>
+  <text x="435" y="580" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Admin publish ` Admin docket access</text>
+
+  <rect x="680" y="520" width="430" height="90" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="895" y="556" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#991b1b" font-weight="600">No back door</text>
+  <text x="895" y="580" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#991b1b">Private judgments, notes, codes stay closed</text>
+
+  <defs>
+    <marker id="m" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#c2410c"/></marker>
+    <marker id="p" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#6d28d9"/></marker>
+  </defs>
+</svg>
+<figcaption>A sitting day versus an admin day</figcaption></figure>
+</div>
+  <section class="chapter"><h1>0. How to read these guides</h1>
+<h2>What Magistrate Wizard is</h2>
+<p>Magistrate Wizard is a computer filing system for magistrates. It holds:</p>
+<ul>
+<li>the <strong>Court&#x27;s docket</strong> (the list of matters before that Court)</li>
+<li><strong>your</strong> written work (judgments, research notes, shortcuts)</li>
+<li>a <strong>shared law library</strong> (published case law and legislation)</li>
+</ul>
+<p>It is not a public website. Members of the public cannot browse it. Every screen you open has already been filtered so you only see what you are allowed to see.</p>
+<h2>Words used here</h2>
+<table>
+<tr><th>Word</th><th>Everyday meaning in Magistrate Wizard</th></tr>
+<tr><td><strong>Court</strong></td><td>A physical Guyana Magistrates&#x27; Court (for example, a sitting at a named location). Not the Caribbean Court of Justice as a reported authority.</td></tr>
+<tr><td><strong>District</strong></td><td>The Magisterial District that Court belongs to. Case numbers are unique <em>inside a district</em>, not nationwide.</td></tr>
+<tr><td><strong>Docket matter</strong></td><td>One case file on that Court&#x27;s list. Arraignment, maintenance, traffic — all are &quot;matters&quot;.</td></tr>
+<tr><td><strong>Event</strong></td><td>One listed appearance or hearing date for that matter.</td></tr>
+<tr><td><strong>Retained / part-heard</strong></td><td>You kept access to <strong>one</strong> matter after you stopped sitting that Court, so you can finish it.</td></tr>
+<tr><td><strong>Share</strong></td><td>You let a <em>named colleague</em> see one matter. Exceptional, not the normal way work moves on.</td></tr>
+<tr><td><strong>Canonical case law</strong></td><td>An entry in the official library, published by an administrator. Everyone signed in can read it.</td></tr>
+<tr><td><strong>Personal case law</strong></td><td>Your own research card. Private unless you mark it discoverable.</td></tr>
+<tr><td><strong>Discoverable</strong></td><td>Others may <em>read</em>. They still cannot edit. Used for judgments and personal case law — <strong>never</strong> for the docket.</td></tr>
+<tr><td><strong>Admin</strong></td><td>Someone who seats magistrates at Courts and publishes the library. Admin is <strong>not</strong> a master key to other people&#x27;s private writing.</td></tr>
+</table>
+<h2>A picture of the locks</h2>
+<p>!<a href="../diagrams/assets/domain-map.png">Three cabinets, three lock types</a></p>
+<div class="mermaid">flowchart TB
+    subgraph CourtCabinet[&quot;The Court&#x27;s cabinet&quot;]
+        D[Docket matters]
+        E[Hearings]
+        P[Parties]
+    end
+
+    subgraph MyDesk[&quot;Your desk&quot;]
+        J[Judgments]
+        Q[Quick codes]
+        N[Bench notes]
+        R[Personal research]
+    end
+
+    subgraph Library[&quot;Shared library&quot;]
+        C[Published case law]
+        S[Published legislation]
+    end
+
+    You[You] --&gt;|Seated at that Court, or retained, or shared| CourtCabinet
+    You --&gt; MyDesk
+    You --&gt; Library</div>
+<h2>What these guides are not</h2>
+<p>They are not the architecture specification. They do not replace training on the law. They describe <strong>how the software behaves today</strong>.</p></section>
+<section class="chapter"><h1>1. Getting started</h1>
+<p><strong>Who:</strong> anyone with a Magistrate Wizard account</p>
+<p><strong>Goal:</strong> sign in and understand the home screen</p>
+<p><strong>Time:</strong> a few minutes</p>
+<h2>Steps</h2>
+<ol>
+<li>Open Magistrate Wizard in a browser.</li>
+<li>If you have no account, use <strong>Register</strong>. You will get a profile. You will <strong>not</strong> yet have a Court.</li>
+<li>If you forgot the password, use <strong>Forgot password</strong>.</li>
+<li>After login you land on the <strong>Dashboard</strong>.</li>
+</ol>
+<div class="mermaid">flowchart LR
+    A[Open Magistrate Wizard] --&gt; B{Have an account?}
+    B --&gt;|No| R[Register]
+    B --&gt;|Yes| L[Log in]
+    R --&gt; D[Dashboard]
+    L --&gt; D
+    D --&gt; E{Assigned to a Court?}
+    E --&gt;|Not yet| W[You can still use the library,&lt;br/&gt;notes, and your own judgments]
+    E --&gt;|Yes| F[Your Courts and today&#x27;s list appear]</div>
+<h2>What you will see on the Dashboard</h2>
+<p>The Dashboard only summarises things you could already open elsewhere. It never shows another Court&#x27;s secret list.</p>
+<p>Typical rows:</p>
+<ul>
+<li><strong>Your current Courts</strong> — where you are seated right now</li>
+<li><strong>Upcoming appearances</strong> — hearing dates still marked scheduled</li>
+<li><strong>Active matters</strong> — docket files in progress</li>
+<li><strong>Retained / part-heard</strong> — matters you kept after leaving a Court</li>
+<li><strong>Your draft and final judgments</strong></li>
+<li><strong>Your quick codes and bench notes</strong></li>
+</ul>
+<h2>Common surprises</h2>
+<table>
+<tr><th>You expected</th><th>What actually happens</th></tr>
+<tr><td>&quot;I registered, so I should see a docket.&quot;</td><td>Registration only creates <em>you</em>. An administrator must seat you at a Court.</td></tr>
+<tr><td>&quot;I am an administrator, so I see every docket.&quot;</td><td>No. Admin tools manage the <em>roster</em> and the <em>library</em>. To work a docket you still need a real Court assignment, like any magistrate.</td></tr>
+<tr><td>&quot;Search will find everything in the system.&quot;</td><td>Search only returns what you are already allowed to open.</td></tr>
+</table>
+<h2>If something goes wrong</h2>
+<ul>
+<li>Wrong password → Forgot password.</li>
+<li>Logged in but sent to <strong>Unauthorized</strong> → you opened an admin page without the admin role.</li>
+<li>Dashboard looks empty → you may be unassigned. You can still open Case Law, Legislation, Judgments, Quick Codes, Bench Notes, Bookmarks, and Search.</li>
+</ul></section>
+<section class="chapter"><h1>2. Court assignment</h1>
+<p><strong>Who:</strong> administrator seats; magistrate is seated</p>
+<p><strong>Goal:</strong> open the Court&#x27;s docket for a person</p>
+<p><strong>Everyday analogy:</strong> handing someone the keys to a particular courtroom&#x27;s filing cabinet</p>
+<h2>Why this exists</h2>
+<p>A docket is <strong>not</strong> &quot;Magistrate X&#x27;s cases&quot;. It is <strong>that Court&#x27;s cases</strong>. The software therefore asks: <em>who is currently sitting this Court?</em></p>
+<p>That answer lives in a dated assignment. While the end date is empty, you have the keys. When an administrator fills the end date, those keys stop working.</p>
+<div class="mermaid">flowchart LR
+    Admin[Administrator] --&gt; Assign[Seats you at a Court]
+    Assign --&gt; Keys[You can see that Court&#x27;s whole docket]
+    Keys --&gt; End[Administrator ends the sitting]
+    End --&gt; Lost[Those keys stop]
+    Lost --&gt; Keep{Did you retain a part-heard matter?}
+    Keep --&gt;|Yes| One[You keep that one file]
+    Keep --&gt;|No| None[You see none of that Court&#x27;s files]</div>
+<h2>What the administrator does</h2>
+<ol>
+<li>Open <strong>Court Assignments</strong> (admin menu).</li>
+<li>Choose the magistrate&#x27;s profile.</li>
+<li>Choose an <strong>active</strong> Court.</li>
+<li>Create the assignment.</li>
+</ol>
+<p>To move someone to another Court: <strong>end</strong> the current assignment, then create a new one. Do not pretend the old row was always the new Court — history is kept.</p>
+<p>To offboard someone: end their Court sittings (and make sure part-heard retains are ended too). Prefer <strong>deactivating</strong> the account later. Do not delete the person if they created docket files — the system needs to remember who did the work.</p>
+<h2>What the magistrate cannot do</h2>
+<p>You cannot seat yourself. You cannot end your own Court sitting. That is deliberate. Anyone who could seat themselves could open any Court&#x27;s cabinet.</p>
+<h2>Assignment types</h2>
+<p>Regular, acting, relief, or other. They are labels for the roster. <strong>They do not change permissions.</strong> Any current sitting, of any type, opens that Court&#x27;s docket the same way.</p>
+<h2>Dual access is normal</h2>
+<p>Suppose you retained matter 45 from a Court you left. A new magistrate is now seated there. <strong>Both of you can open matter 45.</strong> You are not the owner. You are finishing a hearing. They are running the Court.</p>
+<h2>Related guide</h2>
+<p>When you are about to leave, read <a href="05-sharing-and-retained.md">Sharing and retained matters</a> <em>before</em> the administrator ends your sitting. You can only retain a matter while you still have the Court keys.</p></section>
+<section class="chapter"><h1>3. Working a docket matter</h1>
+<p><strong>Who:</strong> a magistrate (or clerk) who can already open that Court&#x27;s list</p>
+<p><strong>Goal:</strong> create and run one case file</p>
+<p><strong>Everyday analogy:</strong> opening a new folder in the Court&#x27;s cabinet, not in your briefcase</p>
+<h2>Create a matter</h2>
+<ol>
+<li>Go to <strong>Docket</strong>.</li>
+<li>Start a new matter.</li>
+<li>Pick a Court you <strong>currently sit</strong>.</li>
+<li>Enter the official <strong>case number</strong> and a short <strong>title</strong> (the names you would read out).</li>
+<li>Save.</li>
+</ol>
+<p>The district is filled in from the Court. You do not choose it. Case numbers must be unique <strong>inside that district</strong>, not worldwide — two districts may both have &quot;45/2024&quot;.</p>
+<div class="mermaid">flowchart TD
+    Start[Docket list] --&gt; Q{Do I currently sit a Court?}
+    Q --&gt;|No| No[You cannot create.&lt;br/&gt;You may still see retained or shared files]
+    Q --&gt;|Yes| Form[Court, case number, title]
+    Form --&gt; File[New folder on that Court&#x27;s list]
+    File --&gt; Tabs[Overview · Events · Parties · Tags ·&lt;br/&gt;Judgments · Case Law · Documents · Sharing]</div>
+<h2>The matter page</h2>
+<table>
+<tr><th>Tab</th><th>What it is for</th></tr>
+<tr><td>Overview</td><td>Charge or issue, rolling orders, overall outcome, status, cover image, retain</td></tr>
+<tr><td>Events</td><td>Each listed date</td></tr>
+<tr><td>Parties</td><td>People and roles, optional identification photo</td></tr>
+<tr><td>Tags</td><td>Court-visible labels such as &quot;urgent&quot; (not your private sticky notes)</td></tr>
+<tr><td>Judgments</td><td>Pin <em>your</em> written rulings to this file</td></tr>
+<tr><td>Case Law</td><td>Pin authorities you can read</td></tr>
+<tr><td>Documents</td><td>PDFs and other attachments</td></tr>
+<tr><td>Sharing</td><td>Let one named colleague in</td></tr>
+</table>
+<p>You can bookmark the matter from the header.</p>
+<h2>Status</h2>
+<ul>
+<li><strong>Active</strong> — live</li>
+<li><strong>Stayed</strong> — paused; a retained magistrate still keeps it</li>
+<li><strong>Completed</strong> — finished; any retain ends automatically</li>
+<li><strong>Archived</strong> — filed away; retain also ends</li>
+</ul>
+<p>There is no &quot;delete this case from history&quot; button. That is the point of a court record.</p>
+<h2>Cover image</h2>
+<p>A cover photo (often a party&#x27;s identification picture reused) appears on tiles and the top of the page. It is stored as a private file. Anyone who can already open the matter can see it.</p>
+<h2>If create is blocked</h2>
+<p>You are not currently assigned to the Court you picked. Ask an administrator to seat you, or work from a matter that was retained or shared with you.</p>
+<h2>What this file is not</h2>
+<p>It is not your personal notebook. Colleagues who later sit the same Court will see it. Put private thinking in <strong>Bench Notes</strong> or <strong>personal Case Law</strong>, not in the matter&#x27;s institutional tags.</p></section>
+<section class="chapter"><h1>4. Hearings, parties, and documents</h1>
+<p><strong>Who:</strong> anyone with edit access to the matter (Court sitting, retain, or an <strong>edit</strong> share)</p>
+<p><strong>Goal:</strong> record who appeared, when they must return, and what was filed</p>
+<h2>Hearings (Events)</h2>
+<p>A matter lasts. Hearings stack up: first appearance, adjournment, trial, review.</p>
+<ol>
+<li>Open the matter → <strong>Events</strong>.</li>
+<li>Add an event.</li>
+<li><strong>Date is required.</strong> Time may wait until the list is settled.</li>
+<li>Optionally note type, stage, what was ordered <em>that day</em>, and free notes.</li>
+</ol>
+<p>&quot;Next appearance&quot; is not a separate field. The system looks at the dated events. If you reschedule, change the event — do not keep a stale &quot;next date&quot; on the folder cover.</p>
+<div class="mermaid">flowchart LR
+    M[Matter] --&gt; E1[15 Mar — first appearance]
+    M --&gt; E2[12 Apr — trial]
+    M --&gt; E3[3 May — sentence]
+    E2 -.-&gt;|Outlook, later| Cal[Calendar app]</div>
+<p>Outlook, when it arrives, may copy <strong>dates</strong>. It will not be allowed to rewrite the charge or the orders.</p>
+<p>The name of who presided is recorded as history. It is not a permission. Sitting the Court is what grants permission.</p>
+<h2>Parties</h2>
+<ol>
+<li>Open <strong>Parties</strong>.</li>
+<li>Add a name, a <strong>party type</strong>, and a <strong>role</strong> (they are different vocabularies — type is who they are in the proceeding; role is the part they play).</li>
+<li>Names are not unique. Two &quot;John Singh&quot; rows are allowed; people are not identifiers.</li>
+<li>Do not &quot;delete&quot; a party to rewrite history. Status is used instead.</li>
+<li>You may attach an <strong>identification photograph</strong>. It can be shown on the party list and reused as the matter cover.</li>
+</ol>
+<p>Contact details stay in the form — they are not splashed on the list the way a photo may be.</p>
+<h2>Documents</h2>
+<p>Attachments follow the <strong>folder they hang on</strong>:</p>
+<ul>
+<li>On a matter → anyone with that matter</li>
+<li>On your judgment → you (and readers if you made it discoverable)</li>
+<li>On library case law → follows whether that entry is published / yours / discoverable</li>
+</ul>
+<p>Upload PDFs, images, Word, Markdown, or text files into the private documents store. The app then shows a time-limited view. There is no public download page.</p>
+<p>Identification photos and covers are documents too, marked so they do not clutter the ordinary attachments list.</p>
+<h2>Tags on a matter</h2>
+<p>Matter tags are <strong>institutional</strong>. The next magistrate at that Court will see &quot;urgent&quot;. They are not your private &quot;read on Friday&quot; label. Private labels are a future feature and must not piggy-back on these tags.</p></section>
+<section class="chapter"><h1>5. Sharing and retained matters</h1>
+<p>Two different kindnesses. Do not mix them up.</p>
+<table>
+<tr><th></th><th><strong>Share</strong></th><th><strong>Retain (part-heard)</strong></th></tr>
+<tr><td>When</td><td>A colleague needs this <em>one</em> file for a short consultation</td><td>You are leaving the Court but this matter is still yours to finish</td></tr>
+<tr><td>Who grants it</td><td>Anyone who already has Court or retained access</td><td>Only <strong>you</strong>, and only <strong>for yourself</strong>, while you still sit the Court</td></tr>
+<tr><td>How wide</td><td>One named person</td><td>One named person — you</td></tr>
+<tr><td>How it ends</td><td>Revoke, or they give it back</td><td>You end it, or completing/archiving the matter ends it</td></tr>
+<tr><td>Typical story</td><td>&quot;Please look at this maintenance file with me.&quot;</td><td>&quot;I started the trial; I will finish it after I move.&quot;</td></tr>
+</table>
+<div class="mermaid">flowchart TB
+    subgraph Share[&quot;Share — exceptional&quot;]
+        S1[You have the Court keys] --&gt; S2[Invite colleague by email]
+        S2 --&gt; S3{View or Edit?}
+        S3 --&gt; S4[They see this matter]
+        S4 --&gt; S5[Revoke when done]
+    end
+
+    subgraph Retain[&quot;Retain — succession of the hearing, not the Court&quot;]
+        R1[You still sit the Court] --&gt; R2[Retain this matter]
+        R2 --&gt; R3[Admin later ends your sitting]
+        R3 --&gt; R4[You keep this file only]
+        R4 --&gt; R5[New magistrate also sees it]
+    end</div>
+<h2>How to share</h2>
+<ol>
+<li>Open the matter → <strong>Sharing</strong>.</li>
+<li>Enter the colleague&#x27;s <strong>exact account email</strong>.</li>
+<li>Choose <strong>view</strong> (read) or <strong>edit</strong> (they may update the file the way a sitting magistrate would, with the limits described below).</li>
+<li>They cannot pass the share on.</li>
+<li>To change view into edit: revoke, then share again. The old row stays as history.</li>
+</ol>
+<p>If the page says you cannot share, you only have a <em>view</em> share yourself, or you no longer have Court/retained authority.</p>
+<p><strong>View</strong> lets them read the matter, events, parties, and tags. It does not let them pin a Judgment or Case Law card. <strong>Edit</strong> lets them change the file, but still does not open a Judgment they do not own, and still cannot pin Judgment or Case Law (that needs Court or retained keys).</p>
+<p>The Sharing screen may still <em>show</em> Save buttons to a view-only colleague. If they try, the save fails. The lock is in the database, not a greyed-out form.</p>
+<h2>How to retain</h2>
+<ol>
+<li>While you <strong>still sit</strong> the Court, open Overview.</li>
+<li>Choose <strong>Retain this matter</strong>.</li>
+<li>You cannot retain a file for someone else. You cannot retain a file at a Court you do not currently sit.</li>
+</ol>
+<p>After your sitting ends, the matter stays on your Dashboard under <strong>Retained / Part-Heard</strong>. When the matter is completed or archived, the retain ends by itself. A stay does <strong>not</strong> end it — a paused trial may resume in your hands.</p>
+<h2>Offboarding</h2>
+<p>Before a magistrate leaves office:</p>
+<ol>
+<li>They retain any part-heard files <em>first</em>.</li>
+<li>Administrator ends Court sittings.</li>
+<li>Remaining live retains are ended when the work is truly handed on.</li>
+<li>Keep the person&#x27;s name in the system. Deleting the profile is an emergency, not a retirement party.</li>
+</ol>
+<h2>Related</h2>
+<p>Court keys: <a href="02-court-assignment.md">Court assignment</a>.</p></section>
+<section class="chapter"><h1>6. Writing a judgment</h1>
+<p><strong>Who:</strong> you, the author</p>
+<p><strong>Goal:</strong> draft, lock, and optionally let colleagues read</p>
+<p><strong>Everyday analogy:</strong> the opinion is in <em>your</em> bound volume. The docket folder may point to it. Pointing is not photocopying.</p>
+<h2>Create</h2>
+<ol>
+<li>Open <strong>Judgments</strong>.</li>
+<li>Create a new one. It always starts as <strong>draft</strong> and always belongs to you. You cannot create one in a colleague&#x27;s name.</li>
+</ol>
+<p>Fill title, optional case number, court name (plain words — it does not have to be a Court on the roster), date, citation, and the text.</p>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; Draft
+    Draft --&gt; Final: You finalize
+    Final --&gt; Draft: You unlock
+    Draft --&gt; [*]: You may delete a draft</div>
+<h2>Finalize</h2>
+<p>Finalizing <strong>locks the words</strong>: title, numbers, dates, citation, body. You can still:</p>
+<ul>
+<li>toggle <strong>discoverable</strong></li>
+<li>add tags</li>
+<li>attach files</li>
+</ul>
+<p>Pin the judgment onto a matter from the matter’s <strong>Judgments</strong> tab (not from this page). Quick Code associations are not editable in the screens yet.</p>
+<p>You cannot delete a final judgment until you unlock it back to draft. Unlock first, edit in a <strong>separate</strong> save. The system will refuse a single save that both unlocks and rewrites the text — that would be a back door.</p>
+<h2>Discoverable</h2>
+<p>Off (default): only you.</p>
+<p>On: every signed-in magistrate may <strong>read</strong>. They still cannot edit, delete, or take it over.</p>
+<p>This is <em>not</em> making it canonical case law. It is not publishing to the world. It is &quot;colleagues may look this up&quot;.</p>
+<h2>Link to a docket matter</h2>
+<p>From the matter&#x27;s <strong>Judgments</strong> tab, pin a judgment <strong>you own</strong>. Being able to read a colleague&#x27;s discoverable judgment is not enough to pin it.</p>
+<p>A magistrate who later sits that Court will see the matter. They will <strong>not</strong> automatically see your private judgment. The pin does not hand them the volume.</p>
+<h2>Leaving a Court</h2>
+<p>Your judgments stay yours. The new magistrate gets the docket, not your prose.</p>
+<h2>Administrator</h2>
+<p>Admin cannot open your private judgment. There is no &quot;break glass&quot; button for judicial writing.</p></section>
+<section class="chapter"><h1>7. Researching case law</h1>
+<p><strong>Who:</strong> every signed-in user for the published library; you for your private cards</p>
+<p><strong>Goal:</strong> find authorities, keep personal notes, pin them onto a matter</p>
+<h2>Two kinds of card, one list</h2>
+<table>
+<tr><th>Kind</th><th>Who writes it</th><th>Who reads it</th></tr>
+<tr><td><strong>Library (canonical)</strong></td><td>Administrator, after review</td><td>Everyone, once <strong>published</strong></td></tr>
+<tr><td><strong>Personal</strong></td><td>You</td><td>You, unless you mark it discoverable</td></tr>
+</table>
+<p>They live in the same <strong>Case Law</strong> area so a search can return both. They are not two different apps.</p>
+<div class="mermaid">flowchart LR
+    subgraph Library[&quot;Official library&quot;]
+        D[Draft — only admin]
+        P[Published — everyone]
+        D --&gt; P
+    end
+
+    subgraph Mine[&quot;My research&quot;]
+        PR[Private card]
+        DI[Discoverable card]
+        PR --&gt; DI
+    end
+
+    A[Annotations] -.-&gt;|always only mine| P
+    A -.-&gt;|always only mine| PR</div>
+<h2>Browse published law</h2>
+<p>Open <strong>Case Law</strong>. Use the canonical tab. You may filter by jurisdiction and deciding court (the <em>reported</em> court — CCJ, a High Court, and so on — not the Magistrates&#x27; Court you sit).</p>
+<p>Unpublished imports never appear here. That is how the library stays clean.</p>
+<h2>Your own cards</h2>
+<p>Create a personal entry for a decision you are studying. Citation need not be unique — two magistrates may both note the same case.</p>
+<p>Mark discoverable only if you want colleagues to read the card. They still will not see your <strong>annotations</strong>.</p>
+<h2>Annotations</h2>
+<p>Pin a passage and a note. Multiple notes per case are fine. The person who owns the library entry (even an admin) cannot see <em>your</em> notes on it. If the parent card later becomes unreadable to you, your notes hide until you can read the parent again. They are not deleted.</p>
+<h2>Pin onto a docket matter</h2>
+<p>Open the Case Law card → <strong>Link to a Docket Matter</strong>. Pick a matter you sit or have retained. A share-only copy of a file is not enough to create the pin — the save will fail.</p>
+<p>The matter’s <strong>Case Law</strong> tab is a reverse view of pins already made. You do not create the link from there.</p>
+<p>You do <strong>not</strong> need to “own” a library case to cite it — citing is what the library is for. Citing does not grant the next magistrate your private annotations.</p>
+<h2>What is not here yet</h2>
+<p>Sharing a personal card with one named colleague (the way docket shares work) is not built. Outlook does not ingest authorities. The library is not a web crawler — see the admin guide.</p></section>
+<section class="chapter"><h1>8. Legislation, bench notes, and quick codes</h1>
+<h2>Legislation</h2>
+<p><strong>Legislation</strong> is the published statute book.</p>
+<ol>
+<li>Open the list. Only <strong>published</strong> Acts appear.</li>
+<li>Open an Act. If it has been broken into parts and sections, you get a table of contents and a reader.</li>
+<li>A section has a stable link (<code>/legislation/.../section/...</code>). Bookmark that section, copy its text, copy a short citation, or start a <strong>bench note</strong> locked to that section.</li>
+</ol>
+<p>If an Act has no structured sections yet, you see the older whole-text view. Nothing is broken.</p>
+<p>Draft Acts in the admin import queue are invisible here, same rule as unpublished case law.</p>
+<div class="mermaid">flowchart TD
+    Act[Road Traffic Act] --&gt; TOC[Contents]
+    TOC --&gt; S1[Section 2 — Dangerous driving]
+    S1 --&gt; B[Bookmark]
+    S1 --&gt; N[New bench note]
+    S1 --&gt; C[Copy citation]</div>
+<h2>Bench notes</h2>
+<p>A bench note is a <strong>private working note</strong>. Only you see it, even if it is &quot;about&quot; a docket matter or a statute section everyone can read.</p>
+<p>Create from <strong>Bench Notes</strong> (pick a parent: matter, judgment, case law, or Act), or from a legislation <strong>section</strong> (the parent is then locked to that section). There is no “New Bench Note” button on a docket, judgment, or case-law page today.</p>
+<p>This is the right place for &quot;ask clerk about service&quot; — not the Court&#x27;s institutional matter tag.</p>
+<h2>Quick codes</h2>
+<p>Quick codes are <strong>your</strong> text shortcuts. Example: a standard adjournment formula stored under a short code word.</p>
+<ul>
+<li>Unique per person. Two magistrates may both use <code>adj</code>.</li>
+<li>Nobody else can see them. Not the administrator. Not a colleague you shared a docket with.</li>
+<li><strong>Copy</strong> puts the snippet on the clipboard. There is no in-editor “type <code>adj</code> and it expands” yet.</li>
+<li>Existing links to matters, judgments, or case law can be <em>viewed</em>. Creating or removing those links is not in the screens yet.</li>
+</ul>
+<div class="mermaid">flowchart LR
+    Open[Open Quick Codes] --&gt; Copy[Copy the snippet]
+    Copy --&gt; Paste[Paste into a judgment or note]</div>
+<h2>Bookmarks vs notes vs codes</h2>
+<table>
+<tr><th>Tool</th><th>Purpose</th></tr>
+<tr><td>Bookmark</td><td>&quot;I want to find this again.&quot;</td></tr>
+<tr><td>Bench note</td><td>&quot;I want to write about this, privately.&quot;</td></tr>
+<tr><td>Quick code</td><td>&quot;I want to reuse a paragraph of my own.&quot;</td></tr>
+</table></section>
+<section class="chapter"><h1>9. Admin: roster and library</h1>
+<p><strong>Who:</strong> users with the administrator role</p>
+<p><strong>Goal:</strong> seat magistrates, and publish clean law into the shared library</p>
+<p><strong>What this is not:</strong> a window into other magistrates&#x27; private judgments, notes, or snippets</p>
+<h2>Court Assignments</h2>
+<p>Covered in <a href="02-court-assignment.md">Court assignment</a>. Recap:</p>
+<ul>
+<li>Only admin can create or end a sitting.</li>
+<li>Ending a sitting does not delete the Court&#x27;s files.</li>
+<li>Admin still needs their <em>own</em> sitting to work a docket.</li>
+</ul>
+<h2>Legal Library workspace</h2>
+<p>Open <strong>Legal Library</strong>. Typical tabs:</p>
+<ol>
+<li><strong>Sources</strong> — a register of places law <em>might</em> come from. Saving a source does <strong>not</strong> download anything. There is no crawler yet.</li>
+<li><strong>New Import</strong> — one document at a time.</li>
+<li><strong>Review Queue</strong> — drafts waiting for a human.</li>
+<li><strong>Batches</strong> — bulk import history. Every file should leave a trail, including duplicates.</li>
+</ol>
+<div class="mermaid">flowchart LR
+    File[Upload or paste text] --&gt; Draft[Hidden draft in the library]
+    Draft --&gt; Human[You correct names, court, jurisdiction, tags]
+    Human --&gt; Pub{Publish?}
+    Pub --&gt;|Still titled Untitled| No[System refuses]
+    Pub --&gt;|Complete| Yes[Magistrates can now read it]</div>
+<h2>Honest limits (do not over-claim to users)</h2>
+<table>
+<tr><th>Feature</th><th>Today</th></tr>
+<tr><td><code>.txt</code> / Markdown auto-read</td><td>Yes</td></tr>
+<tr><td>PDF / Word text</td><td>Text-layer PDFs extracted automatically; scanned PDFs and images recognized locally; <code>.docx</code> extracted in the browser. Word 97–2003 (<code>.doc</code>) still needs paste or a <code>.docx</code> copy</td></tr>
+<tr><td>Fetch from a URL</td><td>Not built</td></tr>
+<tr><td>OCR of scans</td><td>Built in the browser: scanned PDFs and images are recognized locally with Tesseract. Always verify the text before publishing</td></tr>
+<tr><td>In-app preview</td><td>PDFs, images, text, Markdown, and <code>.docx</code> can be opened in the documents viewer. <code>.doc</code> is download-only</td></tr>
+<tr><td>AI classifying issues</td><td>Not built — keyword suggestions only</td></tr>
+<tr><td>Duplicate file</td><td>Recorded as <strong>duplicate</strong>, not as a failure</td></tr>
+<tr><td>Same citation, different scan</td><td>Attached to the <em>existing</em> case as another source file</td></tr>
+</table>
+<h2>Publish checklist (Case Law)</h2>
+<p>The system will refuse to publish placeholder shells. You need a real name, citation, jurisdiction, and deciding court — not &quot;Untitled (pending review)&quot;.</p>
+<p>Legislation needs a real title, code, and jurisdiction.</p>
+<h2>Drafts stay invisible</h2>
+<p>A magistrate searching Case Law during your review will not stumble on a half-imported fixture. That is intentional.</p>
+<h2>Tags</h2>
+<p>Proposed tags are suggestions. Nothing is applied until you save tags on the review card. Matching is by name so &quot;Hearsay&quot; and &quot;hearsay&quot; do not become two topics.</p>
+<h2>Two &quot;courts&quot; again</h2>
+<p>When you set <strong>deciding court</strong> on a case, you are picking from the <em>reported authorities</em> list (CCJ, High Court, …). You are not picking a Magistrates&#x27; Court from the docket roster.</p></section>
+<section class="chapter"><h1>10. Search and bookmarks</h1>
+<h2>Search</h2>
+<p>Open <strong>Search</strong> and type as you would in a library catalogue.</p>
+<p>Results are grouped. Typical groups:</p>
+<ul>
+<li>Docket matters</li>
+<li>Judgments</li>
+<li>Case law</li>
+<li>Legislation (the Act title and summary). A phrase that lives <strong>only</strong> inside a section is more reliably found on the Legislation list page than here.</li>
+<li>Quick codes (yours only)</li>
+<li>Bench notes (yours only)</li>
+<li>Legacy &quot;cases&quot; (old table; not used for new work)</li>
+</ul>
+<div class="mermaid">flowchart TB
+    Q[Your query] --&gt; S[Search]
+    S --&gt; F[Each category runs in the database]
+    F --&gt; R[Only rows you could already open]</div>
+<p>Search cannot be used as a peephole. If a judgment is private, it will not appear for anyone but its author. If a docket is another Court&#x27;s, it will not appear unless you retained it or it was shared with you. Unpublished library drafts do not appear.</p>
+<h2>Bookmarks</h2>
+<p>Star a record from its page. Open <strong>Bookmarks</strong> to return later.</p>
+<p>You can bookmark:</p>
+<ul>
+<li>a docket matter</li>
+<li>a judgment</li>
+<li>a case law card</li>
+<li>a quick code</li>
+<li>a bench note</li>
+<li>an Act</li>
+<li>a <strong>section</strong> of an Act</li>
+<li>a leftover legacy case</li>
+</ul>
+<p>You cannot bookmark a raw uploaded PDF as its own thing. Bookmark the matter or judgment it is attached to.</p>
+<h2>Dashboard as a shortcut</h2>
+<p>The Dashboard is a thin &quot;today&quot; view of the same locks: your Courts, coming dates, retained files, your drafts. If it is empty, you are probably not seated yet — you can still search the published library and your own notes.</p>
+<h2>If you cannot find something</h2>
+<ol>
+<li>Confirm you are allowed to open it (wrong Court? private judgment? unpublished draft?).</li>
+<li>Try the specialised list page (Docket, Judgments, Case Law) with its own filters.</li>
+<li>For a section’s wording, search from <strong>Legislation</strong>, not only the global search box.</li>
+</ol></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

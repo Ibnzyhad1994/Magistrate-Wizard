@@ -2653,7 +2653,7 @@ export const Constants = {
   },
 } as const;
 
-// --- BenchBook convenience aliases (not part of the generated output) -----
+// --- Magistrate Wizard convenience aliases (not part of the generated output) -----
 
 export type Profile = Tables<"profiles">;
 export type Court = Tables<"courts">;

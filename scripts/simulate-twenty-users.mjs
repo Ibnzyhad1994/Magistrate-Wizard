@@ -107,29 +107,29 @@ async function ensureAssignment(profileId, courtId, assignmentType = "regular") 
 }
 
 const MAGISTRATES = [
-  { email: "magistrate@benchbook.local", fullName: "Local Magistrate", role: "magistrate", key: "seed-mag" },
-  { email: "mag02@benchbook.local", fullName: "Hon. Amina Persaud", role: "magistrate", key: "mag02" },
-  { email: "mag03@benchbook.local", fullName: "Hon. Ravi Narine", role: "magistrate", key: "mag03" },
-  { email: "mag04@benchbook.local", fullName: "Hon. Keisha Singh", role: "magistrate", key: "mag04" },
-  { email: "mag05@benchbook.local", fullName: "Hon. David Khan", role: "magistrate", key: "mag05" },
-  { email: "mag06@benchbook.local", fullName: "Hon. Priya Mohamed", role: "magistrate", key: "mag06" },
-  { email: "mag07@benchbook.local", fullName: "Hon. Marcus Williams", role: "magistrate", key: "mag07" },
-  { email: "mag08@benchbook.local", fullName: "Hon. Leila Baksh", role: "magistrate", key: "mag08" },
-  { email: "mag09@benchbook.local", fullName: "Hon. Omar Fraser", role: "magistrate", key: "mag09" },
-  { email: "mag10@benchbook.local", fullName: "Hon. Nadia Ali", role: "magistrate", key: "mag10" },
-  { email: "mag11@benchbook.local", fullName: "Hon. Christopher Gomes", role: "magistrate", key: "mag11" },
-  { email: "mag12@benchbook.local", fullName: "Hon. Sharmin Rahman", role: "magistrate", key: "mag12" },
-  { email: "mag13@benchbook.local", fullName: "Hon. Julian Adams", role: "magistrate", key: "mag13" },
-  { email: "mag14@benchbook.local", fullName: "Hon. Fatima Yusuf", role: "magistrate", key: "mag14" },
-  { email: "mag15@benchbook.local", fullName: "Hon. Andre Rodrigues", role: "magistrate", key: "mag15" },
-  { email: "mag16@benchbook.local", fullName: "Hon. Vanessa Chung", role: "magistrate", key: "mag16" },
-  { email: "mag17@benchbook.local", fullName: "Hon. Trevor Daniels", role: "magistrate", key: "mag17" },
+  { email: "magistrate@magistrate-wizard.local", fullName: "Local Magistrate", role: "magistrate", key: "seed-mag" },
+  { email: "mag02@magistrate-wizard.local", fullName: "Hon. Amina Persaud", role: "magistrate", key: "mag02" },
+  { email: "mag03@magistrate-wizard.local", fullName: "Hon. Ravi Narine", role: "magistrate", key: "mag03" },
+  { email: "mag04@magistrate-wizard.local", fullName: "Hon. Keisha Singh", role: "magistrate", key: "mag04" },
+  { email: "mag05@magistrate-wizard.local", fullName: "Hon. David Khan", role: "magistrate", key: "mag05" },
+  { email: "mag06@magistrate-wizard.local", fullName: "Hon. Priya Mohamed", role: "magistrate", key: "mag06" },
+  { email: "mag07@magistrate-wizard.local", fullName: "Hon. Marcus Williams", role: "magistrate", key: "mag07" },
+  { email: "mag08@magistrate-wizard.local", fullName: "Hon. Leila Baksh", role: "magistrate", key: "mag08" },
+  { email: "mag09@magistrate-wizard.local", fullName: "Hon. Omar Fraser", role: "magistrate", key: "mag09" },
+  { email: "mag10@magistrate-wizard.local", fullName: "Hon. Nadia Ali", role: "magistrate", key: "mag10" },
+  { email: "mag11@magistrate-wizard.local", fullName: "Hon. Christopher Gomes", role: "magistrate", key: "mag11" },
+  { email: "mag12@magistrate-wizard.local", fullName: "Hon. Sharmin Rahman", role: "magistrate", key: "mag12" },
+  { email: "mag13@magistrate-wizard.local", fullName: "Hon. Julian Adams", role: "magistrate", key: "mag13" },
+  { email: "mag14@magistrate-wizard.local", fullName: "Hon. Fatima Yusuf", role: "magistrate", key: "mag14" },
+  { email: "mag15@magistrate-wizard.local", fullName: "Hon. Andre Rodrigues", role: "magistrate", key: "mag15" },
+  { email: "mag16@magistrate-wizard.local", fullName: "Hon. Vanessa Chung", role: "magistrate", key: "mag16" },
+  { email: "mag17@magistrate-wizard.local", fullName: "Hon. Trevor Daniels", role: "magistrate", key: "mag17" },
 ];
 
 const USERS = [
-  { email: "admin@benchbook.local", fullName: "Local Administrator", role: "admin", key: "admin" },
-  { email: "registrar@benchbook.local", fullName: "Hon. Registrar Clarke", role: "admin", key: "registrar" },
-  { email: "clerk.georgetown@benchbook.local", fullName: "Clerk S. Joseph", role: "clerk", key: "clerk" },
+  { email: "admin@magistrate-wizard.local", fullName: "Local Administrator", role: "admin", key: "admin" },
+  { email: "registrar@magistrate-wizard.local", fullName: "Hon. Registrar Clarke", role: "admin", key: "registrar" },
+  { email: "clerk.georgetown@magistrate-wizard.local", fullName: "Clerk S. Joseph", role: "clerk", key: "clerk" },
   ...MAGISTRATES,
 ];
 
@@ -701,8 +701,8 @@ async function main() {
     fail("registrar workflow", err);
   }
 
-  await runUnauthorizedAdminCheck("magistrate@benchbook.local");
-  await runUnauthorizedAdminCheck("clerk.georgetown@benchbook.local");
+  await runUnauthorizedAdminCheck("magistrate@magistrate-wizard.local");
+  await runUnauthorizedAdminCheck("clerk.georgetown@magistrate-wizard.local");
 
   const passed = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok).length;

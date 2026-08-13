@@ -1,4 +1,4 @@
--- BenchBook — legal reference library
+-- Magistrate Wizard — legal reference library
 -- `statutes` and `case_law` are canonical, curated reference data shared
 -- across every court: readable by any authenticated user, writable only
 -- by admins (the platform's librarian role for this project's role set).

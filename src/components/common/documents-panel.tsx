@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { INGEST_FILE_ACCEPT } from "@/lib/ingest-source";
 import type { Document } from "@/types/database.types";
 
 interface DocumentsPanelProps {
@@ -88,6 +89,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
           <input
             ref={fileInputRef}
             type="file"
+            accept={INGEST_FILE_ACCEPT}
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -120,7 +122,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
           title="No documents attached"
           description={
             canUpload
-              ? "Upload PDFs, images, or Word documents relevant to this record."
+              ? "Upload PDFs, Word documents, Markdown, text files, or images relevant to this record."
               : "Nothing has been attached here."
           }
         />
@@ -143,6 +145,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
                     onClick={() => setViewingDoc(doc)}
                     className="truncate text-left hover:underline"
                     title="Open"
+                    aria-label={`View ${doc.file_name}`}
                   >
                     {doc.file_name}
                   </button>

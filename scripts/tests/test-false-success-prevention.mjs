@@ -150,7 +150,6 @@ async function main() {
     const env = await runPdfExtractionPipeline(makeImageOnlyPdf());
     check("F. Scanned/image-only PDF status is requires_ocr", env.status, "requires_ocr");
     check("F. Scanned/image-only PDF text is empty", env.text, "");
-    check("F. Scanned/image-only PDF ocrUsed is false", env.ocrUsed, false);
   }
 
   // ---------------------------------------------------------------------

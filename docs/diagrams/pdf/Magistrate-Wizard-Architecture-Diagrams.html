@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard architecture diagrams</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard architecture diagrams</h1>
+    <p class="lede">C4 context, entity-relationship diagrams, access control, user journeys, and sequence workflows. Authority: Final Architecture Specification Revision 3 and live migrations.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  <div class="chapter"><h1>Hero diagrams</h1>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img">
+  <rect width="1280" height="640" fill="#ffffff"/>
+  <text x="64" y="48" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">System context</text>
+  <text x="64" y="74" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">Magistrate Wizard is one web app. Supabase is the only backend. Outlook is future.</text>
+
+  <!-- People -->
+  <ellipse cx="160" cy="220" rx="88" ry="48" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="160" y="216" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">Magistrate</text>
+  <text x="160" y="236" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#9a3412">sits  ·  writes  ·  researches</text>
+
+  <ellipse cx="160" cy="340" rx="88" ry="48" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="160" y="336" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#92400e" font-weight="700">Clerk</text>
+  <text x="160" y="356" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#92400e">share recipient today</text>
+
+  <ellipse cx="160" cy="460" rx="88" ry="48" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="160" y="456" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">Admin</text>
+  <text x="160" y="476" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#5b21b6">roster + library</text>
+
+  <!-- System -->
+  <rect x="420" y="200" width="360" height="280" rx="16" fill="#dbeafe" stroke="#1e3a5f" stroke-width="3"/>
+  <text x="600" y="250" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#1e3a5f" font-weight="700">Magistrate Wizard</text>
+  <text x="600" y="280" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e40af">React SPA   ·   Magistrate Wizard</text>
+  <text x="600" y="330" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Court-anchored Docket</text>
+  <text x="600" y="354" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Personally owned work product</text>
+  <text x="600" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Published legal library</text>
+  <text x="600" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Privacy is enforced in the database</text>
+
+  <!-- Externals -->
+  <rect x="940" y="140" width="260" height="80" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="1070" y="174" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Supabase Auth</text>
+  <text x="1070" y="196" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">email session  ·  profiles</text>
+
+  <rect x="940" y="250" width="260" height="80" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="1070" y="284" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Postgres + RLS</text>
+  <text x="1070" y="306" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">product of record</text>
+
+  <rect x="940" y="360" width="260" height="80" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="1070" y="394" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Storage</text>
+  <text x="1070" y="416" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">documents private  ·  avatars public</text>
+
+  <rect x="940" y="470" width="260" height="80" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="1070" y="504" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b" font-weight="700">Outlook (future)</text>
+  <text x="1070" y="526" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">appearance times only</text>
+
+  <path d="M248 220 L420 300" stroke="#c2410c" stroke-width="2" fill="none"/>
+  <path d="M248 340 L420 340" stroke="#b45309" stroke-width="2" fill="none"/>
+  <path d="M248 460 L420 400" stroke="#6d28d9" stroke-width="2" fill="none"/>
+  <path d="M780 260 L940 180" stroke="#1e3a5f" stroke-width="2" fill="none"/>
+  <path d="M780 330 L940 290" stroke="#1e3a5f" stroke-width="2" fill="none"/>
+  <path d="M780 400 L940 400" stroke="#1e3a5f" stroke-width="2" fill="none"/>
+  <path d="M780 450 L940 500" stroke="#64748b" stroke-width="2" fill="none" stroke-dasharray="6 4"/>
+
+  <text x="64" y="610" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">No Edge Functions in production today. Search and ingestion RPCs run inside Postgres.</text>
+</svg>
+<figcaption>System context — people, the app, and Supabase</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="t d">
+  <title id="t">Three paths onto a Docket Matter</title>
+  <desc id="d">Court assignment, retained part-heard assignment, and explicit share all OR together. Admin is not a path.</desc>
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="56" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">How someone opens a Docket Matter</text>
+  <text x="64" y="86" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">Three lawful paths. Any one is enough. Administrator is not a fourth path.</text>
+
+  <!-- Matter -->
+  <rect x="490" y="300" width="300" height="100" rx="12" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="640" y="340" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#1e3a5f" font-weight="700">Docket Matter</text>
+  <text x="640" y="366" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Belongs to the Court, not a person</text>
+
+  <!-- Path 1 Court -->
+  <rect x="64" y="160" width="280" height="88" rx="10" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="204" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#9a3412" font-weight="700">1  ·  Current Court sitting</text>
+  <text x="204" y="218" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#9a3412">magistrate_courts  ·  ended_at empty</text>
+  <path d="M344 204 L490 330" fill="none" stroke="#c2410c" stroke-width="2.5" marker-end="url(#arr1)"/>
+
+  <!-- Path 2 Retained -->
+  <rect x="64" y="316" width="280" height="88" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="204" y="350" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#92400e" font-weight="700">2  ·  Retained / part-heard</text>
+  <text x="204" y="374" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#92400e">this one matter only  ·  self-granted</text>
+  <path d="M344 360 L490 350" fill="none" stroke="#b45309" stroke-width="2.5" marker-end="url(#arr2)"/>
+
+  <!-- Path 3 Share -->
+  <rect x="64" y="472" width="280" height="88" rx="10" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="204" y="506" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#5b21b6" font-weight="700">3  ·  Named share</text>
+  <text x="204" y="530" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5b21b6">view or edit  ·  revoked_at empty</text>
+  <path d="M344 516 L490 370" fill="none" stroke="#6d28d9" stroke-width="2.5" marker-end="url(#arr3)"/>
+
+  <!-- OR badge -->
+  <circle cx="430" cy="350" r="22" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="430" y="356" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">OR</text>
+
+  <!-- Admin blocked -->
+  <rect x="900" y="160" width="300" height="88" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="1050" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#991b1b" font-weight="700">Administrator role</text>
+  <text x="1050" y="218" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#991b1b">Roster and library only - no back door</text>
+  <path d="M1050 248 L1050 300" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="1050" y="292" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#dc2626" font-weight="700">-</text>
+
+  <!-- Children inherit -->
+  <rect x="860" y="430" width="360" height="150" rx="12" fill="#f8fafc" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="1040" y="462" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e40af" font-weight="700">These inherit the same three paths</text>
+  <text x="1040" y="492" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Hearings  ·  Parties  ·  Matter tags  ·  Documents</text>
+  <text x="1040" y="518" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Judgment and Case Law pins still need</text>
+  <text x="1040" y="540" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">independent access to both sides</text>
+
+  <path d="M790 350 L860 490" fill="none" stroke="#1e3a5f" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+  <text x="64" y="680" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Magistrate Wizard  ·  Court-Anchored Docket  ·  can_access_court OR has_retained_assignment OR has_docket_share</text>
+
+  <defs>
+    <marker id="arr1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#c2410c"/></marker>
+    <marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#b45309"/></marker>
+    <marker id="arr3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#6d28d9"/></marker>
+    <marker id="arr4" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1e3a5f"/></marker>
+  </defs>
+</svg>
+<figcaption>Three paths onto a Docket Matter</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img">
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="52" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">Three cabinets, three lock types</text>
+  <text x="64" y="80" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">A pin between cabinets never copies the keys.</text>
+
+  <!-- Court cabinet -->
+  <rect x="48" y="120" width="380" height="520" rx="16" fill="#eff6ff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="238" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#1e3a5f" font-weight="700">The Court's cabinet</text>
+  <text x="238" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Opened by sitting, retain, or share</text>
+  <rect x="80" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#3b82f6"/>
+  <text x="238" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Docket matters</text>
+  <rect x="80" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="238" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Hearings  ·  parties  ·  tags</text>
+  <rect x="80" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="238" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Cover and identification photos</text>
+  <text x="238" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Never a public / discoverable pool</text>
+  <text x="238" y="454" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">History is archived, not erased</text>
+  <text x="238" y="500" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e40af" font-weight="600">When you leave the Court,</text>
+  <text x="238" y="522" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e40af">the cabinet stays for the next sitter</text>
+
+  <!-- Personal desk -->
+  <rect x="450" y="120" width="380" height="520" rx="16" fill="#f0fdf4" stroke="#047857" stroke-width="2"/>
+  <text x="640" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#047857" font-weight="700">Your desk</text>
+  <text x="640" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Owner only - no admin bypass</text>
+  <rect x="482" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#047857"/>
+  <text x="640" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Judgments (optional discoverable)</text>
+  <rect x="482" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Quick codes - never shared</text>
+  <rect x="482" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Bench notes - always private</text>
+  <rect x="482" y="414" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="444" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Personal case law + annotations</text>
+  <text x="640" y="510" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#047857" font-weight="600">Leaving a Court does not</text>
+  <text x="640" y="532" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#047857">hand this desk to a successor</text>
+
+  <!-- Library -->
+  <rect x="852" y="120" width="380" height="520" rx="16" fill="#faf5ff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1042" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#6d28d9" font-weight="700">Shared library</text>
+  <text x="1042" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Admin writes  ·  all may read published</text>
+  <rect x="884" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#6d28d9"/>
+  <text x="1042" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Published case law</text>
+  <rect x="884" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1042" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Published legislation + sections</text>
+  <rect x="884" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1042" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Topics / tags  ·  sources registry</text>
+  <text x="1042" y="440" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Drafts stay invisible until publish</text>
+  <text x="1042" y="510" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#6d28d9" font-weight="600">Your annotations on a library case</text>
+  <text x="1042" y="532" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#6d28d9">remain on your desk, not in the book</text>
+
+  <!-- Association arrows -->
+  <path d="M428 250 L450 250" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M830 250 L852 250" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="640" y="680" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Dashed idea: a link is a pin, not a key   ·   BOTH sides must already be readable</text>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker>
+  </defs>
+</svg>
+<figcaption>Court cabinet, personal desk, shared library</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" role="img">
+  <rect width="1400" height="900" fill="#ffffff"/>
+  <text x="48" y="44" font-family="Georgia, serif" font-size="26" fill="#1e40af" font-weight="700">Entity map - who relates to whom</text>
+  <text x="48" y="70" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Boxes are tables. Crow's-feet mean "many". Dashed lines are association-only (a pin, not a key).</text>
+
+  <rect x="40" y="100" width="200" height="54" rx="8" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="140" y="134" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">profiles</text>
+
+  <rect x="40" y="200" width="200" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="140" y="234" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">magisterial_districts</text>
+
+  <rect x="40" y="300" width="200" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="140" y="334" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">courts</text>
+
+  <rect x="320" y="200" width="220" height="54" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="430" y="234" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#92400e" font-weight="700">magistrate_courts</text>
+
+  <rect x="320" y="380" width="220" height="70" rx="8" fill="#3b82f6" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="430" y="410" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#ffffff" font-weight="700">docket_matters</text>
+  <text x="430" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#dbeafe">no owner_id</text>
+
+  <rect x="620" y="280" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="310" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_events</text>
+  <rect x="620" y="340" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="370" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_matter_parties</text>
+  <rect x="620" y="400" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">docket_matter_tags</text>
+  <rect x="620" y="460" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="490" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">assignments (retain)</text>
+  <rect x="620" y="520" width="210" height="48" rx="8" fill="#ffffff" stroke="#1e3a5f"/>
+  <text x="725" y="550" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">shares</text>
+
+  <rect x="920" y="160" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">judgments</text>
+  <rect x="920" y="240" width="210" height="54" rx="8" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1025" y="274" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">case_law</text>
+  <rect x="920" y="320" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="354" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">quick_codes</text>
+  <rect x="920" y="400" width="210" height="54" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1025" y="434" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46" font-weight="700">bench_notes</text>
+  <rect x="920" y="480" width="210" height="54" rx="8" fill="#faf5ff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1025" y="514" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">statutes</text>
+  <rect x="920" y="560" width="210" height="54" rx="8" fill="#faf5ff" stroke="#6d28d9"/>
+  <text x="1025" y="594" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6">statute_provisions</text>
+  <rect x="920" y="640" width="210" height="54" rx="8" fill="#dbeafe" stroke="#1e3a5f"/>
+  <text x="1025" y="674" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f">documents / bookmarks</text>
+
+  <rect x="1170" y="220" width="190" height="48" rx="8" fill="#ffffff" stroke="#6d28d9"/>
+  <text x="1265" y="250" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5b21b6">annotations</text>
+  <rect x="1170" y="160" width="190" height="48" rx="8" fill="#ffffff" stroke="#047857"/>
+  <text x="1265" y="190" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#065f46">judgment_tags</text>
+
+  <!-- solid links -->
+  <path d="M140 154 L140 200" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M140 254 L140 300" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M240 327 L320 227" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M240 327 L320 415" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M140 154 L320 227" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 304" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 364" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 424" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 484" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M540 415 L620 544" stroke="#1e3a5f" stroke-width="1.5"/>
+  <path d="M480 154 L1025 160" stroke="#047857" stroke-width="1.5"/>
+  <path d="M240 127 L1025 347" stroke="#047857" stroke-width="1.5"/>
+  <path d="M1025 534 L1025 560" stroke="#6d28d9" stroke-width="1.5"/>
+  <path d="M1130 187 L1170 184" stroke="#047857" stroke-width="1.5"/>
+  <path d="M1130 267 L1170 244" stroke="#6d28d9" stroke-width="1.5"/>
+
+  <!-- dashed association -->
+  <path d="M540 400 L920 187" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M540 400 L920 267" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M540 415 L920 347" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <rect x="40" y="760" width="1320" height="100" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="64" y="798" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">Solid line</text>
+  <text x="160" y="798" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">parent / child or ownership</text>
+  <text x="64" y="826" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">Dashed line</text>
+  <text x="170" y="826" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">association table - BOTH sides already readable, never confers access</text>
+  <text x="64" y="852" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Legacy cases / case_parties omitted - unused by new development. legal_authority_courts is a separate "reported court" list, not courts.</text>
+</svg>
+<figcaption>Entity map</figcaption></figure>
+<figure class="hero"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img">
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="48" font-family="Georgia, serif" font-size="26" fill="#1e40af" font-weight="700">A sitting day vs an admin day</text>
+  <text x="64" y="74" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Left to right in time. Same product, different keys.</text>
+
+  <!-- Lane headers -->
+  <rect x="48" y="100" width="140" height="180" rx="8" fill="#fed7aa" stroke="#c2410c"/>
+  <text x="118" y="198" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#9a3412" font-weight="700">Magistrate</text>
+  <rect x="48" y="292" width="140" height="180" rx="8" fill="#ddd6fe" stroke="#6d28d9"/>
+  <text x="118" y="390" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6" font-weight="700">Administrator</text>
+  <rect x="48" y="484" width="140" height="160" rx="8" fill="#dbeafe" stroke="#1e3a5f"/>
+  <text x="118" y="572" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f" font-weight="700">Database</text>
+
+  <!-- Magistrate steps -->
+  <rect x="220" y="130" width="200" height="70" rx="8" fill="#ffffff" stroke="#c2410c" stroke-width="2"/>
+  <text x="320" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#9a3412" font-weight="600">Sign in</text>
+  <text x="320" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">Dashboard</text>
+
+  <rect x="450" y="130" width="200" height="70" rx="8" fill="#ffffff" stroke="#c2410c" stroke-width="2"/>
+  <text x="550" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#9a3412" font-weight="600">Open today's list</text>
+  <text x="550" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">Court docket + retained</text>
+
+  <rect x="680" y="130" width="200" height="70" rx="8" fill="#ffffff" stroke="#c2410c" stroke-width="2"/>
+  <text x="780" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#9a3412" font-weight="600">Hear the matter</text>
+  <text x="780" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">event  ·  parties  ·  orders</text>
+
+  <rect x="910" y="130" width="200" height="70" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1010" y="158" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#065f46" font-weight="600">Write / pin / note</text>
+  <text x="1010" y="178" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#047857">judgment stays yours</text>
+
+  <path d="M420 165 L450 165" stroke="#c2410c" stroke-width="2" marker-end="url(#m)"/>
+  <path d="M650 165 L680 165" stroke="#c2410c" stroke-width="2" marker-end="url(#m)"/>
+  <path d="M880 165 L910 165" stroke="#c2410c" stroke-width="2" marker-end="url(#m)"/>
+
+  <!-- Admin steps -->
+  <rect x="220" y="330" width="200" height="70" rx="8" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="320" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6" font-weight="600">Seat a magistrate</text>
+  <text x="320" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">Court Assignments</text>
+
+  <rect x="450" y="330" width="200" height="70" rx="8" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="550" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6" font-weight="600">Import an authority</text>
+  <text x="550" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">hidden draft</text>
+
+  <rect x="680" y="330" width="200" height="70" rx="8" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="780" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#5b21b6" font-weight="600">Review metadata</text>
+  <text x="780" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#64748b">court  ·  citation  ·  tags</text>
+
+  <rect x="910" y="330" width="200" height="70" rx="8" fill="#a7f3d0" stroke="#047857" stroke-width="2"/>
+  <text x="1010" y="358" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#065f46" font-weight="600">Publish</text>
+  <text x="1010" y="378" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#047857">library becomes readable</text>
+
+  <path d="M420 365 L450 365" stroke="#6d28d9" stroke-width="2" marker-end="url(#p)"/>
+  <path d="M650 365 L680 365" stroke="#6d28d9" stroke-width="2" marker-end="url(#p)"/>
+  <path d="M880 365 L910 365" stroke="#6d28d9" stroke-width="2" marker-end="url(#p)"/>
+
+  <!-- DB -->
+  <rect x="220" y="520" width="430" height="90" rx="8" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="435" y="556" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="600">RLS filters every read and write</text>
+  <text x="435" y="580" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Admin publish ` Admin docket access</text>
+
+  <rect x="680" y="520" width="430" height="90" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="895" y="556" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#991b1b" font-weight="600">No back door</text>
+  <text x="895" y="580" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#991b1b">Private judgments, notes, codes stay closed</text>
+
+  <defs>
+    <marker id="m" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#c2410c"/></marker>
+    <marker id="p" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#6d28d9"/></marker>
+  </defs>
+</svg>
+<figcaption>A sitting day versus an admin day</figcaption></figure>
+</div>
+  <section class="chapter"><h1>1. System context (C4 Level 1)</h1>
+<p>Magistrate Wizard is a single web application. Magistrates use it to run a Court docket, write judgments, and keep a private research library. Administrators assign magistrates to Courts and curate the shared legal library. Supabase is the only backend: Auth, Postgres with row-level security, and private file storage.</p>
+<p>!<a href="assets/system-context.png">System context</a></p>
+<p>Outlook is a <strong>future</strong> calendar channel. It is not built. Docket Events remain the source of truth for when a matter is listed.</p>
+<div class="mermaid">flowchart LR
+    subgraph People
+        M[Magistrate]
+        C[Clerk]
+        A[Administrator]
+    end
+
+    subgraph App[&quot;Magistrate Wizard&quot;]
+        SPA[React SPA]
+    end
+
+    subgraph Supabase
+        AUTH[Auth]
+        PG[Postgres + RLS]
+        ST[Storage]
+    end
+
+    O[(Outlook — future)]
+
+    M --&gt; SPA
+    C --&gt; SPA
+    A --&gt; SPA
+    SPA --&gt; AUTH
+    SPA --&gt; PG
+    SPA --&gt; ST
+    SPA -.-&gt; O</div>
+<h2>Plain reading</h2>
+<p>Think of Magistrate Wizard as a <strong>courthouse filing cabinet with locks on every drawer</strong>.</p>
+<ul>
+<li>The <strong>Docket drawer</strong> is the Court&#x27;s. Anyone currently assigned to that Court can open it.</li>
+<li>The <strong>Judgment drawer</strong> is the magistrate&#x27;s own. A colleague can read a judgment only if the author marks it discoverable.</li>
+<li>The <strong>Library drawer</strong> (statutes, canonical case law) is shared. Admins fill it; every magistrate may read published entries.</li>
+<li>Signing up does <strong>not</strong> hand you a Court. An administrator must assign you before you can create Docket Matters.</li>
+</ul>
+<h2>What is inside vs outside</h2>
+<table>
+<tr><th>Inside Magistrate Wizard</th><th>Outside / future</th></tr>
+<tr><td>Docket, hearings, parties, shares</td><td>Outlook two-way sync</td></tr>
+<tr><td>Judgments, Quick Codes, Bench Notes</td><td>AI extraction</td></tr>
+<tr><td>Canonical + personal Case Law</td><td>Live URL crawlers</td></tr>
+<tr><td>Legislation reader + ingestion review (including local scanned-PDF OCR)</td><td>Cloud document-AI OCR</td></tr>
+<tr><td>Search (respects the same locks)</td><td>Public internet publishing</td></tr>
+</table></section>
+<section class="chapter"><h1>2. Containers (C4 Level 2)</h1>
+<p>One browser app, one Supabase project. There are <strong>no Edge Functions</strong> in production today. Search, access checks, and ingestion RPCs all run inside Postgres.</p>
+<div class="mermaid">flowchart TB
+    subgraph Users[&quot;People&quot;]
+        M[Magistrate]
+        A[Administrator]
+    end
+
+    subgraph SPA[&quot;Magistrate Wizard SPA&lt;br/&gt;React 18 · Vite · TypeScript · Tailwind · shadcn&quot;]
+        R[React Router&lt;br/&gt;ProtectedRoute / PublicRoute]
+        Q[TanStack Query]
+        Z[Zustand auth + UI stores]
+        H[Feature hooks]
+        P[Pages]
+        R --&gt; P
+        P --&gt; H
+        H --&gt; Q
+        Z -.-&gt; R
+    end
+
+    subgraph SB[&quot;Supabase project&quot;]
+        AUTH[Auth&lt;br/&gt;email/password]
+        PG[Postgres&lt;br/&gt;schema + RLS + RPCs]
+        DOC[(Storage: documents&lt;br/&gt;private, signed URLs)]
+        AVA[(Storage: avatars&lt;br/&gt;public read)]
+    end
+
+    M --&gt; R
+    A --&gt; R
+    R --&gt; AUTH
+    H --&gt; PG
+    H --&gt; DOC
+    H --&gt; AVA
+    AUTH --&gt; PG
+    PG -.-&gt;|Storage RLS checks&lt;br/&gt;public.documents row| DOC</div>
+<h2>Container responsibilities</h2>
+<table>
+<tr><th>Container</th><th>Responsibility</th><th>Not responsible for</th></tr>
+<tr><td>SPA</td><td>Screens, forms, signed-URL display, optimistic UI</td><td>Enforcing privacy. RLS is the real lock</td></tr>
+<tr><td>Auth</td><td>Session, signup, password reset</td><td>Court assignment. Signup creates a profile with <strong>zero</strong> Courts</td></tr>
+<tr><td>Postgres</td><td>Schema, RLS, triggers, search, ingestion RPCs</td><td>File bytes</td></tr>
+<tr><td><code>documents</code> bucket</td><td>PDFs, images, covers, identification photos</td><td>Deciding who may read. A matching <code>documents</code> row + parent RLS is required</td></tr>
+<tr><td><code>avatars</code> bucket</td><td>Profile pictures</td><td>Judicial content</td></tr>
+</table>
+<h2>Search as a container capability</h2>
+<p><code>global_search(query, limit)</code> is a <code>SECURITY INVOKER</code> SQL function. It unions:</p>
+<p><code>case</code> (legacy) · <code>bench_note</code> · <code>statute</code> · <code>case_law</code> · <code>docket_matter</code> · <code>judgment</code> · <code>quick_code</code></p>
+<p>Each branch only returns rows the caller could already <code>SELECT</code>. Search cannot leak a private Judgment or another Court&#x27;s Docket. The Search page groups those seven types in JavaScript; it is not a SQL <code>GROUP BY</code>.</p>
+<p><code>search_statutes</code> (Legislation list) also matches <strong>provision</strong> body text. <code>global_search</code>’s statute branch does <strong>not</strong> — provision-only hits can appear on <code>/legislation</code> and miss on <code>/search</code>.</p>
+<h2>Ingestion machinery (admin only)</h2>
+<div class="mermaid">flowchart LR
+    subgraph AdminUI[&quot;Admin Legal Library&quot;]
+        SRC[Sources registry]
+        IMP[New Import / Bulk batch]
+        REV[Review Queue]
+        BAT[Import Batches]
+    end
+
+    subgraph PG[&quot;Postgres&quot;]
+        LS[legal_sources]
+        IB[import_batches]
+        IJ[import_jobs]
+        CL[case_law draft → published]
+        ST[statutes + statute_provisions]
+        RPC[create_*_import&lt;br/&gt;publish_*_import&lt;br/&gt;reject_*_import]
+    end
+
+    SRC --&gt; LS
+    IMP --&gt; RPC
+    RPC --&gt; CL
+    RPC --&gt; ST
+    RPC --&gt; IJ
+    IJ --&gt; IB
+    REV --&gt; RPC
+    BAT --&gt; IB</div>
+<p><code>legal_sources</code> is a <strong>registry of intent</strong>, not a running crawler. URL fetch and AI classification are not built. Scanned-PDF OCR <strong>is</strong> built in the browser (pdf.js rasterize + Tesseract.js, local only).</p></section>
+<section class="chapter"><h1>3. Application layers (C4 Level 3)</h1>
+<p>The SPA never invents access rules. Hooks call Supabase; Postgres RLS decides what comes back. Some editors remain clickable for a view-only share; the write still fails.</p>
+<div class="mermaid">flowchart TB
+    subgraph Shell[&quot;App shell&quot;]
+        AP[AppProviders]
+        EB[ErrorBoundary]
+        TH[ThemeProvider]
+        QP[QueryProvider]
+        AU[AuthProvider]
+        RR[RouterProvider]
+        AP --&gt; EB --&gt; TH --&gt; QP --&gt; AU --&gt; RR
+    end
+
+    subgraph Routes[&quot;Route gates&quot;]
+        PUB[PublicRoute&lt;br/&gt;/login /register /forgot-password]
+        PR[ProtectedRoute&lt;br/&gt;any authenticated role]
+        AD[ProtectedRoute allowedRoles=admin&lt;br/&gt;/admin/court-assignments&lt;br/&gt;/admin/legal-library]
+    end
+
+    subgraph Pages[&quot;Feature pages&quot;]
+        DA[Dashboard]
+        DO[Docket list + detail tabs]
+        JU[Judgments]
+        CA[Case Law]
+        LE[Legislation]
+        QC[Quick Codes]
+        BN[Bench Notes]
+        BM[Bookmarks]
+        SE[Search]
+        AA[Court Assignments]
+        LL[Legal Library]
+    end
+
+    subgraph Data[&quot;Data access&quot;]
+        HO[Feature hooks]
+        SB[supabase.ts typed client]
+        ST[(Postgres RLS)]
+    end
+
+    RR --&gt; PUB
+    RR --&gt; PR
+    RR --&gt; AD
+    PR --&gt; DA &amp; DO &amp; JU &amp; CA &amp; LE &amp; QC &amp; BN &amp; BM &amp; SE
+    AD --&gt; AA &amp; LL
+    Pages --&gt; HO --&gt; SB --&gt; ST</div>
+<h2>Auth flow</h2>
+<div class="mermaid">sequenceDiagram
+    actor U as User
+    participant AP as AuthProvider
+    participant AS as Zustand auth-store
+    participant SA as supabase.auth
+    participant PR as ProtectedRoute
+
+    U-&gt;&gt;AP: Open app
+    AP-&gt;&gt;SA: getSession()
+    SA--&gt;&gt;AP: session or null
+    AP-&gt;&gt;AS: write user + profile
+    AP-&gt;&gt;SA: onAuthStateChange (lifetime)
+    U-&gt;&gt;PR: Visit /docket
+    PR-&gt;&gt;AS: read session
+    alt No session
+        PR--&gt;&gt;U: Redirect /login
+    else Session present
+        PR--&gt;&gt;U: Render AppLayout
+    end</div>
+<p><code>useAuth()</code> is the only mutation surface for sign-in, sign-up, sign-out, and password reset. Pages do not talk to Auth directly.</p>
+<h2>Docket detail — real tabs</h2>
+<p>The matter page is the operational workspace. Tabs map 1:1 to child tables or association tables.</p>
+<div class="mermaid">flowchart LR
+    D[&quot;/docket/:id&quot;] --&gt; O[Overview&lt;br/&gt;title, charge, status,&lt;br/&gt;retain / end retain]
+    D --&gt; E[Events&lt;br/&gt;docket_events]
+    D --&gt; P[Parties&lt;br/&gt;docket_matter_parties&lt;br/&gt;+ ID photo]
+    D --&gt; T[Tags&lt;br/&gt;docket_matter_tags]
+    D --&gt; J[Judgments&lt;br/&gt;docket_matter_judgments]
+    D --&gt; C[Case Law&lt;br/&gt;read-only reverse view]
+    D --&gt; DOC[Documents&lt;br/&gt;polymorphic documents]
+    D --&gt; S[Sharing&lt;br/&gt;shares item_type=docket_matter]</div>
+<h2>Provider / store facts</h2>
+<table>
+<tr><th>Layer</th><th>Module</th><th>Role</th></tr>
+<tr><td>Composition</td><td><code>src/providers/app-providers.tsx</code></td><td>Order: Error → Theme → Query → Tooltip → Auth</td></tr>
+<tr><td>Session</td><td><code>src/store/auth-store.ts</code></td><td>Mirrors Supabase user + profile</td></tr>
+<tr><td>Chrome</td><td><code>src/store/ui-store.ts</code></td><td>Sidebar, mobile nav, command palette</td></tr>
+<tr><td>Routes</td><td><code>src/routes/router.tsx</code></td><td>Admin routes are a separate <code>allowedRoles={[&quot;admin&quot;]}</code> tree</td></tr>
+<tr><td>Nav</td><td><code>src/components/layout/nav-config.ts</code></td><td>Court Assignments and Legal Library are admin-only items</td></tr>
+</table></section>
+<section class="chapter"><h1>4. Complete ERD — overview</h1>
+<p>High-level map. Detail lives in the next three diagrams. Legacy <code>cases</code> / <code>case_parties</code> / <code>case_tags</code> exist in the database but are <strong>not used</strong> by new development.</p>
+<p>!<a href="assets/erd-overview.png">Entity map</a></p>
+<div class="mermaid">erDiagram
+    profiles ||--o{ magistrate_courts : &quot;assigned to&quot;
+    courts ||--o{ magistrate_courts : &quot;hosts&quot;
+    magisterial_districts ||--o{ courts : &quot;contains&quot;
+    courts ||--o{ docket_matters : &quot;lists&quot;
+    profiles ||--o{ docket_matters : &quot;created_by&quot;
+
+    docket_matters ||--o{ docket_events : &quot;hearings&quot;
+    docket_matters ||--o{ docket_matter_parties : &quot;parties&quot;
+    docket_matters ||--o{ docket_matter_tags : &quot;institutional tags&quot;
+    docket_matters ||--o{ docket_matter_assignments : &quot;retained / part-heard&quot;
+    docket_matters ||--o{ shares : &quot;exceptional share&quot;
+
+    docket_matters }o--o{ judgments : &quot;docket_matter_judgments&quot;
+    docket_matters }o--o{ case_law : &quot;docket_matter_case_law&quot;
+    docket_matters }o--o{ quick_codes : &quot;quick_code_docket_matters&quot;
+
+    profiles ||--o{ judgments : &quot;owns&quot;
+    profiles ||--o{ quick_codes : &quot;owns&quot;
+    profiles ||--o{ bench_notes : &quot;author&quot;
+    profiles ||--o{ case_law : &quot;personal rows only&quot;
+
+    judgments ||--o{ judgment_tags : &quot;tags&quot;
+    judgments }o--o{ quick_codes : &quot;quick_code_judgments&quot;
+    case_law ||--o{ case_law_annotations : &quot;private notes&quot;
+    case_law }o--o{ tags : &quot;case_law_tags&quot;
+    case_law }o--o{ quick_codes : &quot;quick_code_case_law&quot;
+
+    statutes }o--o{ tags : &quot;statute_tags&quot;
+    statutes ||--o{ statute_provisions : &quot;hierarchy&quot;
+
+    docket_matters ||--o{ documents : &quot;polymorphic&quot;
+    judgments ||--o{ documents : &quot;polymorphic&quot;
+    case_law ||--o{ documents : &quot;polymorphic&quot;</div>
+<h2>Domain clusters</h2>
+<div class="mermaid">flowchart TB
+    subgraph Ref[&quot;Reference — admin write, all authenticated read&quot;]
+        MD[magisterial_districts]
+        CT[courts]
+        ST[statutes + provisions]
+        TG[tags]
+        LJ[legal_jurisdictions]
+        LC[legal_authority_courts]
+        LS[legal_sources]
+    end
+
+    subgraph Court[&quot;Court operations — three-path access&quot;]
+        MC[magistrate_courts]
+        DM[docket_matters]
+        DE[docket_events]
+        DP[docket_matter_parties]
+        DA[docket_matter_assignments]
+        SH[shares]
+    end
+
+    subgraph Own[&quot;Individually owned — no Court grant&quot;]
+        JU[judgments]
+        QC[quick_codes]
+        BN[bench_notes]
+        PCL[personal case_law]
+        ANN[case_law_annotations]
+    end
+
+    subgraph Canon[&quot;Canonical library — published to all&quot;]
+        CCL[case_law owner_id IS NULL]
+        ST2[published statutes]
+    end
+
+    MC --&gt; DM
+    DM -.-&gt;|association only| JU
+    DM -.-&gt;|association only| CCL
+    DM -.-&gt;|association only| PCL
+    QC -.-&gt;|association only| DM
+    QC -.-&gt;|association only| JU
+    QC -.-&gt;|association only| CCL</div>
+<h2>Cardinality cheat sheet</h2>
+<table>
+<tr><th>From</th><th>To</th><th>How</th></tr>
+<tr><td>District</td><td>Courts</td><td>1 — many</td></tr>
+<tr><td>Court</td><td>Magistrates</td><td>many — many via <code>magistrate_courts</code> (time-bounded)</td></tr>
+<tr><td>Court</td><td>Docket Matters</td><td>1 — many</td></tr>
+<tr><td>Matter</td><td>Events / Parties / Tags / Assignments</td><td>1 — many</td></tr>
+<tr><td>Matter</td><td>Judgments</td><td>many — many, association only</td></tr>
+<tr><td>Matter</td><td>Case Law</td><td>many — many, association only</td></tr>
+<tr><td>Magistrate</td><td>Judgments / Quick Codes / Bench Notes</td><td>1 — many, owned</td></tr>
+<tr><td>Case Law</td><td>Annotations</td><td>1 — many, always private to the annotator</td></tr>
+<tr><td>Statute</td><td>Provisions</td><td>1 — many, self-parented tree</td></tr>
+</table>
+<h2>Deliberate non-relationships</h2>
+<ul>
+<li><code>judgments.court_name</code> is <strong>free text</strong>, not an FK to <code>courts</code>. A written judgment may concern a historical or external court.</li>
+<li><code>legal_authority_courts</code> is <strong>not</strong> <code>courts</code>. One is the deciding court of a reported case; the other is a physical Guyana Magistrates&#x27; Court used for Docket authority.</li>
+<li><code>docket_matter_tags</code> and <code>judgment_tags</code> are <strong>not</strong> joins to the global <code>tags</code> table. Global tags are readable by everyone; private tag text would leak.</li>
+<li><code>profiles.court_id</code> is <strong>legacy</strong>. Live assignment is <code>magistrate_courts.ended_at IS NULL</code>.</li>
+</ul></section>
+<section class="chapter"><h1>5. ERD — Court structure and Docket family</h1>
+<p>This is the operational heart of Magistrate Wizard. Access is <strong>not</strong> <code>owner_id</code>. Access is: current Court assignment <strong>or</strong> retained assignment <strong>or</strong> an active share.</p>
+<div class="mermaid">erDiagram
+    magisterial_districts {
+        uuid id PK
+        text name UK
+        boolean is_active
+    }
+
+    courts {
+        uuid id PK
+        text name
+        uuid district_id FK
+        boolean is_active
+        text jurisdiction &quot;legacy unused&quot;
+    }
+
+    profiles {
+        uuid id PK
+        text full_name
+        user_role role &quot;magistrate | clerk | admin&quot;
+        uuid court_id &quot;LEGACY unused&quot;
+    }
+
+    magistrate_courts {
+        uuid id PK
+        uuid profile_id FK
+        uuid court_id FK
+        text assignment_type &quot;regular acting relief other&quot;
+        timestamptz started_at
+        timestamptz ended_at &quot;NULL = current&quot;
+    }
+
+    docket_matters {
+        uuid id PK
+        uuid court_id FK &quot;NOT NULL&quot;
+        uuid district_id &quot;derived from court&quot;
+        text case_number
+        text matter_title
+        text charge_or_issue
+        text orders_summary
+        text outcome
+        docket_matter_status status &quot;active stayed completed archived&quot;
+        uuid created_by FK
+        uuid last_updated_by FK
+        text cover_image_path
+    }
+
+    docket_matter_assignments {
+        uuid id PK
+        uuid docket_matter_id FK
+        uuid profile_id FK &quot;SET NULL on profile delete&quot;
+        text reason &quot;retained_part_heard&quot;
+        uuid granted_by FK
+        timestamptz ended_at &quot;NULL = current&quot;
+    }
+
+    docket_events {
+        uuid id PK
+        uuid docket_matter_id FK &quot;immutable&quot;
+        date scheduled_date
+        time scheduled_time
+        text event_type
+        text event_status
+        uuid presiding_magistrate_id FK &quot;provenance only&quot;
+        text external_calendar_provider &quot;future Outlook&quot;
+        text external_calendar_event_id
+    }
+
+    docket_matter_parties {
+        uuid id PK
+        uuid docket_matter_id FK &quot;immutable&quot;
+        text full_name
+        text party_type
+        text role
+        text party_status
+        text identification_photo_path
+    }
+
+    docket_matter_tags {
+        uuid id PK
+        uuid docket_matter_id FK
+        text tag_name
+        uuid created_by FK &quot;provenance only&quot;
+    }
+
+    shares {
+        uuid id PK
+        text item_type &quot;docket_matter only in 0037&quot;
+        uuid item_id
+        uuid owner_id FK &quot;granter&quot;
+        uuid recipient_id FK
+        text permission &quot;view | edit&quot;
+        timestamptz revoked_at &quot;NULL = active&quot;
+    }
+
+    magisterial_districts ||--o{ courts : district_id
+    courts ||--o{ magistrate_courts : court_id
+    profiles ||--o{ magistrate_courts : profile_id
+    courts ||--o{ docket_matters : court_id
+    profiles ||--o{ docket_matters : created_by
+    docket_matters ||--o{ docket_matter_assignments : matter
+    profiles ||--o{ docket_matter_assignments : retained_by
+    docket_matters ||--o{ docket_events : hearings
+    docket_matters ||--o{ docket_matter_parties : parties
+    docket_matters ||--o{ docket_matter_tags : tags
+    docket_matters ||--o{ shares : exceptional</div>
+<h2>Constraints that matter</h2>
+<table>
+<tr><th>Rule</th><th>Why</th></tr>
+<tr><td><code>UNIQUE (district_id, case_number)</code> on matters</td><td>Case numbers restart per Magisterial District. Not globally unique</td></tr>
+<tr><td><code>UNIQUE (profile_id, court_id) WHERE ended_at IS NULL</code></td><td>One current assignment per magistrate/court pair. History kept</td></tr>
+<tr><td><code>UNIQUE (docket_matter_id, profile_id) WHERE ended_at IS NULL</code></td><td>One live retained assignment per person per matter</td></tr>
+<tr><td>At most one <strong>active</strong> share per recipient per matter</td><td>Soft-revoke (<code>revoked_at</code>), then create a new row to change permission</td></tr>
+<tr><td>No <code>DELETE</code> policy on matters</td><td>Archive via <code>status</code>. Judicial history is not erased</td></tr>
+<tr><td><code>district_id</code> on a matter is trigger-derived</td><td>Client cannot pick a district that disagrees with the Court</td></tr>
+</table>
+<h2>Status of a matter</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; active: Create matter
+    active --&gt; stayed: Stay proceedings
+    stayed --&gt; active: Resume
+    active --&gt; completed: Dispose
+    stayed --&gt; completed: Dispose after stay
+    completed --&gt; archived: File away
+    active --&gt; archived: Archive
+    note right of completed
+        Retained assignment auto-ends
+        when status becomes
+        completed or archived
+        (not on stayed)
+    end note</div>
+<h2>Identification imagery (0067)</h2>
+<p>Cover photos and party identification photos live in the <strong>same private <code>documents</code> bucket</strong>. Path columns on the matter/party are denormalized for list rendering. They do not grant access by themselves.</p>
+<table>
+<tr><th>Column</th><th>Table</th><th>Purpose</th></tr>
+<tr><td><code>cover_image_path</code></td><td><code>docket_matters</code></td><td>Browse tile / billboard</td></tr>
+<tr><td><code>identification_photo_path</code></td><td><code>docket_matter_parties</code></td><td>Party photograph</td></tr>
+<tr><td><code>documents.purpose</code></td><td><code>attachment</code> / <code>cover</code> / <code>identification_photo</code></td><td>Lets the Documents panel hide ID photos</td></tr>
+</table>
+<h2>Outlook boundary (not built)</h2>
+<p><code>docket_events</code> may later store <code>external_calendar_provider</code> + <code>external_calendar_event_id</code>. Outlook may supply <strong>when and where</strong>. It must never overwrite charge, parties, orders, or outcome.</p></section>
+<section class="chapter"><h1>6. ERD — Judgments, Case Law, Quick Codes, notes</h1>
+<p>These records are <strong>not</strong> Court property. Linking them to a Docket Matter never opens the other side.</p>
+<div class="mermaid">erDiagram
+    profiles ||--o{ judgments : owner_id
+    judgments ||--o{ judgment_tags : child
+    judgments }o--o{ docket_matters : docket_matter_judgments
+    judgments }o--o{ quick_codes : quick_code_judgments
+
+    profiles ||--o{ case_law : &quot;personal owner_id&quot;
+    case_law ||--o{ case_law_annotations : private_notes
+    case_law }o--o{ tags : case_law_tags
+    case_law }o--o{ docket_matters : docket_matter_case_law
+    case_law }o--o{ quick_codes : quick_code_case_law
+
+    profiles ||--o{ quick_codes : owner_id
+    quick_codes }o--o{ docket_matters : quick_code_docket_matters
+
+    profiles ||--o{ bench_notes : author
+    bench_notes }o--o{ tags : bench_note_tags
+
+    judgments {
+        uuid id PK
+        uuid owner_id FK &quot;immutable&quot;
+        text title
+        text status &quot;draft | final&quot;
+        boolean is_discoverable
+        jsonb content
+        text content_text
+        timestamptz finalized_at
+    }
+
+    case_law {
+        uuid id PK
+        uuid owner_id FK &quot;NULL = canonical&quot;
+        boolean is_discoverable &quot;personal rows only&quot;
+        text case_name
+        text citation
+        text review_status &quot;draft needs_review ready published&quot;
+        uuid court_id FK &quot;legal_authority_courts&quot;
+        uuid jurisdiction_id FK
+    }
+
+    quick_codes {
+        uuid id PK
+        uuid owner_id FK
+        text code_word &quot;unique per owner&quot;
+        text title
+        text content
+        text category
+    }
+
+    case_law_annotations {
+        uuid id PK
+        uuid case_law_id FK &quot;ON DELETE CASCADE&quot;
+        uuid owner_id FK
+        text annotation_text
+    }
+
+    docket_matter_judgments {
+        uuid id PK
+        uuid docket_matter_id FK &quot;RESTRICT&quot;
+        uuid judgment_id FK &quot;CASCADE&quot;
+        uuid created_by FK &quot;provenance&quot;
+    }
+
+    docket_matter_case_law {
+        uuid id PK
+        uuid docket_matter_id FK &quot;RESTRICT&quot;
+        uuid case_law_id FK &quot;RESTRICT&quot;
+        uuid created_by FK &quot;provenance&quot;
+    }</div>
+<h2>Two Case Law worlds in one table</h2>
+<div class="mermaid">flowchart LR
+    subgraph Canonical[&quot;owner_id IS NULL&quot;]
+        C1[Admin curated]
+        C2[All authenticated may read&lt;br/&gt;if review_status = published]
+        C3[Admin write only]
+        C4[Citation unique among canonical rows]
+    end
+
+    subgraph Personal[&quot;owner_id = magistrate&quot;]
+        P1[Private by default]
+        P2[Owner may set is_discoverable]
+        P3[Owner edit / delete]
+        P4[No admin bypass]
+        P5[Citation need not be unique]
+    end</div>
+<p>Owning a Case Law record does <strong>not</strong> let you see another magistrate&#x27;s annotations on it.</p>
+<h2>Judgment lifecycle</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; draft: INSERT always forced to draft
+    draft --&gt; final: Owner finalizes
+    final --&gt; draft: Owner unlocks
+    draft --&gt; [*]: Owner may hard-delete
+    note right of final
+        Locked: title, case_number, court_name,
+        judgment_date, citation, content, content_text
+        Still free: is_discoverable, tags, documents, links
+        Unlock and edit cannot happen in one statement
+    end note</div>
+<h2>Association-table rules (BOTH sides, never OR)</h2>
+<table>
+<tr><th>Join table</th><th>SELECT</th><th>INSERT / DELETE</th><th>Parent delete</th></tr>
+<tr><td><code>docket_matter_judgments</code></td><td>Docket access <strong>and</strong> Judgment read</td><td>Docket access <strong>and Judgment ownership</strong></td><td>Matter RESTRICT, Judgment CASCADE</td></tr>
+<tr><td><code>docket_matter_case_law</code></td><td>Docket <strong>and</strong> Case Law read</td><td>Docket <strong>and Case Law read</strong> (not ownership)</td><td>Both RESTRICT</td></tr>
+<tr><td><code>quick_code_docket_matters</code></td><td>Quick Code owner <strong>and</strong> Docket</td><td>Same. Edit-share on Docket can mutate the link</td><td>Quick Code CASCADE, Matter RESTRICT</td></tr>
+<tr><td><code>quick_code_judgments</code></td><td>Quick Code owner <strong>and</strong> Judgment read</td><td>Same</td><td>Both CASCADE</td></tr>
+<tr><td><code>quick_code_case_law</code></td><td>Quick Code owner <strong>and</strong> Case Law read</td><td>Same</td><td>Quick Code CASCADE, Case Law RESTRICT</td></tr>
+</table>
+<p>Discoverability of a Judgment can make a Quick Code↔Judgment link appear or disappear <strong>without mutating the join row</strong>.</p>
+<h2>Polymorphic attachments</h2>
+<div class="mermaid">flowchart TB
+    DOC[documents&lt;br/&gt;entity_type + entity_id]
+    BN[bench_notes&lt;br/&gt;entity_type + entity_id]
+    BM[bookmarks&lt;br/&gt;entity_type + entity_id]
+
+    DOC --&gt; DM[docket_matter]
+    DOC --&gt; JU[judgment]
+    DOC --&gt; CL[case_law]
+    DOC --&gt; QC[quick_code]
+    DOC --&gt; BN2[bench_note]
+    DOC --&gt; ST[statute]
+    DOC --&gt; LEG[case - legacy]
+
+    BN --&gt; DM
+    BN --&gt; JU
+    BN --&gt; CL
+    BN --&gt; SP[statute_provision]
+
+    BM --&gt; DM
+    BM --&gt; JU
+    BM --&gt; CL
+    BM --&gt; QC
+    BM --&gt; BN
+    BM --&gt; ST
+    BM --&gt; SP
+    BM --&gt; LEG[case - legacy]</div>
+<p>Bookmarks <strong>cannot</strong> target a <code>document</code> row. Attachments are bookmarked via their parent. Bench Notes are author-private even when the parent is widely readable.</p></section>
+<section class="chapter"><h1>7. ERD — Legal library ingestion and legislation</h1>
+<p>Canonical Case Law and Legislation are <strong>administrative resources</strong>. Drafts are invisible to ordinary magistrates until <code>review_status = published</code>.</p>
+<div class="mermaid">erDiagram
+    legal_regional_groups ||--o{ legal_jurisdictions : contains
+    legal_jurisdictions ||--o{ legal_authority_courts : &quot;optional home&quot;
+    legal_regional_groups ||--o{ legal_authority_courts : &quot;optional group&quot;
+
+    legal_sources ||--o{ import_jobs : source
+    import_batches ||--o{ import_jobs : groups
+    profiles ||--o{ import_batches : created_by
+
+    import_jobs ||--o| case_law : target_case_law_id
+    import_jobs ||--o| statutes : target_statute_id
+    import_jobs ||--o| documents : uploaded_document_id
+
+    case_law }o--|| legal_authority_courts : court_id
+    case_law }o--|| legal_jurisdictions : jurisdiction_id
+    statutes }o--|| legal_jurisdictions : jurisdiction_id
+    statutes ||--o{ statute_provisions : tree
+    statutes ||--o| statutes : supersedes_statute_id
+
+    statutes }o--o{ tags : statute_tags
+    case_law }o--o{ tags : case_law_tags
+
+    legal_sources {
+        uuid id PK
+        text name
+        text source_type &quot;case_law legislation mixed&quot;
+        text connector_type &quot;registry only - not a crawler&quot;
+        text status &quot;proposed testing approved disabled failed&quot;
+        boolean canonical_trusted
+    }
+
+    import_batches {
+        uuid id PK
+        int expected_file_count &quot;baseline at create&quot;
+        uuid created_by FK
+    }
+
+    import_jobs {
+        uuid id PK
+        uuid batch_id FK
+        text content_type
+        text status &quot;queued fetching extracting structuring needs_review ready published failed duplicate&quot;
+        uuid target_case_law_id FK
+        uuid target_statute_id FK
+        text duplicate_warning
+        jsonb extracted_metadata
+    }
+
+    statutes {
+        uuid id PK
+        text title
+        text code
+        text review_status
+        boolean is_current_version
+        uuid supersedes_statute_id FK
+    }
+
+    statute_provisions {
+        uuid id PK
+        uuid statute_id FK
+        uuid parent_provision_id FK
+        text level &quot;Part Chapter Section Subsection Paragraph Schedule&quot;
+        text number
+        text heading
+        text body_text
+        int sort_order
+    }</div>
+<h2>Ingestion state machine</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; draft: create_*_import RPC
+    draft --&gt; needs_review: extraction ran
+    needs_review --&gt; ready: curator satisfied
+    ready --&gt; published: publish_*_import
+    needs_review --&gt; published: publish_*_import
+    draft --&gt; failed: reject_*_import
+    needs_review --&gt; failed: reject_*_import
+    queued --&gt; duplicate: exact hash or citation conflict
+    queued --&gt; failed: genuine error
+
+    note right of published
+        Magistrates can now read the
+        canonical row. Drafts never
+        appear in Case Law / Legislation
+        browse or search.
+    end note</div>
+<h2>Draft-row-first (why)</h2>
+<p>A real <code>case_law</code> or <code>statutes</code> row is created immediately as <code>review_status = draft</code>. Publish is a status flip, not a copy. That lets the existing <code>documents</code> attachment model parent a file to a real id without a second storage row.</p>
+<p>Publish RPCs reject placeholder metadata (for example <code>&quot;Untitled (pending review)&quot;</code>) so a record cannot go live empty.</p>
+<h2>Duplicate is not failure</h2>
+<p>Bulk import records every file:</p>
+<table>
+<tr><th>Outcome</th><th><code>import_jobs.status</code></th><th>Row created?</th></tr>
+<tr><td>New draft</td><td><code>needs_review</code> / <code>ready</code></td><td>Yes</td></tr>
+<tr><td>Byte-identical file</td><td><code>duplicate</code></td><td>No new authority; link to existing</td></tr>
+<tr><td>Same citation, different file</td><td><code>duplicate</code></td><td>File attached to the <strong>existing</strong> Case Law as another source document</td></tr>
+<tr><td>Validation reject / crash</td><td><code>failed</code></td><td>Bare job row so the batch still accounts for the file</td></tr>
+</table>
+<p><code>import_batches.expected_file_count</code> is stored at create time. A batch is fully accounted when <code>count(jobs) &gt;= expected_file_count</code>. Older batches with a null count are labelled <strong>legacy — incomplete history</strong>.</p>
+<h2>Two different &quot;courts&quot;</h2>
+<div class="mermaid">flowchart LR
+    subgraph Physical[&quot;Physical Guyana court&lt;br/&gt;Docket authority&quot;]
+        C[courts]
+        MC[magistrate_courts]
+        DM[docket_matters]
+        C --&gt; MC
+        C --&gt; DM
+    end
+
+    subgraph Reported[&quot;Reported / appellate court&lt;br/&gt;Case Law metadata&quot;]
+        LAC[legal_authority_courts]
+        CL[case_law.court_id]
+        LAC --&gt; CL
+    end</div>
+<p>Never join these. &quot;Vigilance Magistrate&#x27;s Court&quot; is a sitting venue. &quot;Caribbean Court of Justice&quot; is a deciding authority.</p></section>
+<section class="chapter"><h1>8. Access control and privacy</h1>
+<p>The security boundary is <strong>Postgres RLS</strong>, not the React UI. Some screens still show edit controls to a view-only recipient; the database refuses the write.</p>
+<p>!<a href="assets/three-path-access.png">Three paths onto a Docket Matter</a></p>
+<h2>Three paths onto a Docket Matter</h2>
+<div class="mermaid">flowchart TB
+    Q{Can this user see / edit&lt;br/&gt;this Docket Matter?}
+
+    Q --&gt; P1[Path 1 — Court]
+    Q --&gt; P2[Path 2 — Retained]
+    Q --&gt; P3[Path 3 — Share]
+
+    P1 --&gt; C1[&quot;magistrate_courts&lt;br/&gt;profile_id = me&lt;br/&gt;court_id = matter.court_id&lt;br/&gt;ended_at IS NULL&quot;]
+    C1 --&gt; H1[&quot;can_access_court(court_id)&quot;]
+
+    P2 --&gt; C2[&quot;docket_matter_assignments&lt;br/&gt;profile_id = me&lt;br/&gt;docket_matter_id = matter&lt;br/&gt;ended_at IS NULL&quot;]
+    C2 --&gt; H2[&quot;has_retained_assignment(matter_id)&quot;]
+
+    P3 --&gt; C3[&quot;shares&lt;br/&gt;item_type = docket_matter&lt;br/&gt;item_id = matter&lt;br/&gt;recipient_id = me&lt;br/&gt;revoked_at IS NULL&quot;]
+    C3 --&gt; H3[&quot;has_docket_share(matter_id)&quot;]
+
+    H1 --&gt; OR((OR))
+    H2 --&gt; OR
+    H3 --&gt; OR
+    OR --&gt; YES[Lawful Docket access]
+    OR --&gt; NO[No row returned]</div>
+<p><code>is_admin()</code> appears on <strong>none</strong> of these paths.</p>
+<p><code>has_docket_matter_authority()</code> is <strong>not</strong> a fourth read path. It is Court <strong>or</strong> retained only (never share). It is used to grant/revoke shares and to mutate Judgment / Case Law <strong>links</strong>. Share-only holders can see a matter; they cannot share it onward and cannot pin a Judgment or Case Law card onto it.</p>
+<p>View vs edit on a share:</p>
+<table>
+<tr><th>Permission</th><th>Parent matter</th><th>Events / parties / tags</th><th>Judgment / Case Law <strong>links</strong></th><th>Quick Code ↔ Docket links</th></tr>
+<tr><td><code>view</code></td><td>SELECT</td><td>SELECT</td><td>SELECT if BOTH sides already readable</td><td>SELECT only</td></tr>
+<tr><td><code>edit</code></td><td>SELECT + UPDATE</td><td>Same mutation rights as a sitting magistrate on those children</td><td>SELECT only. INSERT/DELETE need Court or retained (<code>has_docket_matter_authority</code>), plus Judgment <strong>ownership</strong> to pin a Judgment</td><td>INSERT/DELETE allowed (the Quick Code must still be yours)</td></tr>
+</table>
+<p>No resharing. Recipient may relinquish. Soft-revoke only. Live <code>shares.item_type</code> is <strong>Docket only</strong> (real FK, not a polymorphic uuid).</p>
+<h2>Originating authority vs preserving authority</h2>
+<div class="mermaid">flowchart LR
+    subgraph Origin[&quot;Originates Court-wide power&quot;]
+        ADM[Admin only]
+        MC[INSERT magistrate_courts]
+        ADM --&gt; MC
+        MC --&gt; CA[can_access_court]
+    end
+
+    subgraph Preserve[&quot;Preserves one matter&quot;]
+        MAG[Magistrate who already has Court access]
+        RA[INSERT own docket_matter_assignments]
+        MAG --&gt; RA
+        RA --&gt; HR[has_retained_assignment]
+    end
+
+    CA -.-&gt;|precondition| MAG</div>
+<p>Self-assigning to a Court would let anyone grant themselves an entire docket. Self-retaining a matter you already sit is narrowing, not originating.</p>
+<h2>Visibility matrix</h2>
+<div class="mermaid">flowchart TB
+    subgraph Open[&quot;All authenticated — published / reference&quot;]
+        D[magisterial_districts]
+        C[courts]
+        S[statutes published]
+        T[tags]
+        CCL[canonical case_law published]
+    end
+
+    subgraph ThreePath[&quot;Three-path Docket&quot;]
+        DM[docket_matters]
+        DE[docket_events]
+        DP[parties]
+        DT[tags]
+        DA[assignments - named magistrate]
+        SH[shares - granter or recipient]
+    end
+
+    subgraph Owner[&quot;Owner only, no admin bypass&quot;]
+        JU[judgments unless discoverable]
+        QC[quick_codes]
+        BN[bench_notes]
+        PCL[personal case_law unless discoverable]
+        ANN[case_law_annotations always]
+    end
+
+    subgraph AdminWrite[&quot;Admin write, not Docket read&quot;]
+        MC[magistrate_courts roster]
+        LIB[legal library drafts + publish]
+        STW[statutes write]
+    end</div>
+<table>
+<tr><th>Entity</th><th>Default</th><th>Share?</th><th>Discoverable pool?</th><th>Admin bypass?</th></tr>
+<tr><td>Docket Matter</td><td>Court-anchored</td><td>Yes, exceptional</td><td><strong>Never</strong></td><td><strong>No</strong></td></tr>
+<tr><td>Retained assignment</td><td>Named magistrate</td><td>N/A (it is the grant)</td><td>No</td><td><strong>No</strong></td></tr>
+<tr><td>Judgment</td><td>Private</td><td>Future (not in 0037)</td><td>Yes, read-only</td><td><strong>No</strong></td></tr>
+<tr><td>Canonical Case Law</td><td>All authenticated (published)</td><td>N/A</td><td>N/A</td><td>Write yes</td></tr>
+<tr><td>Personal Case Law</td><td>Private</td><td>Future</td><td>Yes, read-only</td><td><strong>No</strong></td></tr>
+<tr><td>Annotation</td><td>Annotator only</td><td>Never</td><td>No</td><td><strong>No</strong></td></tr>
+<tr><td>Quick Code</td><td>Owner only</td><td>No</td><td><strong>Never</strong></td><td><strong>No</strong></td></tr>
+<tr><td>Bench Note</td><td>Author only</td><td>No</td><td>No</td><td><strong>No</strong></td></tr>
+<tr><td>Documents</td><td>Follows parent</td><td>Follows parent</td><td>Follows parent</td><td>SELECT/INSERT follow parent. <strong>DELETE</strong> still allows <code>is_admin()</code> (metadata/blob only — not a Docket read bypass)</td></tr>
+<tr><td><code>magistrate_courts</code></td><td>Self SELECT; Admin write</td><td>N/A</td><td>N/A</td><td>Yes (roster, not content)</td></tr>
+</table>
+<h2>Association side-channel rule</h2>
+<div class="mermaid">flowchart LR
+    A[User can see Matter X]
+    B[User cannot see Judgment Y]
+    L[Join row X↔Y]
+
+    A --&gt; Q{Show the join row?}
+    B --&gt; Q
+    Q --&gt;|OR would leak Y&#x27;s existence| HIDE[Hide]
+    Q --&gt;|AND both readable| SHOW[Show]</div>
+<p>Always <strong>AND</strong>. Never <strong>OR</strong>.</p>
+<p>Link mutation strengths (live SQL):</p>
+<pre><code>Docket ↔ Judgment:  Court-or-retained  AND  Judgment OWNERSHIP
+Docket ↔ Case Law:  Court-or-retained  AND  Case Law READ
+Quick Code ↔ Docket: Docket EDIT (edit-share OK)  AND  Quick Code OWNERSHIP
+Quick Code ↔ Judgment / Case Law: Quick Code OWNERSHIP  AND  read access to the other side</code></pre>
+<p>The Quick Code association UI is <strong>read-only today</strong> — the tables and RLS exist; creating/removing those links is not wired in the SPA.</p>
+<h2>Roles in the product today</h2>
+<table>
+<tr><th>Role</th><th>UI</th><th>Database</th></tr>
+<tr><td><code>magistrate</code></td><td>Full workspace</td><td><code>profiles.role</code> is <strong>not</strong> consulted by Docket RLS. Authority is assignment / retain / share / ownership</td></tr>
+<tr><td><code>clerk</code></td><td>Same nav as magistrate. Copy treats clerks as share recipients</td><td><strong>Enum leftover.</strong> No Clerk policies. Identical RLS to a magistrate if they have the same assignment/share/ownership</td></tr>
+<tr><td><code>admin</code></td><td>Extra: Court Assignments, Legal Library</td><td>Roster + canonical library write. <strong>Zero</strong> extra SELECT on Docket / private Judgment / personal Case Law / Quick Codes / Bench Notes</td></tr>
+</table>
+<p>An administrator who also sits a Court needs a real <code>magistrate_courts</code> row, created the same way as anyone else&#x27;s.</p>
+<h2>Profile privacy</h2>
+<p><code>profiles</code> SELECT is self-only. Display names on retained assignments and shares come from two narrow <code>SECURITY DEFINER</code> functions (<code>0043</code>), gated by context, never by opening the whole profiles table.</p></section>
+<section class="chapter"><h1>9. User journeys</h1>
+<p>Actors, screens, and blocked paths as implemented in the SPA.</p>
+<p>!<a href="assets/user-swimlanes.png">A sitting day versus an admin day</a></p>
+<h2>Personas</h2>
+<div class="mermaid">flowchart TB
+    subgraph Unassigned[&quot;Registered, no Court&quot;]
+        U1[Can: research library, write personal Case Law,&lt;br/&gt;Judgments, Quick Codes, Bench Notes, Bookmarks]
+        U2[Cannot: create Docket Matters]
+        U3[Can: open matters retained or shared with them]
+    end
+
+    subgraph Sitting[&quot;Magistrate with current Court&quot;]
+        S1[Full Docket for that Court]
+        S2[Create matters, events, parties]
+        S3[Retain a matter before leaving]
+        S4[Share a matter view or edit]
+        S5[Link own Judgments / readable Case Law]
+    end
+
+    subgraph AdminP[&quot;Administrator&quot;]
+        A1[Assign / end Court sittings]
+        A2[Import and publish Case Law + Legislation]
+        A3[No automatic Docket visibility]
+    end</div>
+<h2>Journey A — First login</h2>
+<div class="mermaid">flowchart TD
+    Start([Open app]) --&gt; Session{Session?}
+    Session --&gt;|No| Login[/login/]
+    Login --&gt; Auth{Credentials ok?}
+    Auth --&gt;|No| Login
+    Auth --&gt;|Yes| Dash[/dashboard/]
+    Session --&gt;|Yes| Dash
+    Dash --&gt; Courts{Current magistrate_courts?}
+    Courts --&gt;|Yes| Work[Today&#x27;s Courts, upcoming appearances,&lt;br/&gt;active matters, retained, drafts]
+    Courts --&gt;|No| Empty[Dashboard still works.&lt;br/&gt;Library / notes / judgments available.&lt;br/&gt;Docket create is blocked]</div>
+<p>Register (<code>/register</code>) creates <code>auth.users</code> + <code>profiles</code>. It does <strong>not</strong> assign a Court.</p>
+<h2>Journey B — Sit a Court (admin)</h2>
+<div class="mermaid">flowchart TD
+    A[Admin opens /admin/court-assignments] --&gt; P[Pick a profile]
+    P --&gt; C[Pick an active Court]
+    C --&gt; I[INSERT magistrate_courts]
+    I --&gt; L[Magistrate immediately has&lt;br/&gt;can_access_court for that Court]
+    L --&gt; E[Later: Admin sets ended_at]
+    E --&gt; R{Magistrate retained matters?}
+    R --&gt;|Yes| Keep[Those matters remain via Path 2]
+    R --&gt;|No| Gone[That Court&#x27;s Docket disappears for them]</div>
+<p>Magistrates cannot insert or end their own Court assignment in V1.</p>
+<h2>Journey C — Work a matter (magistrate)</h2>
+<div class="mermaid">flowchart TD
+    L[/docket list/] --&gt; Create{Has current Court?}
+    Create --&gt;|No| Blocked[Cannot create.&lt;br/&gt;List still shows retained + shared]
+    Create --&gt;|Yes| New[Create: court, case number, title]
+    New --&gt; Detail[/docket/:id/]
+    L --&gt; Detail
+    Detail --&gt; O[Overview: charge, orders, outcome, status, cover, retain]
+    Detail --&gt; E[Events: date required, time optional]
+    Detail --&gt; P[Parties: type + role, ID photo]
+    Detail --&gt; T[Institutional tags]
+    Detail --&gt; J[Judgments tab: link a Judgment you own]
+    Detail --&gt; C[Case Law tab: read-only reverse view]
+    Detail --&gt; D[Attach documents]
+    Detail --&gt; S[Share view or edit]</div>
+<h2>Journey D — Leave a Court but keep a part-heard matter</h2>
+<div class="mermaid">flowchart TD
+    Sit[Currently assigned to Court] --&gt; Retain[Overview: Retain this matter]
+    Retain --&gt; Check{can_access_court right now?}
+    Check --&gt;|No| Fail[Blocked — you cannot originate access]
+    Check --&gt;|Yes| Row[Self-only assignment row&lt;br/&gt;reason = retained_part_heard]
+    Row --&gt; AdminEnds[Admin ends Court assignment]
+    AdminEnds --&gt; Keep[You still see THIS matter only]
+    Keep --&gt; Done{Matter completed or archived?}
+    Done --&gt;|Yes| Auto[Trigger ends the retained row]
+    Done --&gt;|No| Self[You may end it yourself]</div>
+<p>A successor assigned to the Court also sees the matter. Retained access is <strong>not exclusive</strong>.</p>
+<h2>Journey E — Write and finalize a Judgment</h2>
+<div class="mermaid">flowchart TD
+    J[/judgments/] --&gt; N[Create — always draft, always yours]
+    N --&gt; E[Edit content, tags, documents]
+    E --&gt; Disc{Make discoverable?}
+    Disc --&gt;|Yes| Read[Others may read, never edit]
+    Disc --&gt;|No| Priv[Only you]
+    E --&gt; Fin[Finalize]
+    Fin --&gt; Lock[Substance locked]
+    Lock --&gt; Un{Unlock?}
+    Un --&gt;|Yes| Draft[Back to draft — then edit in a later save]
+    Lock --&gt; Link[Tags and documents still work.&lt;br/&gt;Pin to a Docket from the matter, not this page]</div>
+<p>Leaving a Court does <strong>not</strong> transfer Judgments.</p>
+<h2>Journey F — Research Case Law</h2>
+<div class="mermaid">flowchart TD
+    CL[/case-law/] --&gt; Tabs{Tab}
+    Tabs --&gt; Can[Canonical published]
+    Tabs --&gt; Mine[My personal research]
+    Can --&gt; Ann[Private annotations]
+    Mine --&gt; New[Create personal row]
+    New --&gt; Disc2[Optional is_discoverable]
+    Can --&gt; Link[Link to a matter — needs Court or retained,&lt;br/&gt;not share-only]
+    Mine --&gt; Link</div>
+<p>Unpublished library drafts never appear here. Admins review them at <code>/admin/legal-library</code>.</p>
+<h2>Journey G — Admin legal library</h2>
+<div class="mermaid">flowchart TD
+    LL[/admin/legal-library/] --&gt; S[Sources — registry, not a crawler]
+    LL --&gt; I[New Import or Bulk batch]
+    I --&gt; RPC[create_*_import]
+    RPC --&gt; Draft[Canonical row as draft]
+    Draft --&gt; RQ[Review Queue]
+    RQ --&gt; Pub{Publish?}
+    Pub --&gt;|Placeholders remain| Rejected[RPC refuses]
+    Pub --&gt;|Metadata complete| Live[Magistrates can read]
+    RQ --&gt; Dup[Duplicate jobs stay on the batch]</div>
+<h2>Journey H — Search and bookmarks</h2>
+<p>Global search (<code>/search</code>) groups <strong>seven</strong> SQL branches in the browser by <code>entity_type</code>. Every hit is something the caller could already open. Legacy <code>case</code> rows can appear with <strong>no</strong> detail route.</p>
+<p>The Legislation <strong>list</strong> search matches provision body text. <strong>Global</strong> search’s statute branch still searches only the Act-level <code>search_vector</code> — a phrase that lives only inside a section may miss in <code>/search</code> and hit on <code>/legislation</code>.</p>
+<p>Bookmarkable: Docket Matter, Judgment, Case Law, Quick Code, Bench Note, Statute, Statute Provision, leftover Case. <strong>Not</strong> a raw document file.</p>
+<h2>Honest gaps in the live UI</h2>
+<table>
+<tr><th>You might expect</th><th>What the SPA actually does</th></tr>
+<tr><td>View-share disables editors</td><td>Controls stay enabled; RLS rejects the write with a toast</td></tr>
+<tr><td>Link Case Law from the matter tab</td><td>Matter tab is read-only. Link from <strong>Case Law</strong> detail</td></tr>
+<tr><td>Link a Judgment from the Judgment page</td><td>Links panel is read-only. Link from the <strong>matter</strong> Judgments tab</td></tr>
+<tr><td>Type a Quick Code to expand in an editor</td><td><strong>Copy</strong> copies <code>content</code> to the clipboard</td></tr>
+<tr><td>Create Quick Code ↔ matter/judgment/case-law links</td><td>Associations dialog is <strong>read-only</strong></td></tr>
+<tr><td>New Bench Note on a docket / judgment / case-law page</td><td>Create from Bench Notes list, or from a legislation section</td></tr>
+<tr><td>Password-reset email sets a new password in-app</td><td>Link lands on <code>/login</code>. No set-password page. Profile / Settings are disabled</td></tr>
+<tr><td>Clerk-only screens</td><td>None. Clerk collapses onto the magistrate RLS envelope</td></tr>
+</table>
+<h2>Screen map</h2>
+<table>
+<tr><th>Path</th><th>Who</th><th>Purpose</th></tr>
+<tr><td><code>/dashboard</code></td><td>Any signed-in user</td><td>Courts, upcoming appearances, retained, drafts</td></tr>
+<tr><td><code>/docket</code></td><td>Any</td><td>Matters via the three paths</td></tr>
+<tr><td><code>/docket/:id</code></td><td>Lawful access</td><td>Operational workspace</td></tr>
+<tr><td><code>/judgments</code></td><td>Any</td><td>Own + discoverable</td></tr>
+<tr><td><code>/case-law</code></td><td>Any</td><td>Published canonical + own/discoverable personal</td></tr>
+<tr><td><code>/legislation</code></td><td>Any</td><td>Published statutes + provision reader</td></tr>
+<tr><td><code>/quick-codes</code></td><td>Any</td><td>Own snippets only</td></tr>
+<tr><td><code>/bench-notes</code></td><td>Any</td><td>Own notes only</td></tr>
+<tr><td><code>/bookmarks</code></td><td>Any</td><td>Own bookmarks</td></tr>
+<tr><td><code>/search</code></td><td>Any</td><td>RLS-filtered global search</td></tr>
+<tr><td><code>/admin/court-assignments</code></td><td>Admin UI role</td><td>Roster</td></tr>
+<tr><td><code>/admin/legal-library</code></td><td>Admin UI role</td><td>Ingestion + review</td></tr>
+</table></section>
+<section class="chapter"><h1>10. Sequence and state workflows</h1>
+<p>Time-ordered views of the rules in <a href="08-access-control.md">access control</a>.</p>
+<h2>Create a Docket Matter</h2>
+<div class="mermaid">sequenceDiagram
+    actor M as Magistrate
+    participant UI as Create dialog
+    participant DB as Postgres RLS
+
+    M-&gt;&gt;UI: Choose Court, case number, title
+    UI-&gt;&gt;DB: INSERT docket_matters
+    DB-&gt;&gt;DB: Trigger derives district_id from courts
+    alt No district on that Court
+        DB--&gt;&gt;UI: Reject
+    else No current magistrate_courts for that Court
+        DB--&gt;&gt;UI: RLS denies INSERT
+    else OK
+        DB--&gt;&gt;UI: Row with created_by = auth.uid()
+        UI--&gt;&gt;M: Open /docket/:id
+    end</div>
+<h2>Share, then revoke</h2>
+<div class="mermaid">sequenceDiagram
+    actor G as Current Court or retained holder
+    actor R as Recipient
+    participant DB as shares
+
+    G-&gt;&gt;DB: INSERT permission view or edit
+    Note over DB: At most one active share per recipient
+    DB--&gt;&gt;R: Matter appears on R&#x27;s Docket
+    alt G or another current authority holder revokes
+        G-&gt;&gt;DB: SET revoked_at = now()
+    else R relinquishes
+        R-&gt;&gt;DB: SET revoked_at = now()
+    end
+    DB--&gt;&gt;R: Matter disappears unless another path remains
+    Note over DB: To change view→edit, revoke then insert a new row</div>
+<h2>Link a Judgment to a matter</h2>
+<div class="mermaid">sequenceDiagram
+    actor M as Magistrate
+    participant DB as docket_matter_judgments
+
+    M-&gt;&gt;DB: INSERT link
+    DB-&gt;&gt;DB: Docket access? AND owner of Judgment?
+    alt Either fails
+        DB--&gt;&gt;M: Denied — discoverable-only is not enough to link
+    else Both pass
+        DB--&gt;&gt;M: Association row (no extra access granted)
+    end
+    Note over M: A colleague with Court access still cannot open a private Judgment</div>
+<h2>Offboarding a sitting magistrate</h2>
+<div class="mermaid">sequenceDiagram
+    actor A as Admin
+    actor M as Magistrate
+    participant MC as magistrate_courts
+    participant RA as docket_matter_assignments
+    participant DM as docket_matters
+    participant J as judgments
+
+    A-&gt;&gt;MC: ended_at = now() on current rows
+    Note over DM: Court&#x27;s Docket stays. Successor gets it via a new assignment
+    M-&gt;&gt;RA: Should already have retained part-heard rows
+    Note over RA: Remaining live retained rows must be ended as part of offboarding
+    Note over J: Judgments stay with M. Never transferred
+    Note over M: Do not DELETE profiles. Deactivate instead</div>
+<h2>Publish canonical Case Law</h2>
+<div class="mermaid">sequenceDiagram
+    actor A as Admin
+    participant RPC as publish_case_law_import
+    participant CL as case_law
+    participant MAG as Magistrate browse
+
+    A-&gt;&gt;RPC: Publish
+    RPC-&gt;&gt;RPC: is_admin()?
+    RPC-&gt;&gt;CL: Placeholder metadata?
+    alt Untitled / missing court or jurisdiction
+        RPC--&gt;&gt;A: Refuse
+    else Complete
+        RPC-&gt;&gt;CL: review_status = published
+        RPC-&gt;&gt;RPC: Linked import_jobs.status = published
+        MAG-&gt;&gt;CL: SELECT now returns the row
+    end</div>
+<h2>Quick Codes (as implemented)</h2>
+<p>Quick Codes are private text snippets (<code>code_word</code> unique per owner). The live workspace <strong>Copy</strong> action puts <code>content</code> on the clipboard. There is no in-editor expander. Association tables exist; the SPA associations dialog is read-only.</p>
+<p>Nobody else ever reads another user&#x27;s Quick Codes — not even an administrator, and not via a Docket share.</p>
+<h2>Document upload</h2>
+<div class="mermaid">sequenceDiagram
+    actor U as User with parent access
+    participant API as Storage + documents
+
+    U-&gt;&gt;API: Upload bytes to documents bucket
+    U-&gt;&gt;API: INSERT public.documents metadata
+    Note over API: Storage SELECT requires the metadata row
+    alt Parent is a Docket Matter
+        API-&gt;&gt;API: Parent RLS = three-path access
+    else Parent is a Judgment
+        API-&gt;&gt;API: Owner or discoverable for read
+    else Parent is draft canonical Case Law
+        API-&gt;&gt;API: Admin only until published
+    end</div>
+<h2>What is not a workflow yet</h2>
+<table>
+<tr><th>Topic</th><th>Status</th></tr>
+<tr><td>Outlook calendar sync</td><td>Columns reserved; no sync</td></tr>
+<tr><td>Judgment / personal Case Law sharing</td><td>Designed in principle; <code>shares.item_type</code> is Docket-only in 0037</td></tr>
+<tr><td>Clerk-specific permissions</td><td>Role exists; no Clerk RLS</td></tr>
+<tr><td>URL crawlers / AI extract</td><td>Not built</td></tr>
+<tr><td>Scanned-PDF OCR</td><td>Built in-browser (Tesseract.js); curator must still verify</td></tr>
+<tr><td>Password reset completion page</td><td>Email currently returns the user to <code>/login</code></td></tr>
+<tr><td>Profile / Settings</td><td>Disabled in the user menu</td></tr>
+<tr><td>View-share greying out editors</td><td>RLS only; controls stay enabled</td></tr>
+</table></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

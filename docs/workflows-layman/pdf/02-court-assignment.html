@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Court Assignment</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Court Assignment</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>2. Court assignment</h1>
+<p><strong>Who:</strong> administrator seats; magistrate is seated</p>
+<p><strong>Goal:</strong> open the Court&#x27;s docket for a person</p>
+<p><strong>Everyday analogy:</strong> handing someone the keys to a particular courtroom&#x27;s filing cabinet</p>
+<h2>Why this exists</h2>
+<p>A docket is <strong>not</strong> &quot;Magistrate X&#x27;s cases&quot;. It is <strong>that Court&#x27;s cases</strong>. The software therefore asks: <em>who is currently sitting this Court?</em></p>
+<p>That answer lives in a dated assignment. While the end date is empty, you have the keys. When an administrator fills the end date, those keys stop working.</p>
+<div class="mermaid">flowchart LR
+    Admin[Administrator] --&gt; Assign[Seats you at a Court]
+    Assign --&gt; Keys[You can see that Court&#x27;s whole docket]
+    Keys --&gt; End[Administrator ends the sitting]
+    End --&gt; Lost[Those keys stop]
+    Lost --&gt; Keep{Did you retain a part-heard matter?}
+    Keep --&gt;|Yes| One[You keep that one file]
+    Keep --&gt;|No| None[You see none of that Court&#x27;s files]</div>
+<h2>What the administrator does</h2>
+<ol>
+<li>Open <strong>Court Assignments</strong> (admin menu).</li>
+<li>Choose the magistrate&#x27;s profile.</li>
+<li>Choose an <strong>active</strong> Court.</li>
+<li>Create the assignment.</li>
+</ol>
+<p>To move someone to another Court: <strong>end</strong> the current assignment, then create a new one. Do not pretend the old row was always the new Court — history is kept.</p>
+<p>To offboard someone: end their Court sittings (and make sure part-heard retains are ended too). Prefer <strong>deactivating</strong> the account later. Do not delete the person if they created docket files — the system needs to remember who did the work.</p>
+<h2>What the magistrate cannot do</h2>
+<p>You cannot seat yourself. You cannot end your own Court sitting. That is deliberate. Anyone who could seat themselves could open any Court&#x27;s cabinet.</p>
+<h2>Assignment types</h2>
+<p>Regular, acting, relief, or other. They are labels for the roster. <strong>They do not change permissions.</strong> Any current sitting, of any type, opens that Court&#x27;s docket the same way.</p>
+<h2>Dual access is normal</h2>
+<p>Suppose you retained matter 45 from a Court you left. A new magistrate is now seated there. <strong>Both of you can open matter 45.</strong> You are not the owner. You are finishing a hearing. They are running the Court.</p>
+<h2>Related guide</h2>
+<p>When you are about to leave, read <a href="05-sharing-and-retained.md">Sharing and retained matters</a> <em>before</em> the administrator ends your sitting. You can only retain a matter while you still have the Court keys.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

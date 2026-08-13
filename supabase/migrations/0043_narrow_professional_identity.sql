@@ -2,7 +2,7 @@
 --
 -- PREPARED FOR REVIEW ONLY. NOT APPLIED.
 --
--- PURPOSE: BenchBook needs to render professional attribution such as
+-- PURPOSE: Magistrate Wizard needs to render professional attribution such as
 -- "retained by [Name]", "shared by [Name]", and the recipient of a
 -- Docket share, without turning `profiles` into a general directory.
 -- `profiles` today is self-only under RLS ("Profiles are viewable by

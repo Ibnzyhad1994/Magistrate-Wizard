@@ -1,4 +1,4 @@
--- BenchBook — Docket Events (Court appearances/hearing occurrences)
+-- Magistrate Wizard — Docket Events (Court appearances/hearing occurrences)
 -- One docket_events row represents one scheduled/actual Court appearance
 -- or hearing occurrence associated with exactly one Docket Matter. This
 -- is NOT a second access-control anchor: Court and District are obtained

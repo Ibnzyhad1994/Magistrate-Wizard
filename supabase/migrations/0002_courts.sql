@@ -1,4 +1,4 @@
--- BenchBook — courts & jurisdiction scoping
+-- Magistrate Wizard — courts & jurisdiction scoping
 -- Adds the `courts` table and links `profiles` to a court. `my_court_id()`
 -- is the scoping primitive most later RLS policies use to keep
 -- magistrates/clerks confined to their own court's data.

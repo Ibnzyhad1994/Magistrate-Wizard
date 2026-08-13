@@ -1,5 +1,5 @@
 {
-  "name": "benchbook",
+  "name": "magistrate-wizard",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -16,10 +16,17 @@
     "db:stop": "npx supabase stop",
     "db:reset": "npx supabase db reset",
     "db:status": "npx supabase status",
-    "supabase:types": "npx supabase gen types typescript --local --schema public > src/types/database.types.ts"
+    "supabase:types": "npx supabase gen types typescript --local --schema public > src/types/database.types.ts",
+    "postinstall": "node scripts/copy-ocr-assets.mjs",
+    "copy:ocr-assets": "node scripts/copy-ocr-assets.mjs",
+    "test:extraction": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-pipeline.mjs",
+    "test:ocr": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ocr-accuracy.mjs",
+    "test:ingest-formats": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-document.mjs",
+    "test:ingestion": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-pipeline.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ocr-accuracy.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-false-success-prevention.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-page-awareness.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-quality.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-text-sanitize.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-legal-extraction.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-document.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@napi-rs/canvas": "^1.0.5",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -41,7 +48,10 @@
     "@tiptap/starter-kit": "^2.9.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.454.0",
+    "mammoth": "^1.12.1",
+    "pdfjs-dist": "^6.2.108",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.2",
@@ -49,6 +59,7 @@
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^7.0.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.1"
   },

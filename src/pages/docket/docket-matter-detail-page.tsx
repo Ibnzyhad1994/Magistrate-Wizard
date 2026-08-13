@@ -61,6 +61,7 @@ export default function DocketMatterDetailPage() {
   return (
     <>
       <Billboard
+        variant="detail"
         eyebrow={matter.case_number}
         title={matter.matter_title}
         description={
@@ -75,7 +76,7 @@ export default function DocketMatterDetailPage() {
         }
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
       />
-      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
+      <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
             {toTitleCase(matter.status)}
@@ -84,7 +85,7 @@ export default function DocketMatterDetailPage() {
         </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="flex h-auto flex-wrap justify-start gap-1">
+        <TabsList className="sticky top-[68px] z-20 bg-[#141414] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="parties">Parties</TabsTrigger>

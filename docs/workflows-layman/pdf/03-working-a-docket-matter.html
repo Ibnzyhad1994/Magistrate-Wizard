@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Working A Docket Matter</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Working A Docket Matter</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>3. Working a docket matter</h1>
+<p><strong>Who:</strong> a magistrate (or clerk) who can already open that Court&#x27;s list</p>
+<p><strong>Goal:</strong> create and run one case file</p>
+<p><strong>Everyday analogy:</strong> opening a new folder in the Court&#x27;s cabinet, not in your briefcase</p>
+<h2>Create a matter</h2>
+<ol>
+<li>Go to <strong>Docket</strong>.</li>
+<li>Start a new matter.</li>
+<li>Pick a Court you <strong>currently sit</strong>.</li>
+<li>Enter the official <strong>case number</strong> and a short <strong>title</strong> (the names you would read out).</li>
+<li>Save.</li>
+</ol>
+<p>The district is filled in from the Court. You do not choose it. Case numbers must be unique <strong>inside that district</strong>, not worldwide — two districts may both have &quot;45/2024&quot;.</p>
+<div class="mermaid">flowchart TD
+    Start[Docket list] --&gt; Q{Do I currently sit a Court?}
+    Q --&gt;|No| No[You cannot create.&lt;br/&gt;You may still see retained or shared files]
+    Q --&gt;|Yes| Form[Court, case number, title]
+    Form --&gt; File[New folder on that Court&#x27;s list]
+    File --&gt; Tabs[Overview · Events · Parties · Tags ·&lt;br/&gt;Judgments · Case Law · Documents · Sharing]</div>
+<h2>The matter page</h2>
+<table>
+<tr><th>Tab</th><th>What it is for</th></tr>
+<tr><td>Overview</td><td>Charge or issue, rolling orders, overall outcome, status, cover image, retain</td></tr>
+<tr><td>Events</td><td>Each listed date</td></tr>
+<tr><td>Parties</td><td>People and roles, optional identification photo</td></tr>
+<tr><td>Tags</td><td>Court-visible labels such as &quot;urgent&quot; (not your private sticky notes)</td></tr>
+<tr><td>Judgments</td><td>Pin <em>your</em> written rulings to this file</td></tr>
+<tr><td>Case Law</td><td>Pin authorities you can read</td></tr>
+<tr><td>Documents</td><td>PDFs and other attachments</td></tr>
+<tr><td>Sharing</td><td>Let one named colleague in</td></tr>
+</table>
+<p>You can bookmark the matter from the header.</p>
+<h2>Status</h2>
+<ul>
+<li><strong>Active</strong> — live</li>
+<li><strong>Stayed</strong> — paused; a retained magistrate still keeps it</li>
+<li><strong>Completed</strong> — finished; any retain ends automatically</li>
+<li><strong>Archived</strong> — filed away; retain also ends</li>
+</ul>
+<p>There is no &quot;delete this case from history&quot; button. That is the point of a court record.</p>
+<h2>Cover image</h2>
+<p>A cover photo (often a party&#x27;s identification picture reused) appears on tiles and the top of the page. It is stored as a private file. Anyone who can already open the matter can see it.</p>
+<h2>If create is blocked</h2>
+<p>You are not currently assigned to the Court you picked. Ask an administrator to seat you, or work from a matter that was retained or shared with you.</p>
+<h2>What this file is not</h2>
+<p>It is not your personal notebook. Colleagues who later sit the same Court will see it. Put private thinking in <strong>Bench Notes</strong> or <strong>personal Case Law</strong>, not in the matter&#x27;s institutional tags.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

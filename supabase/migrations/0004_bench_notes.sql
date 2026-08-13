@@ -1,4 +1,4 @@
--- BenchBook — bench notes
+-- Magistrate Wizard — bench notes
 -- Judicial/clerk notes, optionally tied to a case. `content` holds the
 -- TipTap JSON document as produced by `editor.getJSON()`; `content_text`
 -- is the plain-text extraction the client sends alongside it (e.g. from

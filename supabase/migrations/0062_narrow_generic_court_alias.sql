@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 0062_narrow_generic_court_alias.sql
 --
--- BenchBook real-PDF Case Law metadata extraction repair pass, §8.
+-- Magistrate Wizard real-PDF Case Law metadata extraction repair pass, §8.
 --
 -- Audit of legal_authority_courts.aliases (live query) found one alias
 -- that is exactly the kind of generic, ambiguous token the instructions

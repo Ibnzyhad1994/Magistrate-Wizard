@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Search And Bookmarks</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Search And Bookmarks</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>10. Search and bookmarks</h1>
+<h2>Search</h2>
+<p>Open <strong>Search</strong> and type as you would in a library catalogue.</p>
+<p>Results are grouped. Typical groups:</p>
+<ul>
+<li>Docket matters</li>
+<li>Judgments</li>
+<li>Case law</li>
+<li>Legislation (the Act title and summary). A phrase that lives <strong>only</strong> inside a section is more reliably found on the Legislation list page than here.</li>
+<li>Quick codes (yours only)</li>
+<li>Bench notes (yours only)</li>
+<li>Legacy &quot;cases&quot; (old table; not used for new work)</li>
+</ul>
+<div class="mermaid">flowchart TB
+    Q[Your query] --&gt; S[Search]
+    S --&gt; F[Each category runs in the database]
+    F --&gt; R[Only rows you could already open]</div>
+<p>Search cannot be used as a peephole. If a judgment is private, it will not appear for anyone but its author. If a docket is another Court&#x27;s, it will not appear unless you retained it or it was shared with you. Unpublished library drafts do not appear.</p>
+<h2>Bookmarks</h2>
+<p>Star a record from its page. Open <strong>Bookmarks</strong> to return later.</p>
+<p>You can bookmark:</p>
+<ul>
+<li>a docket matter</li>
+<li>a judgment</li>
+<li>a case law card</li>
+<li>a quick code</li>
+<li>a bench note</li>
+<li>an Act</li>
+<li>a <strong>section</strong> of an Act</li>
+<li>a leftover legacy case</li>
+</ul>
+<p>You cannot bookmark a raw uploaded PDF as its own thing. Bookmark the matter or judgment it is attached to.</p>
+<h2>Dashboard as a shortcut</h2>
+<p>The Dashboard is a thin &quot;today&quot; view of the same locks: your Courts, coming dates, retained files, your drafts. If it is empty, you are probably not seated yet — you can still search the published library and your own notes.</p>
+<h2>If you cannot find something</h2>
+<ol>
+<li>Confirm you are allowed to open it (wrong Court? private judgment? unpublished draft?).</li>
+<li>Try the specialised list page (Docket, Judgments, Case Law) with its own filters.</li>
+<li>For a section’s wording, search from <strong>Legislation</strong>, not only the global search box.</li>
+</ol></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

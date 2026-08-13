@@ -1,29 +1,19 @@
 /**
  * Extraction pipeline orchestrator — the single authoritative entry point
- * for "did we get usable text out of this document," and the
- * abstraction/interface Phase 6 of the holistic ingestion repair asks
- * for: "isolate the current browser fallback behind that interface" so a
- * future server-side/OCR extraction worker can be swapped in without
- * touching any calling UI code.
+ * for "did we get usable text out of this document."
  *
- * Pipeline: raw extraction (pdf-text-extraction.ts, best-effort, browser-
- * only) → sanitize (text-sanitize.ts, removes what Postgres/JSON cannot
- * store) → quality gate (extraction-quality.ts, document-agnostic) →
+ * Pipeline: raw extraction (pdf-text-extraction.ts text layer) → if that
+ * yields nothing usable and the file is not encrypted, OCR fallback
+ * (src/lib/ocr/run-ocr.ts: pdf.js rasterize + Tesseract.js, all local) →
+ * sanitize (text-sanitize.ts) → quality gate (extraction-quality.ts) →
  * one of five explicit statuses. Nothing downstream of this module should
  * ever treat raw extractor output as authoritative — only an
  * ExtractionEnvelope with status "extracted" or "low_quality" carries
  * text that is safe to propose metadata from or store as searchable text.
  *
- * HONESTY BOUNDARY: there is exactly one extraction engine implemented in
- * this build — `extractPdfTextLayer` (src/lib/pdf-text-extraction.ts), a
- * dependency-free browser-native parser, because no PDF library (pdfjs-
- * dist or similar) can be installed in this project's sandbox (npm
- * registry returns 403 — verified again this pass) and there is no OCR
- * service configured or reachable. `runOcr` below is NOT implemented — it
- * always returns an "unavailable" result rather than fabricating a
- * result. See PIPELINE ARCHITECTURE NOTES at the bottom of this file for
- * exactly what a future server-side worker would need to implement to
- * replace it.
+ * OCR is attempted only for no_text_found / unsupported_font_encoding /
+ * too_short. Encrypted PDFs and quality-failed (wrong-stream) extractions
+ * are not sent to OCR. Successful OCR always sets requiresReview: true.
  */
 
 import {
@@ -37,7 +27,14 @@ import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, type QualityBucket } fr
 
 export type ExtractionStatus = "pending" | "extracted" | "low_quality" | "requires_ocr" | "failed";
 
-export type ExtractionMethod = "pdf_text_layer" | "txt_file" | "manual_paste" | "ocr" | "none";
+export type ExtractionMethod =
+  | "pdf_text_layer"
+  | "txt_file"
+  | "markdown"
+  | "docx"
+  | "manual_paste"
+  | "ocr"
+  | "none"
 
 export interface ExtractionEnvelope {
   status: ExtractionStatus;
@@ -69,6 +66,110 @@ export interface ExtractionEnvelope {
   pageCount: number;
   /** SIMPLE AND TIGHT ingestion pass: why nothing usable was extracted, when applicable (see PdfUnreadableReason) — lets a UI show a specific, honest, plain-language reason ("This PDF is protected"/"Uses a font we can't read yet"/"Looks like a scanned document") instead of one generic "OCR required" message for every case. `null` whenever status is "extracted"/"low_quality"/"pending", or for non-PDF methods. */
   unreadableReason: PdfUnreadableReason | null;
+}
+
+const TEXT_LAYER_UNREADABLE_MESSAGE: Record<PdfUnreadableReason, string> = {
+  encrypted:
+    "This PDF is protected/encrypted, so its text could not be read automatically. If you have an unprotected copy, try uploading that instead — otherwise paste the text manually.",
+  unsupported_font_encoding:
+    "This PDF has a text layer, but uses an embedded font encoding the lightweight parser cannot decode. Trying the full PDF renderer, then text recognition if needed.",
+  no_text_found:
+    "No extractable text layer was found — this looks like a scanned/image document. Attempting text recognition from the scanned pages.",
+}
+
+const shouldAttemptOcr = (reason: PdfUnreadableReason | null): boolean => {
+  return reason === "no_text_found"
+}
+
+const envelopeFromSanitizedText = (
+  rawText: string,
+  pages: PdfPageResult[],
+  method: ExtractionEnvelope["method"],
+  extraWarnings: string[],
+): ExtractionEnvelope | null => {
+  const sanitized = sanitizeExtractedText(rawText)
+  const quality = assessExtractionQuality(sanitized.text)
+  const warnings = [...extraWarnings, ...quality.warnings]
+  if (!quality.passed) return null
+  const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality"
+  const sanitizedPages: PdfPageResult[] = pages.map((p) => {
+    const pageSanitized = sanitizeExtractedText(p.text)
+    return { pageNumber: p.pageNumber, text: pageSanitized.text, characterCount: pageSanitized.text.length }
+  })
+  return {
+    status,
+    method,
+    text: sanitized.text,
+    charCount: sanitized.text.length,
+    qualityScore: quality.score,
+    characterQuality: quality.characterQuality,
+    structuralQuality: quality.structuralQuality,
+    warnings,
+    ocrUsed: false,
+    requiresReview: status !== "extracted",
+    pages: sanitizedPages,
+    pageCount: sanitizedPages.length,
+    unreadableReason: null,
+  }
+}
+
+const tryPdfjsTextThenOcr = async (
+  file: File,
+  priorReason: PdfUnreadableReason | null,
+  priorWarnings: string[],
+): Promise<ExtractionEnvelope> => {
+  try {
+    const { extractPdfjsTextContent } = await import("@/lib/ocr/rasterize-pdf")
+    const recovered = await extractPdfjsTextContent(file)
+    if (recovered?.text) {
+      const envelope = envelopeFromSanitizedText(recovered.text, recovered.pages, "pdf_text_layer", [
+        ...priorWarnings,
+        "Text recovered via the PDF renderer (embedded font encoding the lightweight parser cannot decode).",
+      ])
+      if (envelope) return envelope
+    }
+  } catch (e) {
+    console.error("pdf.js text-layer recovery failed:", e)
+  }
+  return tryOcrFallback(file, priorReason, priorWarnings)
+}
+
+const tryOcrFallback = async (
+  file: File,
+  priorReason: PdfUnreadableReason | null,
+  priorWarnings: string[],
+): Promise<ExtractionEnvelope> => {
+  try {
+    const { runOcr: runOcrEngine } = await import("@/lib/ocr/run-ocr")
+    const ocr = await runOcrEngine(file)
+    if (ocr.status === "extracted" || ocr.status === "low_quality") {
+      return ocr
+    }
+    return {
+      ...ocr,
+      status: "requires_ocr",
+      unreadableReason: priorReason ?? ocr.unreadableReason,
+      warnings: [...priorWarnings, ...ocr.warnings],
+      requiresReview: true,
+    }
+  } catch (e) {
+    console.error("OCR fallback failed:", e)
+    return {
+      status: "requires_ocr",
+      method: "none",
+      text: "",
+      charCount: 0,
+      qualityScore: null,
+      characterQuality: null,
+      structuralQuality: null,
+      warnings: [...priorWarnings, "Text recognition could not run in this environment. Paste the text manually."],
+      ocrUsed: false,
+      requiresReview: true,
+      pages: [],
+      pageCount: 0,
+      unreadableReason: priorReason,
+    }
+  }
 }
 
 function pendingEnvelope(): ExtractionEnvelope {
@@ -139,35 +240,46 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
   }
 
   if (!raw.hasTextLayer || !raw.text) {
-    // SIMPLE AND TIGHT ingestion pass: raw.unreadableReason distinguishes
-    // WHY nothing was extracted (see pdf-text-extraction.ts) so the
-    // curator gets an honest, specific, plain-language reason instead of
-    // one generic message for "genuinely scanned," "encrypted," and
-    // "uses a font this parser can't decode" alike — three different
-    // situations with different implications for what to do next.
-    const reasonMessage: Record<PdfUnreadableReason, string> = {
-      encrypted:
-        "This PDF is protected/encrypted, so its text could not be read automatically. If you have an unprotected copy, try uploading that instead — otherwise paste the text manually.",
-      unsupported_font_encoding:
-        "This PDF has a text layer, but uses an embedded font encoding this parser cannot decode yet. The original file has been preserved — paste the text manually, or try a different copy of the same document if one is available.",
-      no_text_found:
-        "No extractable text layer was found — this looks like a scanned/image document. The original file has been preserved, but reliable text could not be extracted automatically.",
-    };
-    return {
-      status: "requires_ocr",
-      method: "pdf_text_layer",
-      text: "",
-      charCount: 0,
-      qualityScore: null,
-      characterQuality: null,
-      structuralQuality: null,
-      warnings: [reasonMessage[raw.unreadableReason ?? "no_text_found"]],
-      ocrUsed: false,
-      requiresReview: true,
-      pages: [],
-      pageCount: 0,
-      unreadableReason: raw.unreadableReason,
-    };
+    const reason = raw.unreadableReason ?? "no_text_found"
+    const warning = TEXT_LAYER_UNREADABLE_MESSAGE[reason]
+    if (reason === "encrypted") {
+      return {
+        status: "requires_ocr",
+        method: "pdf_text_layer",
+        text: "",
+        charCount: 0,
+        qualityScore: null,
+        characterQuality: null,
+        structuralQuality: null,
+        warnings: [warning],
+        ocrUsed: false,
+        requiresReview: true,
+        pages: [],
+        pageCount: 0,
+        unreadableReason: reason,
+      }
+    }
+    if (reason === "unsupported_font_encoding") {
+      return tryPdfjsTextThenOcr(file, reason, [warning])
+    }
+    if (!shouldAttemptOcr(reason)) {
+      return {
+        status: "requires_ocr",
+        method: "pdf_text_layer",
+        text: "",
+        charCount: 0,
+        qualityScore: null,
+        characterQuality: null,
+        structuralQuality: null,
+        warnings: [warning],
+        ocrUsed: false,
+        requiresReview: true,
+        pages: [],
+        pageCount: 0,
+        unreadableReason: reason,
+      }
+    }
+    return tryOcrFallback(file, reason, [warning])
   }
 
   const sanitized = sanitizeExtractedText(raw.text);
@@ -184,16 +296,15 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
   }
 
   if (!quality.passed) {
-    // "boilerplate" and "printable_ratio"/"replacement_chars"/"control_chars"
-    // mean SOMETHING was confidently extracted, it's just clearly not
-    // judgment content (font/license metadata, PDF-internal binary) —
-    // that's "failed", not "requires_ocr" (OCR wouldn't help; the wrong
-    // stream was read, not an absent text layer). "too_short" means
-    // almost nothing usable came out at all, which reads more like a
-    // missing/unusable text layer.
-    const status: ExtractionStatus = quality.hardFailReason === "too_short" ? "requires_ocr" : "failed";
+    // Boilerplate / garbage: something was extracted but it is not
+    // judgment content — OCR the rendered page would often just reread
+    // the same wrong stream, so we do not fall through. too_short: almost
+    // nothing usable came from the text layer; OCR may recover a scan.
+    if (quality.hardFailReason === "too_short") {
+      return tryOcrFallback(file, "no_text_found", warnings)
+    }
     return {
-      status,
+      status: "failed",
       method: "pdf_text_layer",
       text: "",
       charCount: 0,
@@ -205,8 +316,8 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       requiresReview: true,
       pages: [],
       pageCount: 0,
-      unreadableReason: status === "requires_ocr" ? "no_text_found" : null,
-    };
+      unreadableReason: null,
+    }
   }
 
   const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality";
@@ -236,14 +347,34 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
 
 /** A .txt file is read verbatim by the browser — genuine, complete text extraction for that one format, still passed through the same sanitize+quality gate for consistency (a .txt file can itself contain stray control bytes). */
 export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
-  const sanitized = sanitizeExtractedText(rawText);
-  const quality = assessExtractionQuality(sanitized.text);
-  const warnings = [...quality.warnings];
-  if (sanitized.removedCount > 0) warnings.push(`Removed ${sanitized.removedCount} unsafe character(s) from the uploaded text file.`);
+  return buildGatedTextEnvelope(rawText, "txt_file", "uploaded text file")
+}
+
+/** Markdown source is kept (headings/citations survive) and quality-gated the same way as .txt. */
+export function buildMarkdownEnvelope(rawText: string): ExtractionEnvelope {
+  return buildGatedTextEnvelope(rawText, "markdown", "markdown file")
+}
+
+/** Word (.docx) raw text from mammoth — quality-gated like any other machine extraction. */
+export function buildDocxEnvelope(rawText: string): ExtractionEnvelope {
+  return buildGatedTextEnvelope(rawText, "docx", "Word document")
+}
+
+export function buildGatedTextEnvelope(
+  rawText: string,
+  method: ExtractionMethod,
+  sourceLabel: string,
+): ExtractionEnvelope {
+  const sanitized = sanitizeExtractedText(rawText)
+  const quality = assessExtractionQuality(sanitized.text)
+  const warnings = [...quality.warnings]
+  if (sanitized.removedCount > 0) {
+    warnings.push(`Removed ${sanitized.removedCount} unsafe character(s) from the ${sourceLabel}.`)
+  }
   if (!quality.passed) {
     return {
       status: quality.hardFailReason === "too_short" ? "pending" : "low_quality",
-      method: "txt_file",
+      method,
       text: sanitized.text,
       charCount: sanitized.text.length,
       qualityScore: quality.score,
@@ -255,12 +386,12 @@ export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
       pages: [],
       pageCount: 0,
       unreadableReason: null,
-    };
+    }
   }
-  const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality";
+  const status: ExtractionStatus = quality.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality"
   return {
     status,
-    method: "txt_file",
+    method,
     text: sanitized.text,
     charCount: sanitized.text.length,
     qualityScore: quality.score,
@@ -272,7 +403,7 @@ export function buildTextFileEnvelope(rawText: string): ExtractionEnvelope {
     pages: [],
     pageCount: 0,
     unreadableReason: null,
-  };
+  }
 }
 
 /** Curator-pasted text still goes through sanitization (clipboard sources are a genuinely different corruption risk — see text-sanitize.ts) but is never quality-gated or auto-scored: a human already read it and chose to paste it, so it is trusted as manually-provided content, not a machine proposal. */
@@ -303,56 +434,8 @@ export function emptyExtractionEnvelope(): ExtractionEnvelope {
   return pendingEnvelope();
 }
 
-/**
- * OCR entry point — deliberately NOT implemented. Always returns an
- * honest "unavailable" envelope rather than fabricating recognized text.
- * See PIPELINE ARCHITECTURE NOTES below for what a real implementation
- * needs.
- */
-export async function runOcr(_file: File): Promise<ExtractionEnvelope> {
-  return {
-    status: "requires_ocr",
-    method: "none",
-    text: "",
-    charCount: 0,
-    qualityScore: null,
-    characterQuality: null,
-    structuralQuality: null,
-    warnings: ["OCR is not implemented in this build. No OCR engine or service is installed, configured, or reachable."],
-    ocrUsed: false,
-    requiresReview: true,
-    pages: [],
-    pageCount: 0,
-    unreadableReason: null,
-  };
+/** Public OCR entry point — same envelope the pipeline fallback uses. Dynamically loaded so text-layer-only imports do not pay the Tesseract/pdf.js cost. */
+export async function runOcr(file: File): Promise<ExtractionEnvelope> {
+  const { runOcr: runOcrEngine } = await import("@/lib/ocr/run-ocr")
+  return runOcrEngine(file)
 }
-
-// -----------------------------------------------------------------------
-// PIPELINE ARCHITECTURE NOTES — what a future server/Edge Function worker
-// needs to implement to replace the browser-only path above without any
-// caller (ImportTab, the Review Queue, use-import-jobs.ts) changing:
-//
-//   1. Accept the original file (already uploaded to the private
-//      `documents` Storage bucket by the time a draft exists — see
-//      uploadDocumentToEntity in use-documents.ts) and return an
-//      ExtractionEnvelope shaped exactly as above.
-//   2. For a mature PDF text-layer parser: a real object-graph-aware
-//      library (e.g. pdfjs-dist, or a server-side tool like `pdftotext`
-//      from Poppler) would remove essentially every limitation
-//      documented in pdf-text-extraction.ts's header (no ToUnicode CMap
-//      resolution, no true page/Contents graph, heuristic-only stream
-//      classification). This requires either (a) npm registry access to
-//      install a JS library, or (b) a server/Edge Function environment
-//      with a native PDF toolchain available — neither exists in this
-//      project's sandbox as of this pass (verified: `npm install
-//      pdfjs-dist` returns 403 Forbidden).
-//   3. For OCR: a real OCR engine or hosted OCR API (Tesseract, a cloud
-//      vision/document-AI service, etc.) is required — none is installed
-//      or configured. `runOcr` above is the exact function to implement
-//      against once one is available; every caller already treats its
-//      return value as just another ExtractionEnvelope.
-//   4. Whichever engine is used, it MUST still be run through
-//      sanitizeExtractedText + assessExtractionQuality before being
-//      trusted — those two gates are engine-agnostic and should not be
-//      bypassed just because a "better" engine produced the raw text.
-// -----------------------------------------------------------------------

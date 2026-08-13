@@ -1,6 +1,6 @@
 /**
  * Shared, deterministic publication-gate validation for Case Law and
- * Legislation (BenchBook Case Law ingestion golden-path repair pass).
+ * Legislation (Magistrate Wizard Case Law ingestion golden-path repair pass).
  *
  * Used in TWO places for the SAME rule set, never one without the other:
  *   1. Frontend — disables/explains the Publish button (ReviewQueueTab

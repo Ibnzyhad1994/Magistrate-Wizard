@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Writing A Judgment</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Writing A Judgment</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>6. Writing a judgment</h1>
+<p><strong>Who:</strong> you, the author</p>
+<p><strong>Goal:</strong> draft, lock, and optionally let colleagues read</p>
+<p><strong>Everyday analogy:</strong> the opinion is in <em>your</em> bound volume. The docket folder may point to it. Pointing is not photocopying.</p>
+<h2>Create</h2>
+<ol>
+<li>Open <strong>Judgments</strong>.</li>
+<li>Create a new one. It always starts as <strong>draft</strong> and always belongs to you. You cannot create one in a colleague&#x27;s name.</li>
+</ol>
+<p>Fill title, optional case number, court name (plain words — it does not have to be a Court on the roster), date, citation, and the text.</p>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; Draft
+    Draft --&gt; Final: You finalize
+    Final --&gt; Draft: You unlock
+    Draft --&gt; [*]: You may delete a draft</div>
+<h2>Finalize</h2>
+<p>Finalizing <strong>locks the words</strong>: title, numbers, dates, citation, body. You can still:</p>
+<ul>
+<li>toggle <strong>discoverable</strong></li>
+<li>add tags</li>
+<li>attach files</li>
+</ul>
+<p>Pin the judgment onto a matter from the matter’s <strong>Judgments</strong> tab (not from this page). Quick Code associations are not editable in the screens yet.</p>
+<p>You cannot delete a final judgment until you unlock it back to draft. Unlock first, edit in a <strong>separate</strong> save. The system will refuse a single save that both unlocks and rewrites the text — that would be a back door.</p>
+<h2>Discoverable</h2>
+<p>Off (default): only you.</p>
+<p>On: every signed-in magistrate may <strong>read</strong>. They still cannot edit, delete, or take it over.</p>
+<p>This is <em>not</em> making it canonical case law. It is not publishing to the world. It is &quot;colleagues may look this up&quot;.</p>
+<h2>Link to a docket matter</h2>
+<p>From the matter&#x27;s <strong>Judgments</strong> tab, pin a judgment <strong>you own</strong>. Being able to read a colleague&#x27;s discoverable judgment is not enough to pin it.</p>
+<p>A magistrate who later sits that Court will see the matter. They will <strong>not</strong> automatically see your private judgment. The pin does not hand them the volume.</p>
+<h2>Leaving a Court</h2>
+<p>Your judgments stay yours. The new magistrate gets the docket, not your prose.</p>
+<h2>Administrator</h2>
+<p>Admin cannot open your private judgment. There is no &quot;break glass&quot; button for judicial writing.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

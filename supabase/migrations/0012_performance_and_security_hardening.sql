@@ -1,4 +1,4 @@
--- BenchBook — performance & security hardening
+-- Magistrate Wizard — performance & security hardening
 -- Addresses Supabase advisor findings after the initial 11 migrations:
 --   1. set_updated_at() had a mutable search_path.
 --   2. Trigger-only functions were callable directly via PostgREST RPC.

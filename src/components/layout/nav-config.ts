@@ -12,15 +12,36 @@ import {
   LibraryBig,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
+import type { UserRole } from "@/lib/constants";
 import type { NavItem } from "@/types";
 
+export type NavGroupId = "court" | "research" | "workbench" | "admin";
+
+export interface AppNavItem extends NavItem {
+  group?: NavGroupId;
+}
+
+export const NAV_GROUP_ORDER: NavGroupId[] = [
+  "court",
+  "research",
+  "workbench",
+  "admin",
+];
+
+export const NAV_GROUP_LABELS: Record<NavGroupId, string> = {
+  court: "Court",
+  research: "Research",
+  workbench: "My work",
+  admin: "Administration",
+};
+
 /**
- * Primary sidebar navigation. Extend this list as feature areas (Case
- * Law research, Bench Notes, Quick Codes, etc.) are built in later
- * phases — the sidebar and mobile nav both render from this single
- * source.
+ * Primary navigation. Sidebar, top bar, and the mobile hamburger all
+ * render from this list. `group` is how the hamburger (and the desktop
+ * More menu) clusters destinations so a magistrate can scan by job,
+ * not by a flat dump of every route.
  */
-export const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: AppNavItem[] = [
   {
     label: "Dashboard",
     href: ROUTES.dashboard,
@@ -30,52 +51,85 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Docket",
     href: ROUTES.docket,
     icon: Gavel,
+    group: "court",
   },
   {
     label: "Judgments",
     href: ROUTES.judgments,
     icon: Scale,
+    group: "court",
   },
   {
     label: "Case Law",
     href: ROUTES.caseLaw,
     icon: BookOpen,
+    group: "research",
   },
   {
     label: "Legislation",
     href: ROUTES.legislation,
     icon: ScrollText,
-  },
-  {
-    label: "Quick Codes",
-    href: ROUTES.quickCodes,
-    icon: Braces,
+    group: "research",
   },
   {
     label: "Bench Notes",
     href: ROUTES.benchNotes,
     icon: StickyNote,
+    group: "workbench",
+  },
+  {
+    label: "Quick Codes",
+    href: ROUTES.quickCodes,
+    icon: Braces,
+    group: "workbench",
   },
   {
     label: "Bookmarks",
     href: ROUTES.bookmarks,
     icon: Bookmark,
+    group: "workbench",
   },
   {
     label: "Search",
     href: ROUTES.search,
     icon: Search,
+    group: "workbench",
   },
   {
     label: "Court Assignments",
     href: ROUTES.adminCourtAssignments,
     icon: Landmark,
     roles: ["admin"],
+    group: "admin",
   },
   {
     label: "Legal Library",
     href: ROUTES.adminLegalLibrary,
     icon: LibraryBig,
     roles: ["admin"],
+    group: "admin",
   },
 ];
+
+export const navItemLabel = (item: AppNavItem) =>
+  item.label === "Dashboard" ? "Home" : item.label;
+
+export const visibleNavItems = (items: AppNavItem[], role?: UserRole | null) =>
+  items.filter((item) => !item.roles || (role != null && item.roles.includes(role)));
+
+export interface NavSection {
+  id: NavGroupId;
+  label: string;
+  items: AppNavItem[];
+}
+
+export const groupNavItems = (items: AppNavItem[]) => {
+  const ungrouped = items.filter((item) => !item.group);
+  const groups: NavSection[] = NAV_GROUP_ORDER.map((id) => ({
+    id,
+    label: NAV_GROUP_LABELS[id],
+    items: items.filter((item) => item.group === id),
+  })).filter((section) => section.items.length > 0);
+
+  return { ungrouped, groups };
+};

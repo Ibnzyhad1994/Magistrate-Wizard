@@ -1,4 +1,4 @@
--- BenchBook — full-text search RPCs
+-- Magistrate Wizard — full-text search RPCs
 -- Thin wrappers around the generated `search_vector` columns added in
 -- earlier migrations. All are `security invoker` (the default for SQL
 -- functions) so normal RLS applies to the querying user; the explicit

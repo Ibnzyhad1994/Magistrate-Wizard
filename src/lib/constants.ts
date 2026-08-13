@@ -8,8 +8,8 @@ export const APP_DESCRIPTION =
   "A legal knowledge management platform for magistrates.";
 
 export const LOCAL_STORAGE_KEYS = {
-  theme: "benchbook-theme",
-  sidebarCollapsed: "benchbook-sidebar-collapsed",
+  theme: "magistrate-wizard-theme",
+  sidebarCollapsed: "magistrate-wizard-sidebar-collapsed",
 } as const;
 
 export const QUERY_STALE_TIME_MS = 30_000;

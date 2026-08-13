@@ -21,6 +21,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storageKey: "benchbook-auth",
+    storageKey: "magistrate-wizard-auth",
   },
 });

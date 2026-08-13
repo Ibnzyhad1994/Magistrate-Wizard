@@ -1,4 +1,4 @@
--- BenchBook — Docket Matter Assignments (retained/part-heard access)
+-- Magistrate Wizard — Docket Matter Assignments (retained/part-heard access)
 -- NOT the ordinary Docket access mechanism — that remains
 -- magistrate_courts / can_access_court(). This table is an exceptional,
 -- matter-specific access grant: a magistrate preserving access to a

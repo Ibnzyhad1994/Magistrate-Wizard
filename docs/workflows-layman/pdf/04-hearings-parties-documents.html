@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Hearings Parties Documents</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Hearings Parties Documents</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>4. Hearings, parties, and documents</h1>
+<p><strong>Who:</strong> anyone with edit access to the matter (Court sitting, retain, or an <strong>edit</strong> share)</p>
+<p><strong>Goal:</strong> record who appeared, when they must return, and what was filed</p>
+<h2>Hearings (Events)</h2>
+<p>A matter lasts. Hearings stack up: first appearance, adjournment, trial, review.</p>
+<ol>
+<li>Open the matter → <strong>Events</strong>.</li>
+<li>Add an event.</li>
+<li><strong>Date is required.</strong> Time may wait until the list is settled.</li>
+<li>Optionally note type, stage, what was ordered <em>that day</em>, and free notes.</li>
+</ol>
+<p>&quot;Next appearance&quot; is not a separate field. The system looks at the dated events. If you reschedule, change the event — do not keep a stale &quot;next date&quot; on the folder cover.</p>
+<div class="mermaid">flowchart LR
+    M[Matter] --&gt; E1[15 Mar — first appearance]
+    M --&gt; E2[12 Apr — trial]
+    M --&gt; E3[3 May — sentence]
+    E2 -.-&gt;|Outlook, later| Cal[Calendar app]</div>
+<p>Outlook, when it arrives, may copy <strong>dates</strong>. It will not be allowed to rewrite the charge or the orders.</p>
+<p>The name of who presided is recorded as history. It is not a permission. Sitting the Court is what grants permission.</p>
+<h2>Parties</h2>
+<ol>
+<li>Open <strong>Parties</strong>.</li>
+<li>Add a name, a <strong>party type</strong>, and a <strong>role</strong> (they are different vocabularies — type is who they are in the proceeding; role is the part they play).</li>
+<li>Names are not unique. Two &quot;John Singh&quot; rows are allowed; people are not identifiers.</li>
+<li>Do not &quot;delete&quot; a party to rewrite history. Status is used instead.</li>
+<li>You may attach an <strong>identification photograph</strong>. It can be shown on the party list and reused as the matter cover.</li>
+</ol>
+<p>Contact details stay in the form — they are not splashed on the list the way a photo may be.</p>
+<h2>Documents</h2>
+<p>Attachments follow the <strong>folder they hang on</strong>:</p>
+<ul>
+<li>On a matter → anyone with that matter</li>
+<li>On your judgment → you (and readers if you made it discoverable)</li>
+<li>On library case law → follows whether that entry is published / yours / discoverable</li>
+</ul>
+<p>Upload PDFs, images, Word, Markdown, or text files into the private documents store. The app then shows a time-limited view. There is no public download page.</p>
+<p>Identification photos and covers are documents too, marked so they do not clutter the ordinary attachments list.</p>
+<h2>Tags on a matter</h2>
+<p>Matter tags are <strong>institutional</strong>. The next magistrate at that Court will see &quot;urgent&quot;. They are not your private &quot;read on Friday&quot; label. Private labels are a future feature and must not piggy-back on these tags.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

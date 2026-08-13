@@ -13,14 +13,10 @@ import {
   extractCaseLawMetadataWithConfidence,
   extractCaseNameFromFilename,
   normalizeWhitespace,
-  readFileAsText,
+  shouldAutoFillCaseName,
 } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored, type CourtLike } from "@/lib/legal-taxonomy-match";
-import {
-  runPdfExtractionPipeline,
-  buildTextFileEnvelope,
-  emptyExtractionEnvelope,
-} from "@/lib/extraction-pipeline";
+import { ingestDocument } from "@/lib/ingest-document";
 import { useIngestCaseLaw } from "@/hooks/legal-library/use-import-jobs";
 import { uploadDocumentToEntity } from "@/hooks/use-documents";
 import {
@@ -35,7 +31,7 @@ import { sha256File } from "@/lib/legal-extraction";
 /**
  * Bulk Case Law ingestion orchestration (PRODUCTION DOCUMENT INGESTION
  * PHASE, Sections 10-18). Deliberately reuses the EXACT SAME per-file
- * primitives the single-file New Import flow uses (runPdfExtractionPipeline,
+ * primitives the single-file New Import flow uses (ingestDocument,
  * extractCaseLawMetadataWithConfidence, matchCanonicalCourtScored,
  * useIngestCaseLaw's create_case_law_import RPC call) rather than a
  * parallel reimplementation — bulk mode is "run the already-correct
@@ -130,15 +126,7 @@ export function useBulkImportCaseLaw() {
       }
 
       patchItem(item.id, { status: "extracting" });
-      const lowerName = item.file.name.toLowerCase();
-      const isPdf = item.file.type === "application/pdf" || lowerName.endsWith(".pdf");
-      const isTxt = item.file.type === "text/plain" || lowerName.endsWith(".txt");
-
-      const envelope = isTxt
-        ? buildTextFileEnvelope(await readFileAsText(item.file))
-        : isPdf
-          ? await runPdfExtractionPipeline(item.file)
-          : emptyExtractionEnvelope();
+      const envelope = await ingestDocument(item.file);
 
       let caseName: string | undefined;
       /** Provenance for `caseName` (Section 16/17/35-J) — never left ambiguous. Recorded on the created draft's `_metadataConfidence.caseNameSource` so the Review Queue can show "proposed from filename, please verify" rather than presenting a filename guess as if it came from the document itself. */
@@ -155,7 +143,7 @@ export function useBulkImportCaseLaw() {
         const pages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
         const normalizedText = normalizeWhitespace(envelope.text);
         const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(normalizedText, pages);
-        if (caseNameConfidence === "high" && fields.case_name) {
+        if (shouldAutoFillCaseName(caseNameConfidence, envelope.ocrUsed) && fields.case_name) {
           caseName = fields.case_name;
           caseNameSource = "document";
         }
@@ -281,7 +269,12 @@ export function useBulkImportCaseLaw() {
       });
 
       const needsReview =
-        !caseName || !courtId || !jurisdictionId || envelope.status === "low_quality" || envelope.status === "requires_ocr";
+        !caseName ||
+        !courtId ||
+        !jurisdictionId ||
+        envelope.status === "low_quality" ||
+        envelope.status === "requires_ocr" ||
+        envelope.ocrUsed
       patchItem(item.id, {
         status: needsReview ? "needs_review" : "ready",
         caseLawId: result.caseLawId,

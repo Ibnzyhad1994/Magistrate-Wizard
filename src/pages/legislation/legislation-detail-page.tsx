@@ -141,6 +141,7 @@ export default function LegislationDetailPage() {
   return (
     <>
       <Billboard
+        variant="detail"
         eyebrow={statute.code}
         title={statute.title}
         description={
@@ -166,7 +167,7 @@ export default function LegislationDetailPage() {
         tone="legislation"
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
       />
-      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
+      <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant="canonical">Canonical</Badge>
           {statute.review_status !== "published" && (

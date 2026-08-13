@@ -1,4 +1,4 @@
--- BenchBook — Docket Matter Parties (structured party/participant identity)
+-- Magistrate Wizard — Docket Matter Parties (structured party/participant identity)
 -- One docket_matter_parties row represents a party/participant identity
 -- associated with one Docket Matter — structured identification of the
 -- persons or entities involved in the proceeding. This does NOT replace
@@ -29,7 +29,7 @@
 -- enum (case_parties.role) — this is a separate, independent vocabulary
 -- for the Court-Anchored Docket model. witness is deliberately NOT
 -- included in the role vocabulary: a witness is not ordinarily a party
--- to the proceeding and would be modeled separately if/when BenchBook
+-- to the proceeding and would be modeled separately if/when Magistrate Wizard
 -- gains structured witness functionality. No prosecution/police/counsel
 -- roles are added here either, merely to fill perceived gaps —
 -- representation/prosecution can be designed separately later, not

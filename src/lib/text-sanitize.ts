@@ -4,7 +4,7 @@
  * jsonb column) or the extraction quality gate.
  *
  * ROOT CAUSE of the observed "unsupported Unicode sequence" failures
- * (BenchBook holistic ingestion repair pass): the dependency-free PDF
+ * (Magistrate Wizard holistic ingestion repair pass): the dependency-free PDF
  * parser decodes raw PDF bytes as latin1 (byte-for-byte, so every byte
  * 0x00-0xFF becomes one JS UTF-16 code unit — see pdf-text-extraction.ts).
  * When a stream this parser mistakenly treats as text is actually binary

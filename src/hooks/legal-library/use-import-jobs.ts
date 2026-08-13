@@ -11,6 +11,7 @@ import {
   proposeTags,
   sha256File,
   sha256Text,
+  shouldAutoFillCaseName,
 } from "@/lib/legal-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
 import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
@@ -616,7 +617,7 @@ export function useIngestCaseLaw() {
       const { data, error } = await supabase.rpc("create_case_law_import", {
         p_case_name:
           input.known.case_name ??
-          (extraction.caseNameConfidence === "high" ? proposed.case_name : undefined) ??
+          (shouldAutoFillCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? proposed.case_name : undefined) ??
           "Untitled (pending review)",
         p_citation: input.known.citation,
         p_court: input.known.court,
@@ -647,7 +648,7 @@ export function useIngestCaseLaw() {
             // came from a human typing into the form.
             caseNameSource:
               input.known.case_name_source ??
-              (input.known.case_name ? "curator" : extraction.caseNameConfidence === "high" ? "document" : undefined),
+              (input.known.case_name ? "curator" : shouldAutoFillCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? "document" : undefined),
           },
         } as unknown as Json,
         p_proposed_tags: tags,

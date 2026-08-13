@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Sharing And Retained</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Sharing And Retained</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>5. Sharing and retained matters</h1>
+<p>Two different kindnesses. Do not mix them up.</p>
+<table>
+<tr><th></th><th><strong>Share</strong></th><th><strong>Retain (part-heard)</strong></th></tr>
+<tr><td>When</td><td>A colleague needs this <em>one</em> file for a short consultation</td><td>You are leaving the Court but this matter is still yours to finish</td></tr>
+<tr><td>Who grants it</td><td>Anyone who already has Court or retained access</td><td>Only <strong>you</strong>, and only <strong>for yourself</strong>, while you still sit the Court</td></tr>
+<tr><td>How wide</td><td>One named person</td><td>One named person — you</td></tr>
+<tr><td>How it ends</td><td>Revoke, or they give it back</td><td>You end it, or completing/archiving the matter ends it</td></tr>
+<tr><td>Typical story</td><td>&quot;Please look at this maintenance file with me.&quot;</td><td>&quot;I started the trial; I will finish it after I move.&quot;</td></tr>
+</table>
+<div class="mermaid">flowchart TB
+    subgraph Share[&quot;Share — exceptional&quot;]
+        S1[You have the Court keys] --&gt; S2[Invite colleague by email]
+        S2 --&gt; S3{View or Edit?}
+        S3 --&gt; S4[They see this matter]
+        S4 --&gt; S5[Revoke when done]
+    end
+
+    subgraph Retain[&quot;Retain — succession of the hearing, not the Court&quot;]
+        R1[You still sit the Court] --&gt; R2[Retain this matter]
+        R2 --&gt; R3[Admin later ends your sitting]
+        R3 --&gt; R4[You keep this file only]
+        R4 --&gt; R5[New magistrate also sees it]
+    end</div>
+<h2>How to share</h2>
+<ol>
+<li>Open the matter → <strong>Sharing</strong>.</li>
+<li>Enter the colleague&#x27;s <strong>exact account email</strong>.</li>
+<li>Choose <strong>view</strong> (read) or <strong>edit</strong> (they may update the file the way a sitting magistrate would, with the limits described below).</li>
+<li>They cannot pass the share on.</li>
+<li>To change view into edit: revoke, then share again. The old row stays as history.</li>
+</ol>
+<p>If the page says you cannot share, you only have a <em>view</em> share yourself, or you no longer have Court/retained authority.</p>
+<p><strong>View</strong> lets them read the matter, events, parties, and tags. It does not let them pin a Judgment or Case Law card. <strong>Edit</strong> lets them change the file, but still does not open a Judgment they do not own, and still cannot pin Judgment or Case Law (that needs Court or retained keys).</p>
+<p>The Sharing screen may still <em>show</em> Save buttons to a view-only colleague. If they try, the save fails. The lock is in the database, not a greyed-out form.</p>
+<h2>How to retain</h2>
+<ol>
+<li>While you <strong>still sit</strong> the Court, open Overview.</li>
+<li>Choose <strong>Retain this matter</strong>.</li>
+<li>You cannot retain a file for someone else. You cannot retain a file at a Court you do not currently sit.</li>
+</ol>
+<p>After your sitting ends, the matter stays on your Dashboard under <strong>Retained / Part-Heard</strong>. When the matter is completed or archived, the retain ends by itself. A stay does <strong>not</strong> end it — a paused trial may resume in your hands.</p>
+<h2>Offboarding</h2>
+<p>Before a magistrate leaves office:</p>
+<ol>
+<li>They retain any part-heard files <em>first</em>.</li>
+<li>Administrator ends Court sittings.</li>
+<li>Remaining live retains are ended when the work is truly handed on.</li>
+<li>Keep the person&#x27;s name in the system. Deleting the profile is an emergency, not a retirement party.</li>
+</ol>
+<h2>Related</h2>
+<p>Court keys: <a href="02-court-assignment.md">Court assignment</a>.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

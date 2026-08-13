@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="t d">
+  <title id="t">Three paths onto a Docket Matter</title>
+  <desc id="d">Court assignment, retained part-heard assignment, and explicit share all OR together. Admin is not a path.</desc>
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="56" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">How someone opens a Docket Matter</text>
+  <text x="64" y="86" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">Three lawful paths. Any one is enough. Administrator is not a fourth path.</text>
+
+  <!-- Matter -->
+  <rect x="490" y="300" width="300" height="100" rx="12" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="640" y="340" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#1e3a5f" font-weight="700">Docket Matter</text>
+  <text x="640" y="366" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Belongs to the Court, not a person</text>
+
+  <!-- Path 1 Court -->
+  <rect x="64" y="160" width="280" height="88" rx="10" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/>
+  <text x="204" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#9a3412" font-weight="700">1  ·  Current Court sitting</text>
+  <text x="204" y="218" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#9a3412">magistrate_courts  ·  ended_at empty</text>
+  <path d="M344 204 L490 330" fill="none" stroke="#c2410c" stroke-width="2.5" marker-end="url(#arr1)"/>
+
+  <!-- Path 2 Retained -->
+  <rect x="64" y="316" width="280" height="88" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+  <text x="204" y="350" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#92400e" font-weight="700">2  ·  Retained / part-heard</text>
+  <text x="204" y="374" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#92400e">this one matter only  ·  self-granted</text>
+  <path d="M344 360 L490 350" fill="none" stroke="#b45309" stroke-width="2.5" marker-end="url(#arr2)"/>
+
+  <!-- Path 3 Share -->
+  <rect x="64" y="472" width="280" height="88" rx="10" fill="#ddd6fe" stroke="#6d28d9" stroke-width="2"/>
+  <text x="204" y="506" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#5b21b6" font-weight="700">3  ·  Named share</text>
+  <text x="204" y="530" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5b21b6">view or edit  ·  revoked_at empty</text>
+  <path d="M344 516 L490 370" fill="none" stroke="#6d28d9" stroke-width="2.5" marker-end="url(#arr3)"/>
+
+  <!-- OR badge -->
+  <circle cx="430" cy="350" r="22" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="430" y="356" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e3a5f" font-weight="700">OR</text>
+
+  <!-- Admin blocked -->
+  <rect x="900" y="160" width="300" height="88" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="1050" y="194" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" fill="#991b1b" font-weight="700">Administrator role</text>
+  <text x="1050" y="218" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#991b1b">Roster and library only - no back door</text>
+  <path d="M1050 248 L1050 300" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="1050" y="292" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#dc2626" font-weight="700">-</text>
+
+  <!-- Children inherit -->
+  <rect x="860" y="430" width="360" height="150" rx="12" fill="#f8fafc" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="1040" y="462" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e40af" font-weight="700">These inherit the same three paths</text>
+  <text x="1040" y="492" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Hearings  ·  Parties  ·  Matter tags  ·  Documents</text>
+  <text x="1040" y="518" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">Judgment and Case Law pins still need</text>
+  <text x="1040" y="540" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#374151">independent access to both sides</text>
+
+  <path d="M790 350 L860 490" fill="none" stroke="#1e3a5f" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+  <text x="64" y="680" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Magistrate Wizard  ·  Court-Anchored Docket  ·  can_access_court OR has_retained_assignment OR has_docket_share</text>
+
+  <defs>
+    <marker id="arr1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#c2410c"/></marker>
+    <marker id="arr2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#b45309"/></marker>
+    <marker id="arr3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#6d28d9"/></marker>
+    <marker id="arr4" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1e3a5f"/></marker>
+  </defs>
+</svg>

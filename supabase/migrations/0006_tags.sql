@@ -1,4 +1,4 @@
--- BenchBook — tags
+-- Magistrate Wizard — tags
 -- A single shared `tags` vocabulary with per-entity join tables (rather
 -- than a polymorphic tags-to-anything table) so each association keeps a
 -- real foreign key and can carry its own RLS policy.

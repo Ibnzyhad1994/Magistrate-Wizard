@@ -1,4 +1,4 @@
--- BenchBook — magistrate/court assignments
+-- Magistrate Wizard — magistrate/court assignments
 -- Represents which magistrates currently sit, or historically sat, at
 -- which Magistrates' Courts. This is the mechanism that grants ordinary
 -- operational access to a Court's Docket (see docket_matters, a later

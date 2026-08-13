@@ -195,7 +195,7 @@
 --     constraint's own commentary for why it is written to exempt rows
 --     where either identity has already been nulled by offboarding.
 --
--- RECIPIENT MODEL: registered BenchBook users only (profiles.id). No
+-- RECIPIENT MODEL: registered Magistrate Wizard users only (profiles.id). No
 -- external/email/public-link sharing exists or is invented here.
 --
 -- PERMISSION MODEL: exactly two levels, 'view' and 'edit', constrained

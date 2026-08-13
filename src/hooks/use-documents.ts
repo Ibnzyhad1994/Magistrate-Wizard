@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { inferStoredMimeType } from "@/lib/ingest-source";
 
 const key = (entityType: string, entityId: string) =>
   ["documents", entityType, entityId] as const;
@@ -61,9 +62,10 @@ export async function uploadDocumentToEntity(
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${user.id}/${entityType}/${entityId}/${Date.now()}-${safeName}`;
 
+  const mimeType = inferStoredMimeType(file)
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
-    .upload(path, file, { upsert: false });
+    .upload(path, file, { upsert: false, contentType: mimeType });
   if (uploadError) throw uploadError;
 
   const { data, error } = await supabase
@@ -73,7 +75,7 @@ export async function uploadDocumentToEntity(
       file_name: file.name,
       file_path: path,
       file_size: file.size,
-      mime_type: file.type || "application/octet-stream",
+      mime_type: mimeType,
       entity_type: entityType,
       entity_id: entityId,
       purpose,

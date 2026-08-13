@@ -1,4 +1,4 @@
--- BenchBook — seed Guyana Magistrates' Courts (operational units)
+-- Magistrate Wizard — seed Guyana Magistrates' Courts (operational units)
 -- Seeds the verified, researched list of Guyana's operational
 -- Magistrates' Courts, each linked to its Magisterial District.
 --

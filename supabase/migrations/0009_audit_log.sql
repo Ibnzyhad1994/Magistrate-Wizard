@@ -1,4 +1,4 @@
--- BenchBook — audit log
+-- Magistrate Wizard — audit log
 -- Append-only trail of inserts/updates/deletes on the tables that matter
 -- most for compliance review (cases, bench notes, the reference library,
 -- and document metadata). `audit_trigger_fn()` is generic and can be

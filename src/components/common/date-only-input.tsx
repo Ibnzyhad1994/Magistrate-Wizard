@@ -26,7 +26,7 @@ const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
  * / OS regional settings) — this is not something app code, CSS, or an
  * HTML attribute can override. A magistrate on a browser/OS configured
  * for `en-US` would see MM/DD/YYYY regardless of anything built into
- * BenchBook, silently reintroducing the exact day/month confusion this
+ * Magistrate Wizard, silently reintroducing the exact day/month confusion this
  * whole date-handling pass exists to eliminate. So this is a fully
  * custom, controlled DD/MM/YYYY text field (typed-digit masking +
  * strict calendar validation, see `maskDDMMYYYY`/`parseDDMMYYYYToISO`
@@ -93,7 +93,8 @@ export function DateOnlyInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  function handleTextChange(raw: string) {
+  const handleTextChange = (raw: string) => {
+    setOpen(false);
     const masked = maskDDMMYYYY(raw);
     setText(masked);
     if (masked === "") {
@@ -112,7 +113,7 @@ export function DateOnlyInput({
     } else {
       setInvalid(false);
     }
-  }
+  };
 
   function handleBlur() {
     if (text && text.length < 10) setInvalid(true);
@@ -145,7 +146,6 @@ export function DateOnlyInput({
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
           onBlur={handleBlur}
-          onFocus={() => setOpen(true)}
           disabled={disabled}
           placeholder="DD/MM/YYYY"
           inputMode="numeric"
@@ -159,7 +159,9 @@ export function DateOnlyInput({
           disabled={disabled}
           onClick={() => setOpen((v) => !v)}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-          aria-label="Open calendar"
+          aria-label={open ? "Close calendar" : "Open calendar"}
+          aria-expanded={open}
+          aria-haspopup="dialog"
         >
           <CalendarIcon className="h-4 w-4" />
         </button>

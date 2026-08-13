@@ -1,5 +1,5 @@
 import { LoadingSpinner } from "@/components/common/loading-spinner";
-import { APP_NAME } from "@/lib/constants";
+import { AppLogo } from "@/components/brand/app-logo";
 
 interface PageLoaderProps {
   label?: string;
@@ -16,9 +16,7 @@ export function PageLoader({ label = "Loading..." }: PageLoaderProps) {
         className="pointer-events-none absolute inset-0 bg-[#141414]"
         aria-hidden="true"
       />
-      <span className="relative z-10 text-2xl font-extrabold tracking-tight text-primary">
-        {APP_NAME}
-      </span>
+      <AppLogo size="lg" className="relative z-10" />
       <div className="relative z-10 flex items-center gap-2 text-sm text-white/70">
         <LoadingSpinner className="text-white/70" size={16} />
         <span>{label}</span>

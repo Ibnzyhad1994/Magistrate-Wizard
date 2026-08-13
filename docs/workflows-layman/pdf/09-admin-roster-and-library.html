@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Admin Roster And Library</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Admin Roster And Library</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>9. Admin: roster and library</h1>
+<p><strong>Who:</strong> users with the administrator role</p>
+<p><strong>Goal:</strong> seat magistrates, and publish clean law into the shared library</p>
+<p><strong>What this is not:</strong> a window into other magistrates&#x27; private judgments, notes, or snippets</p>
+<h2>Court Assignments</h2>
+<p>Covered in <a href="02-court-assignment.md">Court assignment</a>. Recap:</p>
+<ul>
+<li>Only admin can create or end a sitting.</li>
+<li>Ending a sitting does not delete the Court&#x27;s files.</li>
+<li>Admin still needs their <em>own</em> sitting to work a docket.</li>
+</ul>
+<h2>Legal Library workspace</h2>
+<p>Open <strong>Legal Library</strong>. Typical tabs:</p>
+<ol>
+<li><strong>Sources</strong> — a register of places law <em>might</em> come from. Saving a source does <strong>not</strong> download anything. There is no crawler yet.</li>
+<li><strong>New Import</strong> — one document at a time.</li>
+<li><strong>Review Queue</strong> — drafts waiting for a human.</li>
+<li><strong>Batches</strong> — bulk import history. Every file should leave a trail, including duplicates.</li>
+</ol>
+<div class="mermaid">flowchart LR
+    File[Upload or paste text] --&gt; Draft[Hidden draft in the library]
+    Draft --&gt; Human[You correct names, court, jurisdiction, tags]
+    Human --&gt; Pub{Publish?}
+    Pub --&gt;|Still titled Untitled| No[System refuses]
+    Pub --&gt;|Complete| Yes[Magistrates can now read it]</div>
+<h2>Honest limits (do not over-claim to users)</h2>
+<table>
+<tr><th>Feature</th><th>Today</th></tr>
+<tr><td><code>.txt</code> / Markdown auto-read</td><td>Yes</td></tr>
+<tr><td>PDF / Word text</td><td>Text-layer PDFs extracted automatically; scanned PDFs and images recognized locally; <code>.docx</code> extracted in the browser. Word 97–2003 (<code>.doc</code>) still needs paste or a <code>.docx</code> copy</td></tr>
+<tr><td>Fetch from a URL</td><td>Not built</td></tr>
+<tr><td>OCR of scans</td><td>Built in the browser: scanned PDFs and images are recognized locally with Tesseract. Always verify the text before publishing</td></tr>
+<tr><td>In-app preview</td><td>PDFs, images, text, Markdown, and <code>.docx</code> can be opened in the documents viewer. <code>.doc</code> is download-only</td></tr>
+<tr><td>AI classifying issues</td><td>Not built — keyword suggestions only</td></tr>
+<tr><td>Duplicate file</td><td>Recorded as <strong>duplicate</strong>, not as a failure</td></tr>
+<tr><td>Same citation, different scan</td><td>Attached to the <em>existing</em> case as another source file</td></tr>
+</table>
+<h2>Publish checklist (Case Law)</h2>
+<p>The system will refuse to publish placeholder shells. You need a real name, citation, jurisdiction, and deciding court — not &quot;Untitled (pending review)&quot;.</p>
+<p>Legislation needs a real title, code, and jurisdiction.</p>
+<h2>Drafts stay invisible</h2>
+<p>A magistrate searching Case Law during your review will not stumble on a half-imported fixture. That is intentional.</p>
+<h2>Tags</h2>
+<p>Proposed tags are suggestions. Nothing is applied until you save tags on the review card. Matching is by name so &quot;Hearsay&quot; and &quot;hearsay&quot; do not become two topics.</p>
+<h2>Two &quot;courts&quot; again</h2>
+<p>When you set <strong>deciding court</strong> on a case, you are picking from the <em>reported authorities</em> list (CCJ, High Court, …). You are not picking a Magistrates&#x27; Court from the docket roster.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

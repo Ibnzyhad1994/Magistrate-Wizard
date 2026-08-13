@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { APP_NAME } from "@/lib/constants";
+import { AppLogo } from "@/components/brand/app-logo";
 
 /**
  * Public/unauthenticated shell (login, register, forgot password).
@@ -19,9 +19,7 @@ export function AuthLayout() {
       </div>
 
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
-        <span className="text-2xl font-extrabold tracking-tight text-primary sm:text-[1.75rem]">
-          {APP_NAME}
-        </span>
+        <AppLogo size="lg" />
       </header>
 
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-8">

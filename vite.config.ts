@@ -19,9 +19,10 @@ export default defineConfig({
   preview: {
     port: 4173,
   },
-  build: {
-    outDir: "dist",
-    sourcemap: true,
-    target: "es2020",
+  optimizeDeps: {
+    include: ["pdfjs-dist", "tesseract.js"],
+  },
+  worker: {
+    format: "es",
   },
 });

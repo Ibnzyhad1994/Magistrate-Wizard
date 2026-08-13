@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { ChevronLeft, Scale } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/ui-store";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
-import { APP_NAME } from "@/lib/constants";
+import { AppLogo } from "@/components/brand/app-logo";
 
 /**
  * Persistent desktop sidebar. Collapses to an icon rail (state persisted
@@ -31,12 +31,11 @@ export function Sidebar() {
         sidebarCollapsed ? "w-16" : "w-64",
       )}
     >
-      <div className="flex h-14 items-center gap-2 px-4">
-        <Scale className="h-5 w-5 shrink-0" aria-hidden="true" />
-        {!sidebarCollapsed && (
-          <span className="truncate text-sm font-semibold tracking-tight">
-            {APP_NAME}
-          </span>
+      <div className="flex h-14 items-center gap-2 px-3">
+        {sidebarCollapsed ? (
+          <AppLogo size="sm" markOnly className="mx-auto" />
+        ) : (
+          <AppLogo size="sm" />
         )}
       </div>
 

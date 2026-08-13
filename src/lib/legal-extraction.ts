@@ -9,16 +9,12 @@ import { LEGAL_TAXONOMY_TOPICS } from "@/lib/legal-taxonomy";
  * reliably perform" (hashing, citation-pattern detection, section-number
  * parsing, date normalization, whitespace cleanup, keyword tagging).
  *
- * IMPORTANT HONESTY NOTE: there is no PDF/DOCX text-extraction library
- * available in this build (no npm registry access in this project's
- * sandbox to add pdfjs-dist or similar, and no verified server-side
- * extraction service). So "Document text" for a PDF/DOCX upload is
- * supplied by the curator (pasted, e.g. copied from the in-app PDF
- * viewer open alongside this form) rather than auto-extracted. A .txt
- * upload IS read automatically (see readFileAsText). Everything
- * DOWNSTREAM of having that text — hashing, structuring, classification,
- * duplicate detection — is fully automatic. This distinction is
- * surfaced in the ingestion UI, never silently glossed over.
+ * IMPORTANT HONESTY NOTE: document text for a PDF comes from
+ * `runPdfExtractionPipeline` (text layer first, then local Tesseract OCR
+ * for scans). `.txt`, Markdown, and `.docx` are read automatically.
+ * Curator paste remains available when extraction cannot produce usable
+ * text. Everything DOWNSTREAM of having that text — hashing, structuring,
+ * classification, duplicate detection — is fully automatic.
  */
 
 // ---------------------------------------------------------------------------
@@ -44,14 +40,9 @@ async function sha256Bytes(buffer: ArrayBuffer): Promise<string> {
     .join("");
 }
 
-/** Reads a .txt file's contents as a string. Only reliable, automatic text source available client-side (no PDF/DOCX parser in this build — see file header). */
+/** Reads a text-like File as UTF-8. Uses the Blob `text()` API so the same path works in the browser and in Node tests. */
 export function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read file."));
-    reader.readAsText(file);
-  });
+  return file.text();
 }
 
 // ---------------------------------------------------------------------------
@@ -73,11 +64,21 @@ export function normalizeWhitespace(text: string): string {
 // ---------------------------------------------------------------------------
 
 export interface ProposedCaseLawFields {
-  case_name?: string;
-  neutral_citation?: string;
-  reported_citation?: string;
-  decided_date_guess?: string;
+  case_name?: string
+  neutral_citation?: string
+  reported_citation?: string
+  decided_date_guess?: string
 }
+
+/**
+ * OCR text can look like clean prose and still misread a header citation.
+ * High metadata confidence is only trusted for auto-fill when the text
+ * came from a real PDF text layer (or curator paste), never from OCR.
+ */
+export const shouldAutoFillCaseName = (
+  confidence: "high" | "low" | "none" | null | undefined,
+  ocrUsed: boolean,
+): boolean => confidence === "high" && !ocrUsed
 
 /**
  * Medium-neutral citation, e.g. "[1969] SCR 525", "[2015] UKSC 20", or

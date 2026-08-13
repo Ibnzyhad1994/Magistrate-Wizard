@@ -1,4 +1,4 @@
--- BenchBook — index docket_matters.last_updated_by
+-- Magistrate Wizard — index docket_matters.last_updated_by
 -- Addresses the single new performance-advisor finding attributable to
 -- migration 0020: docket_matters_last_updated_by_fkey (the FK from
 -- docket_matters.last_updated_by to profiles.id) had no covering index.

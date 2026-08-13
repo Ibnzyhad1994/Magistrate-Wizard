@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Getting Started</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Getting Started</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>1. Getting started</h1>
+<p><strong>Who:</strong> anyone with a Magistrate Wizard account</p>
+<p><strong>Goal:</strong> sign in and understand the home screen</p>
+<p><strong>Time:</strong> a few minutes</p>
+<h2>Steps</h2>
+<ol>
+<li>Open Magistrate Wizard in a browser.</li>
+<li>If you have no account, use <strong>Register</strong>. You will get a profile. You will <strong>not</strong> yet have a Court.</li>
+<li>If you forgot the password, use <strong>Forgot password</strong>.</li>
+<li>After login you land on the <strong>Dashboard</strong>.</li>
+</ol>
+<div class="mermaid">flowchart LR
+    A[Open Magistrate Wizard] --&gt; B{Have an account?}
+    B --&gt;|No| R[Register]
+    B --&gt;|Yes| L[Log in]
+    R --&gt; D[Dashboard]
+    L --&gt; D
+    D --&gt; E{Assigned to a Court?}
+    E --&gt;|Not yet| W[You can still use the library,&lt;br/&gt;notes, and your own judgments]
+    E --&gt;|Yes| F[Your Courts and today&#x27;s list appear]</div>
+<h2>What you will see on the Dashboard</h2>
+<p>The Dashboard only summarises things you could already open elsewhere. It never shows another Court&#x27;s secret list.</p>
+<p>Typical rows:</p>
+<ul>
+<li><strong>Your current Courts</strong> — where you are seated right now</li>
+<li><strong>Upcoming appearances</strong> — hearing dates still marked scheduled</li>
+<li><strong>Active matters</strong> — docket files in progress</li>
+<li><strong>Retained / part-heard</strong> — matters you kept after leaving a Court</li>
+<li><strong>Your draft and final judgments</strong></li>
+<li><strong>Your quick codes and bench notes</strong></li>
+</ul>
+<h2>Common surprises</h2>
+<table>
+<tr><th>You expected</th><th>What actually happens</th></tr>
+<tr><td>&quot;I registered, so I should see a docket.&quot;</td><td>Registration only creates <em>you</em>. An administrator must seat you at a Court.</td></tr>
+<tr><td>&quot;I am an administrator, so I see every docket.&quot;</td><td>No. Admin tools manage the <em>roster</em> and the <em>library</em>. To work a docket you still need a real Court assignment, like any magistrate.</td></tr>
+<tr><td>&quot;Search will find everything in the system.&quot;</td><td>Search only returns what you are already allowed to open.</td></tr>
+</table>
+<h2>If something goes wrong</h2>
+<ul>
+<li>Wrong password → Forgot password.</li>
+<li>Logged in but sent to <strong>Unauthorized</strong> → you opened an admin page without the admin role.</li>
+<li>Dashboard looks empty → you may be unassigned. You can still open Case Law, Legislation, Judgments, Quick Codes, Bench Notes, Bookmarks, and Search.</li>
+</ul></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

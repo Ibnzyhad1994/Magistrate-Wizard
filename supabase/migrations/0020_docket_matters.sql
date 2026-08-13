@@ -1,4 +1,4 @@
--- BenchBook — Docket Matters (court-anchored foundation)
+-- Magistrate Wizard — Docket Matters (court-anchored foundation)
 -- The operational Docket itself. Court-anchored, per the approved
 -- architecture (Addendum 3 / FINAL spec Revision 3, §4/§14): ordinary
 -- access derives from a CURRENT magistrate_courts assignment to the

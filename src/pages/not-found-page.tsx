@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/constants";
+import { AppLogo } from "@/components/brand/app-logo";
 import { ROUTES } from "@/routes/paths";
 
 export default function NotFoundPage() {
@@ -17,9 +17,9 @@ export default function NotFoundPage() {
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
         <Link
           to={ROUTES.dashboard}
-          className="text-2xl font-extrabold tracking-tight text-primary sm:text-[1.75rem]"
+          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {APP_NAME}
+          <AppLogo size="lg" />
         </Link>
       </header>
 

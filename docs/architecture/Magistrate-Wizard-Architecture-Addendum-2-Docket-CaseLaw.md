@@ -1,4 +1,4 @@
-# BenchBook Architecture Addendum 2 — Docket vs. Case Law
+# Magistrate Wizard Architecture Addendum 2 — Docket vs. Case Law
 
 **Status:** Read-only. Supersedes the "Cases" handling in the original Reconciliation Report (Sections 3, 4, 11, 13) wherever it conflicts with this addendum. No SQL executed, no migrations written or applied, no application code changed, no Git actions taken. Existing migrations 0001–0012 remain untouched. Nothing here is implemented until you approve it.
 
@@ -71,7 +71,7 @@ Related-entity links (documents, judgments, legal authorities, bench notes) are 
 - A unique constraint on `(external_calendar_provider, external_calendar_event_id)` prevents the same Outlook event from being imported twice.
 - Matching an incoming Outlook event to an *existing* matter (vs. creating a new one) is an application-layer concern for later — but it depends on `docket_matters.case_number` staying indexed and clean, which it already is in this design.
 
-This means BenchBook stays authoritative for what a docket matter *is*; Outlook, if and when connected, is just one possible input/output channel for *when things happen* — exactly the boundary you asked for.
+This means Magistrate Wizard stays authoritative for what a docket matter *is*; Outlook, if and when connected, is just one possible input/output channel for *when things happen* — exactly the boundary you asked for.
 
 ---
 

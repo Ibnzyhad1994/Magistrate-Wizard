@@ -2,20 +2,25 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_NAME } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
-import { NAV_ITEMS } from "@/components/layout/nav-config";
+import { NAV_ITEMS, groupNavItems, navItemLabel, visibleNavItems } from "@/components/layout/nav-config";
+import { AppLogo } from "@/components/brand/app-logo";
 import { UserMenu } from "@/components/layout/user-menu";
+import { MobileSearchDialog } from "@/components/layout/mobile-search-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsDesktop } from "@/hooks/use-media-query";
 
 const PRIMARY_HREFS = new Set<string>([
   ROUTES.dashboard,
@@ -35,7 +40,9 @@ export function TopNav() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const mobileNavOpen = useUiStore((state) => state.mobileNavOpen);
   const setMobileNavOpen = useUiStore((state) => state.setMobileNavOpen);
+  const isDesktop = useIsDesktop();
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -56,18 +63,23 @@ export function TopNav() {
     };
   }, []);
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.roles || (profile && item.roles.includes(profile.role)),
-  );
-  const primary = visibleItems.filter((item) => PRIMARY_HREFS.has(item.href as string));
-  const more = visibleItems.filter((item) => !PRIMARY_HREFS.has(item.href as string));
+  const visibleItems = visibleNavItems(NAV_ITEMS, profile?.role);
+  const primary = visibleItems.filter((item) => PRIMARY_HREFS.has(item.href));
+  const more = visibleItems.filter((item) => !PRIMARY_HREFS.has(item.href));
+  const moreGroups = groupNavItems(more).groups;
 
-  function submitSearch(event: React.FormEvent) {
+  const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const trimmed = query.trim();
     navigate(trimmed ? `${ROUTES.search}?q=${encodeURIComponent(trimmed)}` : ROUTES.search);
     setSearchOpen(false);
-  }
+  };
+
+  const handleOpenSearch = () => setSearchOpen(true);
+
+  const handleSearchOpenChange = (open: boolean) => setSearchOpen(open);
+
+  const handleOpenMobileNav = () => setMobileNavOpen(true);
 
   return (
     <header
@@ -83,17 +95,16 @@ export function TopNav() {
         variant="ghost"
         size="icon"
         className="lg:hidden text-white hover:bg-white/10"
-        onClick={() => setMobileNavOpen(true)}
+        onClick={handleOpenMobileNav}
         aria-label="Open navigation"
+        aria-expanded={mobileNavOpen}
+        aria-haspopup="dialog"
       >
         <Menu className="h-6 w-6" />
       </Button>
 
-      <Link
-        to={ROUTES.dashboard}
-        className="shrink-0 text-xl font-extrabold tracking-tight text-primary"
-      >
-        {APP_NAME}
+      <Link to={ROUTES.dashboard} className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <AppLogo size="md" />
       </Link>
 
       <nav className="hidden items-center gap-5 text-sm font-medium text-white/80 lg:flex">
@@ -109,7 +120,7 @@ export function TopNav() {
             }
             end={item.href === ROUTES.dashboard}
           >
-            {item.label === "Dashboard" ? "Home" : item.label}
+            {navItemLabel(item)}
           </NavLink>
         ))}
         {more.length > 0 && (
@@ -117,20 +128,28 @@ export function TopNav() {
             <DropdownMenuTrigger className="text-sm font-medium text-white/80 outline-none hover:text-white">
               More
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="border-white/10 bg-[#181818]">
-              {more.map((item) => (
-                <DropdownMenuItem key={item.href} asChild>
-                  <Link to={item.href}>{item.label}</Link>
-                </DropdownMenuItem>
+            <DropdownMenuContent align="start" className="min-w-[12rem] border-white/10 bg-[#181818]">
+              {moreGroups.map((section, index) => (
+                <DropdownMenuGroup key={section.id}>
+                  {index > 0 ? <DropdownMenuSeparator className="bg-white/10" /> : null}
+                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">
+                    {section.label}
+                  </DropdownMenuLabel>
+                  {section.items.map((item) => (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <Link to={item.href}>{item.label}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
       </nav>
 
-      <div className="ml-auto flex items-center gap-3">
-        {searchOpen ? (
-          <form onSubmit={submitSearch} className="relative">
+      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        {isDesktop && searchOpen ? (
+          <form onSubmit={handleSearchSubmit} className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
             <Input
               autoFocus
@@ -149,14 +168,25 @@ export function TopNav() {
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/10"
-            onClick={() => setSearchOpen(true)}
+            onClick={handleOpenSearch}
             aria-label="Search"
+            aria-haspopup={isDesktop ? undefined : "dialog"}
+            aria-expanded={isDesktop ? undefined : searchOpen}
           >
             <Search className="h-5 w-5" />
           </Button>
         )}
         <UserMenu compact />
       </div>
+      {!isDesktop ? (
+        <MobileSearchDialog
+          open={searchOpen}
+          query={query}
+          onQueryChange={setQuery}
+          onOpenChange={handleSearchOpenChange}
+          onSubmit={handleSearchSubmit}
+        />
+      ) : null}
     </header>
   );
 }

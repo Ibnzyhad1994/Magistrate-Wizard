@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 0063_import_jobs_duplicate_status.sql
 --
--- BenchBook autonomous development/debugging/testing pass -- persistent
+-- Magistrate Wizard autonomous development/debugging/testing pass -- persistent
 -- bulk ingestion lifecycle.
 --
 -- ROOT CAUSE CONFIRMED via direct inspection of the live database

@@ -142,7 +142,7 @@ export function summarizeBulkQueue(items: BulkQueueItem[]): Record<BulkItemStatu
 /** Mirrors the `documents` Storage bucket's `file_size_limit` (supabase/migrations/0011_storage.sql) exactly, so a curator gets a clear client-side rejection instead of a late, confusing Storage-API error for the same limit. */
 export const MAX_FILE_SIZE_BYTES = 26_214_400; // 25 MB
 
-/** Mirrors the `documents` Storage bucket's `allowed_mime_types` (0011_storage.sql) exactly — this is NOT a new security boundary (the bucket itself is the real enforcement point, already in place before this phase), only a proactive UX check so bulk-mode gives per-file feedback immediately rather than after an upload round-trip. */
+/** Mirrors the `documents` Storage bucket's `allowed_mime_types` (0011_storage.sql + 0068_documents_markdown_mime.sql) exactly — this is NOT a new security boundary (the bucket itself is the real enforcement point, already in place before this phase), only a proactive UX check so bulk-mode gives per-file feedback immediately rather than after an upload round-trip. */
 export const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/pdf",
   "image/png",
@@ -151,7 +151,11 @@ export const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "text/plain",
-]);
+  "text/markdown",
+  "text/x-markdown",
+])
+
+const ALLOWED_UPLOAD_EXTENSIONS = /\.(pdf|txt|md|markdown|docx|doc|png|jpe?g|webp)$/i
 
 /** A curator selecting an entire archive folder is exactly the scenario this phase targets — but "the browser attempts 5,000 x 200MB PDFs simultaneously" (Section 27) must not be possible. This is a sanity ceiling on ONE bulk batch, not a claim about the library's eventual total size. */
 export const MAX_BULK_FILES_PER_BATCH = 200;
@@ -169,10 +173,9 @@ export function validateFileForUpload(file: File): FileValidationResult {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return { ok: false, reason: `File exceeds the ${(MAX_FILE_SIZE_BYTES / 1_048_576).toFixed(0)} MB limit.` };
   }
-  const mime = file.type || "application/octet-stream";
-  const looksLikePdfOrText = /\.(pdf|txt)$/i.test(file.name);
-  if (!ALLOWED_UPLOAD_MIME_TYPES.has(mime) && !looksLikePdfOrText) {
-    return { ok: false, reason: `File type "${mime}" is not supported.` };
+  const mime = file.type || "application/octet-stream"
+  if (!ALLOWED_UPLOAD_MIME_TYPES.has(mime) && !ALLOWED_UPLOAD_EXTENSIONS.test(file.name)) {
+    return { ok: false, reason: `File type "${mime}" is not supported.` }
   }
   return { ok: true };
 }

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 0064_import_batches_expected_file_count.sql
 --
--- BENCHBOOK — COMPREHENSIVE STABILIZATION, BULK INGESTION COMPLETION,
+-- Magistrate Wizard — COMPREHENSIVE STABILIZATION, BULK INGESTION COMPLETION,
 -- LEGAL LIBRARY QA & AUTONOMOUS DEBUGGING PASS -- batch accounting fix.
 --
 -- ROOT CAUSE (confirmed via live data inspection, no browser needed): the

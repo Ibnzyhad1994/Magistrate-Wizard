@@ -83,6 +83,7 @@ export default function JudgmentDetailPage() {
   return (
     <>
       <Billboard
+        variant="detail"
         eyebrow={judgment.case_number ?? undefined}
         title={judgment.title}
         description={
@@ -99,7 +100,7 @@ export default function JudgmentDetailPage() {
         tone="judgment"
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
       />
-      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
+      <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant={isDraft ? "secondary" : "default"}>{toTitleCase(judgment.status)}</Badge>
           <BookmarkToggle entityType="judgment" entityId={judgment.id} />
@@ -150,7 +151,7 @@ function LifecycleBar({
   const isDraft = judgment.status === "draft";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+    <div className="sticky top-[68px] z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-[#141414] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
       {isDraft ? (
         <>
           <Button size="sm" onClick={() => setConfirmFinalize(true)}>

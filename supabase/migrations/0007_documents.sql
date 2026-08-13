@@ -1,4 +1,4 @@
--- BenchBook — document metadata
+-- Magistrate Wizard — document metadata
 -- Files themselves live in the "documents" Storage bucket (created in
 -- 0011_storage.sql); this table is the queryable metadata row per file,
 -- and `file_path` must equal the object's full path within that bucket

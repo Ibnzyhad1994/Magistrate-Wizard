@@ -1,5 +1,5 @@
--- BenchBook — reference-data administrative fields
--- Adds the columns needed for BenchBook to eventually manage Magisterial
+-- Magistrate Wizard — reference-data administrative fields
+-- Adds the columns needed for Magistrate Wizard to eventually manage Magisterial
 -- Districts and Courts entirely through an admin interface, without a
 -- further SQL migration every time the Judiciary creates a new district
 -- or opens/renames/closes/reactivates a court.

@@ -1,4 +1,4 @@
--- BenchBook — comments & bookmarks
+-- Magistrate Wizard — comments & bookmarks
 
 -- 1. Comments ----------------------------------------------------------
 -- Threaded discussion on either a case or a bench note (never both / never

@@ -45,7 +45,7 @@ export function TitleCard({
   const body = (
     <article
       className={cn(
-        "group relative w-[42vw] min-w-[9.5rem] max-w-[13.5rem] origin-center cursor-pointer sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]",
+        "group relative w-[42vw] min-w-[9.5rem] max-w-[13.5rem] shrink-0 origin-center cursor-pointer sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]",
         className,
       )}
     >
@@ -104,14 +104,14 @@ export function TitleCard({
 
   if (href) {
     return (
-      <Link to={href} onClick={onClick} className="block">
+      <Link to={href} onClick={onClick} className="block shrink-0 snap-start">
         {body}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={onClick} className="block text-left">
+    <button type="button" onClick={onClick} className="block shrink-0 snap-start text-left">
       {body}
     </button>
   );

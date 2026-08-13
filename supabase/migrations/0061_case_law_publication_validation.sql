@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 0061_case_law_publication_validation.sql
 --
--- BenchBook Case Law ingestion golden-path repair pass, §6/§20.
+-- Magistrate Wizard Case Law ingestion golden-path repair pass, §6/§20.
 --
 -- The live browser test confirmed a canonical Case Law record could be
 -- published while `case_name` was still the system-default placeholder

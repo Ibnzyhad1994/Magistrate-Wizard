@@ -1,45 +1,48 @@
 /**
  * Central place that decides how a `documents` row can be shown in the
  * in-app viewer (`document-viewer-dialog.tsx`), shared by every
- * DocumentsPanel consumer (Docket Matter, Judgment, Case Law, Quick
- * Code, Bench Note).
+ * DocumentsPanel consumer.
  *
- * There is no `preview_path`/`preview_mime_type` column on `documents`
- * today, and no server-side conversion infrastructure exists in this
- * project (no Supabase Edge Functions are deployed — confirmed live via
- * `list_edge_functions`, zero results). So today this only classifies
- * the ORIGINAL uploaded file's own `mime_type`: PDFs and images preview
- * directly; everything else (Word documents included) is "unsupported"
- * and falls back to Download Original.
- *
- * If a future migration adds a preview-derivative column, this is the
- * one function that should change to prefer it — e.g. check
- * `doc.preview_mime_type ?? doc.mime_type` — without the viewer or panel
- * components needing to know the difference.
+ * Preview is client-side: PDFs and images render natively; plain text and
+ * Markdown are fetched and displayed; .docx is converted locally with
+ * mammoth. Legacy .doc has no browser parser — download only.
  */
-export type DocumentPreviewKind = "pdf" | "image" | "unsupported";
 
-const PDF_MIME = "application/pdf";
-const IMAGE_MIME_PREFIX = "image/";
+export type DocumentPreviewKind = "pdf" | "image" | "text" | "markdown" | "docx" | "unsupported"
+
+const PDF_MIME = "application/pdf"
+const IMAGE_MIME_PREFIX = "image/"
 
 const WORD_MIME_TYPES = new Set([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
+])
 
-export function getDocumentPreviewKind(
+const TEXT_MIME_TYPES = new Set(["text/plain", "text/csv"])
+const MARKDOWN_MIME_TYPES = new Set(["text/markdown", "text/x-markdown"])
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+export const getDocumentPreviewKind = (
   mimeType: string | null | undefined,
-): DocumentPreviewKind {
-  if (!mimeType) return "unsupported";
-  if (mimeType === PDF_MIME) return "pdf";
-  if (mimeType.startsWith(IMAGE_MIME_PREFIX)) return "image";
-  return "unsupported";
+  fileName?: string,
+): DocumentPreviewKind => {
+  const name = (fileName ?? "").toLowerCase()
+  const mime = (mimeType ?? "").toLowerCase()
+
+  if (mime === PDF_MIME || name.endsWith(".pdf")) return "pdf"
+  if (mime.startsWith(IMAGE_MIME_PREFIX) || /\.(png|jpe?g|webp|gif)$/i.test(name)) return "image"
+  if (MARKDOWN_MIME_TYPES.has(mime) || name.endsWith(".md") || name.endsWith(".markdown")) return "markdown"
+  if (mime === DOCX_MIME || name.endsWith(".docx")) return "docx"
+  if (TEXT_MIME_TYPES.has(mime) || name.endsWith(".txt")) return "text"
+  return "unsupported"
 }
 
-export function isWordDocument(
-  mimeType: string | null | undefined,
-  fileName: string,
-): boolean {
-  if (mimeType && WORD_MIME_TYPES.has(mimeType)) return true;
-  return /\.docx?$/i.test(fileName);
+export const isWordDocument = (mimeType: string | null | undefined, fileName: string): boolean => {
+  if (mimeType && WORD_MIME_TYPES.has(mimeType)) return true
+  return /\.docx?$/i.test(fileName)
+}
+
+export const isLegacyWordDocument = (mimeType: string | null | undefined, fileName: string): boolean => {
+  if (mimeType === "application/msword") return true
+  return /\.doc$/i.test(fileName) && !/\.docx$/i.test(fileName)
 }

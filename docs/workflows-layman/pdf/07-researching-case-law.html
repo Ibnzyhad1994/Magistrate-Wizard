@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — Researching Case Law</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — Researching Case Law</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>7. Researching case law</h1>
+<p><strong>Who:</strong> every signed-in user for the published library; you for your private cards</p>
+<p><strong>Goal:</strong> find authorities, keep personal notes, pin them onto a matter</p>
+<h2>Two kinds of card, one list</h2>
+<table>
+<tr><th>Kind</th><th>Who writes it</th><th>Who reads it</th></tr>
+<tr><td><strong>Library (canonical)</strong></td><td>Administrator, after review</td><td>Everyone, once <strong>published</strong></td></tr>
+<tr><td><strong>Personal</strong></td><td>You</td><td>You, unless you mark it discoverable</td></tr>
+</table>
+<p>They live in the same <strong>Case Law</strong> area so a search can return both. They are not two different apps.</p>
+<div class="mermaid">flowchart LR
+    subgraph Library[&quot;Official library&quot;]
+        D[Draft — only admin]
+        P[Published — everyone]
+        D --&gt; P
+    end
+
+    subgraph Mine[&quot;My research&quot;]
+        PR[Private card]
+        DI[Discoverable card]
+        PR --&gt; DI
+    end
+
+    A[Annotations] -.-&gt;|always only mine| P
+    A -.-&gt;|always only mine| PR</div>
+<h2>Browse published law</h2>
+<p>Open <strong>Case Law</strong>. Use the canonical tab. You may filter by jurisdiction and deciding court (the <em>reported</em> court — CCJ, a High Court, and so on — not the Magistrates&#x27; Court you sit).</p>
+<p>Unpublished imports never appear here. That is how the library stays clean.</p>
+<h2>Your own cards</h2>
+<p>Create a personal entry for a decision you are studying. Citation need not be unique — two magistrates may both note the same case.</p>
+<p>Mark discoverable only if you want colleagues to read the card. They still will not see your <strong>annotations</strong>.</p>
+<h2>Annotations</h2>
+<p>Pin a passage and a note. Multiple notes per case are fine. The person who owns the library entry (even an admin) cannot see <em>your</em> notes on it. If the parent card later becomes unreadable to you, your notes hide until you can read the parent again. They are not deleted.</p>
+<h2>Pin onto a docket matter</h2>
+<p>Open the Case Law card → <strong>Link to a Docket Matter</strong>. Pick a matter you sit or have retained. A share-only copy of a file is not enough to create the pin — the save will fail.</p>
+<p>The matter’s <strong>Case Law</strong> tab is a reverse view of pins already made. You do not create the link from there.</p>
+<p>You do <strong>not</strong> need to “own” a library case to cite it — citing is what the library is for. Citing does not grant the next magistrate your private annotations.</p>
+<h2>What is not here yet</h2>
+<p>Sharing a personal card with one named colleague (the way docket shares work) is not built. Outlook does not ingest authorities. The library is not a web crawler — see the admin guide.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

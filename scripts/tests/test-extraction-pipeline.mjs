@@ -105,7 +105,6 @@ async function main() {
     const file = makeImageOnlyPdf();
     const envelope = await runPdfExtractionPipeline(file);
     await check("5. image-only PDF status is requires_ocr", envelope.status, "requires_ocr");
-    await check("5. image-only PDF ocrUsed is false (OCR is not implemented)", envelope.ocrUsed, false);
     await check("5. image-only PDF text withheld", envelope.text, "");
     await check("5. image-only PDF unreadableReason is no_text_found", envelope.unreadableReason, "no_text_found");
   }

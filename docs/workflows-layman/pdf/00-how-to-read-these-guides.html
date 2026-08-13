@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Magistrate Wizard — How To Read These Guides</title>
+  <style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --navy: #1e40af;
+  --rule: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.45;
+}
+.cover {
+  page-break-after: always;
+  min-height: 240mm;
+  padding: 36mm 12mm 0;
+}
+.cover h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32pt;
+  color: var(--navy);
+  margin: 0 0 12px;
+  line-height: 1.15;
+}
+.cover .lede { font-size: 14pt; color: var(--muted); max-width: 140mm; }
+.cover .meta { margin-top: 28mm; color: var(--muted); font-size: 10.5pt; }
+.cover .rule { width: 48mm; height: 4px; background: #3b82f6; margin: 18px 0 22px; }
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+  page-break-after: avoid;
+}
+h1 { font-size: 20pt; margin: 0 0 10px; }
+h2 { font-size: 15pt; margin: 22px 0 8px; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eff6ff; color: #1e3a5f; }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 9pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.chapter { page-break-before: always; }
+.chapter:first-of-type { page-break-before: auto; }
+.hero {
+  page-break-inside: avoid;
+  margin: 0 0 18px;
+}
+.hero img, .hero svg { width: 100%; height: auto; }
+.hero figcaption {
+  font-size: 9.5pt;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mermaid {
+  page-break-inside: avoid;
+  margin: 12px 0 16px;
+}
+blockquote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+  color: #334155;
+}
+hr { border: 0; border-top: 1px solid var(--rule); margin: 18px 0; }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <section class="cover">
+    <div class="rule"></div>
+    <h1>Magistrate Wizard — How To Read These Guides</h1>
+    <p class="lede">Plain-language workflow. See the collected pack for the full set.</p>
+    <p class="meta">Magistrate Wizard<br/>
+    Architecture as implemented (migrations 0001–0067)<br/>
+    Court-anchored Docket · no admin bypass into private judicial content<br/>
+    13 August 2026</p>
+  </section>
+  
+  <section class="chapter"><h1>0. How to read these guides</h1>
+<h2>What Magistrate Wizard is</h2>
+<p>Magistrate Wizard is a computer filing system for magistrates. It holds:</p>
+<ul>
+<li>the <strong>Court&#x27;s docket</strong> (the list of matters before that Court)</li>
+<li><strong>your</strong> written work (judgments, research notes, shortcuts)</li>
+<li>a <strong>shared law library</strong> (published case law and legislation)</li>
+</ul>
+<p>It is not a public website. Members of the public cannot browse it. Every screen you open has already been filtered so you only see what you are allowed to see.</p>
+<h2>Words used here</h2>
+<table>
+<tr><th>Word</th><th>Everyday meaning in Magistrate Wizard</th></tr>
+<tr><td><strong>Court</strong></td><td>A physical Guyana Magistrates&#x27; Court (for example, a sitting at a named location). Not the Caribbean Court of Justice as a reported authority.</td></tr>
+<tr><td><strong>District</strong></td><td>The Magisterial District that Court belongs to. Case numbers are unique <em>inside a district</em>, not nationwide.</td></tr>
+<tr><td><strong>Docket matter</strong></td><td>One case file on that Court&#x27;s list. Arraignment, maintenance, traffic — all are &quot;matters&quot;.</td></tr>
+<tr><td><strong>Event</strong></td><td>One listed appearance or hearing date for that matter.</td></tr>
+<tr><td><strong>Retained / part-heard</strong></td><td>You kept access to <strong>one</strong> matter after you stopped sitting that Court, so you can finish it.</td></tr>
+<tr><td><strong>Share</strong></td><td>You let a <em>named colleague</em> see one matter. Exceptional, not the normal way work moves on.</td></tr>
+<tr><td><strong>Canonical case law</strong></td><td>An entry in the official library, published by an administrator. Everyone signed in can read it.</td></tr>
+<tr><td><strong>Personal case law</strong></td><td>Your own research card. Private unless you mark it discoverable.</td></tr>
+<tr><td><strong>Discoverable</strong></td><td>Others may <em>read</em>. They still cannot edit. Used for judgments and personal case law — <strong>never</strong> for the docket.</td></tr>
+<tr><td><strong>Admin</strong></td><td>Someone who seats magistrates at Courts and publishes the library. Admin is <strong>not</strong> a master key to other people&#x27;s private writing.</td></tr>
+</table>
+<h2>A picture of the locks</h2>
+<p>!<a href="../diagrams/assets/domain-map.png">Three cabinets, three lock types</a></p>
+<div class="mermaid">flowchart TB
+    subgraph CourtCabinet[&quot;The Court&#x27;s cabinet&quot;]
+        D[Docket matters]
+        E[Hearings]
+        P[Parties]
+    end
+
+    subgraph MyDesk[&quot;Your desk&quot;]
+        J[Judgments]
+        Q[Quick codes]
+        N[Bench notes]
+        R[Personal research]
+    end
+
+    subgraph Library[&quot;Shared library&quot;]
+        C[Published case law]
+        S[Published legislation]
+    end
+
+    You[You] --&gt;|Seated at that Court, or retained, or shared| CourtCabinet
+    You --&gt; MyDesk
+    You --&gt; Library</div>
+<h2>What these guides are not</h2>
+<p>They are not the architecture specification. They do not replace training on the law. They describe <strong>how the software behaves today</strong>.</p></section>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>

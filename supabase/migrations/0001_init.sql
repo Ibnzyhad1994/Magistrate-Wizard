@@ -1,4 +1,4 @@
--- BenchBook — initial schema
+-- Magistrate Wizard — initial schema
 -- Creates the `profiles` table (1:1 with auth.users), the `user_role`
 -- enum, row-level security policies, and the trigger that provisions a
 -- profile automatically whenever a new auth user is created.
@@ -23,7 +23,7 @@ create table public.profiles (
 );
 
 comment on table public.profiles is
-  'One row per authenticated user; holds role and court metadata used for authorization throughout BenchBook.';
+  'One row per authenticated user; holds role and court metadata used for authorization throughout Magistrate Wizard.';
 
 -- 3. updated_at trigger -------------------------------------------------
 

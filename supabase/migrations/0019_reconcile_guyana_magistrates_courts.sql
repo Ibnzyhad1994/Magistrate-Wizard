@@ -1,4 +1,4 @@
--- BenchBook — reconcile Guyana Magistrates' Courts to verified operational structure
+-- Magistrate Wizard — reconcile Guyana Magistrates' Courts to verified operational structure
 -- Migration 0018 seeded 46 Court rows from an earlier researched/inferred list.
 -- That list has since been superseded by a personally verified current
 -- operational Court/District structure from within the Guyana Magistracy.

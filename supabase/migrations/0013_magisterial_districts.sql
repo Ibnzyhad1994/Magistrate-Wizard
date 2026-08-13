@@ -1,4 +1,4 @@
--- BenchBook — magisterial districts
+-- Magistrate Wizard — magisterial districts
 -- The top level of Guyana's court structure: a Magisterial District
 -- contains one or more Magistrates' Courts. courts.district_id (linking
 -- each court to exactly one district) is added in the next migration,

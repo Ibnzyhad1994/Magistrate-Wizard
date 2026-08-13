@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img">
+  <rect width="1280" height="720" fill="#ffffff"/>
+  <text x="64" y="52" font-family="Georgia, serif" font-size="28" fill="#1e40af" font-weight="700">Three cabinets, three lock types</text>
+  <text x="64" y="80" font-family="Segoe UI, sans-serif" font-size="14" fill="#64748b">A pin between cabinets never copies the keys.</text>
+
+  <!-- Court cabinet -->
+  <rect x="48" y="120" width="380" height="520" rx="16" fill="#eff6ff" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="238" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#1e3a5f" font-weight="700">The Court's cabinet</text>
+  <text x="238" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Opened by sitting, retain, or share</text>
+  <rect x="80" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#3b82f6"/>
+  <text x="238" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Docket matters</text>
+  <rect x="80" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="238" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Hearings  ·  parties  ·  tags</text>
+  <rect x="80" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="238" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#1e3a5f">Cover and identification photos</text>
+  <text x="238" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Never a public / discoverable pool</text>
+  <text x="238" y="454" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">History is archived, not erased</text>
+  <text x="238" y="500" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e40af" font-weight="600">When you leave the Court,</text>
+  <text x="238" y="522" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#1e40af">the cabinet stays for the next sitter</text>
+
+  <!-- Personal desk -->
+  <rect x="450" y="120" width="380" height="520" rx="16" fill="#f0fdf4" stroke="#047857" stroke-width="2"/>
+  <text x="640" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#047857" font-weight="700">Your desk</text>
+  <text x="640" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Owner only - no admin bypass</text>
+  <rect x="482" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#047857"/>
+  <text x="640" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Judgments (optional discoverable)</text>
+  <rect x="482" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Quick codes - never shared</text>
+  <rect x="482" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Bench notes - always private</text>
+  <rect x="482" y="414" width="316" height="48" rx="8" fill="#ffffff" stroke="#6ee7b7"/>
+  <text x="640" y="444" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#065f46">Personal case law + annotations</text>
+  <text x="640" y="510" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#047857" font-weight="600">Leaving a Court does not</text>
+  <text x="640" y="532" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#047857">hand this desk to a successor</text>
+
+  <!-- Library -->
+  <rect x="852" y="120" width="380" height="520" rx="16" fill="#faf5ff" stroke="#6d28d9" stroke-width="2"/>
+  <text x="1042" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="20" fill="#6d28d9" font-weight="700">Shared library</text>
+  <text x="1042" y="186" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#64748b">Admin writes  ·  all may read published</text>
+  <rect x="884" y="214" width="316" height="56" rx="8" fill="#ffffff" stroke="#6d28d9"/>
+  <text x="1042" y="248" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Published case law</text>
+  <rect x="884" y="286" width="316" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1042" y="316" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Published legislation + sections</text>
+  <rect x="884" y="350" width="316" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1042" y="380" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#5b21b6">Topics / tags  ·  sources registry</text>
+  <text x="1042" y="440" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Drafts stay invisible until publish</text>
+  <text x="1042" y="510" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#6d28d9" font-weight="600">Your annotations on a library case</text>
+  <text x="1042" y="532" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" fill="#6d28d9">remain on your desk, not in the book</text>
+
+  <!-- Association arrows -->
+  <path d="M428 250 L450 250" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M830 250 L852 250" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="640" y="680" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#64748b">Dashed idea: a link is a pin, not a key   ·   BOTH sides must already be readable</text>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker>
+  </defs>
+</svg>

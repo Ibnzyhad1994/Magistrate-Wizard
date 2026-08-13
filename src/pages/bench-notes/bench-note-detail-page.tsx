@@ -128,6 +128,7 @@ export default function BenchNoteDetailPage() {
   return (
     <>
       <Billboard
+        variant="detail"
         eyebrow={PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type}
         title={note.title}
         description={
@@ -144,7 +145,7 @@ export default function BenchNoteDetailPage() {
           parent ? { label: "Open related", onClick: () => navigate(parent.href) } : undefined
         }
       />
-      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
+      <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant={note.status === "published" ? "default" : "secondary"}>
             {toTitleCase(note.status)}
