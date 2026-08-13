@@ -1,34 +1,19 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { Gavel, ArrowRight, Landmark, CalendarClock, UserCheck, Scale, Braces, StickyNote, ShieldAlert } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/common/empty-state";
+import { Billboard, ContentRow, TitleCard } from "@/components/browse";
 import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
-import { useCurrentCourts, useMyRetainedMatters, useUpcomingAppearances } from "@/hooks/use-dashboard";
+import {
+  useCurrentCourts,
+  useMyRetainedMatters,
+  useUpcomingAppearances,
+} from "@/hooks/use-dashboard";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
-import { ROLE_LABELS, type UserRole } from "@/lib/constants";
+import { APP_NAME } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  active: "default",
-  stayed: "secondary",
-  completed: "outline",
-  archived: "outline",
-};
 
 /**
  * Every card here reads from data the caller is already RLS-permitted to
@@ -37,12 +22,14 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
  * nothing here leaks the existence of rows the caller can't otherwise see.
  */
 export default function DashboardPage() {
-  const { profile, user } = useAuth();
-  const navigate = useNavigate();
-  const displayName = profile?.full_name ?? user?.email ?? "there";
-  const role = profile?.role as UserRole | undefined;
-
-  const { data: matters, isPending: mattersPending, isError: mattersError, error: mattersErr, refetch: refetchMatters } = useDocketMatters("");
+  const { user } = useAuth();
+  const {
+    data: matters,
+    isPending: mattersPending,
+    isError: mattersError,
+    error: mattersErr,
+    refetch: refetchMatters,
+  } = useDocketMatters("");
   const { data: courts, isPending: courtsPending } = useCurrentCourts();
   const { data: appearances, isPending: appearancesPending } = useUpcomingAppearances();
   const { data: retained, isPending: retainedPending } = useMyRetainedMatters();
@@ -50,8 +37,10 @@ export default function DashboardPage() {
   const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes();
   const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes();
 
-  const recentMatters = matters?.slice(0, 5) ?? [];
-  const activeCount = matters?.filter((m) => m.status === "active").length ?? 0;
+  const activeMatters = useMemo(
+    () => (matters ?? []).filter((m) => m.status === "active"),
+    [matters],
+  );
 
   const { myDrafts, myFinal } = useMemo(() => {
     const all = judgments ?? [];
@@ -61,324 +50,208 @@ export default function DashboardPage() {
     };
   }, [judgments, user?.id]);
 
+  const noCourts = !courtsPending && (courts?.length ?? 0) === 0;
+  const firstAppearance = appearances?.[0];
+  const appearanceMatter = rel(firstAppearance?.docket_matters);
+  const firstMatter = matters?.[0];
+
+  const billboard = firstAppearance
+    ? {
+        tone: "docket" as const,
+        eyebrow: appearanceMatter?.case_number ?? "Upcoming appearance",
+        title: appearanceMatter?.matter_title ?? "Upcoming appearance",
+        description: [
+          eventLabel(firstAppearance.event_type),
+          formatDate(firstAppearance.scheduled_date),
+          firstAppearance.scheduled_time
+            ? formatTimeOnly(firstAppearance.scheduled_time)
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        badges: [toTitleCase(firstAppearance.event_status)],
+        primaryAction: {
+          label: "Open matter",
+          href: ROUTES.docketMatter(firstAppearance.docket_matter_id),
+        },
+        secondaryAction: { label: "Docket", href: ROUTES.docket },
+      }
+    : firstMatter
+      ? {
+          tone: "docket" as const,
+          eyebrow: firstMatter.case_number,
+          title: firstMatter.matter_title,
+          description: issueOf(firstMatter),
+          badges: [toTitleCase(firstMatter.status)],
+          primaryAction: {
+            label: "Open matter",
+            href: ROUTES.docketMatter(firstMatter.id),
+          },
+          secondaryAction: { label: "More info", href: ROUTES.docket },
+        }
+      : {
+          tone: "docket" as const,
+          eyebrow: APP_NAME,
+          title: "Your bench, in session",
+          description: noCourts
+            ? "Your account is active, but you have not yet been assigned to a Court. Contact an administrator. Judgments, Case Law, Quick Codes, and Bench Notes remain available — Docket access requires a Court assignment."
+            : "Your docket, judgments, and research — in one bench.",
+          badges: noCourts ? ["No court assignment"] : undefined,
+          primaryAction: { label: "Browse docket", href: ROUTES.docket },
+          secondaryAction: { label: "Judgments", href: ROUTES.judgments },
+        };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Welcome, {displayName}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {role
-            ? `Signed in as ${ROLE_LABELS[role]}.`
-            : "Your BenchBook workspace."}
-        </p>
-      </div>
+    <div>
+      <Billboard {...billboard} />
 
-      {!courtsPending && (courts?.length ?? 0) === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="flex items-start gap-3 p-4">
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                No current Court assignment
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Your account is active, but you have not yet been assigned to a
-                Court. Contact an administrator. You can still use Judgments,
-                Case Law research, Quick Codes, Bench Notes, and Bookmarks in
-                the meantime — Docket access requires a Court assignment.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="relative z-10 -mt-16 space-y-9 pb-20">
+        {mattersError && (
+          <div className="browse-gutter">
+            <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
+          </div>
+        )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
-          icon={Landmark}
-          label="Current Courts"
-          value={courtsPending ? undefined : courts?.length ?? 0}
-        />
-        <SummaryCard
-          icon={Gavel}
-          label="Active Docket Matters"
-          value={mattersPending ? undefined : activeCount}
-        />
-        <SummaryCard
-          icon={Scale}
-          label="Draft Judgments"
-          value={judgmentsPending ? undefined : myDrafts.length}
-        />
-        <SummaryCard
-          icon={UserCheck}
-          label="Retained Matters"
-          value={retainedPending ? undefined : retained?.length ?? 0}
-        />
-      </div>
+        {!courtsPending && courts && courts.length > 0 && (
+          <p className="browse-gutter text-sm text-white/55">
+            Sitting at {courts.map((c) => rel(c.courts)?.name).filter(Boolean).join(" · ")}
+          </p>
+        )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Your Docket</CardTitle>
-              <CardDescription>
-                Matters assigned to your Court, retained, or shared with you.
-              </CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate(ROUTES.docket)}>
-              View all
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {mattersPending ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : mattersError ? (
-              <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
-            ) : recentMatters.length === 0 ? (
-              <EmptyState
-                icon={Gavel}
-                title="Nothing on your Docket yet"
-                description="Matters you create or are assigned will appear here."
-                action={
-                  <Button size="sm" onClick={() => navigate(ROUTES.docket)}>
-                    Go to Docket
-                  </Button>
-                }
+        {(mattersPending || activeMatters.length > 0) && (
+          <ContentRow title="Continue Working" href={ROUTES.docket} isLoading={mattersPending}>
+            {activeMatters.map((m) => (
+              <TitleCard
+                key={m.id}
+                tone="docket"
+                eyebrow={m.case_number}
+                title={m.matter_title}
+                subtitle={issueOf(m)}
+                badge={toTitleCase(m.status)}
+                href={ROUTES.docketMatter(m.id)}
               />
-            ) : (
-              <ul className="divide-y divide-border">
-                {recentMatters.map((matter) => (
-                  <li key={matter.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(ROUTES.docketMatter(matter.id))}
-                      className="flex w-full items-center justify-between gap-2 py-3 text-left hover:bg-muted/40"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">
-                          {matter.matter_title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{matter.case_number}</p>
-                      </div>
-                      {matter.status && (
-                        <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
-                          {toTitleCase(matter.status)}
-                        </Badge>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </ContentRow>
+        )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarClock className="h-4 w-4" />
-                Upcoming Appearances
-              </CardTitle>
-              <CardDescription>Scheduled Docket Events across your matters.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {appearancesPending ? (
-              <Skeleton className="h-24 w-full" />
-            ) : !appearances || appearances.length === 0 ? (
-              <EmptyState
-                icon={CalendarClock}
-                title="Nothing scheduled"
-                description="Upcoming scheduled Docket Events will appear here."
+        {(appearancesPending || (appearances?.length ?? 0) > 0) && (
+          <ContentRow title="Upcoming Appearances" href={ROUTES.docket} isLoading={appearancesPending}>
+            {(appearances ?? []).map((event) => {
+              const matter = rel(event.docket_matters);
+              return (
+                <TitleCard
+                  key={event.id}
+                  tone="docket"
+                  eyebrow={matter?.case_number}
+                  title={matter?.matter_title ?? eventLabel(event.event_type)}
+                  subtitle={[formatDate(event.scheduled_date), event.scheduled_time ? formatTimeOnly(event.scheduled_time) : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  badge={eventLabel(event.event_type)}
+                  href={ROUTES.docketMatter(event.docket_matter_id)}
+                />
+              );
+            })}
+          </ContentRow>
+        )}
+
+        {(judgmentsPending || myDrafts.length > 0) && (
+          <ContentRow title="Draft Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
+            {myDrafts.map((j) => (
+              <TitleCard
+                key={j.id}
+                tone="judgment"
+                eyebrow={j.case_number ?? undefined}
+                title={j.title}
+                subtitle={j.court_name ?? j.citation ?? undefined}
+                badge="Draft"
+                href={ROUTES.judgmentDetail(j.id)}
               />
-            ) : (
-              <ul className="divide-y divide-border">
-                {appearances.map((event) => (
-                  <li key={event.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(ROUTES.docketMatter(event.docket_matter_id))}
-                      className="flex w-full items-center justify-between gap-2 py-3 text-left hover:bg-muted/40"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">
-                          {event.docket_matters?.matter_title ?? "Unavailable"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {event.event_type ?? "Event"}
-                          {event.docket_matters?.case_number
-                            ? ` · ${event.docket_matters.case_number}`
-                            : ""}
-                        </p>
-                      </div>
-                      <Badge variant="outline">
-                        {formatDate(event.scheduled_date)}
-                        {event.scheduled_time ? ` ${formatTimeOnly(event.scheduled_time)}` : ""}
-                      </Badge>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </ContentRow>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Braces className="h-4 w-4" />
-              Recent Quick Codes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quickCodesPending ? (
-              <Skeleton className="h-20 w-full" />
-            ) : !quickCodes || quickCodes.length === 0 ? (
-              <EmptyState
-                icon={Braces}
-                title="No Quick Codes yet"
-                action={
-                  <Button size="sm" onClick={() => navigate(ROUTES.quickCodes)}>
-                    Go to Quick Codes
-                  </Button>
-                }
+        {(judgmentsPending || myFinal.length > 0) && (
+          <ContentRow title="Final Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
+            {myFinal.map((j) => (
+              <TitleCard
+                key={j.id}
+                tone="judgment"
+                eyebrow={j.case_number ?? undefined}
+                title={j.title}
+                subtitle={j.court_name ?? j.citation ?? undefined}
+                badge="Final"
+                href={ROUTES.judgmentDetail(j.id)}
               />
-            ) : (
-              <ul className="space-y-2">
-                {quickCodes.slice(0, 5).map((qc) => (
-                  <li key={qc.id} className="flex items-center justify-between text-sm">
-                    <span className="font-mono text-foreground">{qc.code_word}</span>
-                    <span className="truncate text-muted-foreground">{qc.title}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </ContentRow>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <StickyNote className="h-4 w-4" />
-              Recent Bench Notes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {benchNotesPending ? (
-              <Skeleton className="h-20 w-full" />
-            ) : !benchNotes || benchNotes.length === 0 ? (
-              <EmptyState
-                icon={StickyNote}
-                title="No Bench Notes yet"
-                action={
-                  <Button size="sm" onClick={() => navigate(ROUTES.benchNotes)}>
-                    Go to Bench Notes
-                  </Button>
-                }
+        {(retainedPending || (retained?.length ?? 0) > 0) && (
+          <ContentRow title="Retained / Part-Heard" href={ROUTES.docket} isLoading={retainedPending}>
+            {(retained ?? []).map((row) => {
+              const matter = rel(row.docket_matters);
+              return (
+                <TitleCard
+                  key={row.id}
+                  tone="docket"
+                  eyebrow={matter?.case_number}
+                  title={matter?.matter_title ?? "Retained matter"}
+                  badge="Retained"
+                  href={ROUTES.docketMatter(row.docket_matter_id)}
+                />
+              );
+            })}
+          </ContentRow>
+        )}
+
+        {(benchNotesPending || (benchNotes?.length ?? 0) > 0) && (
+          <ContentRow title="Bench Notes" href={ROUTES.benchNotes} isLoading={benchNotesPending}>
+            {(benchNotes ?? []).map((note) => (
+              <TitleCard
+                key={note.id}
+                tone="note"
+                eyebrow={entityLabel(note.entity_type)}
+                title={note.title}
+                badge={toTitleCase(note.status)}
+                href={ROUTES.benchNoteDetail(note.id)}
               />
-            ) : (
-              <ul className="divide-y divide-border">
-                {benchNotes.slice(0, 5).map((note) => (
-                  <li key={note.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(ROUTES.benchNoteDetail(note.id))}
-                      className="flex w-full items-center justify-between py-2 text-left text-sm hover:bg-muted/40"
-                    >
-                      <span className="truncate text-foreground">{note.title}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(note.updated_at)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            ))}
+          </ContentRow>
+        )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Retained Matters</CardTitle>
-            <CardDescription>Matters you're currently retaining as part-heard.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {retainedPending ? (
-              <Skeleton className="h-20 w-full" />
-            ) : !retained || retained.length === 0 ? (
-              <EmptyState icon={UserCheck} title="No retained matters" />
-            ) : (
-              <ul className="divide-y divide-border">
-                {retained.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(ROUTES.docketMatter(r.docket_matter_id))}
-                      className="flex w-full items-center justify-between py-2 text-left text-sm hover:bg-muted/40"
-                    >
-                      <span className="truncate text-foreground">
-                        {r.docket_matters?.matter_title ?? "Unavailable"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {r.docket_matters?.case_number}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>My Judgments</CardTitle>
-            <CardDescription>
-              {judgmentsPending ? "Loading…" : `${myDrafts.length} draft, ${myFinal.length} final`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.judgments)}>
-              Go to Judgments
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
+        {(quickCodesPending || (quickCodes?.length ?? 0) > 0) && (
+          <ContentRow title="Quick Codes" href={ROUTES.quickCodes} isLoading={quickCodesPending}>
+            {(quickCodes ?? []).map((code) => (
+              <TitleCard
+                key={code.id}
+                tone="code"
+                eyebrow={code.code_word}
+                title={code.title ?? code.code_word}
+                subtitle={code.category ?? undefined}
+                href={`${ROUTES.quickCodes}?qc=${code.id}`}
+              />
+            ))}
+          </ContentRow>
+        )}
       </div>
     </div>
   );
 }
 
-function SummaryCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number | undefined;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-xl font-semibold text-foreground">
-            {value === undefined ? <Skeleton className="h-6 w-8" /> : value}
-          </p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+function rel<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function eventLabel(type: string | null | undefined) {
+  return toTitleCase((type ?? "appearance").replace(/_/g, " "));
+}
+
+function entityLabel(type: string) {
+  return toTitleCase(type.replace(/_/g, " "));
+}
+
+function issueOf(matter: { charge_or_issue?: string | null } | { headline?: string }) {
+  return "charge_or_issue" in matter ? (matter.charge_or_issue ?? undefined) : undefined;
 }

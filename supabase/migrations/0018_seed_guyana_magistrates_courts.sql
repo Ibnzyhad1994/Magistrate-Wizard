@@ -56,6 +56,15 @@
 -- Does not touch the existing "General Magistrate Court" placeholder
 -- row, create any magistrate_courts assignments, or create any
 -- docket_matters (that table does not exist yet).
+--
+-- Fresh local databases (unlike the original hosted project) do not
+-- already have that placeholder. 0019 aborts unless it exists, so seed
+-- it here when missing. Production already has the row; ON CONFLICT
+-- keeps this statement a no-op there if 0018 were ever replayed.
+
+insert into public.courts (name, jurisdiction, is_active)
+values ('General Magistrate Court', 'Placeholder', true)
+on conflict (name, jurisdiction) do nothing;
 
 insert into public.courts (name, jurisdiction, district_id, is_active)
 select v.court_name, d.name, d.id, v.is_active

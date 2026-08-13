@@ -1,4 +1,4 @@
-# BenchBook
+# Magistrate Wizard
 
 A legal knowledge management platform for magistrates. The app shell
 (routing, auth, layout, reusable UI primitives) and the full Supabase

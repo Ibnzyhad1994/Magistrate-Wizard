@@ -2,21 +2,12 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Scale, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
+import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
 import { useAuth } from "@/hooks/use-auth";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
@@ -53,22 +44,17 @@ export default function JudgmentListPage() {
   }, [data, user?.id, query, matchingIds]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Judgments
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your draft and final judgments, plus judgments other magistrates
-            have made discoverable.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New draft
-        </Button>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Judgments"
+        description="Your draft and final judgments, plus judgments other magistrates have made discoverable."
+        action={
+          <Button variant="play" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New draft
+          </Button>
+        }
+      />
 
       <div className="max-w-sm space-y-1">
         <div className="relative">
@@ -128,7 +114,7 @@ export default function JudgmentListPage() {
       )}
 
       <CreateJudgmentDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </BrowsePage>
   );
 }
 
@@ -156,59 +142,38 @@ function JudgmentTable({
 }) {
   if (rows.length === 0) {
     return (
-      <Card className="mt-2">
-        <CardContent className="p-0">
-          <EmptyState
-            icon={Scale}
-            className="border-0"
-            title={emptyTitle}
-            description={emptyDescription}
-            action={
-              onCreate && (
-                <Button size="sm" onClick={onCreate}>
-                  <Plus className="h-4 w-4" />
-                  New draft
-                </Button>
-              )
-            }
-          />
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={Scale}
+        className="mt-4"
+        title={emptyTitle}
+        description={emptyDescription}
+        action={
+          onCreate && (
+            <Button size="sm" variant="play" onClick={onCreate}>
+              <Plus className="h-4 w-4" />
+              New draft
+            </Button>
+          )
+        }
+      />
     );
   }
 
   return (
-    <Card className="mt-2">
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Case number</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Last updated</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id} className="cursor-pointer" onClick={() => onOpen(row.id)}>
-                <TableCell className="font-medium text-foreground">{row.title}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {row.case_number || "—"}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={row.status === "final" ? "default" : "secondary"}>
-                    {toTitleCase(row.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {formatDate(row.updated_at)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    <TitleGallery>
+      {rows.map((row) => (
+        <TitleCard
+          key={row.id}
+          tone="judgment"
+          eyebrow={row.case_number ?? undefined}
+          title={row.title}
+          subtitle={row.citation ?? undefined}
+          meta={[toTitleCase(row.status), formatDate(row.updated_at)]}
+          badge={toTitleCase(row.status)}
+          href={ROUTES.judgmentDetail(row.id)}
+          onClick={() => onOpen(row.id)}
+        />
+      ))}
+    </TitleGallery>
   );
 }

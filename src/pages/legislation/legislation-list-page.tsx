@@ -1,19 +1,10 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ScrollText, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
+import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
 import { useStatutes } from "@/hooks/legislation/use-legislation";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { ROUTES } from "@/routes/paths";
@@ -27,7 +18,6 @@ import { formatDate } from "@/lib/utils";
  */
 export default function LegislationListPage() {
   const [query, setQuery] = useState("");
-  const navigate = useNavigate();
   const { data, isPending, isError, error, refetch } = useStatutes();
   const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
     "search_statutes",
@@ -42,18 +32,13 @@ export default function LegislationListPage() {
   }, [data, query, matchingIds]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Legislation
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Acts, regulations, and other legal instruments — maintained
-          centrally and available to every magistrate.
-        </p>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Legislation"
+        description="Acts, regulations, and other legal instruments — maintained centrally and available to every magistrate."
+      />
 
-      <div className="max-w-sm space-y-1">
+      <div className="mb-8 max-w-sm space-y-1">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -70,56 +55,41 @@ export default function LegislationListPage() {
       </div>
 
       {isPending ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="flex flex-wrap gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
+            />
+          ))}
+        </div>
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : rows.length === 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <EmptyState
-              icon={ScrollText}
-              className="border-0"
-              title={data && data.length > 0 ? "No matches" : "No legislation yet"}
-              description={
-                data && data.length > 0
-                  ? "Try a different search term."
-                  : "Acts and regulations added to the shared library will appear here."
-              }
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ScrollText}
+          title={data && data.length > 0 ? "No matches" : "No legislation yet"}
+          description={
+            data && data.length > 0
+              ? "Try a different search term."
+              : "Acts and regulations added to the shared library will appear here."
+          }
+        />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Jurisdiction</TableHead>
-                  <TableHead className="text-right">Effective</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((s) => (
-                  <TableRow
-                    key={s.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate(ROUTES.legislationDetail(s.id))}
-                  >
-                    <TableCell className="font-medium text-foreground">{s.title}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.code}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.jurisdiction}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {s.effective_date ? formatDate(s.effective_date) : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <TitleGallery>
+          {rows.map((s) => (
+            <TitleCard
+              key={s.id}
+              tone="legislation"
+              eyebrow={s.code}
+              title={s.title}
+              subtitle={s.jurisdiction}
+              meta={s.effective_date ? [`Effective ${formatDate(s.effective_date)}`] : undefined}
+              href={ROUTES.legislationDetail(s.id)}
+            />
+          ))}
+        </TitleGallery>
       )}
-    </div>
+    </BrowsePage>
   );
 }

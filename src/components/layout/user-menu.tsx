@@ -13,7 +13,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { getInitials } from "@/lib/utils";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 
-export function UserMenu() {
+interface UserMenuProps {
+  compact?: boolean;
+}
+
+export function UserMenu({ compact = false }: UserMenuProps) {
   const { user, profile, signOut, isSigningOut } = useAuth();
 
   const displayName = profile?.full_name ?? user?.email ?? "Account";
@@ -25,15 +29,23 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-9 w-full justify-start gap-2 px-2"
+          className={
+            compact
+              ? "h-8 w-8 rounded-sm p-0 hover:bg-transparent"
+              : "h-9 w-full justify-start gap-2 px-2"
+          }
         >
-          <Avatar className="h-7 w-7">
+          <Avatar className={compact ? "h-8 w-8 rounded-sm" : "h-7 w-7"}>
             <AvatarImage src={profile?.avatar_url ?? undefined} alt={displayName} />
-            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            <AvatarFallback className="rounded-sm bg-primary text-xs font-bold text-white">
+              {getInitials(displayName)}
+            </AvatarFallback>
           </Avatar>
-          <span className="flex-1 truncate text-left text-sm font-medium">
-            {displayName}
-          </span>
+          {!compact && (
+            <span className="flex-1 truncate text-left text-sm font-medium">
+              {displayName}
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

@@ -1,4 +1,4 @@
-# BenchBook Development Workflow
+# Magistrate Wizard Development Workflow
 
 Permanent working rules for this repository, established at the GitHub onboarding baseline (search extensions checkpoint, `0047_search_extensions`). These rules govern all future work regardless of who or what (human or agent) is making changes.
 

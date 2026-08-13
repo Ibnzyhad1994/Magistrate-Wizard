@@ -1,20 +1,10 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Plus, BookOpen, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
@@ -29,14 +19,12 @@ import {
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import { CreateCaseLawDialog } from "@/pages/case-law/create-case-law-dialog";
 import { ROUTES } from "@/routes/paths";
-import { formatDate } from "@/lib/utils";
 
 export default function CaseLawListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [courtId, setCourtId] = useState<string | null>(null);
   const [jurisdictionId, setJurisdictionId] = useState<string | null>(null);
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useCaseLawList();
   const { data: jurisdictions } = useLegalJurisdictions();
@@ -91,22 +79,17 @@ export default function CaseLawListPage() {
       : canonical;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Case Law
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Canonical authorities, your personal research, and research other
-            magistrates have made discoverable.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New research entry
-        </Button>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Case Law"
+        description="Canonical authorities, your personal research, and research other magistrates have made discoverable."
+        action={
+          <Button variant="play" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New research entry
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="max-w-sm flex-1 space-y-1">
@@ -183,7 +166,6 @@ export default function CaseLawListPage() {
           <TabsContent value="canonical">
             <CaseLawTable
               rows={canonicalRows}
-              onOpen={(id) => navigate(ROUTES.caseLawDetail(id))}
               emptyTitle="No canonical authorities match"
               emptyDescription="Canonical Case Law is maintained centrally and will appear here."
             />
@@ -191,7 +173,6 @@ export default function CaseLawListPage() {
           <TabsContent value="mine">
             <CaseLawTable
               rows={mine}
-              onOpen={(id) => navigate(ROUTES.caseLawDetail(id))}
               emptyTitle="No personal research yet"
               emptyDescription="Add a research entry to see it here."
               onCreate={() => setCreateOpen(true)}
@@ -200,7 +181,6 @@ export default function CaseLawListPage() {
           <TabsContent value="discoverable">
             <CaseLawTable
               rows={discoverable}
-              onOpen={(id) => navigate(ROUTES.caseLawDetail(id))}
               emptyTitle="Nothing discoverable yet"
               emptyDescription="Research other magistrates mark as discoverable will appear here."
             />
@@ -209,7 +189,7 @@ export default function CaseLawListPage() {
       )}
 
       <CreateCaseLawDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </BrowsePage>
   );
 }
 
@@ -226,76 +206,47 @@ interface CaseLawRow {
 
 function CaseLawTable({
   rows,
-  onOpen,
   emptyTitle,
   emptyDescription,
   onCreate,
 }: {
   rows: CaseLawRow[];
-  onOpen: (id: string) => void;
   emptyTitle: string;
   emptyDescription: string;
   onCreate?: () => void;
 }) {
   if (rows.length === 0) {
     return (
-      <Card className="mt-2">
-        <CardContent className="p-0">
-          <EmptyState
-            icon={BookOpen}
-            className="border-0"
-            title={emptyTitle}
-            description={emptyDescription}
-            action={
-              onCreate && (
-                <Button size="sm" onClick={onCreate}>
-                  <Plus className="h-4 w-4" />
-                  New research entry
-                </Button>
-              )
-            }
-          />
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={BookOpen}
+        className="mt-4"
+        title={emptyTitle}
+        description={emptyDescription}
+        action={
+          onCreate && (
+            <Button size="sm" variant="play" onClick={onCreate}>
+              <Plus className="h-4 w-4" />
+              New research entry
+            </Button>
+          )
+        }
+      />
     );
   }
 
   return (
-    <Card className="mt-2">
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Case name</TableHead>
-              <TableHead>Citation</TableHead>
-              <TableHead>Court</TableHead>
-              <TableHead className="text-right">Last updated</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id} className="cursor-pointer" onClick={() => onOpen(row.id)}>
-                <TableCell className="font-medium text-foreground">
-                  {row.case_name}
-                  {row.owner_id === null && (
-                    <Badge variant="canonical" className="ml-2">
-                      Canonical
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">{row.citation}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {row.court}
-                  {row.jurisdiction ? ` · ${row.jurisdiction}` : ""}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {row.updated_at ? formatDate(row.updated_at) : "—"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    <TitleGallery>
+      {rows.map((row) => (
+        <TitleCard
+          key={row.id}
+          tone="case-law"
+          eyebrow={row.citation}
+          title={row.case_name}
+          subtitle={[row.court, row.jurisdiction].filter(Boolean).join(" · ")}
+          badge={row.owner_id === null ? "Canonical" : undefined}
+          href={ROUTES.caseLawDetail(row.id)}
+        />
+      ))}
+    </TitleGallery>
   );
 }

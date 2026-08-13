@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Lock, LockOpen, Trash2, CheckCircle2 } from "lucide-react";
+import { Lock, LockOpen, Trash2, CheckCircle2 } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ import {
 import { formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { Billboard } from "@/components/browse";
 
 export default function JudgmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,7 +63,7 @@ export default function JudgmentDetailPage() {
 
   if (isPending) {
     return (
-      <div className="space-y-4">
+      <div className="browse-gutter space-y-4 pt-24">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -80,30 +81,29 @@ export default function JudgmentDetailPage() {
   const isDraft = judgment.status === "draft";
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-2"
-          onClick={() => navigate(back.to)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {back.label}
-        </Button>
+    <>
+      <Billboard
+        eyebrow={judgment.case_number ?? undefined}
+        title={judgment.title}
+        description={
+          [
+            judgment.citation,
+            !isDraft && judgment.finalized_at
+              ? `Finalized ${formatDateTime(judgment.finalized_at)}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined
+        }
+        badges={[toTitleCase(judgment.status)]}
+        tone="judgment"
+        primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
+      />
+      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {judgment.title}
-          </h1>
           <Badge variant={isDraft ? "secondary" : "default"}>{toTitleCase(judgment.status)}</Badge>
           <BookmarkToggle entityType="judgment" entityId={judgment.id} />
         </div>
-        {!isDraft && judgment.finalized_at && (
-          <p className="text-sm text-muted-foreground">
-            Finalized {formatDateTime(judgment.finalized_at)}
-          </p>
-        )}
-      </div>
 
       <LifecycleBar judgment={judgment} />
 
@@ -132,6 +132,7 @@ export default function JudgmentDetailPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </>
   );
 }
 

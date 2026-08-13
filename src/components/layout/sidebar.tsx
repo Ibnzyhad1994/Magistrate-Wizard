@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
+import { APP_NAME } from "@/lib/constants";
 
 /**
  * Persistent desktop sidebar. Collapses to an icon rail (state persisted
@@ -34,7 +35,7 @@ export function Sidebar() {
         <Scale className="h-5 w-5 shrink-0" aria-hidden="true" />
         {!sidebarCollapsed && (
           <span className="truncate text-sm font-semibold tracking-tight">
-            BenchBook
+            {APP_NAME}
           </span>
         )}
       </div>

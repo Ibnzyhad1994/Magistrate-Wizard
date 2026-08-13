@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "BenchBook — a legal knowledge management platform for magistrates.",
+  "description": "Magistrate Wizard — a legal knowledge management platform for magistrates.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -12,7 +12,11 @@
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "supabase:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > src/types/database.types.ts"
+    "db:start": "npx supabase start",
+    "db:stop": "npx supabase stop",
+    "db:reset": "npx supabase db reset",
+    "db:status": "npx supabase status",
+    "supabase:types": "npx supabase gen types typescript --local --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -1,5 +1,5 @@
-import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { APP_NAME } from "@/lib/constants";
 
 interface FullPageErrorProps {
   title?: string;
@@ -20,19 +20,38 @@ export function FullPageError({
   retryLabel = "Try again",
 }: FullPageErrorProps) {
   return (
-    <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-background px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-        <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+    <div className="relative flex min-h-dvh w-full flex-col bg-black">
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden bg-[#141414]"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a2a2a_0%,_#141414_50%,_#000_100%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
       </div>
-      <div className="space-y-1">
-        <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-        <p className="max-w-md text-sm text-muted-foreground">{message}</p>
-      </div>
-      {onRetry && (
-        <Button onClick={onRetry} variant="default">
-          {retryLabel}
-        </Button>
-      )}
+
+      <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
+        <span className="text-2xl font-extrabold tracking-tight text-primary sm:text-[1.75rem]">
+          {APP_NAME}
+        </span>
+      </header>
+
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-16 text-center">
+        <div className="space-y-3">
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            {title}
+          </h1>
+          <p className="max-w-md text-base text-white/70">{message}</p>
+        </div>
+        {onRetry && (
+          <Button
+            onClick={onRetry}
+            variant="default"
+            className="h-12 px-8 text-base font-semibold"
+          >
+            {retryLabel}
+          </Button>
+        )}
+      </main>
     </div>
   );
 }

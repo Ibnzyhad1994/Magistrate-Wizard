@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { isRouteErrorResponse, useRouteError } from "react-router-dom";
 import { FullPageError } from "@/components/common/full-page-error";
 import { getErrorMessage } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -35,7 +36,7 @@ export class ErrorBoundary extends Component<
     // Replace with a real error-reporting integration (e.g. Sentry) when
     // one is wired up. Left as console output intentionally so failures
     // are never silently swallowed during development.
-    console.error("BenchBook render error:", error, errorInfo);
+    console.error(`${APP_NAME} render error:`, error, errorInfo);
   }
 
   private handleRetry = () => {
@@ -46,7 +47,7 @@ export class ErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <FullPageError
-          title="BenchBook hit an unexpected error"
+          title={`${APP_NAME} hit an unexpected error`}
           message={
             this.state.error
               ? getErrorMessage(this.state.error)

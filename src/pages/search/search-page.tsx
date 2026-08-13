@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
+import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
 import { useGlobalSearch } from "@/hooks/search/use-global-search";
 import { ROUTES } from "@/routes/paths";
+import type { TitleCardTone } from "@/lib/browse-tones";
 import type { SearchResult } from "@/types/database.types";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -19,6 +19,16 @@ const TYPE_LABELS: Record<string, string> = {
   docket_matter: "Docket Matter",
   judgment: "Judgment",
   quick_code: "Quick Code",
+};
+
+const TYPE_TONE: Record<string, TitleCardTone> = {
+  case: "bookmark",
+  bench_note: "note",
+  statute: "legislation",
+  case_law: "case-law",
+  docket_matter: "docket",
+  judgment: "judgment",
+  quick_code: "code",
 };
 
 // Only entity types with a live, routable detail page in this frontend.
@@ -49,7 +59,7 @@ function Headline({ text }: { text: string | null }) {
   const parts = text.split(/(<b>|<\/b>)/);
   let bold = false;
   return (
-    <p className="text-sm text-muted-foreground">
+    <p className="mt-1.5 line-clamp-3 text-[11px] leading-snug text-white/60">
       {parts.map((part, i) => {
         if (part === "<b>") {
           bold = true;
@@ -60,7 +70,7 @@ function Headline({ text }: { text: string | null }) {
           return null;
         }
         return bold ? (
-          <mark key={i} className="bg-primary/20 text-foreground">
+          <mark key={i} className="bg-primary/40 text-white">
             {part}
           </mark>
         ) : (
@@ -72,9 +82,15 @@ function Headline({ text }: { text: string | null }) {
 }
 
 export default function SearchPage() {
-  const navigate = useNavigate();
-  const [input, setInput] = useState("");
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
+  const [input, setInput] = useState(urlQuery);
+  const [query, setQuery] = useState(urlQuery);
+
+  useEffect(() => {
+    setInput(urlQuery);
+    setQuery(urlQuery);
+  }, [urlQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(input), 350);
@@ -97,17 +113,13 @@ export default function SearchPage() {
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Search</h1>
-        <p className="text-sm text-muted-foreground">
-          Search across Docket Matters, Judgments, Case Law, Quick Codes,
-          Bench Notes, Cases, and Legislation — results are limited to what
-          you're already allowed to see.
-        </p>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Search"
+        description="Search across Docket Matters, Judgments, Case Law, Quick Codes, Bench Notes, Cases, and Legislation — results are limited to what you're already allowed to see."
+      />
 
-      <div className="relative max-w-lg">
+      <div className="relative mb-8 max-w-lg">
         <SearchIcon className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-8"
@@ -126,10 +138,13 @@ export default function SearchPage() {
           description="Search matches titles and content across everything you have access to."
         />
       ) : isPending || isFetching ? (
-        <div className="space-y-3">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
+        <div className="flex flex-wrap gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
+            />
+          ))}
         </div>
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
@@ -140,39 +155,34 @@ export default function SearchPage() {
           description={`Nothing matched "${query.trim()}".`}
         />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-10">
           {Array.from(grouped.entries()).map(([type, results]) => (
-            <div key={type}>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {TYPE_LABELS[type] ?? type} ({results.length})
-              </p>
-              <div className="space-y-2">
+            <section key={type}>
+              <h2 className="mb-4 text-xl font-bold text-white">
+                {TYPE_LABELS[type] ?? type}
+                <span className="ml-2 text-sm font-normal text-white/50">({results.length})</span>
+              </h2>
+              <TitleGallery>
                 {results.map((r) => {
                   const route = r.id ? TYPE_ROUTE[type]?.(r.id) : undefined;
                   return (
-                    <Card
-                      key={`${type}-${r.id}`}
-                      className={route ? "cursor-pointer transition-colors hover:bg-muted/40" : undefined}
-                      onClick={() => route && navigate(route)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{TYPE_LABELS[type] ?? type}</Badge>
-                          <span className="font-medium text-foreground">{r.title}</span>
-                          {r.subtitle && (
-                            <span className="text-sm text-muted-foreground">{r.subtitle}</span>
-                          )}
-                        </div>
-                        <Headline text={r.headline} />
-                      </CardContent>
-                    </Card>
+                    <div key={`${type}-${r.id}`} className="max-w-[13.5rem]">
+                      <TitleCard
+                        tone={TYPE_TONE[type] ?? "bookmark"}
+                        eyebrow={TYPE_LABELS[type] ?? type}
+                        title={r.title ?? "Untitled"}
+                        subtitle={r.subtitle ?? undefined}
+                        href={route}
+                      />
+                      <Headline text={r.headline} />
+                    </div>
                   );
                 })}
-              </div>
-            </div>
+              </TitleGallery>
+            </section>
           ))}
         </div>
       )}
-    </div>
+    </BrowsePage>
   );
 }

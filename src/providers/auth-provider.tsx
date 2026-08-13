@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/auth-store";
 import { PageLoader } from "@/components/common/page-loader";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/constants";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   if (status === "loading") {
-    return <PageLoader label="Loading BenchBook..." />;
+    return <PageLoader label={`Loading ${APP_NAME}...`} />;
   }
 
   return <>{children}</>;

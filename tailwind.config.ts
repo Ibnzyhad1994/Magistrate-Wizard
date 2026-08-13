@@ -52,6 +52,15 @@ const config: Config = {
           DEFAULT: "hsl(var(--brass))",
           foreground: "hsl(var(--brass-foreground))",
         },
+        match: {
+          DEFAULT: "hsl(var(--match))",
+        },
+        netflix: {
+          red: "#E50914",
+          canvas: "#141414",
+          tile: "#181818",
+          hover: "#2f2f2f",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -81,11 +90,16 @@ const config: Config = {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
+        "card-in": {
+          from: { opacity: "0", transform: "translateY(8px) scale(0.98)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "spin-slow": "spin-slow 1.2s linear infinite",
+        "card-in": "card-in 0.2s ease-out",
       },
       fontFamily: {
         sans: [

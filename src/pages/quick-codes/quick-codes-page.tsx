@@ -36,6 +36,7 @@ import {
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
+import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { InlineError } from "@/components/common/inline-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { ControlledVocabSelect } from "@/components/common/controlled-vocab-select";
@@ -128,26 +129,23 @@ export default function QuickCodesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Quick Codes
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Reusable boilerplate text, private to you.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          New Quick Code
-        </Button>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Quick Codes"
+        description="Reusable boilerplate text, private to you."
+        action={
+          <Button
+            variant="play"
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            New Quick Code
+          </Button>
+        }
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
@@ -320,7 +318,7 @@ export default function QuickCodesPage() {
           }
         }}
       />
-    </div>
+    </BrowsePage>
   );
 }
 

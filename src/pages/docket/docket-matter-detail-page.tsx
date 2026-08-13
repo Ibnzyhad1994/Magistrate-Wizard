@@ -1,7 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
@@ -15,6 +13,7 @@ import { JudgmentsSection } from "@/pages/docket/sections/judgments-section";
 import { CaseLawSection } from "@/pages/docket/sections/case-law-section";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { Billboard } from "@/components/browse";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
@@ -34,7 +33,7 @@ export default function DocketMatterDetailPage() {
 
   if (isPending) {
     return (
-      <div className="space-y-4">
+      <div className="browse-gutter space-y-4 pt-24">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -58,34 +57,26 @@ export default function DocketMatterDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-2"
-          onClick={() => navigate(back.to)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {back.label}
-        </Button>
+    <>
+      <Billboard
+        eyebrow={matter.case_number}
+        title={matter.matter_title}
+        description={
+          [matter.charge_or_issue, matter.courts?.name, matter.magisterial_districts?.name]
+            .filter(Boolean)
+            .join(" · ") || undefined
+        }
+        badges={[toTitleCase(matter.status)]}
+        tone="docket"
+        primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
+      />
+      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {matter.matter_title}
-          </h1>
           <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
             {toTitleCase(matter.status)}
           </Badge>
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
         </div>
-        <p className="text-sm text-muted-foreground">
-          {matter.case_number}
-          {matter.courts?.name ? ` · ${matter.courts.name}` : ""}
-          {matter.magisterial_districts?.name
-            ? ` · ${matter.magisterial_districts.name}`
-            : ""}
-        </p>
-      </div>
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="flex h-auto flex-wrap justify-start gap-1">
@@ -125,5 +116,6 @@ export default function DocketMatterDetailPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </>
   );
 }

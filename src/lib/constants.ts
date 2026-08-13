@@ -3,7 +3,7 @@
  * secrets — those belong in `src/lib/supabase.ts` via `import.meta.env`.
  */
 
-export const APP_NAME = "BenchBook";
+export const APP_NAME = "Magistrate Wizard";
 export const APP_DESCRIPTION =
   "A legal knowledge management platform for magistrates.";
 

@@ -77,6 +77,7 @@ import {
 } from "@/hooks/legislation/use-legislation";
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
+import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { readFileAsText, extractCaseLawMetadataWithConfidence, normalizeWhitespace } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
@@ -529,16 +530,11 @@ export default function LegalLibraryAdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Legal Library
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage source registrations, ingest Case Law and Legislation, and
-          review drafts before they become canonical.
-        </p>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Legal Library"
+        description="Manage source registrations, ingest Case Law and Legislation, and review drafts before they become canonical."
+      />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
@@ -560,7 +556,7 @@ export default function LegalLibraryAdminPage() {
           <ReviewQueueTab highlightCaseLawId={highlightCaseLawId} fromBatchId={reviewFromBatchId} />
         </TabsContent>
       </Tabs>
-    </div>
+    </BrowsePage>
   );
 }
 

@@ -1,4 +1,4 @@
-# BenchBook — Supabase backend
+# Magistrate Wizard — Supabase backend
 
 11 migrations, applied in filename order, build the entire backend:
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, FileQuestion } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { useBenchNoteParent } from "@/hooks/bench-notes/use-bench-note-parent";
 import { ROUTES } from "@/routes/paths";
 import { toTitleCase } from "@/lib/utils";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { Billboard } from "@/components/browse";
 
 /** How long to wait after the last keystroke before persisting content. */
 const AUTOSAVE_DEBOUNCE_MS = 1200;
@@ -109,7 +110,7 @@ export default function BenchNoteDetailPage() {
 
   if (isPending) {
     return (
-      <div className="space-y-4">
+      <div className="browse-gutter space-y-4 pt-24">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -125,45 +126,31 @@ export default function BenchNoteDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-2"
-          onClick={() => navigate(back.to)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {back.label}
-        </Button>
+    <>
+      <Billboard
+        eyebrow={PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type}
+        title={note.title}
+        description={
+          parentPending
+            ? "Loading related record…"
+            : parent
+              ? [parent.label, parent.subtitle].filter(Boolean).join(" · ")
+              : `Parent unavailable (${PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type})`
+        }
+        badges={[toTitleCase(note.status)]}
+        tone="note"
+        primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
+        secondaryAction={
+          parent ? { label: "Open related", onClick: () => navigate(parent.href) } : undefined
+        }
+      />
+      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{note.title}</h1>
           <Badge variant={note.status === "published" ? "default" : "secondary"}>
             {toTitleCase(note.status)}
           </Badge>
           <BookmarkToggle entityType="bench_note" entityId={note.id} />
         </div>
-        <div className="mt-1 text-sm text-muted-foreground">
-          About:{" "}
-          {parentPending ? (
-            "Loading…"
-          ) : parent ? (
-            <button
-              type="button"
-              className="text-primary hover:underline"
-              onClick={() => navigate(parent.href)}
-            >
-              {parent.label}
-              {parent.subtitle ? ` · ${parent.subtitle}` : ""}
-            </button>
-          ) : (
-            <span className="inline-flex items-center gap-1 italic">
-              <FileQuestion className="h-3.5 w-3.5" />
-              Parent unavailable ({PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type})
-            </span>
-          )}
-        </div>
-      </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
         <Button
@@ -258,5 +245,6 @@ export default function BenchNoteDetailPage() {
         }
       />
     </div>
+    </>
   );
 }

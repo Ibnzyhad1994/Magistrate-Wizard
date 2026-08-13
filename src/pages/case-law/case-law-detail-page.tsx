@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, ExternalLink, Trash2, StickyNote, Pencil, Gavel, Link2, Unlink } from "lucide-react";
+import { ExternalLink, Trash2, StickyNote, Pencil, Gavel, Link2, Unlink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,7 @@ import {
 import { formatDate, formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { Billboard } from "@/components/browse";
 
 export default function CaseLawDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -64,7 +65,7 @@ export default function CaseLawDetailPage() {
 
   if (isPending) {
     return (
-      <div className="space-y-4">
+      <div className="browse-gutter space-y-4 pt-24">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -84,31 +85,22 @@ export default function CaseLawDetailPage() {
   const isEditable = isOwner; // Canonical edits are Admin-only; no frontend bypass here.
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-2"
-          onClick={() => navigate(back.to)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {back.label}
-        </Button>
+    <>
+      <Billboard
+        eyebrow={caseLaw.citation}
+        title={caseLaw.case_name}
+        description={[caseLaw.court, caseLaw.jurisdiction].filter(Boolean).join(" · ") || undefined}
+        badges={[isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"]}
+        tone="case-law"
+        primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
+      />
+      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {caseLaw.case_name}
-          </h1>
           <Badge variant={isCanonical ? "canonical" : "secondary"}>
             {isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"}
           </Badge>
           <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />
         </div>
-        <p className="text-sm text-muted-foreground">
-          {caseLaw.citation} · {caseLaw.court}
-          {caseLaw.jurisdiction ? ` · ${caseLaw.jurisdiction}` : ""}
-        </p>
-      </div>
 
       {isOwner && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
@@ -171,6 +163,7 @@ export default function CaseLawDetailPage() {
         }
       />
     </div>
+    </>
   );
 }
 

@@ -1,22 +1,12 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Plus, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
+import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
@@ -35,7 +25,6 @@ export default function BenchNotesListPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
-  const navigate = useNavigate();
   const { data, isPending, isError, error, refetch } = useBenchNotes();
 
   // Searches title AND note content (bench_notes.search_vector covers
@@ -62,21 +51,17 @@ export default function BenchNotesListPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Bench Notes
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your notes, attached to Docket Matters, Judgments, Case Law, or Legislation.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New Bench Note
-        </Button>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Bench Notes"
+        description="Your notes, attached to Docket Matters, Judgments, Case Law, or Legislation."
+        action={
+          <Button variant="play" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Bench Note
+          </Button>
+        }
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
@@ -114,70 +99,50 @@ export default function BenchNotesListPage() {
       </div>
 
       {isPending || (query.trim() && searchPending) ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="mt-8 flex flex-wrap gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
+            />
+          ))}
+        </div>
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <EmptyState
-              icon={StickyNote}
-              className="border-0"
-              title={data && data.length > 0 ? "No matches" : "No Bench Notes yet"}
-              description={
-                data && data.length > 0
-                  ? "Try a different search term or clear a filter."
-                  : "Attach a note to a matter, judgment, case law entry, or Act to see it here."
-              }
-              action={
-                <Button size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  New Bench Note
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={StickyNote}
+          className="mt-8"
+          title={data && data.length > 0 ? "No matches" : "No Bench Notes yet"}
+          description={
+            data && data.length > 0
+              ? "Try a different search term or clear a filter."
+              : "Attach a note to a matter, judgment, case law entry, or Act to see it here."
+          }
+          action={
+            <Button size="sm" variant="play" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New Bench Note
+            </Button>
+          }
+        />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>About</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Last updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((note) => (
-                  <TableRow
-                    key={note.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate(ROUTES.benchNoteDetail(note.id))}
-                  >
-                    <TableCell className="font-medium text-foreground">{note.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={note.status === "published" ? "default" : "secondary"}>
-                        {toTitleCase(note.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatDate(note.updated_at)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <TitleGallery>
+          {filtered.map((note) => (
+            <TitleCard
+              key={note.id}
+              tone="note"
+              eyebrow={PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type}
+              title={note.title}
+              badge={toTitleCase(note.status)}
+              meta={[formatDate(note.updated_at)]}
+              href={ROUTES.benchNoteDetail(note.id)}
+            />
+          ))}
+        </TitleGallery>
       )}
 
       <CreateBenchNoteDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </BrowsePage>
   );
 }

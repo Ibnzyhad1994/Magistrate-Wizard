@@ -3,100 +3,56 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Warm ivory/stone, not stark white — cards (--card, still pure
-       white) read as if resting on paper rather than floating in a
-       generic admin-app void. Subtle on purpose; see Part J notes in
-       the architecture spec for the reasoning and the honest caveat
-       that this couldn't be visually screenshotted in this sandbox. */
-    --background: 40 20% 98%;
-    --foreground: 222 47% 11%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
-    --primary: 222 47% 20%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 210 40% 94%;
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 20%;
-
-    /* Restrained brass/gold accent — reserved for institutional/
-       canonical-content cues (e.g. the "Canonical" Badge variant), never
-       a general-purpose color. Muted/desaturated deliberately: this is
-       not meant to read as bright gold. */
-    --brass: 38 42% 42%;
-    --brass-foreground: 38 55% 18%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 210 40% 98%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 40% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 35% 20%;
-    --sidebar-ring: 217 91% 60%;
-  }
-
+  /*
+   * Cinematic "theater" palette — Netflix web app translation.
+   * Canvas is near-black so content tiles read as luminous. Brand red is
+   * reserved for the wordmark and primary CTAs, never a page wash.
+   */
+  :root,
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 8%; /* #141414 */
+    --foreground: 0 0% 100%;
 
-    --card: 222 45% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 9.4%; /* #181818 */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222 45% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 9.4%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 357 92% 47%; /* #E50914 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 35% 15%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 35% 15%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 222 35% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 357 92% 47%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 357 92% 47%;
 
-    /* Lighter/warmer brass for legibility against the dark navy surfaces. */
     --brass: 42 55% 58%;
     --brass-foreground: 42 70% 78%;
 
-    --sidebar-background: 222 50% 5%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 222 40% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 35% 14%;
-    --sidebar-ring: 217 91% 60%;
+    --match: 137 57% 55%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 357 92% 47%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 357 92% 47%;
   }
 }
 
@@ -119,21 +75,11 @@
 
   #root {
     min-height: 100dvh;
+    background: hsl(var(--background));
   }
 }
 
 @layer components {
-  /**
-   * Tiptap-rendered content (`src/components/common/rich-text-editor.tsx`).
-   * Tailwind's preflight resets h1-h6 font-size/font-weight to `inherit`
-   * and strips list-style/margin from ul/ol, so a genuine <h2>/<ul> node
-   * in the editor document renders with zero visual distinction from a
-   * plain paragraph unless explicitly restyled here. This project does
-   * not have the `@tailwindcss/typography` ("prose") plugin installed —
-   * the `prose` classes previously used were silently inert — so this is
-   * a small, dependency-free, explicitly scoped stylesheet instead of a
-   * new build dependency.
-   */
   .richtext-content {
     @apply text-sm leading-relaxed text-foreground;
   }
@@ -202,6 +148,20 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
+    @apply rounded-full bg-border;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .browse-gutter {
+    padding-left: 4vw;
+    padding-right: 4vw;
   }
 }

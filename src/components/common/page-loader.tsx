@@ -1,5 +1,5 @@
 import { LoadingSpinner } from "@/components/common/loading-spinner";
-import { Scale } from "lucide-react";
+import { APP_NAME } from "@/lib/constants";
 
 interface PageLoaderProps {
   label?: string;
@@ -11,15 +11,16 @@ interface PageLoaderProps {
  */
 export function PageLoader({ label = "Loading..." }: PageLoaderProps) {
   return (
-    <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-4 bg-background">
-      <div className="flex items-center gap-2 text-foreground">
-        <Scale className="h-6 w-6" aria-hidden="true" />
-        <span className="text-lg font-semibold tracking-tight">
-          BenchBook
-        </span>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <LoadingSpinner size={16} />
+    <div className="relative flex min-h-dvh w-full flex-col items-center justify-center gap-6 bg-black">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[#141414]"
+        aria-hidden="true"
+      />
+      <span className="relative z-10 text-2xl font-extrabold tracking-tight text-primary">
+        {APP_NAME}
+      </span>
+      <div className="relative z-10 flex items-center gap-2 text-sm text-white/70">
+        <LoadingSpinner className="text-white/70" size={16} />
         <span>{label}</span>
       </div>
     </div>

@@ -25,6 +25,7 @@ import {
 } from "@/hooks/admin/use-court-assignments";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
+import { BrowseHeader, BrowsePage } from "@/components/browse";
 
 /**
  * Admin-only Court Assignment management. `magistrate_courts` is
@@ -82,17 +83,11 @@ export default function CourtAssignmentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Court Assignments
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          A Court assignment originates ordinary Docket authority, so it&apos;s
-          admin-managed only. Find a profile, then assign or end a Court
-          assignment. Ending never deletes history.
-        </p>
-      </div>
+    <BrowsePage>
+      <BrowseHeader
+        title="Court Assignments"
+        description="A Court assignment originates ordinary Docket authority, so it's admin-managed only. Find a profile, then assign or end a Court assignment. Ending never deletes history."
+      />
 
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card className="h-fit">
@@ -329,6 +324,6 @@ export default function CourtAssignmentsPage() {
           });
         }}
       />
-    </div>
+    </BrowsePage>
   );
 }

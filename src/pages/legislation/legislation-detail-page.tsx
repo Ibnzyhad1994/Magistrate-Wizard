@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   Copy,
   ExternalLink,
   Menu,
@@ -19,6 +18,7 @@ import { useBackNav } from "@/hooks/use-back-nav";
 import { formatDate, cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
+import { Billboard } from "@/components/browse";
 import { toast } from "sonner";
 import type { StatuteProvision } from "@/types/database.types";
 
@@ -67,7 +67,7 @@ export default function LegislationDetailPage() {
 
   if (isPending) {
     return (
-      <div className="space-y-4">
+      <div className="browse-gutter space-y-4 pt-24">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -139,16 +139,35 @@ export default function LegislationDetailPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => navigate(back.to)}>
-          <ArrowLeft className="h-4 w-4" />
-          {back.label}
-        </Button>
+    <>
+      <Billboard
+        eyebrow={statute.code}
+        title={statute.title}
+        description={
+          [
+            statute.short_title,
+            statute.jurisdiction,
+            statute.chapter_number ? `Chapter ${statute.chapter_number}` : null,
+            statute.effective_date ? `Effective ${formatDate(statute.effective_date)}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined
+        }
+        badges={[
+          "Canonical",
+          ...(statute.review_status !== "published"
+            ? [
+                statute.review_status === "draft"
+                  ? "Draft (admin only)"
+                  : "Needs review (admin only)",
+              ]
+            : []),
+        ]}
+        tone="legislation"
+        primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
+      />
+      <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {statute.title}
-          </h1>
           <Badge variant="canonical">Canonical</Badge>
           {statute.review_status !== "published" && (
             <Badge variant="secondary">
@@ -157,12 +176,6 @@ export default function LegislationDetailPage() {
           )}
           <BookmarkToggle entityType="statute" entityId={statute.id} />
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {[statute.short_title, statute.code, statute.jurisdiction].filter(Boolean).join(" · ")}
-          {statute.chapter_number ? ` · Chapter ${statute.chapter_number}` : ""}
-          {statute.effective_date ? ` · Effective ${formatDate(statute.effective_date)}` : ""}
-        </p>
-      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
@@ -314,5 +327,6 @@ export default function LegislationDetailPage() {
         }
       />
     </div>
+    </>
   );
 }
