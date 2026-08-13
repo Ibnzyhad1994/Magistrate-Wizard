@@ -32,7 +32,7 @@ export function useDocketMatters(search: string) {
       const { data, error } = await supabase
         .from("docket_matters")
         .select(
-          "id, case_number, matter_title, status, charge_or_issue, created_at, updated_at, court_id, district_id",
+          "id, case_number, matter_title, status, charge_or_issue, created_at, updated_at, court_id, district_id, cover_image_path, courts(name)",
         )
         .order("updated_at", { ascending: false })
         .limit(100);

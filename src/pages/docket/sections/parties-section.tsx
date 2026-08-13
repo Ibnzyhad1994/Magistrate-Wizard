@@ -48,6 +48,12 @@ import {
 } from "@/lib/validations/docket";
 import { toTitleCase } from "@/lib/utils";
 import type { DocketMatterParty } from "@/types/database.types";
+import { SignedThumb } from "@/components/common/signed-thumb";
+import { IdentificationImageControl } from "@/components/common/identification-image-control";
+import {
+  useClearPartyPhoto,
+  useSetPartyPhoto,
+} from "@/hooks/docket/use-identification-images";
 
 interface PartiesSectionProps {
   matterId: string;
@@ -91,6 +97,7 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-14">Photo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Type</TableHead>
@@ -105,6 +112,13 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
                 className="cursor-pointer"
                 onClick={() => setDialogParty(party)}
               >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <SignedThumb
+                    path={party.identification_photo_path}
+                    alt={party.full_name}
+                    className="h-10 w-10 rounded-sm"
+                  />
+                </TableCell>
                 <TableCell className="font-medium text-foreground">
                   {party.full_name}
                 </TableCell>
@@ -148,6 +162,8 @@ function PartyDialog({
 }) {
   const createParty = useCreateDocketParty(matterId);
   const updateParty = useUpdateDocketParty(matterId);
+  const setPhoto = useSetPartyPhoto(matterId);
+  const clearPhoto = useClearPartyPhoto(matterId);
   const isPending = createParty.isPending || updateParty.isPending;
 
   const form = useForm<DocketPartyFormValues>({
@@ -276,6 +292,18 @@ function PartyDialog({
                 </FormItem>
               )}
             />
+
+            {party && (
+              <IdentificationImageControl
+                path={party.identification_photo_path}
+                alt={party.full_name}
+                label="Identification photo"
+                description="Used to recognize this party in court. If the matter has no cover yet, this photo becomes the Docket cover."
+                isPending={setPhoto.isPending || clearPhoto.isPending}
+                onUpload={(file) => setPhoto.mutate({ partyId: party.id, file })}
+                onClear={() => clearPhoto.mutate(party.id)}
+              />
+            )}
 
             {party && (
               <FormField

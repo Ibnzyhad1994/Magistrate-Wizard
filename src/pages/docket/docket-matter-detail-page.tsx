@@ -14,6 +14,7 @@ import { CaseLawSection } from "@/pages/docket/sections/case-law-section";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { Billboard } from "@/components/browse";
+import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
@@ -30,6 +31,7 @@ export default function DocketMatterDetailPage() {
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.docket, "Back to Docket");
   const { data: matter, isPending, isError, error, refetch } = useDocketMatter(id);
+  const { data: coverUrls } = useSignedUrls([matter?.cover_image_path]);
 
   if (isPending) {
     return (
@@ -68,6 +70,9 @@ export default function DocketMatterDetailPage() {
         }
         badges={[toTitleCase(matter.status)]}
         tone="docket"
+        imageUrl={
+          matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined
+        }
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
       />
       <div className="browse-gutter relative z-10 -mt-8 space-y-8 pb-20">

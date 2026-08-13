@@ -1,3 +1,14 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Bookmark,
+  BookOpen,
+  Braces,
+  Gavel,
+  Scale,
+  ScrollText,
+  StickyNote,
+} from "lucide-react";
+
 export type TitleCardTone =
   | "docket"
   | "judgment"
@@ -16,4 +27,24 @@ export const TONE_GRADIENT: Record<TitleCardTone, string> = {
   note: "from-[#2a1a08] via-[#92400e] to-[#0c0804]",
   code: "from-[#1e1b4b] via-[#4338ca] to-[#0f0a1a]",
   bookmark: "from-[#3f1d0a] via-[#c2410c] to-[#1c0a05]",
+};
+
+export const TONE_ICON: Record<TitleCardTone, LucideIcon> = {
+  docket: Gavel,
+  judgment: Scale,
+  "case-law": BookOpen,
+  legislation: ScrollText,
+  note: StickyNote,
+  code: Braces,
+  bookmark: Bookmark,
+};
+
+export const TONE_LABEL: Record<TitleCardTone, string> = {
+  docket: "Docket",
+  judgment: "Judgment",
+  "case-law": "Case Law",
+  legislation: "Legislation",
+  note: "Bench Note",
+  code: "Quick Code",
+  bookmark: "Bookmark",
 };

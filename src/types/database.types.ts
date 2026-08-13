@@ -943,6 +943,7 @@ export type Database = {
           docket_matter_id: string;
           full_name: string;
           id: string;
+          identification_photo_path: string | null;
           last_updated_by: string | null;
           party_status: string;
           party_type: string;
@@ -957,6 +958,7 @@ export type Database = {
           docket_matter_id: string;
           full_name: string;
           id?: string;
+          identification_photo_path?: string | null;
           last_updated_by?: string | null;
           party_status?: string;
           party_type?: string;
@@ -971,6 +973,7 @@ export type Database = {
           docket_matter_id?: string;
           full_name?: string;
           id?: string;
+          identification_photo_path?: string | null;
           last_updated_by?: string | null;
           party_status?: string;
           party_type?: string;
@@ -1047,6 +1050,7 @@ export type Database = {
           case_number: string;
           charge_or_issue: string | null;
           court_id: string;
+          cover_image_path: string | null;
           created_at: string;
           created_by: string;
           district_id: string;
@@ -1063,6 +1067,7 @@ export type Database = {
           case_number: string;
           charge_or_issue?: string | null;
           court_id: string;
+          cover_image_path?: string | null;
           created_at?: string;
           created_by?: string;
           district_id: string;
@@ -1079,6 +1084,7 @@ export type Database = {
           case_number?: string;
           charge_or_issue?: string | null;
           court_id?: string;
+          cover_image_path?: string | null;
           created_at?: string;
           created_by?: string;
           district_id?: string;
@@ -1133,6 +1139,7 @@ export type Database = {
           file_size: number;
           id: string;
           mime_type: string;
+          purpose: string;
           uploaded_by: string;
         };
         Insert: {
@@ -1144,6 +1151,7 @@ export type Database = {
           file_size: number;
           id?: string;
           mime_type: string;
+          purpose?: string;
           uploaded_by: string;
         };
         Update: {
@@ -1155,6 +1163,7 @@ export type Database = {
           file_size?: number;
           id?: string;
           mime_type?: string;
+          purpose?: string;
           uploaded_by?: string;
         };
         Relationships: [
@@ -2410,6 +2419,8 @@ export type Database = {
           status: Database["public"]["Enums"]["docket_matter_status"];
           rank: number;
           headline: string;
+          cover_image_path: string | null;
+          charge_or_issue: string | null;
         }[];
       };
       search_judgments: {

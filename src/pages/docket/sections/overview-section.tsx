@@ -46,6 +46,11 @@ import {
 } from "@/lib/validations/docket";
 import { formatDateTime, toTitleCase } from "@/lib/utils";
 import type { DocketMatter } from "@/types/database.types";
+import { IdentificationImageControl } from "@/components/common/identification-image-control";
+import {
+  useClearMatterCover,
+  useSetMatterCover,
+} from "@/hooks/docket/use-identification-images";
 
 interface OverviewSectionProps {
   matter: DocketMatter & {
@@ -61,6 +66,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
   const { user } = useAuth();
   const updateMatter = useUpdateDocketMatter(matter.id);
+  const setCover = useSetMatterCover(matter.id);
+  const clearCover = useClearMatterCover(matter.id);
   const createRetained = useCreateRetainedAssignment(matter.id);
   const endRetained = useEndRetainedAssignment(matter.id);
   const {
@@ -104,6 +111,23 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           {matter.charge_or_issue || (
             <span className="italic">No charge or issue recorded.</span>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-3">
+        <CardHeader>
+          <CardTitle className="text-base">Cover / identification</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <IdentificationImageControl
+            path={matter.cover_image_path}
+            alt={`Cover for ${matter.matter_title}`}
+            label="Matter cover"
+            description="Shown on the Docket browse tile and title billboard. JPEG, PNG, or WebP, up to 5 MB."
+            isPending={setCover.isPending || clearCover.isPending}
+            onUpload={(file) => setCover.mutate(file)}
+            onClear={() => clearCover.mutate()}
+          />
         </CardContent>
       </Card>
 

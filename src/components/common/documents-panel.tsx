@@ -65,6 +65,9 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
   const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
+  const visibleDocs = (data ?? []).filter(
+    (doc) => doc.purpose !== "identification_photo" && doc.purpose !== "cover",
+  );
 
   async function handleDownload(doc: Document) {
     setDownloadingId(doc.id);
@@ -111,7 +114,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
         <Skeleton className="h-32 w-full" />
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
-      ) : !data || data.length === 0 ? (
+      ) : !visibleDocs || visibleDocs.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="No documents attached"
@@ -132,7 +135,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((doc) => (
+            {visibleDocs.map((doc) => (
               <TableRow key={doc.id}>
                 <TableCell className="font-medium text-foreground">
                   <button

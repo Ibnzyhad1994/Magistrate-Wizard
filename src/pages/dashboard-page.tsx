@@ -11,6 +11,7 @@ import {
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
+import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { APP_NAME } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
@@ -50,6 +51,25 @@ export default function DashboardPage() {
     };
   }, [judgments, user?.id]);
 
+  const coverPaths = useMemo(() => {
+    const paths: (string | null | undefined)[] = [];
+    for (const m of matters ?? []) {
+      if ("cover_image_path" in m) paths.push(m.cover_image_path);
+    }
+    for (const event of appearances ?? []) {
+      paths.push(rel(event.docket_matters)?.cover_image_path);
+    }
+    for (const row of retained ?? []) {
+      paths.push(rel(row.docket_matters)?.cover_image_path);
+    }
+    return paths;
+  }, [matters, appearances, retained]);
+  const { data: coverUrls } = useSignedUrls(coverPaths);
+
+  function coverUrl(path: string | null | undefined) {
+    return path ? coverUrls?.[path] : undefined;
+  }
+
   const noCourts = !courtsPending && (courts?.length ?? 0) === 0;
   const firstAppearance = appearances?.[0];
   const appearanceMatter = rel(firstAppearance?.docket_matters);
@@ -61,6 +81,7 @@ export default function DashboardPage() {
         eyebrow: appearanceMatter?.case_number ?? "Upcoming appearance",
         title: appearanceMatter?.matter_title ?? "Upcoming appearance",
         description: [
+          appearanceMatter?.charge_or_issue,
           eventLabel(firstAppearance.event_type),
           formatDate(firstAppearance.scheduled_date),
           firstAppearance.scheduled_time
@@ -70,6 +91,7 @@ export default function DashboardPage() {
           .filter(Boolean)
           .join(" · "),
         badges: [toTitleCase(firstAppearance.event_status)],
+        imageUrl: coverUrl(appearanceMatter?.cover_image_path),
         primaryAction: {
           label: "Open matter",
           href: ROUTES.docketMatter(firstAppearance.docket_matter_id),
@@ -83,6 +105,7 @@ export default function DashboardPage() {
           title: firstMatter.matter_title,
           description: issueOf(firstMatter),
           badges: [toTitleCase(firstMatter.status)],
+          imageUrl: coverUrl("cover_image_path" in firstMatter ? firstMatter.cover_image_path : null),
           primaryAction: {
             label: "Open matter",
             href: ROUTES.docketMatter(firstMatter.id),
@@ -128,6 +151,8 @@ export default function DashboardPage() {
                 title={m.matter_title}
                 subtitle={issueOf(m)}
                 badge={toTitleCase(m.status)}
+                meta={"courts" in m ? [rel(m.courts)?.name].filter((v): v is string => Boolean(v)) : undefined}
+                imageUrl={coverUrl("cover_image_path" in m ? m.cover_image_path : null)}
                 href={ROUTES.docketMatter(m.id)}
               />
             ))}
@@ -144,10 +169,13 @@ export default function DashboardPage() {
                   tone="docket"
                   eyebrow={matter?.case_number}
                   title={matter?.matter_title ?? eventLabel(event.event_type)}
-                  subtitle={[formatDate(event.scheduled_date), event.scheduled_time ? formatTimeOnly(event.scheduled_time) : null]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  subtitle={matter?.charge_or_issue ?? undefined}
                   badge={eventLabel(event.event_type)}
+                  meta={[
+                    formatDate(event.scheduled_date),
+                    event.scheduled_time ? formatTimeOnly(event.scheduled_time) : null,
+                  ].filter((v): v is string => Boolean(v))}
+                  imageUrl={coverUrl(matter?.cover_image_path)}
                   href={ROUTES.docketMatter(event.docket_matter_id)}
                 />
               );
@@ -197,7 +225,9 @@ export default function DashboardPage() {
                   tone="docket"
                   eyebrow={matter?.case_number}
                   title={matter?.matter_title ?? "Retained matter"}
-                  badge="Retained"
+                  subtitle={matter?.charge_or_issue ?? undefined}
+                  badge={matter?.status ? toTitleCase(matter.status) : "Retained"}
+                  imageUrl={coverUrl(matter?.cover_image_path)}
                   href={ROUTES.docketMatter(row.docket_matter_id)}
                 />
               );
@@ -252,6 +282,8 @@ function entityLabel(type: string) {
   return toTitleCase(type.replace(/_/g, " "));
 }
 
-function issueOf(matter: { charge_or_issue?: string | null } | { headline?: string }) {
-  return "charge_or_issue" in matter ? (matter.charge_or_issue ?? undefined) : undefined;
+function issueOf(matter: { charge_or_issue?: string | null; headline?: string | null }) {
+  if (matter.charge_or_issue) return matter.charge_or_issue;
+  if (matter.headline) return matter.headline.replace(/<\/?b>/gi, "");
+  return undefined;
 }

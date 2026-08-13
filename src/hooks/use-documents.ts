@@ -51,6 +51,7 @@ export async function uploadDocumentToEntity(
   entityType: string,
   entityId: string,
   file: File,
+  purpose: "attachment" | "cover" | "identification_photo" = "attachment",
 ) {
   const {
     data: { user },
@@ -75,6 +76,7 @@ export async function uploadDocumentToEntity(
       mime_type: file.type || "application/octet-stream",
       entity_type: entityType,
       entity_id: entityId,
+      purpose,
     })
     .select()
     .single();

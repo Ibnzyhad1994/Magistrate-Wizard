@@ -44,7 +44,7 @@ export function useUpcomingAppearances() {
       const { data, error } = await supabase
         .from("docket_events")
         .select(
-          "id, docket_matter_id, event_type, scheduled_date, scheduled_time, event_status, docket_matters(id, matter_title, case_number)",
+          "id, docket_matter_id, event_type, scheduled_date, scheduled_time, event_status, docket_matters(id, matter_title, case_number, charge_or_issue, status, cover_image_path)",
         )
         .gte("scheduled_date", today)
         .eq("event_status", "scheduled")
@@ -67,7 +67,7 @@ export function useMyRetainedMatters() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("docket_matter_assignments")
-        .select("id, docket_matter_id, started_at, docket_matters(id, matter_title, case_number)")
+        .select("id, docket_matter_id, started_at, docket_matters(id, matter_title, case_number, charge_or_issue, status, cover_image_path)")
         .eq("profile_id", user.id)
         .eq("reason", "retained_part_heard")
         .is("ended_at", null)

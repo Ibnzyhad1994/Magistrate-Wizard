@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Play, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { TONE_GRADIENT, type TitleCardTone } from "@/lib/browse-tones";
+import { TONE_GRADIENT, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
 
 interface BillboardAction {
   label: string;
@@ -16,6 +16,7 @@ interface BillboardProps {
   description?: string;
   badges?: string[];
   tone?: TitleCardTone;
+  imageUrl?: string | null;
   primaryAction?: BillboardAction;
   secondaryAction?: BillboardAction;
   className?: string;
@@ -31,10 +32,13 @@ export function Billboard({
   description,
   badges,
   tone = "docket",
+  imageUrl,
   primaryAction,
   secondaryAction,
   className,
 }: BillboardProps) {
+  const Icon = TONE_ICON[tone];
+
   return (
     <section
       className={cn(
@@ -43,7 +47,22 @@ export function Billboard({
         className,
       )}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,rgba(255,255,255,0.14),transparent_55%)]" />
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
+        />
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,rgba(255,255,255,0.14),transparent_55%)]" />
+          <Icon
+            className="absolute right-[6%] top-[18%] h-[55vh] w-[55vh] max-w-[46vw] rotate-[-12deg] text-white/10"
+            strokeWidth={1}
+            aria-hidden="true"
+          />
+        </>
+      )}
       <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#141414] to-transparent" />
 

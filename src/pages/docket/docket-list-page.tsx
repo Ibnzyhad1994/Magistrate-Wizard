@@ -9,13 +9,47 @@ import { BrowsePage, BrowseHeader, TitleCard } from "@/components/browse";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
+import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
+
+function nestedName(value: { name: string } | { name: string }[] | null | undefined) {
+  if (!value) return undefined;
+  return Array.isArray(value) ? value[0]?.name : value.name;
+}
+
+function docketCover(matter: {
+  case_number: string;
+  matter_title: string;
+  status?: string | null;
+  charge_or_issue?: string | null;
+  headline?: string | null;
+  updated_at?: string | null;
+  cover_image_path?: string | null;
+  courts?: { name: string } | { name: string }[] | null;
+}) {
+  const charge =
+    matter.charge_or_issue ??
+    (matter.headline ? matter.headline.replace(/<\/?b>/gi, "") : undefined);
+  const court = nestedName(matter.courts);
+  return {
+    eyebrow: matter.case_number,
+    title: matter.matter_title,
+    subtitle: charge || undefined,
+    badge: matter.status ? toTitleCase(matter.status) : undefined,
+    meta: [court, matter.updated_at ? formatDate(matter.updated_at) : null].filter(
+      (v): v is string => Boolean(v),
+    ),
+  };
+}
 
 export default function DocketListPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const { data, isPending, isError, error, refetch } = useDocketMatters(search);
+  const { data: coverUrls } = useSignedUrls(
+    (data ?? []).map((m) => ("cover_image_path" in m ? m.cover_image_path : null)),
+  );
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
 
@@ -92,15 +126,13 @@ export default function DocketListPage() {
             <TitleCard
               key={matter.id}
               tone="docket"
-              title={matter.matter_title}
-              eyebrow={matter.case_number}
-              badge={matter.status ? toTitleCase(matter.status) : undefined}
-              meta={
-                "updated_at" in matter && matter.updated_at
-                  ? [formatDate(matter.updated_at)]
+              href={ROUTES.docketMatter(matter.id)}
+              imageUrl={
+                "cover_image_path" in matter && matter.cover_image_path
+                  ? coverUrls?.[matter.cover_image_path]
                   : undefined
               }
-              href={ROUTES.docketMatter(matter.id)}
+              {...docketCover(matter)}
             />
           ))}
         </div>
