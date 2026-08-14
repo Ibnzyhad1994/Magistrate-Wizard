@@ -65,16 +65,29 @@ export function useMyRetainedMatters() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return [];
-      const { data, error } = await supabase
+      const { data: assignments, error } = await supabase
         .from("docket_matter_assignments")
-        .select("id, docket_matter_id, started_at, docket_matters(id, matter_title, case_number, charge_or_issue, status, cover_image_path)")
+        .select("id, docket_matter_id, started_at")
         .eq("profile_id", user.id)
         .eq("reason", "retained_part_heard")
         .is("ended_at", null)
         .order("started_at", { ascending: false })
         .limit(8);
       if (error) throw error;
-      return data;
+      if (!assignments || assignments.length === 0) return [];
+
+      const ids = assignments.map((row) => row.docket_matter_id);
+      const { data: matters, error: mattersError } = await supabase
+        .from("docket_matters")
+        .select("id, matter_title, case_number, charge_or_issue, status, cover_image_path")
+        .in("id", ids);
+      if (mattersError) throw mattersError;
+
+      const byId = new Map((matters ?? []).map((matter) => [matter.id, matter]));
+      return assignments.map((row) => ({
+        ...row,
+        docket_matters: byId.get(row.docket_matter_id) ?? null,
+      }));
     },
   });
 }

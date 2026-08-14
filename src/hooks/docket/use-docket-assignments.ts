@@ -78,6 +78,9 @@ export function useCreateRetainedAssignment(matterId: string) {
     onSuccess: () => {
       toast.success("Matter retained.");
       void queryClient.invalidateQueries({ queryKey: key(matterId) });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard", "my-retained-matters"] });
+      void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
+      void queryClient.invalidateQueries({ queryKey: ["docket-matter-access", matterId] });
     },
   });
 }
@@ -96,6 +99,9 @@ export function useEndRetainedAssignment(matterId: string) {
     onSuccess: () => {
       toast.success("Retained assignment ended.");
       void queryClient.invalidateQueries({ queryKey: key(matterId) });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard", "my-retained-matters"] });
+      void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
+      void queryClient.invalidateQueries({ queryKey: ["docket-matter-access", matterId] });
     },
   });
 }

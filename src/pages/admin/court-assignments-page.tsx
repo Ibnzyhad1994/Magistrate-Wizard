@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, Landmark, Plus, X, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useCourts } from "@/hooks/docket/use-lookups";
 import {
+  courtAssignmentKeys,
   useProfileSearch,
   useProfile,
   useProfileCourtAssignments,
@@ -45,13 +47,16 @@ import { BrowseHeader, BrowsePage } from "@/components/browse";
  * No hard-delete of history, no bulk tools, no unrelated admin features.
  */
 export default function CourtAssignmentsPage() {
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [courtToAssign, setCourtToAssign] = useState("");
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
 
   const { data: results, isPending: searchPending } = useProfileSearch(query);
-  const { data: selectedProfile } = useProfile(selectedProfileId ?? undefined);
+  const { data: selectedProfile, isPending: profilePending } = useProfile(
+    selectedProfileId ?? undefined,
+  );
   const {
     data: assignments,
     isPending: assignmentsPending,
@@ -69,11 +74,15 @@ export default function CourtAssignmentsPage() {
     (c) => !current.some((a) => a.court_id === c.id),
   );
 
-  function handleSelectProfile(id: string) {
+  const handleSelectProfile = (id: string) => {
+    const found = results?.find((p) => p.id === id);
+    if (found) {
+      queryClient.setQueryData(courtAssignmentKeys.profile(id), found);
+    }
     setSelectedProfileId(id);
     setQuery("");
     setCourtToAssign("");
-  }
+  };
 
   function handleAssign() {
     if (!courtToAssign) return;
@@ -163,12 +172,21 @@ export default function CourtAssignmentsPage() {
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <CardTitle className="truncate text-base">
-                    {selectedProfile?.full_name ?? "(no name)"}
-                  </CardTitle>
-                  <CardDescription className="truncate">
-                    {selectedProfile?.email}
-                  </CardDescription>
+                  {profilePending && !selectedProfile ? (
+                    <>
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="mt-2 h-4 w-56" />
+                    </>
+                  ) : (
+                    <>
+                      <CardTitle className="truncate text-base">
+                        {selectedProfile?.full_name ?? "(no name)"}
+                      </CardTitle>
+                      <CardDescription className="truncate">
+                        {selectedProfile?.email}
+                      </CardDescription>
+                    </>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {selectedProfile && (
@@ -236,7 +254,7 @@ export default function CourtAssignmentsPage() {
                   </ul>
                 )}
 
-                {!selectedProfile?.is_active && (
+                {selectedProfile && !selectedProfile.is_active && (
                   <p className="text-xs text-muted-foreground">
                     This profile is inactive. New assignments should generally be limited to
                     active profiles.

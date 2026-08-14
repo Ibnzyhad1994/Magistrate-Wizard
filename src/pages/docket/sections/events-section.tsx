@@ -42,6 +42,7 @@ import {
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
 import { ControlledVocabSelect } from "@/components/common/controlled-vocab-select";
 import { DateOnlyInput } from "@/components/common/date-only-input";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import type { DocketEvent } from "@/types/database.types";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -57,16 +58,20 @@ interface EventsSectionProps {
 
 export function EventsSection({ matterId }: EventsSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketEvents(matterId);
+  const { data: access } = useDocketMatterAccess(matterId);
+  const canEdit = access?.canEdit ?? false;
   const [dialogEvent, setDialogEvent] = useState<DocketEvent | "new" | null>(null);
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setDialogEvent("new")}>
-          <Plus className="h-4 w-4" />
-          Add event
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setDialogEvent("new")}>
+            <Plus className="h-4 w-4" />
+            Add event
+          </Button>
+        </div>
+      )}
 
       {isPending ? (
         <div className="space-y-2">
@@ -82,10 +87,12 @@ export function EventsSection({ matterId }: EventsSectionProps) {
           title="No events yet"
           description="Court appearances and other scheduled events for this matter will appear here."
           action={
-            <Button size="sm" onClick={() => setDialogEvent("new")}>
-              <Plus className="h-4 w-4" />
-              Add the first event
-            </Button>
+            canEdit ? (
+              <Button size="sm" onClick={() => setDialogEvent("new")}>
+                <Plus className="h-4 w-4" />
+                Add the first event
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -93,8 +100,12 @@ export function EventsSection({ matterId }: EventsSectionProps) {
           {data.map((event) => (
             <Card
               key={event.id}
-              className="cursor-pointer transition-colors hover:bg-muted/40"
-              onClick={() => setDialogEvent(event)}
+              className={
+                canEdit
+                  ? "cursor-pointer transition-colors hover:bg-muted/40"
+                  : undefined
+              }
+              onClick={canEdit ? () => setDialogEvent(event) : undefined}
             >
               <CardContent className="flex flex-wrap items-start justify-between gap-2 p-4">
                 <div className="min-w-0 space-y-1">

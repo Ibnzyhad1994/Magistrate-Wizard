@@ -18,6 +18,7 @@ import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   active: "default",
@@ -31,6 +32,7 @@ export default function DocketMatterDetailPage() {
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.docket, "Back to Docket");
   const { data: matter, isPending, isError, error, refetch } = useDocketMatter(id);
+  const { data: access } = useDocketMatterAccess(id);
   const { data: coverUrls } = useSignedUrls([matter?.cover_image_path]);
 
   if (isPending) {
@@ -115,7 +117,11 @@ export default function DocketMatterDetailPage() {
           <CaseLawSection matterId={matter.id} />
         </TabsContent>
         <TabsContent value="documents">
-          <DocumentsPanel entityType="docket_matter" entityId={matter.id} />
+          <DocumentsPanel
+            entityType="docket_matter"
+            entityId={matter.id}
+            canUpload={access?.canEdit ?? false}
+          />
         </TabsContent>
         <TabsContent value="sharing">
           <SharingSection matterId={matter.id} />

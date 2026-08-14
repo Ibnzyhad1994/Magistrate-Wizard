@@ -31,8 +31,9 @@ import {
   useDocketShares,
   useResolveShareRecipient,
   useRevokeShare,
-  useUpdateSharePermission,
 } from "@/hooks/docket/use-docket-shares";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
+import { useAuth } from "@/hooks/use-auth";
 import { formatDate, toTitleCase } from "@/lib/utils";
 
 interface SharingSectionProps {
@@ -40,8 +41,10 @@ interface SharingSectionProps {
 }
 
 export function SharingSection({ matterId }: SharingSectionProps) {
+  const { user } = useAuth();
+  const { data: access } = useDocketMatterAccess(matterId);
+  const canManage = access?.canManage ?? false;
   const { data, isPending, isError, error, refetch } = useDocketShares(matterId);
-  const updatePermission = useUpdateSharePermission(matterId);
   const revokeShare = useRevokeShare(matterId);
   const [pendingRevoke, setPendingRevoke] = useState<ResolvedShare | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -54,12 +57,16 @@ export function SharingSection({ matterId }: SharingSectionProps) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="max-w-lg text-sm text-muted-foreground">
           Sharing grants another magistrate or clerk access to this matter.
-          Recipients cannot re-share it further.
+          Recipients cannot re-share it further. Permission is fixed when the
+          share is created — to change view into edit (or the reverse), revoke
+          it and share again.
         </p>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New share
-        </Button>
+        {canManage && (
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New share
+          </Button>
+        )}
       </div>
 
       {isPending ? (
@@ -72,10 +79,12 @@ export function SharingSection({ matterId }: SharingSectionProps) {
           title="Not shared with anyone"
           description="Active shares granted on this matter will appear here."
           action={
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Share this matter
-            </Button>
+            canManage ? (
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Share this matter
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -99,34 +108,24 @@ export function SharingSection({ matterId }: SharingSectionProps) {
                   {share.grantor_display_name ?? "Unknown"}
                 </TableCell>
                 <TableCell>
-                  <Select
-                    className="h-8 w-24"
-                    value={share.permission}
-                    disabled={updatePermission.isPending}
-                    aria-label={`Permission for ${share.recipient_display_name ?? "recipient"}`}
-                    onChange={(e) =>
-                      updatePermission.mutate({
-                        id: share.id,
-                        permission: e.target.value as "view" | "edit",
-                      })
-                    }
-                  >
-                    <option value="view">View</option>
-                    <option value="edit">Edit</option>
-                  </Select>
+                  {toTitleCase(share.permission)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(share.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setPendingRevoke(share)}
-                  >
-                    Revoke
-                  </Button>
+                  {(canManage || share.recipient_id === user?.id) && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setPendingRevoke(share)}
+                    >
+                      {share.recipient_id === user?.id && !canManage
+                        ? "Give back access"
+                        : "Revoke"}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { useLinkedJudgments } from "@/hooks/docket/use-docket-links";
 import { useDeleteDocketJudgmentLink } from "@/hooks/docket/use-docket-judgment-links";
 import { LinkJudgmentDialog } from "@/pages/docket/link-judgment-dialog";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { toTitleCase } from "@/lib/utils";
 
 interface JudgmentsSectionProps {
@@ -27,6 +28,8 @@ interface JudgmentsSectionProps {
  */
 export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
   const { data, isPending, isError, error, refetch } = useLinkedJudgments(matterId);
+  const { data: access } = useDocketMatterAccess(matterId);
+  const canManage = access?.canManage ?? false;
   const deleteLink = useDeleteDocketJudgmentLink(matterId);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 
@@ -37,12 +40,14 @@ export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setLinkDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Link Judgment
-        </Button>
-      </div>
+      {canManage && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setLinkDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Link Judgment
+          </Button>
+        </div>
+      )}
 
       {!data || data.length === 0 ? (
         <EmptyState
@@ -50,10 +55,12 @@ export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
           title="No linked judgments"
           description="Judgments linked as reference for this matter will appear here."
           action={
-            <Button size="sm" onClick={() => setLinkDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Link a Judgment
-            </Button>
+            canManage ? (
+              <Button size="sm" onClick={() => setLinkDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Link a Judgment
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -73,19 +80,21 @@ export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
                   <Badge variant={judgment.status === "final" ? "default" : "secondary"}>
                     {toTitleCase(judgment.status)}
                   </Badge>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    title="Unlink"
-                    aria-label={`Unlink judgment ${judgment.title}`}
-                    disabled={deleteLink.isPending}
-                    onClick={() =>
-                      deleteLink.mutate({ linkId: link.id, judgmentId: judgment.id })
-                    }
-                  >
-                    {deleteLink.isPending ? <LoadingSpinner size={14} /> : <X className="h-4 w-4" />}
-                  </Button>
+                  {canManage && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      title="Unlink"
+                      aria-label={`Unlink judgment ${judgment.title}`}
+                      disabled={deleteLink.isPending}
+                      onClick={() =>
+                        deleteLink.mutate({ linkId: link.id, judgmentId: judgment.id })
+                      }
+                    >
+                      {deleteLink.isPending ? <LoadingSpinner size={14} /> : <X className="h-4 w-4" />}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

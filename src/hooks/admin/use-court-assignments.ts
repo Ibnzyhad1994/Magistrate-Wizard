@@ -20,7 +20,7 @@ export interface CourtAssignmentRow {
   courts: { id: string; name: string; jurisdiction: string; is_active: boolean } | null;
 }
 
-const keys = {
+export const courtAssignmentKeys = {
   search: (q: string) => ["admin", "profile-search", q] as const,
   profile: (id: string) => ["admin", "profile", id] as const,
   assignments: (profileId: string) => ["admin", "court-assignments", profileId] as const,
@@ -41,7 +41,7 @@ const keys = {
 export function useProfileSearch(query: string) {
   const trimmed = query.trim();
   return useQuery({
-    queryKey: keys.search(trimmed),
+    queryKey: courtAssignmentKeys.search(trimmed),
     queryFn: async (): Promise<ProfileSearchResult[]> => {
       const escaped = trimmed.replace(/[%,]/g, "");
       const { data, error } = await supabase
@@ -60,7 +60,7 @@ export function useProfileSearch(query: string) {
 /** A single profile by id, once a search result has been selected. */
 export function useProfile(profileId: string | undefined) {
   return useQuery({
-    queryKey: keys.profile(profileId ?? ""),
+    queryKey: courtAssignmentKeys.profile(profileId ?? ""),
     queryFn: async (): Promise<ProfileSearchResult | null> => {
       const { data, error } = await supabase
         .from("profiles")
@@ -82,7 +82,7 @@ export function useProfile(profileId: string | undefined) {
  */
 export function useProfileCourtAssignments(profileId: string | undefined) {
   return useQuery({
-    queryKey: keys.assignments(profileId ?? ""),
+    queryKey: courtAssignmentKeys.assignments(profileId ?? ""),
     queryFn: async (): Promise<CourtAssignmentRow[]> => {
       const { data, error } = await supabase
         .from("magistrate_courts")
@@ -118,7 +118,7 @@ export function useCreateCourtAssignment(profileId: string) {
     },
     onSuccess: () => {
       toast.success("Court assignment created.");
-      void queryClient.invalidateQueries({ queryKey: keys.assignments(profileId) });
+      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
     },
   });
@@ -142,7 +142,7 @@ export function useEndCourtAssignment(profileId: string) {
     },
     onSuccess: () => {
       toast.success("Court assignment ended.");
-      void queryClient.invalidateQueries({ queryKey: keys.assignments(profileId) });
+      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
     },
   });

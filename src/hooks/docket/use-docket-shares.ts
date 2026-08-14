@@ -65,29 +65,6 @@ export function useDocketShares(matterId: string | undefined) {
   });
 }
 
-export function useUpdateSharePermission(matterId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      permission,
-    }: {
-      id: string;
-      permission: "view" | "edit";
-    }) => {
-      const { error } = await supabase
-        .from("shares")
-        .update({ permission })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Share permission updated.");
-      void queryClient.invalidateQueries({ queryKey: key(matterId) });
-    },
-  });
-}
-
 export interface ResolvedRecipient {
   profile_id: string;
   display_name: string | null;
@@ -139,6 +116,7 @@ export function useCreateShare(matterId: string) {
     onSuccess: () => {
       toast.success("Matter shared.");
       void queryClient.invalidateQueries({ queryKey: key(matterId) });
+      void queryClient.invalidateQueries({ queryKey: ["docket-matter-access", matterId] });
     },
   });
 }
@@ -156,6 +134,7 @@ export function useRevokeShare(matterId: string) {
     onSuccess: () => {
       toast.success("Share revoked.");
       void queryClient.invalidateQueries({ queryKey: key(matterId) });
+      void queryClient.invalidateQueries({ queryKey: ["docket-matter-access", matterId] });
     },
   });
 }

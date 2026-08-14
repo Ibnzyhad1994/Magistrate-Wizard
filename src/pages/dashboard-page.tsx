@@ -33,7 +33,7 @@ export default function DashboardPage() {
   } = useDocketMatters("");
   const { data: courts, isPending: courtsPending } = useCurrentCourts();
   const { data: appearances, isPending: appearancesPending } = useUpcomingAppearances();
-  const { data: retained, isPending: retainedPending } = useMyRetainedMatters();
+  const { data: retained } = useMyRetainedMatters();
   const { data: judgments, isPending: judgmentsPending } = useJudgments();
   const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes();
   const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes();
@@ -41,6 +41,16 @@ export default function DashboardPage() {
   const activeMatters = useMemo(
     () => (matters ?? []).filter((m) => m.status === "active"),
     [matters],
+  );
+
+  const retainedIds = useMemo(
+    () => new Set((retained ?? []).map((row) => row.docket_matter_id)),
+    [retained],
+  );
+
+  const continueWorking = useMemo(
+    () => activeMatters.filter((m) => !retainedIds.has(m.id)),
+    [activeMatters, retainedIds],
   );
 
   const { myDrafts, myFinal } = useMemo(() => {
@@ -141,9 +151,9 @@ export default function DashboardPage() {
           </p>
         )}
 
-        {(mattersPending || activeMatters.length > 0) && (
+        {(mattersPending || continueWorking.length > 0) && (
           <ContentRow title="Continue Working" href={ROUTES.docket} isLoading={mattersPending}>
-            {activeMatters.map((m) => (
+            {continueWorking.map((m) => (
               <TitleCard
                 key={m.id}
                 tone="docket"
@@ -215,8 +225,8 @@ export default function DashboardPage() {
           </ContentRow>
         )}
 
-        {(retainedPending || (retained?.length ?? 0) > 0) && (
-          <ContentRow title="Retained / Part-Heard" href={ROUTES.docket} isLoading={retainedPending}>
+        {(retained?.length ?? 0) > 0 && (
+          <ContentRow title="Retained / Part-Heard" href={ROUTES.docket}>
             {(retained ?? []).map((row) => {
               const matter = rel(row.docket_matters);
               return (

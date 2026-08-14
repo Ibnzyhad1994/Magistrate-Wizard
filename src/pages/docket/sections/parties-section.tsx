@@ -54,6 +54,7 @@ import {
   useClearPartyPhoto,
   useSetPartyPhoto,
 } from "@/hooks/docket/use-identification-images";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface PartiesSectionProps {
   matterId: string;
@@ -61,6 +62,8 @@ interface PartiesSectionProps {
 
 export function PartiesSection({ matterId }: PartiesSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketParties(matterId);
+  const { data: access } = useDocketMatterAccess(matterId);
+  const canEdit = access?.canEdit ?? false;
   const [dialogParty, setDialogParty] = useState<DocketMatterParty | "new" | null>(
     null,
   );
@@ -70,12 +73,14 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setDialogParty("new")}>
-          <Plus className="h-4 w-4" />
-          Add party
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setDialogParty("new")}>
+            <Plus className="h-4 w-4" />
+            Add party
+          </Button>
+        </div>
+      )}
 
       {isPending ? (
         <Skeleton className="h-40 w-full" />
@@ -87,10 +92,12 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
           title="No parties recorded"
           description="Accused, complainants, and other parties to this matter will appear here."
           action={
-            <Button size="sm" onClick={() => setDialogParty("new")}>
-              <Plus className="h-4 w-4" />
-              Add the first party
-            </Button>
+            canEdit ? (
+              <Button size="sm" onClick={() => setDialogParty("new")}>
+                <Plus className="h-4 w-4" />
+                Add the first party
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -109,8 +116,8 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
             {[...activeParties, ...correctedParties].map((party) => (
               <TableRow
                 key={party.id}
-                className="cursor-pointer"
-                onClick={() => setDialogParty(party)}
+                className={canEdit ? "cursor-pointer" : undefined}
+                onClick={canEdit ? () => setDialogParty(party) : undefined}
               >
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <SignedThumb

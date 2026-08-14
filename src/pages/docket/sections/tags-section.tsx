@@ -11,6 +11,7 @@ import {
   useDocketTags,
   useRemoveDocketTag,
 } from "@/hooks/docket/use-docket-tags";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface TagsSectionProps {
   matterId: string;
@@ -18,25 +19,29 @@ interface TagsSectionProps {
 
 export function TagsSection({ matterId }: TagsSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketTags(matterId);
+  const { data: access } = useDocketMatterAccess(matterId);
+  const canEdit = access?.canEdit ?? false;
   const addTag = useAddDocketTag(matterId);
   const removeTag = useRemoveDocketTag(matterId);
   const [value, setValue] = useState("");
 
-  function handleAdd() {
+  const handleAdd = () => {
     const trimmed = value.trim();
     if (!trimmed) return;
     addTag.mutate(trimmed, { onSuccess: () => setValue("") });
-  }
+  };
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex max-w-sm gap-2">
-        <TagInput value={value} onChange={setValue} onSubmit={handleAdd} disabled={addTag.isPending} />
-        <Button onClick={handleAdd} disabled={addTag.isPending || !value.trim()}>
-          <Plus className="h-4 w-4" />
-          Add
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex max-w-sm gap-2">
+          <TagInput value={value} onChange={setValue} onSubmit={handleAdd} disabled={addTag.isPending} />
+          <Button onClick={handleAdd} disabled={addTag.isPending || !value.trim()}>
+            <Plus className="h-4 w-4" />
+            Add
+          </Button>
+        </div>
+      )}
 
       {isPending ? (
         <Skeleton className="h-8 w-64" />
@@ -53,15 +58,17 @@ export function TagsSection({ matterId }: TagsSectionProps) {
           {data.map((tag) => (
             <Badge key={tag.id} variant="secondary" className="gap-1 py-1 pl-2.5 pr-1">
               {tag.tag_name}
-              <button
-                type="button"
-                onClick={() => removeTag.mutate(tag.id)}
-                disabled={removeTag.isPending}
-                className="rounded-full p-0.5 hover:bg-background/60"
-                aria-label={`Remove tag ${tag.tag_name}`}
-              >
-                <X className="h-3 w-3" />
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => removeTag.mutate(tag.id)}
+                  disabled={removeTag.isPending}
+                  className="rounded-full p-0.5 hover:bg-background/60"
+                  aria-label={`Remove tag ${tag.tag_name}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </Badge>
           ))}
         </div>

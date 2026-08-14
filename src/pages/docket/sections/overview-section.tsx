@@ -51,6 +51,7 @@ import {
   useClearMatterCover,
   useSetMatterCover,
 } from "@/hooks/docket/use-identification-images";
+import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface OverviewSectionProps {
   matter: DocketMatter & {
@@ -65,6 +66,9 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const [retainNotes, setRetainNotes] = useState("");
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
   const { user } = useAuth();
+  const { data: access } = useDocketMatterAccess(matter.id);
+  const canEdit = access?.canEdit ?? false;
+  const canManage = access?.canManage ?? false;
   const updateMatter = useUpdateDocketMatter(matter.id);
   const setCover = useSetMatterCover(matter.id);
   const clearCover = useClearMatterCover(matter.id);
@@ -127,6 +131,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             isPending={setCover.isPending || clearCover.isPending}
             onUpload={(file) => setCover.mutate(file)}
             onClear={() => clearCover.mutate()}
+            readOnly={!canEdit}
           />
         </CardContent>
       </Card>
@@ -136,29 +141,33 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           <CardTitle className="text-base">Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select
-            value={matter.status}
-            onChange={(e) =>
-              updateMatter.mutate({
-                status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number],
-              })
-            }
-            disabled={updateMatter.isPending}
-            aria-label="Matter status"
-          >
-            {DOCKET_MATTER_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {toTitleCase(s)}
-              </option>
-            ))}
-          </Select>
+          {canEdit ? (
+            <Select
+              value={matter.status}
+              onChange={(e) =>
+                updateMatter.mutate({
+                  status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number],
+                })
+              }
+              disabled={updateMatter.isPending}
+              aria-label="Matter status"
+            >
+              {DOCKET_MATTER_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {toTitleCase(s)}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <p className="text-sm text-foreground">{toTitleCase(matter.status)}</p>
+          )}
         </CardContent>
       </Card>
 
       <Card className="lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Orders & outcome</CardTitle>
-          {!editingOutcome && (
+          {canEdit && !editingOutcome && (
             <Button
               size="sm"
               variant="ghost"
@@ -254,12 +263,12 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             >
               End my retention
             </Button>
-          ) : (
+          ) : canManage ? (
             <Button size="sm" variant="outline" onClick={() => setRetainOpen(true)}>
               <Bookmark className="h-3.5 w-3.5" />
               Retain as part-heard
             </Button>
-          )}
+          ) : null}
         </CardHeader>
         <CardContent>
           {assignmentsPending ? (
