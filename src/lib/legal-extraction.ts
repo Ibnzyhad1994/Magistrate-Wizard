@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabase";
-import { LEGAL_TAXONOMY_TOPICS } from "@/lib/legal-taxonomy";
+import {
+  AMBIGUOUS_BARE_HIT_FLOOR,
+  LEGAL_TAXONOMY_PHRASE_INDEX,
+  SHORT_TAXONOMY_TOPICS,
+} from "@/lib/legal-taxonomy";
 
 /**
  * Deterministic (non-AI) extraction helpers for the Legal Library
@@ -644,16 +648,145 @@ export function extractLegislationHierarchy(text: string): ProposedProvision[] {
 }
 
 // ---------------------------------------------------------------------------
-// Canonical tag proposal (keyword match against the existing curated
-// taxonomy — src/lib/legal-taxonomy.ts). NOT AI. A simple case-insensitive
-// substring match, capped, deduplicated. Clearly a heuristic, not a
-// classifier — presented as proposed tags only.
+// Canonical tag proposal (scored keyword / alias match against the curated
+// taxonomy — src/lib/legal-taxonomy.ts). NOT AI. Word-boundary matching,
+// short-token floor, specificity demotion. Presented as proposed tags only.
 // ---------------------------------------------------------------------------
 
+/** Chars scanned for tag proposals — enough for judgments; caps megabyte pastes. */
+const TAG_SCAN_CHARS = 80_000;
+/** Matches in this prefix get a small header boost (same idea as court matching). */
+const TAG_HEADER_WINDOW_CHARS = 3_000;
+/** Cap how much repeated hits can inflate a topic's score. */
+const TAG_OCCURRENCE_BONUS_CAP = 3;
+
+export interface ProposedTagScore {
+  name: string;
+  score: number;
+  hitCount: number;
+  /** True if any match came from an alias phrase rather than the topic label alone. */
+  matchedViaAlias: boolean;
+  /** True if any match fell in the header window. */
+  inHeader: boolean;
+}
+
+interface TopicAccumulator {
+  score: number;
+  hitCount: number;
+  /** Hits from single-token canonical phrase only (ambiguous floor uses this). */
+  bareHitCount: number;
+  matchedViaAlias: boolean;
+  inHeader: boolean;
+  /** Longest phrase that contributed (for specificity demotion). */
+  longestPhrase: string;
+  /** True if any contributing phrase was multi-word (alias or topic). */
+  multiWordHit: boolean;
+}
+
+/**
+ * Scored tag proposals. Prefer this when diagnostics or ranking matter;
+ * `proposeTags` wraps it for the ingest RPC (names only).
+ */
+export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] {
+  if (!text?.trim()) return [];
+
+  const hay = text.length > TAG_SCAN_CHARS ? text.slice(0, TAG_SCAN_CHARS) : text;
+  const byTopic = new Map<string, TopicAccumulator>();
+
+  for (const entry of LEGAL_TAXONOMY_PHRASE_INDEX) {
+    entry.pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let localHits = 0;
+    let firstIndex = -1;
+    while ((match = entry.pattern.exec(hay)) !== null) {
+      localHits += 1;
+      if (firstIndex < 0) {
+        firstIndex = match.index + (match[0].length - (match[1]?.length ?? 0));
+      }
+      if (match[0].length === 0) {
+        entry.pattern.lastIndex += 1;
+      }
+    }
+    if (localHits === 0) continue;
+
+    const inHeader = firstIndex >= 0 && firstIndex < TAG_HEADER_WINDOW_CHARS;
+    const isBareToken = entry.tokenCount === 1 && !entry.isAlias;
+    let score = entry.phrase.length;
+    if (entry.tokenCount > 1) score += 12;
+    if (entry.isAlias && entry.tokenCount > 1) score += 6;
+    if (inHeader) score += 8;
+    score += Math.min(localHits, TAG_OCCURRENCE_BONUS_CAP);
+
+    const prev = byTopic.get(entry.topic);
+    if (!prev) {
+      byTopic.set(entry.topic, {
+        score,
+        hitCount: localHits,
+        bareHitCount: isBareToken ? localHits : 0,
+        matchedViaAlias: entry.isAlias,
+        inHeader,
+        longestPhrase: entry.phrase,
+        multiWordHit: entry.tokenCount > 1,
+      });
+    } else {
+      prev.score = Math.max(prev.score, score) + Math.min(localHits, 2);
+      prev.hitCount += localHits;
+      if (isBareToken) prev.bareHitCount += localHits;
+      prev.matchedViaAlias = prev.matchedViaAlias || entry.isAlias;
+      prev.inHeader = prev.inHeader || inHeader;
+      prev.multiWordHit = prev.multiWordHit || entry.tokenCount > 1;
+      if (entry.phrase.length > prev.longestPhrase.length) {
+        prev.longestPhrase = entry.phrase;
+      }
+    }
+  }
+
+  // Ambiguous single-token topics: need a multi-word/alias phrase, or enough
+  // bare repetitions (AMBIGUOUS_BARE_HIT_FLOOR) — stops "service"×2 everyday prose.
+  for (const [topic, acc] of [...byTopic.entries()]) {
+    if (!SHORT_TAXONOMY_TOPICS.has(topic)) continue;
+    const clearsFloor =
+      acc.multiWordHit || acc.matchedViaAlias || acc.bareHitCount >= AMBIGUOUS_BARE_HIT_FLOOR;
+    if (!clearsFloor) {
+      byTopic.delete(topic);
+    }
+  }
+
+  // Specificity: drop a short topic if a longer selected topic's phrase
+  // already contains that short topic as a whole word (e.g. Search vs
+  // Search and Seizure).
+  const ranked = [...byTopic.entries()]
+    .map(([name, acc]) => ({ name, ...acc }))
+    .sort((a, b) => b.score - a.score || b.hitCount - a.hitCount || a.name.localeCompare(b.name));
+
+  const kept: typeof ranked = [];
+  for (const candidate of ranked) {
+    const suppressed = kept.some((stronger) => {
+      if (stronger.name === candidate.name) return false;
+      if (candidate.name.length >= stronger.name.length) return false;
+      if (!SHORT_TAXONOMY_TOPICS.has(candidate.name)) return false;
+      const strongerHay = `${stronger.name} ${stronger.longestPhrase}`.toLowerCase();
+      const short = candidate.name.toLowerCase();
+      const re = new RegExp(
+        `(?:^|[^a-z0-9])${short.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[^a-z0-9]|$)`,
+        "i",
+      );
+      return re.test(strongerHay);
+    });
+    if (!suppressed) kept.push(candidate);
+  }
+
+  return kept.slice(0, limit).map(({ name, score, hitCount, matchedViaAlias, inHeader }) => ({
+    name,
+    score,
+    hitCount,
+    matchedViaAlias,
+    inHeader,
+  }));
+}
+
 export function proposeTags(text: string, limit = 10): string[] {
-  const lower = text.toLowerCase();
-  const hits = LEGAL_TAXONOMY_TOPICS.filter((topic) => lower.includes(topic.toLowerCase()));
-  return Array.from(new Set(hits)).slice(0, limit);
+  return proposeTagsScored(text, limit).map((t) => t.name);
 }
 
 // ---------------------------------------------------------------------------

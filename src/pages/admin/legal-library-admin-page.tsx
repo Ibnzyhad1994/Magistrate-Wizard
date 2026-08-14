@@ -345,6 +345,10 @@ function ExtractionStatusPanel({
  * toggleable chips; the reviewer can also add a free-text tag. Nothing is
  * written until "Save tags" is pressed — extraction proposes, it never
  * silently classifies.
+ *
+ * When nothing has been applied yet and proposals exist, chips start
+ * pre-selected so a curator can Save quickly after a glance. If tags were
+ * already saved, selection mirrors applied only (proposals appear as +).
  */
 function TagReviewEditor({
   proposed,
@@ -357,7 +361,9 @@ function TagReviewEditor({
   onSave: (names: string[]) => void;
   isSaving: boolean;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set(applied));
+  const initialSelected = () =>
+    new Set(applied.length > 0 ? applied : proposed.length > 0 ? proposed : []);
+  const [selected, setSelected] = useState<Set<string>>(initialSelected);
   const [customTag, setCustomTag] = useState("");
   const [allNames, setAllNames] = useState<string[]>(() =>
     Array.from(new Set([...applied, ...proposed])),
@@ -367,14 +373,31 @@ function TagReviewEditor({
   // empty-array value captured at first mount, so previously-saved tags
   // for a draft the reviewer returns to show as already checked.
   const [syncedApplied, setSyncedApplied] = useState(applied);
+  const [syncedProposed, setSyncedProposed] = useState(proposed);
   useEffect(() => {
-    if (applied.length !== syncedApplied.length || applied.some((t) => !syncedApplied.includes(t))) {
-      setSelected(new Set(applied));
-      setAllNames((prev) => Array.from(new Set([...prev, ...applied, ...proposed])));
+    const appliedChanged =
+      applied.length !== syncedApplied.length || applied.some((t) => !syncedApplied.includes(t));
+    const proposedChanged =
+      proposed.length !== syncedProposed.length ||
+      proposed.some((t) => !syncedProposed.includes(t));
+    if (!appliedChanged && !proposedChanged) return;
+    setAllNames((prev) => Array.from(new Set([...prev, ...applied, ...proposed])));
+    if (appliedChanged) {
+      if (applied.length > 0) {
+        setSelected(new Set(applied));
+      } else if (proposed.length > 0) {
+        setSelected(new Set(proposed));
+      } else {
+        setSelected(new Set());
+      }
       setSyncedApplied(applied);
+    } else if (proposedChanged && applied.length === 0 && syncedApplied.length === 0) {
+      // Proposals arrived while still unsaved — pre-select them.
+      setSelected(new Set(proposed));
     }
+    setSyncedProposed(proposed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied]);
+  }, [applied, proposed]);
   const dirty =
     selected.size !== applied.length || [...selected].some((t) => !applied.includes(t));
 
@@ -383,6 +406,26 @@ function TagReviewEditor({
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
+      return next;
+    });
+  }
+
+  function handleSelectAllProposed() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const name of proposed) next.add(name);
+      return next;
+    });
+    setAllNames((prev) => Array.from(new Set([...prev, ...proposed])));
+  }
+
+  function handleClearProposed() {
+    const proposedLower = new Set(proposed.map((p) => p.toLowerCase()));
+    setSelected((prev) => {
+      const next = new Set<string>();
+      for (const name of prev) {
+        if (!proposedLower.has(name.toLowerCase())) next.add(name);
+      }
       return next;
     });
   }
@@ -399,9 +442,38 @@ function TagReviewEditor({
 
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
-      <p className="text-xs font-medium text-muted-foreground">
-        Tags {proposed.length > 0 && "— proposed from document text, review before saving"}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium text-muted-foreground">
+          Tags
+          {proposed.length > 0
+            ? " — suggested from document keywords; review, then Save tags"
+            : ""}
+        </p>
+        {proposed.length > 0 && (
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={handleSelectAllProposed}
+              aria-label="Select all proposed tags"
+            >
+              Select all proposed
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={handleClearProposed}
+              aria-label="Clear proposed tags from selection"
+            >
+              Clear proposed
+            </Button>
+          </div>
+        )}
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {allNames.length === 0 && (
           <span className="text-xs text-muted-foreground">No tags proposed.</span>
@@ -411,6 +483,8 @@ function TagReviewEditor({
             key={name}
             type="button"
             onClick={() => toggle(name)}
+            aria-pressed={selected.has(name)}
+            aria-label={`${selected.has(name) ? "Deselect" : "Select"} tag ${name}`}
             className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
               selected.has(name)
                 ? "border-primary bg-primary/10 text-primary"
@@ -434,6 +508,7 @@ function TagReviewEditor({
           }}
           placeholder="Add a tag…"
           className="h-8 text-xs"
+          aria-label="Add a custom tag"
         />
         <Button size="sm" variant="outline" className="h-8" onClick={addCustom}>
           Add

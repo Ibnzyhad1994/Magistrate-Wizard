@@ -16,7 +16,7 @@
 // user's specified patterns, since no other real judgment PDFs were
 // available in this sandbox.
 
-import { extractCaseLawMetadata, extractCaseNameFromFilename, shouldAutoFillCaseName } from "@/lib/legal-extraction";
+import { extractCaseLawMetadata, extractCaseNameFromFilename, proposeTags, shouldAutoFillCaseName } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 
 let failures = 0;
@@ -212,6 +212,63 @@ const COURTS = [
   check("OCR never auto-fills case name even at high confidence", shouldAutoFillCaseName("high", true), false);
   check("text-layer high confidence still auto-fills", shouldAutoFillCaseName("high", false), true);
   check("low confidence never auto-fills", shouldAutoFillCaseName("low", false), false);
+}
+
+// ---------------------------------------------------------------------------
+// Tag proposals — word-boundary matching, aliases, short-token floor
+// ---------------------------------------------------------------------------
+{
+  const researchOnly = proposeTags(
+    "Counsel referred to prior academic research and a researcher’s note on appellate practice.",
+  );
+  check("Tags — research must not propose Search", researchOnly.includes("Search"), false);
+
+  const hearsay = proposeTags(
+    "Counsel submitted that certain admissions were wrongly admitted as hearsay evidence.",
+  );
+  check("Tags — hearsay evidence proposes Hearsay", hearsay.includes("Hearsay"), true);
+
+  const noCase = proposeTags(
+    "At the close of the prosecution case a no case to answer submission was made.",
+  );
+  check("Tags — no case to answer proposes No-Case Submission", noCase.includes("No-Case Submission"), true);
+
+  const bailOnce = proposeTags(
+    "The matter was mentioned briefly; bail was noted in passing and the hearing continued on other issues.",
+  );
+  check("Tags — single Bail hit does not clear short-token floor", bailOnce.includes("Bail"), false);
+
+  const bailTwice = proposeTags(
+    "The accused applied for bail. Bail was opposed. The court refused bail with reasons.",
+  );
+  check("Tags — repeated Bail hits clear the floor", bailTwice.includes("Bail"), true);
+
+  const bailAlias = proposeTags(
+    "A formal bail application was listed for Monday morning before the sitting magistrate.",
+  );
+  check("Tags — bail application alias proposes Bail", bailAlias.includes("Bail"), true);
+
+  const searchSeizure = proposeTags(
+    "The defence challenged the search and seizure of the parcels as unlawful.",
+  );
+  check("Tags — Search and Seizure proposed", searchSeizure.includes("Search and Seizure"), true);
+  check(
+    "Tags — generic Search suppressed when Search and Seizure hits",
+    searchSeizure.includes("Search"),
+    false,
+  );
+
+  check("Tags — empty text yields no proposals", proposeTags(""), []);
+  check("Tags — whitespace-only yields no proposals", proposeTags("   \n\t  "), []);
+  check("Tags — unrelated prose yields no proposals", proposeTags("The sky was blue and the birds sang.").length, 0);
+
+  const chunk = "hearsay evidence and similar fact evidence. ".repeat(2500); // ~100k chars
+  const t0 = Date.now();
+  const large = proposeTags(chunk);
+  const ms = Date.now() - t0;
+  check("Tags — large text still proposes Hearsay", large.includes("Hearsay"), true);
+  check("Tags — large text completes under 500ms", ms < 500, true);
+  if (ms >= 500) console.log(`  (tag propose wall ${ms}ms)`);
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

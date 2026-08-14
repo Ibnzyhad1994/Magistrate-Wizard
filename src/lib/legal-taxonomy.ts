@@ -145,3 +145,159 @@ export const LEGAL_TAXONOMY: readonly TaxonomyDomain[] = [
 export const LEGAL_TAXONOMY_TOPICS: readonly string[] = Array.from(
   new Set(LEGAL_TAXONOMY.flatMap((d) => d.topics)),
 );
+
+/**
+ * Optional synonym / phrase variants that should propose the canonical
+ * topic. Keys must be members of `LEGAL_TAXONOMY_TOPICS`. Matching is
+ * case-insensitive and word-boundary based (see proposeTags).
+ */
+export const LEGAL_TAXONOMY_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  Hearsay: ["hearsay evidence", "hearsay rule"],
+  Admissions: ["admission of guilt", "voluntary admission"],
+  Confessions: ["confession evidence", "confessional statement"],
+  "Oral Admissions": ["oral admission"],
+  Identification: ["identification evidence", "dock identification"],
+  "Visual Identification": ["visual id", "eye-witness identification", "eyewitness identification"],
+  "Documentary Evidence": ["documents in evidence"],
+  "Expert Evidence": ["expert testimony", "expert witness"],
+  "Similar Fact Evidence": ["similar fact", "similar-fact evidence"],
+  "Character Evidence": ["bad character", "good character evidence"],
+  "Burden and Standard of Proof": ["burden of proof", "standard of proof", "beyond reasonable doubt"],
+  Corroboration: ["corroborative evidence"],
+  "Competence and Compellability": ["competence and compellability", "compellability"],
+  "Electronic and Digital Evidence": ["digital evidence", "electronic evidence", "computer evidence"],
+  Bail: ["bail application", "bail conditions", "refusal of bail"],
+  "No-Case Submission": ["no case to answer", "no-case submission", "prima facie case"],
+  "Voir Dire": ["voir dire", "trial within a trial"],
+  "Preliminary Inquiry": ["preliminary enquiry", "committal proceedings"],
+  Committal: ["committed for trial"],
+  Disclosure: ["disclosure obligations", "unused material"],
+  "Abuse of Process": ["abuse of process"],
+  Jurisdiction: ["want of jurisdiction", "territorial jurisdiction"],
+  Admissibility: ["admissible evidence", "inadmissible"],
+  "Search and Seizure": ["search and seizure", "unlawful search", "warrantless search"],
+  "Confession and Voluntariness": ["voluntariness", "involuntary confession"],
+  Sentencing: ["sentence imposed", "sentencing guidelines"],
+  "Guilty Plea": ["plea of guilty", "pleaded guilty", "guilty plea"],
+  Possession: ["in possession", "simple possession"],
+  Trafficking: ["drug trafficking", "trafficking in narcotics"],
+  Knowledge: ["mens rea of knowledge", "wilful blindness"],
+  "Custody and Control": ["custody or control", "custody and control"],
+  Search: ["personal search", "search of premises"],
+  Quantity: ["street value", "quantity of drugs"],
+  "Joint Possession": ["joint possession"],
+  "Dangerous Driving": ["dangerous driving"],
+  "Causing Death": ["causing death by dangerous driving"],
+  "Identification of Driver": ["identity of the driver"],
+  "Careless Driving": ["driving without due care", "careless driving"],
+  "Alcohol and Impairment": ["excess alcohol", "drink driving", "impaired driving"],
+  Licensing: ["driving licence", "driving license", "unlicensed driver"],
+  Mitigation: ["mitigating factors", "in mitigation"],
+  "Aggravating Factors": ["aggravating feature", "aggravating factors"],
+  "Time Served": ["time spent on remand", "credit for time served"],
+  Rehabilitation: ["prospects of rehabilitation"],
+  Deterrence: ["deterrent sentence"],
+  Proportionality: ["proportionate sentence"],
+  Maintenance: ["child maintenance", "maintenance order"],
+  Paternity: ["declaration of paternity"],
+  "Domestic Violence": ["protection order", "domestic violence"],
+  Custody: ["custody of the child", "care and control"],
+  "Juvenile Justice": ["juvenile offender", "young offender"],
+  "Best Interests of the Child": ["best interests of the child", "welfare of the child"],
+  "Landlord and Tenant": ["landlord and tenant", "recovery of possession"],
+  Debt: ["judgment debt", "debt claim"],
+  Service: ["service of process", "service of the summons"],
+  "Substituted Service": ["substituted service"],
+  "Default Judgment": ["judgment in default", "default judgment"],
+  Enforcement: ["warrant of execution", "enforcement of judgment"],
+};
+
+export interface TaxonomyPhraseEntry {
+  /** Canonical topic name (what goes into proposed_tags). */
+  topic: string;
+  /** Lowercased phrase that was compiled into `pattern`. */
+  phrase: string;
+  /** True when `phrase` is an alias rather than the topic itself. */
+  isAlias: boolean;
+  /** Word/phrase-boundary regex, case-insensitive, global. */
+  pattern: RegExp;
+  /** Token count of the phrase (spaces + 1). */
+  tokenCount: number;
+}
+
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Build a word/phrase-boundary regex for a taxonomy phrase.
+ * Uses non-letter edges so hyphenated legal terms still match.
+ */
+export const compileTaxonomyPhrasePattern = (phrase: string): RegExp => {
+  const escaped = escapeRegExp(phrase.trim().toLowerCase()).replace(/\s+/g, "\\s+");
+  return new RegExp(`(?:^|[^a-z0-9])(${escaped})(?=[^a-z0-9]|$)`, "gi");
+};
+
+const tokenCountOf = (phrase: string): number =>
+  phrase
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+/**
+ * Precompiled matcher index: every canonical topic plus its aliases.
+ * Built once at module load for proposeTags (negligible vs OCR).
+ */
+export const LEGAL_TAXONOMY_PHRASE_INDEX: readonly TaxonomyPhraseEntry[] = (() => {
+  const entries: TaxonomyPhraseEntry[] = [];
+  const seen = new Set<string>();
+
+  const push = (topic: string, phrase: string, isAlias: boolean) => {
+    const normalized = phrase.trim().toLowerCase();
+    if (!normalized) return;
+    const key = `${topic.toLowerCase()}::${normalized}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    entries.push({
+      topic,
+      phrase: normalized,
+      isAlias,
+      pattern: compileTaxonomyPhrasePattern(normalized),
+      tokenCount: tokenCountOf(normalized),
+    });
+  };
+
+  for (const topic of LEGAL_TAXONOMY_TOPICS) {
+    push(topic, topic, false);
+    const aliases = LEGAL_TAXONOMY_ALIASES[topic];
+    if (!aliases) continue;
+    for (const alias of aliases) {
+      push(topic, alias, true);
+    }
+  }
+
+  // Longer phrases first helps specificity demotion callers that iterate in order.
+  entries.sort((a, b) => b.phrase.length - a.phrase.length || a.topic.localeCompare(b.topic));
+  return entries;
+})();
+
+/**
+ * Ambiguous single-token topics that need ≥2 bounded hits or a longer
+ * alias/phrase match before they clear the proposal floor (avoids
+ * `Search`⊂`research`, stray `service`/`debt`/`knowledge`, etc.).
+ */
+export const AMBIGUOUS_SHORT_TAXONOMY_TOPICS: ReadonlySet<string> = new Set([
+  "Search",
+  "Bail",
+  "Debt",
+  "Service",
+  "Knowledge",
+  "Quantity",
+  "Possession",
+  "Custody",
+  "Maintenance",
+]);
+
+/** Bare single-token hits required for an ambiguous topic when no multi-word/alias phrase matched. */
+export const AMBIGUOUS_BARE_HIT_FLOOR = 3;
+
+/** @deprecated Prefer AMBIGUOUS_SHORT_TAXONOMY_TOPICS — kept as alias for callers. */
+export const SHORT_TAXONOMY_TOPICS = AMBIGUOUS_SHORT_TAXONOMY_TOPICS;
