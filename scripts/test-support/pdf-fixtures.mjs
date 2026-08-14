@@ -172,6 +172,18 @@ export function makeTjArrayPdf(name = "tj-array.pdf") {
   return toFile(assemblePdf([streamObj]), name);
 }
 
+/** Long enough TJ-array judgment to clear the parser's 80-char confidence floor. */
+export function makeTjJudgmentPdf(lines, name = "tj-judgment.pdf") {
+  const words = lines.join(" ").split(/\s+/).filter(Boolean);
+  const inner = words
+    .map((w) => `(${w.replace(/[()\\]/g, (c) => "\\" + c)}) -200`)
+    .join(" ");
+  const content = `BT /F1 12 Tf [${inner}] TJ ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
 /**
  * A non-TJ array (e.g. a dash pattern for the `d` operator) that happens
  * to contain parenthesized-looking content is NOT constructed here since
@@ -306,6 +318,33 @@ function hexEncode(str) {
  * pdf-text-extraction.ts should decode these hex operands exactly like a
  * literal string (1 byte = 1 character) and extraction should succeed.
  */
+/**
+ * Same as makeTextPdf but the content stream is stored uncompressed
+ * (no /Filter). Real producers sometimes emit this; the parser must still
+ * read Tj/TJ from the raw stream bytes.
+ */
+export function makeUncompressedTextPdf(lines, name = "uncompressed.pdf") {
+  const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+  const content = `BT /F1 12 Tf ${ops} ET`;
+  const bytes = Buffer.from(content, "latin1");
+  const streamObj = { dict: "/Length " + bytes.length, bytes };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
+/**
+ * Mixed encoding in one content stream: some lines as literal strings,
+ * some as SIMPLE-font hex strings. No Type0 marker — both encodings must
+ * survive as the same characters.
+ */
+export function makeMixedEncodingPdf(literalLines, hexLines, name = "mixed-encoding.pdf") {
+  const litOps = literalLines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+  const hexOps = hexLines.map((line) => `<${hexEncode(line)}> Tj T*`).join("\n");
+  const content = `BT /F1 12 Tf ${litOps}\n${hexOps} ET`;
+  const compressed = deflate(content);
+  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  return toFile(assemblePdf([streamObj]), name);
+}
+
 export function makeHexTextPdf(lines, name = "hex-text.pdf") {
   const ops = lines.map((line) => `<${hexEncode(line)}> Tj T*`).join("\n");
   const content = `BT /F1 12 Tf ${ops} ET`;

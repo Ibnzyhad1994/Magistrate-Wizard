@@ -22,6 +22,11 @@
     "test:extraction": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-pipeline.mjs",
     "test:ocr": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ocr-accuracy.mjs",
     "test:ingest-formats": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-document.mjs",
+    "test:ingest-ocr-robustness": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-ocr-robustness.mjs",
+    "test:ingest-brutal": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-brutal-circuit.mjs",
+    "test:ingest-brutal:fast": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-brutal-circuit.mjs --fast",
+    "test:ocr-slow-system": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ocr-slow-system.mjs",
+    "test:persona-workflows": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/simulate-persona-workflows.mjs",
     "test:ingestion": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-pipeline.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ocr-accuracy.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-false-success-prevention.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-page-awareness.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-quality.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-text-sanitize.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-legal-extraction.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-document.mjs"
   },
   "dependencies": {

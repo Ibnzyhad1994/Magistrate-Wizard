@@ -39,3 +39,10 @@ public/tesseract/
 public/pdf.worker.min.mjs
 public/cmaps/
 public/standard_fonts/
+
+# Brutal ingest circuit — generated results + optional public PDF cache
+scripts/test-support/.cache/
+scripts/tests/ingest-brutal-circuit-results.json
+scripts/tests/ingest-ocr-robustness-results.json
+scripts/tests/ocr-slow-system-results.json
+scripts/tests/persona-workflow-results.json

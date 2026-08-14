@@ -11,7 +11,7 @@ import type { ExtractionEnvelope } from "@/lib/extraction-pipeline"
 import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality"
 import { LOW_OCR_MEAN_CONFIDENCE, MAX_OCR_PAGES, MIN_OCR_MEAN_CONFIDENCE } from "@/lib/ocr/constants"
 import { extractEmbeddedJpegImages } from "@/lib/ocr/embedded-images"
-import { recognizeImage } from "@/lib/ocr/engine"
+import { recognizeImage, yieldForUi } from "@/lib/ocr/engine"
 import { postprocessOcrText } from "@/lib/ocr/postprocess"
 import { rasterizePdfPages } from "@/lib/ocr/rasterize-pdf"
 import { sanitizeExtractedText } from "@/lib/text-sanitize"
@@ -116,7 +116,8 @@ export const runOcr = async (file: File): Promise<ExtractionEnvelope> => {
   const confidences: number[] = []
   const warnings = [...collectWarnings]
 
-  for (const image of images) {
+  for (let i = 0; i < images.length; i++) {
+    const image = images[i]
     try {
       const result = await recognizeImage(toRecognizeInput(image.bytes))
       const cleaned = postprocessOcrText(result.text)
@@ -130,6 +131,8 @@ export const runOcr = async (file: File): Promise<ExtractionEnvelope> => {
       console.error(`OCR failed on page ${image.pageNumber}:`, e)
       warnings.push(`Text recognition failed on page ${image.pageNumber}.`)
     }
+    // Let the admin tab paint between pages — critical on slower machines.
+    if (i < images.length - 1) await yieldForUi()
   }
 
   if (pageTexts.length === 0) {

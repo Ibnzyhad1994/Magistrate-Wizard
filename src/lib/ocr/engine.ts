@@ -3,19 +3,29 @@
  * bulk import does not spawn a worker (and a WASM heap) per file.
  * Recognize calls are serialized; the WASM worker is not safe to run
  * two pages at once.
+ *
+ * Browser / slow-machine notes:
+ * - OCR runs entirely in-tab (WASM Web Worker), not on a server.
+ * - Pages are processed one at a time through `recognizeQueue`.
+ * - After each page, we yield to the event loop so the UI can paint.
+ * - Corrupt images terminate and drop the worker so the next file can
+ *   rebuild a clean engine instead of inheriting a poisoned WASM heap.
  */
 
 import * as TesseractNS from "tesseract.js"
+
+type OcrWorker = {
+  setParameters: (params: Record<string, string>) => Promise<unknown>
+  recognize: (image: unknown) => Promise<{ data: { text?: string; confidence?: number } }>
+  terminate: () => Promise<unknown>
+}
 
 type TesseractApi = {
   createWorker: (
     langs?: string,
     oem?: number,
     options?: Record<string, unknown>,
-  ) => Promise<{
-    setParameters: (params: Record<string, string>) => Promise<unknown>
-    recognize: (image: unknown) => Promise<{ data: { text?: string; confidence?: number } }>
-  }>
+  ) => Promise<OcrWorker>
   PSM: { SINGLE_COLUMN: string }
 }
 
@@ -28,9 +38,8 @@ interface OcrPageResult {
   confidence: number
 }
 
-type OcrWorker = Awaited<ReturnType<TesseractApi["createWorker"]>>
-
 let workerPromise: Promise<OcrWorker> | null = null
+let activeWorker: OcrWorker | null = null
 let recognizeQueue: Promise<unknown> = Promise.resolve()
 
 const workerOptions = (): Record<string, unknown> => {
@@ -56,20 +65,43 @@ const getWorker = async (): Promise<OcrWorker> => {
         user_defined_dpi: "300",
         tessedit_do_invert: "0",
       })
+      activeWorker = worker
       return worker
     })().catch((err: unknown) => {
       workerPromise = null
+      activeWorker = null
       throw err
     })
   }
   return workerPromise
 }
 
+/**
+ * Tear down the shared worker. Corrupt JPEG/PNG decode can leave the WASM
+ * heap unusable; dropping it lets the next recognize rebuild cleanly.
+ */
+export const terminateOcrWorker = async (): Promise<void> => {
+  const worker = activeWorker
+  activeWorker = null
+  workerPromise = null
+  if (!worker) return
+  try {
+    await worker.terminate()
+  } catch {
+    // Best-effort — a poisoned worker may reject terminate.
+  }
+}
+
 export const recognizeImage = (image: RecognizeInput): Promise<OcrPageResult> => {
   const run = async (): Promise<OcrPageResult> => {
     const worker = await getWorker()
-    const { data } = await worker.recognize(image)
-    return { text: data.text ?? "", confidence: data.confidence ?? 0 }
+    try {
+      const { data } = await worker.recognize(image)
+      return { text: data.text ?? "", confidence: data.confidence ?? 0 }
+    } catch (err) {
+      await terminateOcrWorker()
+      throw err
+    }
   }
   const result = recognizeQueue.then(run, run)
   recognizeQueue = result.then(
@@ -78,6 +110,16 @@ export const recognizeImage = (image: RecognizeInput): Promise<OcrPageResult> =>
   )
   return result
 }
+
+/** Yield so the browser can paint / handle input between heavy OCR pages. */
+export const yieldForUi = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => setTimeout(resolve, 0))
+      return
+    }
+    setTimeout(resolve, 0)
+  })
 
 export const isOcrEngineAvailable = async (): Promise<boolean> => {
   try {

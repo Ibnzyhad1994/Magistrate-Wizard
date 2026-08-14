@@ -67,7 +67,7 @@ const wrapLines = (ctx, text, maxWidth) => {
   return out
 }
 
-export const renderLegalScanJpeg = (text = SCAN_GROUND_TRUTH, jpegQuality = 92, noiseRatio = 0) => {
+const renderLegalScanCanvas = (text = SCAN_GROUND_TRUTH, fontSize = 42, noiseRatio = 0) => {
   const dpi = 300
   const width = Math.round(8.5 * dpi)
   const height = Math.round(11 * dpi)
@@ -76,7 +76,6 @@ export const renderLegalScanJpeg = (text = SCAN_GROUND_TRUTH, jpegQuality = 92, 
   ctx.fillStyle = "#ffffff"
   ctx.fillRect(0, 0, width, height)
   ctx.fillStyle = "#111111"
-  const fontSize = 42
   ctx.font = `${fontSize}px "${registeredFamily}"`
   ctx.textBaseline = "top"
   const margin = 220
@@ -102,7 +101,26 @@ export const renderLegalScanJpeg = (text = SCAN_GROUND_TRUTH, jpegQuality = 92, 
     }
     ctx.putImageData(image, 0, 0)
   }
+  return { canvas, width, height }
+}
+
+export const renderLegalScanJpeg = (text = SCAN_GROUND_TRUTH, jpegQuality = 92, noiseRatio = 0) => {
+  const { canvas, width, height } = renderLegalScanCanvas(text, 42, noiseRatio)
   return { jpeg: canvas.toBuffer("image/jpeg", jpegQuality), width, height }
+}
+
+export const renderLegalScanPng = (text = SCAN_GROUND_TRUTH, fontSize = 42) => {
+  const { canvas, width, height } = renderLegalScanCanvas(text, fontSize, 0)
+  return { png: canvas.toBuffer("image/png"), width, height }
+}
+
+export const renderLegalScanWebp = (text = SCAN_GROUND_TRUTH) => {
+  const { canvas, width, height } = renderLegalScanCanvas(text, 42, 0)
+  try {
+    return { webp: canvas.toBuffer("image/webp"), width, height, supported: true }
+  } catch {
+    return { webp: null, width, height, supported: false }
+  }
 }
 
 const ascii = (s) => Buffer.from(s, "latin1")
