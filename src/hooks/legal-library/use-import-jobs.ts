@@ -8,10 +8,11 @@ import {
   findCaseLawDuplicates,
   findStatuteDuplicates,
   normalizeWhitespace,
-  proposeTags,
+  proposeTagsScored,
   sha256File,
   sha256Text,
   shouldAutoFillCaseName,
+  toTagProposalDetails,
 } from "@/lib/legal-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
 import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
@@ -598,7 +599,9 @@ export function useIngestCaseLaw() {
         ? extractCaseLawMetadataWithConfidence(text, normalizedPages)
         : { fields: {}, caseNameConfidence: "none" as const };
       const proposed = extraction.fields;
-      const tags = usableForMetadata ? proposeTags(text) : [];
+      const scoredTags = usableForMetadata ? proposeTagsScored(text) : [];
+      const tags = scoredTags.map((t) => t.name);
+      const tagProposals = toTagProposalDetails(scoredTags);
       // Prefer hashing the original file's bytes when one is attached (the
       // authoritative source); fall back to the pasted/typed text hash so a
       // PDF with no text yet still gets a real duplicate-detection signal
@@ -635,6 +638,7 @@ export function useIngestCaseLaw() {
         p_batch_id: input.batch_id,
         p_extracted_metadata: {
           ...proposed,
+          tag_proposals: tagProposals,
           _extraction: envelope,
           _metadataConfidence: {
             caseName: extraction.caseNameConfidence,
@@ -734,7 +738,9 @@ export function useIngestLegislation() {
       const envelope = input.extractionEnvelope ?? emptyExtractionEnvelope();
       const usableForMetadata = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
       const provisions = usableForMetadata ? extractLegislationHierarchy(text) : [];
-      const tags = usableForMetadata ? proposeTags(text) : [];
+      const scoredTags = usableForMetadata ? proposeTagsScored(text) : [];
+      const tags = scoredTags.map((t) => t.name);
+      const tagProposals = toTagProposalDetails(scoredTags);
       const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
       const duplicates = hash || text
@@ -757,7 +763,11 @@ export function useIngestLegislation() {
         p_original_filename: input.original_filename,
         p_document_hash: hash,
         p_batch_id: input.batch_id,
-        p_extracted_metadata: { provisionCount: provisions.length, _extraction: envelope } as unknown as Json,
+        p_extracted_metadata: {
+          provisionCount: provisions.length,
+          tag_proposals: tagProposals,
+          _extraction: envelope,
+        } as unknown as Json,
         p_proposed_tags: tags,
         p_duplicate_warning:
           duplicates.length > 0

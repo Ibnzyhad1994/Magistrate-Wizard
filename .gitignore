@@ -46,3 +46,4 @@ scripts/tests/ingest-brutal-circuit-results.json
 scripts/tests/ingest-ocr-robustness-results.json
 scripts/tests/ocr-slow-system-results.json
 scripts/tests/persona-workflow-results.json
+scripts/tests/propose-tags-before-after.json

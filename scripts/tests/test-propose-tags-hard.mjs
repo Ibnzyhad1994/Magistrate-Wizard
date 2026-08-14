@@ -3,7 +3,13 @@
  *
  *   node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-propose-tags-hard.mjs
  */
-import { proposeTags, proposeTagsScored } from "@/lib/legal-extraction"
+import {
+  proposeTags,
+  proposeTagsScored,
+  tagConfidenceFromScore,
+  toTagProposalDetails,
+  TAG_CONFIDENCE_HIGH_MIN,
+} from "@/lib/legal-extraction"
 import {
   AMBIGUOUS_SHORT_TAXONOMY_TOPICS,
   LEGAL_TAXONOMY_ALIASES,
@@ -359,6 +365,123 @@ const expectEmpty = (label, tags) =>
   record(
     "stable — scored names match proposeTags",
     JSON.stringify(scored.map((s) => s.name)) === JSON.stringify(a),
+  )
+  record(
+    "stable — every scored row has confidence",
+    scored.every((s) => s.confidence === tagConfidenceFromScore(s.score)),
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Negation lookbehind
+// ---------------------------------------------------------------------------
+{
+  expectExcludes(
+    "negation — not hearsay alone",
+    proposeTags("Counsel submitted that this was not hearsay at all."),
+    "Hearsay",
+  )
+  expectExcludes(
+    "negation — without jurisdiction alone",
+    proposeTags("The objection was that the court was without jurisdiction to hear the claim."),
+    "Jurisdiction",
+  )
+  expectExcludes(
+    "negation — no jurisdiction alone",
+    proposeTags("It was argued there was no jurisdiction over the accused."),
+    "Jurisdiction",
+  )
+  expectIncludes(
+    "negation — positive hearsay still works nearby",
+    proposeTags("This was not hearsay. Later the court admitted hearsay evidence on another count."),
+    "Hearsay",
+  )
+  expectIncludes(
+    "negation — no case to answer is not negated",
+    proposeTags("At the close a no case to answer submission was made."),
+    "No-Case Submission",
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Legal-section weighting
+// ---------------------------------------------------------------------------
+{
+  const inHeld = proposeTagsScored(
+    "Boilerplate preface only.\n\nHELD: The court admitted the hearsay evidence after full argument.\n",
+  ).find((t) => t.name === "Hearsay")
+  const inBoiler = proposeTagsScored(
+    "In passing the transcript mentioned hearsay evidence once amid clerical notes and listing matters with no holding.\n",
+  ).find((t) => t.name === "Hearsay")
+  record("section — HELD hit proposes Hearsay", !!inHeld, inHeld ? `score=${inHeld.score}` : "missing")
+  record("section — boilerplate also proposes (still a hit)", !!inBoiler)
+  if (inHeld && inBoiler) {
+    record(
+      "section — HELD score >= boilerplate score",
+      inHeld.score >= inBoiler.score,
+      `held=${inHeld.score} boiler=${inBoiler.score}`,
+    )
+    record("section — inLegalSection flag on HELD hit", inHeld.inLegalSection === true)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// New Caribbean / magistrates aliases
+// ---------------------------------------------------------------------------
+{
+  expectIncludes(
+    "alias — recognizance → Bail",
+    proposeTags("The accused was released on his own recognizance pending trial."),
+    "Bail",
+  )
+  expectIncludes(
+    "alias — Turnbull → Identification",
+    proposeTags("The Turnbull guidelines were carefully applied to the dock identification."),
+    "Identification",
+  )
+  expectIncludes(
+    "alias — occupation order → Domestic Violence",
+    proposeTags("An occupation order was granted under the domestic violence legislation."),
+    "Domestic Violence",
+  )
+  expectIncludes(
+    "alias — arrears of maintenance → Maintenance",
+    proposeTags("The complainant sought arrears of maintenance for three years."),
+    "Maintenance",
+  )
+  expectIncludes(
+    "alias — dangerous drugs → Trafficking",
+    proposeTags("He was charged with trafficking in dangerous drugs contrary to the Act."),
+    "Trafficking",
+  )
+  expectIncludes(
+    "alias — submission of no case",
+    proposeTags("A submission of no case was rejected after brief argument."),
+    "No-Case Submission",
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Confidence helper + tag_proposals shape
+// ---------------------------------------------------------------------------
+{
+  record("confidence — high threshold constant", TAG_CONFIDENCE_HIGH_MIN === 40)
+  record("confidence — score 50 is high", tagConfidenceFromScore(50) === "high")
+  record("confidence — score 30 is medium", tagConfidenceFromScore(30) === "medium")
+  record("confidence — score 10 is low", tagConfidenceFromScore(10) === "low")
+
+  const scored = proposeTagsScored(
+    "HELD: The court admitted hearsay evidence and upheld a search and seizure challenge after a no case to answer submission.",
+  )
+  const details = toTagProposalDetails(scored)
+  record(
+    "confidence — toTagProposalDetails preserves names",
+    details.map((d) => d.name).join("|") === scored.map((s) => s.name).join("|"),
+  )
+  record(
+    "confidence — strong fixture has at least one high",
+    details.some((d) => d.confidence === "high"),
+    details.map((d) => `${d.name}:${d.confidence}:${d.score}`).join(", "),
   )
 }
 

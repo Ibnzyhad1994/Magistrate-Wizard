@@ -248,6 +248,12 @@ const COURTS = [
   );
   check("Tags — bail application alias proposes Bail", bailAlias.includes("Bail"), true);
 
+  const notHearsay = proposeTags("Counsel submitted that the statement was not hearsay.");
+  check("Tags — negated hearsay is not proposed", notHearsay.includes("Hearsay"), false);
+
+  const recog = proposeTags("Released on recognizance with a surety.");
+  check("Tags — recognizance alias proposes Bail", recog.includes("Bail"), true);
+
   const searchSeizure = proposeTags(
     "The defence challenged the search and seizure of the parcels as unlawful.",
   );

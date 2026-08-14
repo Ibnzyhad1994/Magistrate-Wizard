@@ -650,7 +650,8 @@ export function extractLegislationHierarchy(text: string): ProposedProvision[] {
 // ---------------------------------------------------------------------------
 // Canonical tag proposal (scored keyword / alias match against the curated
 // taxonomy — src/lib/legal-taxonomy.ts). NOT AI. Word-boundary matching,
-// short-token floor, specificity demotion. Presented as proposed tags only.
+// negation lookbehind, legal-section boosts, short-token floor, specificity
+// demotion. Presented as proposed tags only.
 // ---------------------------------------------------------------------------
 
 /** Chars scanned for tag proposals — enough for judgments; caps megabyte pastes. */
@@ -659,27 +660,91 @@ const TAG_SCAN_CHARS = 80_000;
 const TAG_HEADER_WINDOW_CHARS = 3_000;
 /** Cap how much repeated hits can inflate a topic's score. */
 const TAG_OCCURRENCE_BONUS_CAP = 3;
+/** Chars before a hit inspected for local negation cues. */
+const TAG_NEGATION_LOOKBEHIND = 40;
+/** Score boost when a hit falls inside a Held/Issues/Decision-style span. */
+const TAG_SECTION_BOOST = 10;
+/** Confidence tier cutoffs (deterministic; tuned against hard suite fixtures). */
+export const TAG_CONFIDENCE_HIGH_MIN = 40;
+export const TAG_CONFIDENCE_MEDIUM_MIN = 25;
+
+export type TagConfidence = "high" | "medium" | "low";
 
 export interface ProposedTagScore {
   name: string;
   score: number;
   hitCount: number;
+  confidence: TagConfidence;
   /** True if any match came from an alias phrase rather than the topic label alone. */
   matchedViaAlias: boolean;
   /** True if any match fell in the header window. */
   inHeader: boolean;
+  /** True if any non-negated hit fell in a Held/Issues/Decision-style span. */
+  inLegalSection: boolean;
 }
+
+export interface TagProposalDetail {
+  name: string;
+  score: number;
+  confidence: TagConfidence;
+  hitCount: number;
+}
+
+export const tagConfidenceFromScore = (score: number): TagConfidence => {
+  if (score >= TAG_CONFIDENCE_HIGH_MIN) return "high";
+  if (score >= TAG_CONFIDENCE_MEDIUM_MIN) return "medium";
+  return "low";
+};
+
+/** Local negation immediately before a matched phrase (not distant "not" in the sentence). */
+const NEGATION_BEFORE_RE =
+  /(?:^|[^a-z0-9])(?:not|no|without|rather\s+than|unlike|false)\s*$/i;
+
+const isLocallyNegated = (hay: string, phraseStart: number): boolean => {
+  const from = Math.max(0, phraseStart - TAG_NEGATION_LOOKBEHIND);
+  const window = hay.slice(from, phraseStart);
+  return NEGATION_BEFORE_RE.test(window);
+};
+
+const SECTION_HEADING_RE =
+  /(?:^|\n)\s*(HELD|HOLDING|ISSUES?|GROUNDS?|RATIO|DECISION|ORDER|DISPOSITION)\b[^\n]{0,120}/gi;
+
+interface OffsetSpan {
+  start: number;
+  end: number;
+}
+
+/** Coarse Held/Issues/Decision spans — heading to next heading or +2500 chars. */
+export const buildLegalSectionSpans = (hay: string): OffsetSpan[] => {
+  const headings: number[] = [];
+  SECTION_HEADING_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = SECTION_HEADING_RE.exec(hay)) !== null) {
+    headings.push(m.index);
+    if (m[0].length === 0) SECTION_HEADING_RE.lastIndex += 1;
+  }
+  if (headings.length === 0) return [];
+  const spans: OffsetSpan[] = [];
+  for (let i = 0; i < headings.length; i++) {
+    const start = headings[i];
+    const next = headings[i + 1];
+    const end = next != null ? next : Math.min(hay.length, start + 2500);
+    spans.push({ start, end });
+  }
+  return spans;
+};
+
+const offsetInSpans = (offset: number, spans: OffsetSpan[]): boolean =>
+  spans.some((s) => offset >= s.start && offset < s.end);
 
 interface TopicAccumulator {
   score: number;
   hitCount: number;
-  /** Hits from single-token canonical phrase only (ambiguous floor uses this). */
   bareHitCount: number;
   matchedViaAlias: boolean;
   inHeader: boolean;
-  /** Longest phrase that contributed (for specificity demotion). */
+  inLegalSection: boolean;
   longestPhrase: string;
-  /** True if any contributing phrase was multi-word (alias or topic). */
   multiWordHit: boolean;
 }
 
@@ -691,6 +756,7 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
   if (!text?.trim()) return [];
 
   const hay = text.length > TAG_SCAN_CHARS ? text.slice(0, TAG_SCAN_CHARS) : text;
+  const sectionSpans = buildLegalSectionSpans(hay);
   const byTopic = new Map<string, TopicAccumulator>();
 
   for (const entry of LEGAL_TAXONOMY_PHRASE_INDEX) {
@@ -698,14 +764,17 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
     let match: RegExpExecArray | null;
     let localHits = 0;
     let firstIndex = -1;
+    let anyInSection = false;
     while ((match = entry.pattern.exec(hay)) !== null) {
+      const phraseStart = match.index + (match[0].length - (match[1]?.length ?? 0));
+      if (isLocallyNegated(hay, phraseStart)) {
+        if (match[0].length === 0) entry.pattern.lastIndex += 1;
+        continue;
+      }
       localHits += 1;
-      if (firstIndex < 0) {
-        firstIndex = match.index + (match[0].length - (match[1]?.length ?? 0));
-      }
-      if (match[0].length === 0) {
-        entry.pattern.lastIndex += 1;
-      }
+      if (firstIndex < 0) firstIndex = phraseStart;
+      if (offsetInSpans(phraseStart, sectionSpans)) anyInSection = true;
+      if (match[0].length === 0) entry.pattern.lastIndex += 1;
     }
     if (localHits === 0) continue;
 
@@ -714,7 +783,9 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
     let score = entry.phrase.length;
     if (entry.tokenCount > 1) score += 12;
     if (entry.isAlias && entry.tokenCount > 1) score += 6;
+    if (entry.isAlias && entry.tokenCount === 1) score += 4;
     if (inHeader) score += 8;
+    if (anyInSection) score += TAG_SECTION_BOOST;
     score += Math.min(localHits, TAG_OCCURRENCE_BONUS_CAP);
 
     const prev = byTopic.get(entry.topic);
@@ -725,6 +796,7 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
         bareHitCount: isBareToken ? localHits : 0,
         matchedViaAlias: entry.isAlias,
         inHeader,
+        inLegalSection: anyInSection,
         longestPhrase: entry.phrase,
         multiWordHit: entry.tokenCount > 1,
       });
@@ -734,6 +806,7 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
       if (isBareToken) prev.bareHitCount += localHits;
       prev.matchedViaAlias = prev.matchedViaAlias || entry.isAlias;
       prev.inHeader = prev.inHeader || inHeader;
+      prev.inLegalSection = prev.inLegalSection || anyInSection;
       prev.multiWordHit = prev.multiWordHit || entry.tokenCount > 1;
       if (entry.phrase.length > prev.longestPhrase.length) {
         prev.longestPhrase = entry.phrase;
@@ -741,8 +814,6 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
     }
   }
 
-  // Ambiguous single-token topics: need a multi-word/alias phrase, or enough
-  // bare repetitions (AMBIGUOUS_BARE_HIT_FLOOR) — stops "service"×2 everyday prose.
   for (const [topic, acc] of [...byTopic.entries()]) {
     if (!SHORT_TAXONOMY_TOPICS.has(topic)) continue;
     const clearsFloor =
@@ -752,9 +823,6 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
     }
   }
 
-  // Specificity: drop a short topic if a longer selected topic's phrase
-  // already contains that short topic as a whole word (e.g. Search vs
-  // Search and Seizure).
   const ranked = [...byTopic.entries()]
     .map(([name, acc]) => ({ name, ...acc }))
     .sort((a, b) => b.score - a.score || b.hitCount - a.hitCount || a.name.localeCompare(b.name));
@@ -776,17 +844,29 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
     if (!suppressed) kept.push(candidate);
   }
 
-  return kept.slice(0, limit).map(({ name, score, hitCount, matchedViaAlias, inHeader }) => ({
+  return kept.slice(0, limit).map(({ name, score, hitCount, matchedViaAlias, inHeader, inLegalSection }) => ({
     name,
     score,
     hitCount,
+    confidence: tagConfidenceFromScore(score),
     matchedViaAlias,
     inHeader,
+    inLegalSection,
   }));
 }
 
 export function proposeTags(text: string, limit = 10): string[] {
   return proposeTagsScored(text, limit).map((t) => t.name);
+}
+
+/** Shape stored under extracted_metadata.tag_proposals at ingest (no migration). */
+export function toTagProposalDetails(scored: ProposedTagScore[]): TagProposalDetail[] {
+  return scored.map(({ name, score, confidence, hitCount }) => ({
+    name,
+    score,
+    confidence,
+    hitCount,
+  }));
 }
 
 // ---------------------------------------------------------------------------

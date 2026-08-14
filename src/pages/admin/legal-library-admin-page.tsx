@@ -338,6 +338,31 @@ function ExtractionStatusPanel({
   );
 }
 
+/** Pulls scored tag proposals recorded at ingest (`extracted_metadata.tag_proposals`). Older drafts have none. */
+function readTagProposals(
+  extractedMetadata: unknown,
+  fallbackNames: string[],
+): Array<{ name: string; confidence: "high" | "medium" | "low" }> {
+  if (extractedMetadata && typeof extractedMetadata === "object") {
+    const raw = (extractedMetadata as Record<string, unknown>).tag_proposals;
+    if (Array.isArray(raw) && raw.length > 0) {
+      const out: Array<{ name: string; confidence: "high" | "medium" | "low" }> = [];
+      for (const item of raw) {
+        if (!item || typeof item !== "object") continue;
+        const rec = item as Record<string, unknown>;
+        const name = typeof rec.name === "string" ? rec.name.trim() : "";
+        if (!name) continue;
+        const conf = rec.confidence;
+        const confidence =
+          conf === "high" || conf === "medium" || conf === "low" ? conf : ("medium" as const);
+        out.push({ name, confidence });
+      }
+      if (out.length > 0) return out;
+    }
+  }
+  return fallbackNames.map((name) => ({ name, confidence: "medium" as const }));
+}
+
 /**
  * Compact chip-based tag reviewer shared by both Review Queue cards (§15/
  * §16): proposed tags from deterministic extraction (import_jobs.
@@ -346,58 +371,63 @@ function ExtractionStatusPanel({
  * written until "Save tags" is pressed — extraction proposes, it never
  * silently classifies.
  *
- * When nothing has been applied yet and proposals exist, chips start
- * pre-selected so a curator can Save quickly after a glance. If tags were
- * already saved, selection mirrors applied only (proposals appear as +).
+ * When nothing has been applied yet, only high-confidence proposals start
+ * pre-selected. Medium/low appear as + until toggled. Save is still required.
  */
 function TagReviewEditor({
   proposed,
+  proposals,
   applied,
   onSave,
   isSaving,
 }: {
   proposed: string[];
+  /** Scored proposals from extracted_metadata.tag_proposals (fallback: medium). */
+  proposals?: Array<{ name: string; confidence: "high" | "medium" | "low" }>;
   applied: string[];
   onSave: (names: string[]) => void;
   isSaving: boolean;
 }) {
+  const proposalList = proposals?.length
+    ? proposals
+    : proposed.map((name) => ({ name, confidence: "medium" as const }));
+  const proposedNames = proposalList.map((p) => p.name);
+  const highNames = proposalList.filter((p) => p.confidence === "high").map((p) => p.name);
+  const confidenceByName = new Map(proposalList.map((p) => [p.name.toLowerCase(), p.confidence]));
+
   const initialSelected = () =>
-    new Set(applied.length > 0 ? applied : proposed.length > 0 ? proposed : []);
+    new Set(applied.length > 0 ? applied : highNames.length > 0 ? highNames : []);
   const [selected, setSelected] = useState<Set<string>>(initialSelected);
   const [customTag, setCustomTag] = useState("");
   const [allNames, setAllNames] = useState<string[]>(() =>
-    Array.from(new Set([...applied, ...proposed])),
+    Array.from(new Set([...applied, ...proposedNames])),
   );
-  // `applied` loads asynchronously (a separate query from the review-queue
-  // row itself) — resync once it arrives rather than freezing on the
-  // empty-array value captured at first mount, so previously-saved tags
-  // for a draft the reviewer returns to show as already checked.
   const [syncedApplied, setSyncedApplied] = useState(applied);
-  const [syncedProposed, setSyncedProposed] = useState(proposed);
+  const [syncedProposedKey, setSyncedProposedKey] = useState(() =>
+    proposedNames.join("\0") + "|" + highNames.join("\0"),
+  );
   useEffect(() => {
+    const proposedKey = proposedNames.join("\0") + "|" + highNames.join("\0");
     const appliedChanged =
       applied.length !== syncedApplied.length || applied.some((t) => !syncedApplied.includes(t));
-    const proposedChanged =
-      proposed.length !== syncedProposed.length ||
-      proposed.some((t) => !syncedProposed.includes(t));
+    const proposedChanged = proposedKey !== syncedProposedKey;
     if (!appliedChanged && !proposedChanged) return;
-    setAllNames((prev) => Array.from(new Set([...prev, ...applied, ...proposed])));
+    setAllNames((prev) => Array.from(new Set([...prev, ...applied, ...proposedNames])));
     if (appliedChanged) {
       if (applied.length > 0) {
         setSelected(new Set(applied));
-      } else if (proposed.length > 0) {
-        setSelected(new Set(proposed));
+      } else if (highNames.length > 0) {
+        setSelected(new Set(highNames));
       } else {
         setSelected(new Set());
       }
       setSyncedApplied(applied);
     } else if (proposedChanged && applied.length === 0 && syncedApplied.length === 0) {
-      // Proposals arrived while still unsaved — pre-select them.
-      setSelected(new Set(proposed));
+      setSelected(new Set(highNames));
     }
-    setSyncedProposed(proposed);
+    setSyncedProposedKey(proposedKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, proposed]);
+  }, [applied, proposedNames.join("\0"), highNames.join("\0")]);
   const dirty =
     selected.size !== applied.length || [...selected].some((t) => !applied.includes(t));
 
@@ -413,14 +443,23 @@ function TagReviewEditor({
   function handleSelectAllProposed() {
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const name of proposed) next.add(name);
+      for (const name of proposedNames) next.add(name);
       return next;
     });
-    setAllNames((prev) => Array.from(new Set([...prev, ...proposed])));
+    setAllNames((prev) => Array.from(new Set([...prev, ...proposedNames])));
+  }
+
+  function handleSelectHighConfidence() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const name of highNames) next.add(name);
+      return next;
+    });
+    setAllNames((prev) => Array.from(new Set([...prev, ...highNames])));
   }
 
   function handleClearProposed() {
-    const proposedLower = new Set(proposed.map((p) => p.toLowerCase()));
+    const proposedLower = new Set(proposedNames.map((p) => p.toLowerCase()));
     setSelected((prev) => {
       const next = new Set<string>();
       for (const name of prev) {
@@ -445,12 +484,24 @@ function TagReviewEditor({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">
           Tags
-          {proposed.length > 0
-            ? " — suggested from document keywords; review, then Save tags"
+          {proposedNames.length > 0
+            ? " — suggested from document keywords (confidence shown); review, then Save tags"
             : ""}
         </p>
-        {proposed.length > 0 && (
-          <div className="flex gap-1">
+        {proposedNames.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {highNames.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                onClick={handleSelectHighConfidence}
+                aria-label="Select high confidence proposed tags"
+              >
+                Select high confidence
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"
@@ -478,23 +529,31 @@ function TagReviewEditor({
         {allNames.length === 0 && (
           <span className="text-xs text-muted-foreground">No tags proposed.</span>
         )}
-        {allNames.map((name) => (
-          <button
-            key={name}
-            type="button"
-            onClick={() => toggle(name)}
-            aria-pressed={selected.has(name)}
-            aria-label={`${selected.has(name) ? "Deselect" : "Select"} tag ${name}`}
-            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-              selected.has(name)
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {selected.has(name) ? "✓ " : "+ "}
-            {name}
-          </button>
-        ))}
+        {allNames.map((name) => {
+          const conf = confidenceByName.get(name.toLowerCase());
+          const title = conf ? `${name} (${conf} confidence)` : name;
+          return (
+            <button
+              key={name}
+              type="button"
+              onClick={() => toggle(name)}
+              aria-pressed={selected.has(name)}
+              aria-label={`${selected.has(name) ? "Deselect" : "Select"} tag ${name}${conf ? `, ${conf} confidence` : ""}`}
+              title={title}
+              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                selected.has(name)
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {selected.has(name) ? "✓ " : "+ "}
+              {name}
+              {conf ? (
+                <span className="ml-1 text-[10px] opacity-70">{conf}</span>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
       <div className="flex gap-2">
         <Input
@@ -2420,6 +2479,7 @@ function CaseLawReviewCard({
         {/* CLASSIFICATION */}
         <TagReviewEditor
           proposed={row.proposed_tags}
+          proposals={readTagProposals(row.extracted_metadata, row.proposed_tags)}
           applied={appliedTagNames}
           isSaving={applyTags.isPending}
           onSave={(names) => applyTags.mutate(names)}
@@ -2620,6 +2680,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
 
         <TagReviewEditor
           proposed={row.proposed_tags}
+          proposals={readTagProposals(row.extracted_metadata, row.proposed_tags)}
           applied={appliedTagNames}
           isSaving={applyTags.isPending}
           onSave={(names) => applyTags.mutate(names)}
