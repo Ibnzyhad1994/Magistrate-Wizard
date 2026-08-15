@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
+import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useGlobalSearch } from "@/hooks/search/use-global-search";
 import { ROUTES } from "@/routes/paths";
 import type { TitleCardTone } from "@/lib/browse-tones";
@@ -59,7 +58,7 @@ function Headline({ text }: { text: string | null }) {
   const parts = text.split(/(<b>|<\/b>)/);
   let bold = false;
   return (
-    <p className="mt-1.5 line-clamp-3 text-[11px] leading-snug text-white/60">
+    <p className="line-clamp-2 text-[11px] leading-snug text-white/60">
       {parts.map((part, i) => {
         if (part === "<b>") {
           bold = true;
@@ -117,6 +116,7 @@ export default function SearchPage() {
       <BrowseHeader
         title="Search"
         description="Search across Docket Matters, Judgments, Case Law, Quick Codes, Bench Notes, Cases, and Legislation — results are limited to what you're already allowed to see."
+        showViewSelect
       />
 
       <div className="relative mb-8 max-w-lg">
@@ -138,14 +138,7 @@ export default function SearchPage() {
           description="Search matches titles and content across everything you have access to."
         />
       ) : isPending || isFetching ? (
-        <div className="flex flex-wrap gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
-            />
-          ))}
-        </div>
+        <TitleCardSkeletonGallery />
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
@@ -166,16 +159,16 @@ export default function SearchPage() {
                 {results.map((r) => {
                   const route = r.id ? TYPE_ROUTE[type]?.(r.id) : undefined;
                   return (
-                    <div key={`${type}-${r.id}`} className="max-w-[13.5rem]">
-                      <TitleCard
-                        tone={TYPE_TONE[type] ?? "bookmark"}
-                        eyebrow={TYPE_LABELS[type] ?? type}
-                        title={r.title ?? "Untitled"}
-                        subtitle={r.subtitle ?? undefined}
-                        href={route}
-                      />
+                    <TitleCard
+                      key={`${type}-${r.id}`}
+                      tone={TYPE_TONE[type] ?? "bookmark"}
+                      eyebrow={TYPE_LABELS[type] ?? type}
+                      title={r.title ?? "Untitled"}
+                      subtitle={r.subtitle ?? undefined}
+                      href={route}
+                    >
                       <Headline text={r.headline} />
-                    </div>
+                    </TitleCard>
                   );
                 })}
               </TitleGallery>

@@ -83,6 +83,7 @@ export default function CaseLawListPage() {
       <BrowseHeader
         title="Case Law"
         description="Canonical authorities, your personal research, and research other magistrates have made discoverable."
+        showViewSelect
         action={
           <Button variant="play" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />

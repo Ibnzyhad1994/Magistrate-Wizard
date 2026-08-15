@@ -3,10 +3,9 @@ import { Plus, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
+import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
@@ -55,6 +54,7 @@ export default function BenchNotesListPage() {
       <BrowseHeader
         title="Bench Notes"
         description="Your notes, attached to Docket Matters, Judgments, Case Law, or Legislation."
+        showViewSelect
         action={
           <Button variant="play" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -99,13 +99,8 @@ export default function BenchNotesListPage() {
       </div>
 
       {isPending || (query.trim() && searchPending) ? (
-        <div className="mt-8 flex flex-wrap gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
-            />
-          ))}
+        <div className="mt-8">
+          <TitleCardSkeletonGallery />
         </div>
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />

@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Search, Plus, Gavel } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowsePage, BrowseHeader, TitleCard } from "@/components/browse";
+import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
@@ -58,6 +57,7 @@ export default function DocketListPage() {
       <BrowseHeader
         title="Docket"
         description="Matters currently assigned to your Court, retained from a prior sitting, or shared with you."
+        showViewSelect
         action={
           <Button
             variant="play"
@@ -91,14 +91,7 @@ export default function DocketListPage() {
       </div>
 
       {isPending ? (
-        <div className="flex flex-wrap gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
-            />
-          ))}
-        </div>
+        <TitleCardSkeletonGallery />
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} className="border-0" />
       ) : !data || data.length === 0 ? (
@@ -121,7 +114,7 @@ export default function DocketListPage() {
           }
         />
       ) : (
-        <div className="flex flex-wrap gap-3">
+        <TitleGallery>
           {data.map((matter) => (
             <TitleCard
               key={matter.id}
@@ -135,7 +128,7 @@ export default function DocketListPage() {
               {...docketCover(matter)}
             />
           ))}
-        </div>
+        </TitleGallery>
       )}
 
       <CreateDocketMatterDialog open={createOpen} onOpenChange={setCreateOpen} />

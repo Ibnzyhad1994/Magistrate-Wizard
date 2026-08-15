@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TitleCardSkeleton } from "@/components/browse/title-card-skeleton";
 import { useHScroll } from "@/hooks/use-h-scroll";
 
 interface ContentRowProps {
@@ -83,10 +83,7 @@ export function ContentRow({
         >
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton
-                  key={i}
-                  className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] shrink-0 snap-start rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
-                />
+                <TitleCardSkeleton key={i} layout="tiles" />
               ))
             : children}
         </div>

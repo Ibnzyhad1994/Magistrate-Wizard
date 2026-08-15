@@ -155,6 +155,7 @@ export default function DashboardPage() {
           <ContentRow title="Continue Working" href={ROUTES.docket} isLoading={mattersPending}>
             {continueWorking.map((m) => (
               <TitleCard
+                layout="tiles"
                 key={m.id}
                 tone="docket"
                 eyebrow={m.case_number}
@@ -175,6 +176,7 @@ export default function DashboardPage() {
               const matter = rel(event.docket_matters);
               return (
                 <TitleCard
+                  layout="tiles"
                   key={event.id}
                   tone="docket"
                   eyebrow={matter?.case_number}
@@ -197,6 +199,7 @@ export default function DashboardPage() {
           <ContentRow title="Draft Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
             {myDrafts.map((j) => (
               <TitleCard
+                layout="tiles"
                 key={j.id}
                 tone="judgment"
                 eyebrow={j.case_number ?? undefined}
@@ -213,6 +216,7 @@ export default function DashboardPage() {
           <ContentRow title="Final Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
             {myFinal.map((j) => (
               <TitleCard
+                layout="tiles"
                 key={j.id}
                 tone="judgment"
                 eyebrow={j.case_number ?? undefined}
@@ -231,6 +235,7 @@ export default function DashboardPage() {
               const matter = rel(row.docket_matters);
               return (
                 <TitleCard
+                  layout="tiles"
                   key={row.id}
                   tone="docket"
                   eyebrow={matter?.case_number}
@@ -249,6 +254,7 @@ export default function DashboardPage() {
           <ContentRow title="Bench Notes" href={ROUTES.benchNotes} isLoading={benchNotesPending}>
             {(benchNotes ?? []).map((note) => (
               <TitleCard
+                layout="tiles"
                 key={note.id}
                 tone="note"
                 eyebrow={entityLabel(note.entity_type)}
@@ -264,6 +270,7 @@ export default function DashboardPage() {
           <ContentRow title="Quick Codes" href={ROUTES.quickCodes} isLoading={quickCodesPending}>
             {(quickCodes ?? []).map((code) => (
               <TitleCard
+                layout="tiles"
                 key={code.id}
                 tone="code"
                 eyebrow={code.code_word}

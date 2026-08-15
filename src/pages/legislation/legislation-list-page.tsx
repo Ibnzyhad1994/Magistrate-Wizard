@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 import { ScrollText, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
+import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useStatutes } from "@/hooks/legislation/use-legislation";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { ROUTES } from "@/routes/paths";
@@ -36,6 +35,7 @@ export default function LegislationListPage() {
       <BrowseHeader
         title="Legislation"
         description="Acts, regulations, and other legal instruments — maintained centrally and available to every magistrate."
+        showViewSelect
       />
 
       <div className="mb-8 max-w-sm space-y-1">
@@ -55,14 +55,7 @@ export default function LegislationListPage() {
       </div>
 
       {isPending ? (
-        <div className="flex flex-wrap gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
-            />
-          ))}
-        </div>
+        <TitleCardSkeletonGallery />
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : rows.length === 0 ? (

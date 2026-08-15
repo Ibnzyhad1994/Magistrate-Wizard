@@ -48,6 +48,7 @@ export default function JudgmentListPage() {
       <BrowseHeader
         title="Judgments"
         description="Your draft and final judgments, plus judgments other magistrates have made discoverable."
+        showViewSelect
         action={
           <Button variant="play" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />

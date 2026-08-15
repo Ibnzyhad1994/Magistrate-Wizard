@@ -1,10 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { Bookmark as BookmarkIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
+import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useBookmarks, useRemoveBookmark } from "@/hooks/bookmarks/use-bookmarks";
 import { useBookmarkLabels } from "@/hooks/bookmarks/use-bookmark-labels";
 import { ROUTES } from "@/routes/paths";
@@ -60,17 +59,11 @@ export default function BookmarksPage() {
       <BrowseHeader
         title="Bookmarks"
         description="Quick links to matters, judgments, research, and more you've saved."
+        showViewSelect
       />
 
       {isPending || waitingForLabels ? (
-        <div className="flex flex-wrap gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="aspect-[2/3] w-[42vw] min-w-[9.5rem] max-w-[13.5rem] rounded-sm bg-white/10 sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]"
-            />
-          ))}
-        </div>
+        <TitleCardSkeletonGallery />
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
@@ -91,7 +84,7 @@ export default function BookmarksPage() {
                 : TYPE_ROUTE[b.entity_type]?.(b.entity_id);
             const canOpen = Boolean(resolved && route);
             return (
-              <div key={b.id} className="relative">
+              <div key={b.id} className="relative w-full min-w-0">
                 <TitleCard
                   tone={TYPE_TONE[b.entity_type] ?? "bookmark"}
                   eyebrow={TYPE_LABELS[b.entity_type]}

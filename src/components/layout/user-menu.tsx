@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { getInitials } from "@/lib/utils";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
+import { ROUTES } from "@/routes/paths";
 
 interface UserMenuProps {
   compact?: boolean;
@@ -63,6 +65,12 @@ export function UserMenu({ compact = false }: UserMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to={ROUTES.settings}>
+            <Settings />
+            Settings
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(event) => {
             event.preventDefault();
