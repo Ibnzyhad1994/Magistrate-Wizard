@@ -16,7 +16,7 @@
 // user's specified patterns, since no other real judgment PDFs were
 // available in this sandbox.
 
-import { extractCaseLawMetadata, extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, normalizeMetadataHead, proposeTags, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
+import { extractCaseLawMetadata, extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, extractLegislationMetadataWithConfidence, normalizeMetadataHead, proposeTags, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import { mergeReprocessFields } from "@/lib/legal-library/machine-proposal";
 
@@ -368,6 +368,64 @@ const COURTS = [
   check("Reprocess keeps curator case name", merged.case_name, "Curator typed name");
   check("Reprocess keeps curator paste", merged.full_text, "curator paste");
   check("Reprocess fills blank date from machine", merged.decided_date, "1995-05-25");
+}
+
+// ---------------------------------------------------------------------------
+// extractLegislationMetadataWithConfidence — Legislation had no title/
+// metadata extraction heuristic at all before this pass (unlike Case Law).
+// Added specifically after a bulk seed audit found title="Marriage",
+// code="Marriage" for a real document whose text plainly reads "MARRIAGE
+// (AMENDMENT) ACT 1985" / "ACT No. 13 of 1985".
+// ---------------------------------------------------------------------------
+
+// Fixed statutory drafting formula ("may be cited as the ... Act") is the
+// highest-confidence signal — a real self-citation sentence, not a guess.
+{
+  const text =
+    "GUYANA\nACT No. 13 of 1985\nMARRIAGE (AMENDMENT) ACT 1985\n\n" +
+    "1. This Act may be cited as the Marriage (Amendment) Act 1985 and shall come into operation " +
+    "on a date to be fixed by the Minister by order.\n\n2. Section 5 of the Principal Act is amended...";
+  const result = extractLegislationMetadataWithConfidence(text);
+  check("'may be cited as' recovers the real title", result.fields.title, "Marriage (Amendment) Act 1985");
+  check("'may be cited as' title confidence is high", result.titleConfidence, "high");
+  check("act number recovered near document start", result.fields.act_number, "13 of 1985");
+  check("enactment year recovered", result.fields.enactment_year, 1985);
+  check("instrument type recovered", result.fields.instrument_type, "Act");
+}
+
+// Header-only case (no "may be cited as" sentence in the extracted head
+// window) — falls back to the ALL-CAPS header line, excluding gazette
+// running-header furniture even though it's also ALL CAPS and near the
+// document start.
+{
+  const text =
+    "THE OFFICIAL GAZETTE 5TH JUNE, 2025\nLEGAL SUPPLEMENT — A\n\n" +
+    "CRIMINAL LAW MISCELLANEOUS ACT 2025\n\nNo. 10 of 2025\n\n" +
+    "1. Short title. This Act may be referred to informally but has no formal citation clause in this fixture.";
+  const result = extractLegislationMetadataWithConfidence(text);
+  check("gazette running header is excluded from the title guess", result.fields.title, "CRIMINAL LAW MISCELLANEOUS ACT 2025");
+  check("header-line title confidence is high (within the near-start window)", result.titleConfidence, "high");
+}
+
+// The exact "title=code" shape the audit found — the extractor's OWN
+// output is obviously never checked against itself here (that's the
+// publish-gate's job, 0072/publication-validation.ts); this only proves
+// the extractor recovers a real, distinct title when given real text.
+{
+  const text = "GUYANA\nACT No. 13 of 1985\nMARRIAGE (AMENDMENT) ACT 1985\n\nmay be cited as the Marriage (Amendment) Act.";
+  const result = extractLegislationMetadataWithConfidence(text);
+  check(
+    "recovered title is never identical to a bare one-word harvested code",
+    result.fields.title?.toLowerCase() !== "marriage",
+    true,
+  );
+}
+
+// No signal at all — must never invent a title.
+{
+  const result = extractLegislationMetadataWithConfidence("Some unrelated short passage of ordinary text with no legislative markers whatsoever.");
+  check("no title guessed when there is no signal", result.fields.title, undefined);
+  check("title confidence is none when there is no signal", result.titleConfidence, "none");
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

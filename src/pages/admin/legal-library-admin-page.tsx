@@ -52,6 +52,7 @@ import {
   useImportBatches,
   useImportBatchDetail,
   useReprocessCaseLawExtraction,
+  useReassessStatuteExtraction,
   readDuplicateOfId,
   type ImportBatchJobRow,
 } from "@/hooks/legal-library/use-import-jobs";
@@ -91,6 +92,7 @@ import {
   emptyExtractionEnvelope,
   type ExtractionEnvelope,
 } from "@/lib/extraction-pipeline";
+import { CLEAN_SCORE_THRESHOLD, type QualityHardFailReason } from "@/lib/extraction-quality";
 import {
   ingestDocument,
   ingestPastedText,
@@ -193,12 +195,26 @@ const OCR_REASON_LABEL: Record<string, string> = {
   no_text_found: "Scanned document — text recognition needed",
 };
 
+/** Plain-language label per QualityHardFailReason (extraction-quality.ts) — shown when a "failed" status has a specific, known cause, instead of one generic "Extraction failed" for every reason. */
+const QUALITY_HARD_FAIL_LABEL: Record<QualityHardFailReason, string> = {
+  too_short: "Extraction failed — too little text to be a real document",
+  repeated_running_header: "Extraction failed — mostly a repeated page header/footer, not the document body",
+  printable_ratio: "Extraction failed — text looks garbled",
+  replacement_chars: "Extraction failed — unreadable characters from a font-decoding error",
+  boilerplate: "Extraction failed — looks like embedded file metadata, not document content",
+  control_chars: "Extraction failed — text contains unexpected control characters",
+  structural_incoherence: "Extraction failed — text doesn't read as genuine prose",
+};
+
 function deriveIngestionUiState(
   envelope: ExtractionEnvelope,
   caseNameConfidence: "high" | "low" | "none" | null,
 ): { label: string; tone: IngestionUiTone } {
   if (envelope.status === "pending") return { label: "No text yet", tone: "neutral" };
-  if (envelope.status === "failed") return { label: "Extraction failed", tone: "bad" };
+  if (envelope.status === "failed") {
+    const reason = envelope.hardFailReason;
+    return { label: (reason && QUALITY_HARD_FAIL_LABEL[reason]) ?? "Extraction failed", tone: "bad" };
+  }
   if (envelope.status === "requires_ocr") {
     return { label: OCR_REASON_LABEL[envelope.unreadableReason ?? ""] ?? "Could not read this document", tone: "warn" };
   }
@@ -319,6 +335,11 @@ function ExtractionStatusPanel({
           <div className="mt-1 space-y-1 pl-3">
             <p>OCR used: {envelope.ocrUsed ? "Yes" : "No"}</p>
             {envelope.charCount > 0 && <p>{envelope.charCount.toLocaleString()} characters extracted</p>}
+            {envelope.qualityScore !== null && envelope.qualityScore < CLEAN_SCORE_THRESHOLD && (
+              <p className="text-amber-700 dark:text-amber-400">
+                Below the automated clean-extraction threshold — verify the text against the original before publishing.
+              </p>
+            )}
             {caseNameConfidence && caseNameConfidence !== "high" && (
               <p className="text-amber-700 dark:text-amber-400">
                 {caseNameConfidence === "low"
@@ -1878,6 +1899,23 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
   const rows = data?.rows ?? [];
   const counts: Record<string, number> = {};
   for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
+  // Content-quality summary at a glance (Batch Detail already exists as
+  // the natural "184-row audit" surface — no separate page needed). Only
+  // counts rows with a linked draft; bare duplicate/failed job rows have
+  // nothing to grade.
+  const qualityCounts: Record<string, number> = {};
+  for (const r of rows) {
+    if (!r.contentQualityStatus) continue;
+    qualityCounts[r.contentQualityStatus] = (qualityCounts[r.contentQualityStatus] ?? 0) + 1;
+  }
+  const QUALITY_LABEL: Record<string, string> = { good: "Good", fair: "Fair", poor: "Poor", failed: "Failed", unknown: "Unassessed" };
+  const QUALITY_TONE: Record<string, "canonical" | "destructive" | "outline" | "secondary"> = {
+    good: "canonical",
+    fair: "outline",
+    poor: "destructive",
+    failed: "destructive",
+    unknown: "secondary",
+  };
 
   // "Review" from a batch row jumps to that ONE record; "Next needs
   // review" (Section 11) walks the curator through every remaining
@@ -1937,6 +1975,16 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
                   </Badge>
                 ))}
               </div>
+              {Object.keys(qualityCounts).length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Content quality:</span>
+                  {Object.entries(qualityCounts).map(([status, count]) => (
+                    <Badge key={status} variant={QUALITY_TONE[status] ?? "secondary"}>
+                      {QUALITY_LABEL[status] ?? status}: {count}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1976,6 +2024,7 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Badge variant={JOB_STATUS_TONE[row.status] ?? "secondary"}>{JOB_STATUS_LABEL[row.status] ?? row.status}</Badge>
+        {row.contentQualityStatus === "failed" && <Badge variant="destructive">Quality: Failed</Badge>}
         {row.target_case_law_id && row.reviewStatus === "published" && (
           <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.caseLawDetail(row.target_case_law_id as string))}>
             View
@@ -1986,6 +2035,20 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
             size="sm"
             variant="outline"
             onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(row.target_case_law_id as string, batchId))}
+          >
+            Review
+          </Button>
+        )}
+        {row.target_statute_id && row.reviewStatus === "published" && (
+          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.legislationDetail(row.target_statute_id as string))}>
+            View
+          </Button>
+        )}
+        {row.target_statute_id && row.reviewStatus !== "published" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(ROUTES.adminLegalLibraryReviewStatute(row.target_statute_id as string, batchId))}
           >
             Review
           </Button>
@@ -2046,6 +2109,10 @@ function categorizeCaseLawRow(row: ReviewRow<CaseLaw>): ReviewCategory {
   if (row.job_error_summary || envelope?.status === "failed") return "failed";
   if (envelope?.status === "requires_ocr") return "ocr_required";
   if (envelope?.ocrUsed) return "needs_review";
+  // Genuinely-usable-but-below-threshold text must never look
+  // "ready_to_publish" just because the placeholder-metadata checks
+  // happen to pass — a curator has to look at it first.
+  if (envelope?.status === "low_quality") return "needs_review";
   if (row.duplicate_warning) return "possible_duplicate";
   const errors = validateCaseLawForPublish({
     case_name: row.case_name,
@@ -2054,6 +2121,7 @@ function categorizeCaseLawRow(row: ReviewRow<CaseLaw>): ReviewCategory {
     jurisdiction: row.jurisdiction,
     court_id: row.court_id,
     jurisdiction_id: row.jurisdiction_id,
+    content_quality_status: row.content_quality_status,
   });
   return errors.length === 0 ? "ready_to_publish" : "needs_review";
 }
@@ -2063,10 +2131,12 @@ function categorizeStatuteRow(row: ReviewRow<Statute>): ReviewCategory {
   if (row.job_error_summary || envelope?.status === "failed") return "failed";
   if (envelope?.status === "requires_ocr") return "ocr_required";
   if (envelope?.ocrUsed) return "needs_review";
+  if (envelope?.status === "low_quality") return "needs_review";
   if (row.duplicate_warning) return "possible_duplicate";
   const errors = validateLegislationForPublish({
     code: row.code,
     title: row.title,
+    content_quality_status: row.content_quality_status,
     jurisdiction: row.jurisdiction,
     jurisdiction_id: row.jurisdiction_id,
   });
@@ -2100,6 +2170,7 @@ function ReviewQueueTab({
   // bulk results/Batch Detail must never be hidden behind a filter tab
   // that happens to exclude it — "All" guarantees it's always visible).
   const [activeCategory, setActiveCategory] = useState<ReviewCategory | "all">("all");
+  const [sortMode, setSortMode] = useState<"newest" | "quality">("newest");
   const [caseLawVisible, setCaseLawVisible] = useState(REVIEW_PAGE_SIZE);
   const [statuteVisible, setStatuteVisible] = useState(REVIEW_PAGE_SIZE);
   // Switching filters starts back at the cap — otherwise "Show more" state
@@ -2123,10 +2194,22 @@ function ReviewQueueTab({
   for (const { category } of statuteCategorized) counts[category] += 1;
   const totalCount = caseLawCategorized.length + statuteCategorized.length;
 
-  const filteredCaseLawAll =
-    activeCategory === "all" ? caseLawCategorized : caseLawCategorized.filter((c) => c.category === activeCategory);
-  const filteredStatuteAll =
-    activeCategory === "all" ? statuteCategorized : statuteCategorized.filter((c) => c.category === activeCategory);
+  const qualityScoreOf = (row: ReviewRow<CaseLaw> | ReviewRow<Statute>) =>
+    readExtractionEnvelope(row.extracted_metadata)?.qualityScore ?? 1;
+  const bySortMode = <T extends { row: ReviewRow<CaseLaw> | ReviewRow<Statute> }>(items: T[]): T[] => {
+    if (sortMode !== "quality") return items;
+    // Stable sort: lowest quality score first, so the items most likely to
+    // need a curator's attention surface at the top of a large queue
+    // instead of being buried on page 10 of a 20-per-page reveal cap.
+    return [...items].sort((a, b) => qualityScoreOf(a.row) - qualityScoreOf(b.row));
+  };
+
+  const filteredCaseLawAll = bySortMode(
+    activeCategory === "all" ? caseLawCategorized : caseLawCategorized.filter((c) => c.category === activeCategory),
+  );
+  const filteredStatuteAll = bySortMode(
+    activeCategory === "all" ? statuteCategorized : statuteCategorized.filter((c) => c.category === activeCategory),
+  );
 
   // A deep-linked highlight target must stay visible even if it would
   // otherwise fall past the reveal cap — never hide the one record the
@@ -2145,33 +2228,56 @@ function ReviewQueueTab({
   return (
     <div className="space-y-6">
       {totalCount > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setActiveCategory("all")}
-            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-              activeCategory === "all"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            All ({totalCount})
-          </button>
-          {REVIEW_CATEGORY_ORDER.map((cat) => (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={cat}
               type="button"
-              onClick={() => setActiveCategory(cat)}
-              disabled={counts[cat] === 0}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                activeCategory === cat
+              onClick={() => setActiveCategory("all")}
+              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                activeCategory === "all"
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:bg-muted"
               }`}
             >
-              {REVIEW_CATEGORY_LABEL[cat]} ({counts[cat]})
+              All ({totalCount})
             </button>
-          ))}
+            {REVIEW_CATEGORY_ORDER.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+                disabled={counts[cat] === 0}
+                className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  activeCategory === cat
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {REVIEW_CATEGORY_LABEL[cat]} ({counts[cat]})
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Sort:</span>
+            <button
+              type="button"
+              onClick={() => setSortMode("newest")}
+              className={`rounded-full border px-2 py-0.5 transition-colors ${
+                sortMode === "newest" ? "border-primary text-primary" : "border-border hover:bg-muted"
+              }`}
+            >
+              Newest first
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode("quality")}
+              className={`rounded-full border px-2 py-0.5 transition-colors ${
+                sortMode === "quality" ? "border-primary text-primary" : "border-border hover:bg-muted"
+              }`}
+            >
+              Lowest quality first
+            </button>
+          </div>
         </div>
       )}
 
@@ -2398,6 +2504,7 @@ function CaseLawReviewCard({
     jurisdiction: (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? row.jurisdiction,
     court_id: fields.court_id,
     jurisdiction_id: fields.jurisdiction_id,
+    content_quality_status: row.content_quality_status,
   });
   const canPublish = validationErrors.length === 0 && !dirty;
 
@@ -2662,6 +2769,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
   const update = useUpdateCanonicalStatute(row.id);
   const setStatus = useSetStatuteReviewStatus();
   const reject = useRejectCanonicalStatute();
+  const reassess = useReassessStatuteExtraction();
   const { data: sources } = useLegalSources();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: provisions } = useStatuteProvisions(row.id);
@@ -2673,14 +2781,25 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
     jurisdiction: row.jurisdiction,
     chapter_number: row.chapter_number ?? "",
     jurisdiction_id: row.jurisdiction_id,
+    short_title: row.short_title ?? "",
+    act_number: row.act_number ?? "",
+    enactment_year: row.enactment_year ? String(row.enactment_year) : "",
+    instrument_type: row.instrument_type ?? "",
   });
   const [confirmReject, setConfirmReject] = useState(false);
+  const [showFullText, setShowFullText] = useState(false);
+  const [fullTextDraft, setFullTextDraft] = useState(row.full_text ?? "");
   const dirty =
     fields.title !== row.title ||
     fields.code !== row.code ||
     fields.jurisdiction !== row.jurisdiction ||
     fields.chapter_number !== (row.chapter_number ?? "") ||
-    fields.jurisdiction_id !== row.jurisdiction_id;
+    fields.jurisdiction_id !== row.jurisdiction_id ||
+    fields.short_title !== (row.short_title ?? "") ||
+    fields.act_number !== (row.act_number ?? "") ||
+    fields.enactment_year !== (row.enactment_year ? String(row.enactment_year) : "") ||
+    fields.instrument_type !== (row.instrument_type ?? "");
+  const fullTextDirty = fullTextDraft !== (row.full_text ?? "");
 
   const sourceName = row.source_id
     ? (sources ?? []).find((s) => s.id === row.source_id)?.name ?? "Unknown source"
@@ -2696,6 +2815,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
     title: row.title,
     jurisdiction: row.jurisdiction,
     jurisdiction_id: row.jurisdiction_id,
+    content_quality_status: row.content_quality_status,
   });
 
   return (
@@ -2771,6 +2891,71 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
               </option>
             ))}
           </Select>
+          <Input
+            value={fields.short_title}
+            onChange={(e) => setFields((f) => ({ ...f, short_title: e.target.value }))}
+            placeholder="Short title"
+          />
+          <Input
+            value={fields.act_number}
+            onChange={(e) => setFields((f) => ({ ...f, act_number: e.target.value }))}
+            placeholder="Act number (e.g. 13 of 2025)"
+          />
+          <Input
+            value={fields.enactment_year}
+            onChange={(e) => setFields((f) => ({ ...f, enactment_year: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+            placeholder="Enactment year"
+            inputMode="numeric"
+          />
+          <Input
+            value={fields.instrument_type}
+            onChange={(e) => setFields((f) => ({ ...f, instrument_type: e.target.value }))}
+            placeholder="Instrument type (Act / Ordinance / Regulations)"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowFullText((v) => !v)}>
+              {showFullText ? "Hide full text" : "Show / edit full text"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={reassess.isPending}
+              onClick={() =>
+                reassess.mutate({
+                  statuteId: row.id,
+                  importJobId: row.import_job_id,
+                  fullText: fullTextDraft,
+                  extractedMetadata: row.extracted_metadata,
+                  current: {
+                    short_title: row.short_title,
+                    act_number: row.act_number,
+                    enactment_year: row.enactment_year,
+                    instrument_type: row.instrument_type,
+                    chapter_number: row.chapter_number,
+                  },
+                })
+              }
+            >
+              Re-check extraction quality
+            </Button>
+          </div>
+          {showFullText && (
+            <textarea
+              className="min-h-40 w-full rounded-md border border-border bg-background p-2 text-xs"
+              value={fullTextDraft}
+              onChange={(e) => setFullTextDraft(e.target.value)}
+              placeholder="Full text — paste the corrected/complete document text here, then Re-check extraction quality."
+            />
+          )}
+          {fullTextDirty && (
+            <p className="text-[11px] text-muted-foreground">
+              Full text changed — click "Re-check extraction quality" to assess and save it.
+            </p>
+          )}
         </div>
 
         <TagReviewEditor
@@ -2788,7 +2973,17 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
               variant="outline"
               disabled={update.isPending}
               onClick={() =>
-                update.mutate({ ...fields, chapter_number: fields.chapter_number || null })
+                update.mutate({
+                  title: fields.title,
+                  code: fields.code,
+                  jurisdiction: fields.jurisdiction,
+                  jurisdiction_id: fields.jurisdiction_id,
+                  chapter_number: fields.chapter_number || null,
+                  short_title: fields.short_title || null,
+                  act_number: fields.act_number || null,
+                  enactment_year: fields.enactment_year ? Number(fields.enactment_year) : null,
+                  instrument_type: fields.instrument_type || null,
+                })
               }
             >
               Save changes
@@ -2806,7 +3001,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
           <div className="flex flex-col items-end gap-1">
             <Button
               size="sm"
-              disabled={statuteValidationErrors.length > 0 || dirty || setStatus.isPending}
+              disabled={statuteValidationErrors.length > 0 || dirty || fullTextDirty || setStatus.isPending}
               onClick={() => setStatus.mutate({ id: row.id, review_status: "published" })}
             >
               <CheckCircle2 className="h-4 w-4" />

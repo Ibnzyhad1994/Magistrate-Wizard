@@ -753,6 +753,158 @@ export function extractCaseLawMetadata(text: string): ProposedCaseLawFields {
 }
 
 // ---------------------------------------------------------------------------
+// Legislation title/metadata extraction. Unlike Case Law, the real "New
+// Import" UI has always required a human to type the Legislation title by
+// hand — there was previously no extraction heuristic for it at all. This
+// exists primarily so the bulk seed-catalog ingest path (which has no human
+// in the loop at creation time) can recover a real title when the harvested
+// metadata is missing or suspect, without ever silently overwriting a good
+// harvested value — see ingest-harvest.mjs's title-preference rule.
+// ---------------------------------------------------------------------------
+
+const LEGISLATION_HEAD_WINDOW = 1500;
+/** A title-bearing header found this close to the document start is high
+ * confidence — the same "real headers are near the top" reasoning as
+ * HIGH_CONFIDENCE_CITATION_WINDOW above, just legislation's own threshold
+ * since gazette front matter tends to run a little longer than a judgment
+ * header before the Act title appears. */
+const LEGISLATION_HIGH_CONFIDENCE_WINDOW = 800;
+
+/** Lines that are gazette/report running header furniture, never the Act's
+ * own title, even though they're ALL CAPS and appear near the document
+ * start — must be excluded from the header-line heuristic below. */
+const LEGISLATION_HEADER_EXCLUDE_RE = /official gazette|legal supplement|laws\s+of\s+guyana/i;
+
+/** Fixed statutory drafting formula ("This Act may be cited as the ...
+ * Act") — the single most reliable title signal in a Commonwealth Act,
+ * since it's a self-citation sentence, not a page-layout guess.
+ * Non-greedy up to the FIRST "Act"/"Ordinance"/"Regulations", with an
+ * optional trailing year captured separately — real drafting sometimes
+ * runs the short-title and commencement clauses together in one sentence
+ * ("...may be cited as the X Act 1985 and shall come into operation..."),
+ * and a greedy match-to-next-period would swallow the commencement text
+ * too. */
+const CITED_AS_RE = /\bmay be cited as the\s+([^.\n]{3,120}?\b(?:Act|Ordinance|Regulations))\b(?:,?\s*((?:19|20)\d{2}))?/i;
+
+/** A whole line that is essentially all caps/punctuation (a real title
+ * line), tested per-line against RAW (non-whitespace-normalized) text —
+ * normalizeMetadataHead's blank-line collapsing would otherwise merge a
+ * gazette running-header line with the very next line (the Act's actual
+ * title), making a single combined-line regex unreliable. Dash variants
+ * included since real gazette text uses an em dash ("LEGAL SUPPLEMENT —
+ * A"). */
+const ALL_CAPS_LINE_RE = /^[A-Z0-9 ,.'()\-–—]{8,150}$/;
+const LEGISLATION_KEYWORD_RE = /\b(?:ACT|ORDINANCE|REGULATIONS)\b/i;
+
+/** Reused shape from scripts/seed-legal-library/seed-heuristics.mjs's
+ * ACT_NUMBER_RE — kept in sync deliberately (both match "N of YYYY", with
+ * the common OCR/typo confusion of "of" as "0f"). */
+const ACT_NUMBER_RE = /\b(\d{1,4})\s+(?:of|0f)\s+((?:19|20)\d{2})\b/i;
+const CHAPTER_CODE_RE = /\bCap\.?\s*\d+:\d+\b/i;
+
+export interface ProposedLegislationFields {
+  title?: string;
+  short_title?: string;
+  act_number?: string;
+  enactment_year?: number;
+  instrument_type?: string;
+  chapter_number?: string;
+}
+
+export interface LegislationExtractionResult {
+  fields: ProposedLegislationFields;
+  /** Confidence in `fields.title`/`fields.short_title` specifically — the
+   * field most prone to a wrong-but-plausible proposal, same reasoning as
+   * `caseNameConfidence` above. */
+  titleConfidence: MetadataConfidence;
+  actNumberConfidence: MetadataConfidence;
+}
+
+/**
+ * Best-effort, clearly-labeled-as-proposed Legislation title/metadata
+ * extraction, with an explicit confidence signal. Never invents a value it
+ * can't find — leaves fields undefined rather than guessing.
+ * `effective_date` is deliberately NOT extracted here: Guyana commencement
+ * clauses vary too much ("on the date of publication," "on a date fixed by
+ * order of the Minister," explicit/retroactive dates) for a generic regex
+ * to be trustworthy, and a wrong auto-filled effective date is a legally
+ * significant error in a way a wrong act number is not — leave it
+ * curator-entered only.
+ */
+export function extractLegislationMetadataWithConfidence(text: string): LegislationExtractionResult {
+  const rawHeadSlice = text.slice(0, LEGISLATION_HEAD_WINDOW);
+  // Used for CITED_AS_RE / ACT_NUMBER_RE / CHAPTER_CODE_RE, which benefit
+  // from whitespace normalization (a citation clause can hard-wrap across
+  // lines in source text). NOT used for the header-line search below —
+  // see ALL_CAPS_LINE_RE's comment for why that needs the raw lines.
+  const head = normalizeMetadataHead(rawHeadSlice);
+  const fields: ProposedLegislationFields = {};
+  let titleConfidence: MetadataConfidence = "none";
+  let actNumberConfidence: MetadataConfidence = "none";
+
+  const citedAs = text.match(CITED_AS_RE);
+  if (citedAs) {
+    const title = citedAs[2] ? `${citedAs[1].trim()} ${citedAs[2]}` : citedAs[1].trim();
+    fields.title = title;
+    fields.short_title = title;
+    titleConfidence = "high";
+  } else {
+    // A scanned gazette title commonly wraps across two consecutive lines
+    // ("MOTOR VEHICLES AND ROAD TRAFFIC" / "(AMENDMENT) ACT 1998") --
+    // check each line's own char range for the keyword first, but if not
+    // found, try merging it with up to 2 following all-caps lines before
+    // giving up on that starting line, so a wrapped title is still
+    // recovered as one candidate rather than only its second half.
+    const rawLines = rawHeadSlice.split(/\r?\n/).map((l) => l.trim());
+    let charIndex = 0;
+    const lineStarts = rawLines.map((l) => {
+      const start = charIndex;
+      charIndex += l.length + 1;
+      return start;
+    });
+    outer: for (let i = 0; i < rawLines.length; i++) {
+      if (rawLines[i].length === 0 || !ALL_CAPS_LINE_RE.test(rawLines[i])) continue;
+      let candidate = rawLines[i];
+      for (let span = 0; span < 3 && i + span < rawLines.length; span++) {
+        if (span > 0) {
+          const next = rawLines[i + span];
+          if (next.length === 0 || !ALL_CAPS_LINE_RE.test(next)) break;
+          candidate = `${candidate} ${next}`;
+        }
+        if (LEGISLATION_KEYWORD_RE.test(candidate) && !LEGISLATION_HEADER_EXCLUDE_RE.test(candidate)) {
+          fields.title = candidate;
+          titleConfidence = lineStarts[i] <= LEGISLATION_HIGH_CONFIDENCE_WINDOW ? "high" : "low";
+          break outer;
+        }
+      }
+    }
+  }
+
+  const actNumberMatch = head.match(ACT_NUMBER_RE);
+  if (actNumberMatch) {
+    fields.act_number = `${actNumberMatch[1]} of ${actNumberMatch[2]}`;
+    fields.enactment_year = Number(actNumberMatch[2]);
+    actNumberConfidence = /act\s*no\.?\s*$/i.test(head.slice(0, actNumberMatch.index ?? 0)) ? "high" : "low";
+  }
+
+  if (fields.title) {
+    if (/\bORDINANCE\b/i.test(fields.title)) fields.instrument_type = "Ordinance";
+    else if (/\bREGULATIONS\b/i.test(fields.title)) fields.instrument_type = "Regulations";
+    else if (/\bACT\b/i.test(fields.title)) fields.instrument_type = "Act";
+  }
+
+  const chapterMatch = head.match(CHAPTER_CODE_RE);
+  if (chapterMatch) fields.chapter_number = chapterMatch[0];
+
+  return { fields, titleConfidence, actNumberConfidence };
+}
+
+/** Backward-compatible convenience wrapper, mirroring `extractCaseLawMetadata`. */
+export function extractLegislationMetadata(text: string): ProposedLegislationFields {
+  return extractLegislationMetadataWithConfidence(text).fields;
+}
+
+// ---------------------------------------------------------------------------
 // Legislation: best-effort structural (Part/Chapter/Section/Subsection/
 // Paragraph/Schedule) parse from plain text. Always editable before
 // publish — numbering/headings are preserved exactly as matched, never

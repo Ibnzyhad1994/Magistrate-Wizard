@@ -7,6 +7,24 @@
  * match on text-layer PDFs.
  */
 
+/**
+ * Common small-word OCR swaps that survive as whole tokens ("0f" -> "of",
+ * etc.). Extracted as its own export so callers that only need this
+ * narrow, single-token-safe fix (e.g. a one-line document title/code) can
+ * use it without `postprocessOcrText`'s newline-collapsing and
+ * "v"-spacing regexes, which are tuned for multi-line judgment prose and
+ * could misfire on a short label.
+ */
+export const fixCommonOcrTokenSwaps = (raw: string): string => {
+  let text = raw
+  text = text.replace(/\b0f\b/g, "of")
+  text = text.replace(/\b0n\b/g, "on")
+  text = text.replace(/\btbe\b/gi, "the")
+  text = text.replace(/\bthc\b/gi, "the")
+  text = text.replace(/\bTeh\b/g, "The")
+  return text
+}
+
 export const postprocessOcrText = (raw: string): string => {
   let text = raw.replace(/\r\n/g, "\n")
 
@@ -38,12 +56,7 @@ export const postprocessOcrText = (raw: string): string => {
   text = text.replace(/\b([A-Z][A-Za-z.'-]+)\s+v\s+([A-Z])/g, "$1 v $2")
   text = text.replace(/\bv\.\s+/g, "v. ")
 
-  // Common small-word OCR swaps that survive as whole tokens.
-  text = text.replace(/\b0f\b/g, "of")
-  text = text.replace(/\b0n\b/g, "on")
-  text = text.replace(/\btbe\b/gi, "the")
-  text = text.replace(/\bthc\b/gi, "the")
-  text = text.replace(/\bTeh\b/g, "The")
+  text = fixCommonOcrTokenSwaps(text)
 
   // Collapse spaces inside a reporter citation volume/page run.
   text = text.replace(/\(\s*(\d{4})\s*\)\s+(\d+)\s+([A-Z]{2,})\s+(\d+)/g, "($1) $2 $3 $4")

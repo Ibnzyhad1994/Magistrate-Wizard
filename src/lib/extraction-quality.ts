@@ -19,6 +19,7 @@
 
 export type QualityHardFailReason =
   | "too_short"
+  | "repeated_running_header"
   | "printable_ratio"
   | "replacement_chars"
   | "boilerplate"
@@ -72,6 +73,18 @@ export interface QualityAssessment {
      */
     avgWordLength: number;
     sentenceBoundaryCount: number;
+    /**
+     * Fraction of whitespace-delimited words that fall inside a 6-word
+     * window repeated 4+ times across the document (digit runs normalized
+     * first, so "Page 4 of 72" and "Page 9 of 72" hash identically). High
+     * coverage means the "content" is mostly the same running header/
+     * footer block recurring per page — genuine prose or legislative text
+     * only has small, incidental repetition. See `computeRepeatedBlockCoverage`.
+     */
+    repeatedBlockCoverageRatio: number;
+    /** Character length of the text remaining after every repeated-block
+     * window is removed — the actual amount of non-boilerplate content. */
+    distinctContentLength: number;
   };
 }
 
@@ -81,6 +94,27 @@ const MAX_REPLACEMENT_RATIO = 0.01;
 const MAX_CONTROL_RATIO = 0.02;
 const MIN_ALPHABETIC_RATIO = 0.35;
 const CLEAN_SCORE_THRESHOLD = 0.75;
+
+/** Below this, there isn't enough text to judge repeated-block coverage
+ * confidently either way -- a short legitimate fragment can otherwise look
+ * 100% "repeated" against itself. Deliberately equal to MIN_LENGTH (the
+ * too_short gate above) rather than a higher value -- a gap between the
+ * two thresholds is exactly how a short (~350-565 char) boilerplate-only
+ * document with only 2-3 repeated page headers can clear too_short yet
+ * never reach the repeated-block analysis at all (found via a real bulk
+ * seed-legislation audit: several short Acts landed in that gap). */
+const REPEATED_BLOCK_MIN_LENGTH = MIN_LENGTH;
+const REPEATED_BLOCK_MIN_WORDS = 25;
+/** A 6-word window recurring this many times or more is page furniture
+ * (running header/footer), not incidental repetition in real prose. A
+ * short document has fewer total pages, so fewer literal repeats occur
+ * even when it IS boilerplate-only -- 3 (not a higher bar) keeps the
+ * check meaningful down at REPEATED_BLOCK_MIN_LENGTH. */
+const REPEATED_BLOCK_WINDOW_SIZE = 6;
+const REPEATED_BLOCK_MIN_REPEATS = 3;
+const REPEATED_BLOCK_HARD_FAIL_COVERAGE = 0.5;
+const REPEATED_BLOCK_WARN_COVERAGE = 0.3;
+const REPEATED_BLOCK_MIN_DISTINCT_CHARS = MIN_LENGTH;
 
 /**
  * Generic markers of embedded PDF font/licensing metadata — curated to be
@@ -142,6 +176,54 @@ function classifyStructuralQuality(length: number, avgWordLength: number, senten
   return "good";
 }
 
+/**
+ * Detects "the same short passage recurs across page boundaries with
+ * negligible other content" -- the shape of a scanned gazette/report's
+ * running header and footer repeated on every page, distinct from the
+ * font/license `BOILERPLATE_MARKERS` check above (which targets embedded
+ * PDF metadata, not page furniture). Digit runs are normalized to a single
+ * placeholder token first so "Page 4 of 72" and "Page 9 of 72" -- the same
+ * header with only the page number/date changing -- hash identically.
+ * Document-agnostic: a genuine judgment or Act with a small running
+ * header/footer has low coverage; one whose extracted text IS the running
+ * header/footer, repeated, has high coverage.
+ */
+function computeRepeatedBlockCoverage(text: string): { coverageRatio: number; distinctContentLength: number } {
+  const normalized = text.toLowerCase().replace(/\d+/g, "#");
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length < REPEATED_BLOCK_MIN_WORDS || text.length < REPEATED_BLOCK_MIN_LENGTH) {
+    return { coverageRatio: 0, distinctContentLength: text.length };
+  }
+
+  const windowCounts = new Map<string, number>();
+  for (let i = 0; i + REPEATED_BLOCK_WINDOW_SIZE <= words.length; i++) {
+    const window = words.slice(i, i + REPEATED_BLOCK_WINDOW_SIZE).join(" ");
+    windowCounts.set(window, (windowCounts.get(window) ?? 0) + 1);
+  }
+
+  const repeated = new Array<boolean>(words.length).fill(false);
+  for (let i = 0; i + REPEATED_BLOCK_WINDOW_SIZE <= words.length; i++) {
+    const window = words.slice(i, i + REPEATED_BLOCK_WINDOW_SIZE).join(" ");
+    if ((windowCounts.get(window) ?? 0) >= REPEATED_BLOCK_MIN_REPEATS) {
+      for (let j = i; j < i + REPEATED_BLOCK_WINDOW_SIZE; j++) repeated[j] = true;
+    }
+  }
+
+  const repeatedWordCount = repeated.filter(Boolean).length;
+  const coverageRatio = repeatedWordCount / words.length;
+
+  // Approximate distinct content length as the character length of the
+  // non-repeated words (plus their trailing spaces) -- not exact relative
+  // to the original text's whitespace/casing, but proportionally accurate
+  // enough to distinguish "a few real sentences remain" from "nothing does".
+  let distinctContentLength = 0;
+  for (let i = 0; i < words.length; i++) {
+    if (!repeated[i]) distinctContentLength += words[i].length + 1;
+  }
+
+  return { coverageRatio, distinctContentLength };
+}
+
 function classifyHardFailReason(
   length: number,
   printableRatio: number,
@@ -149,8 +231,20 @@ function classifyHardFailReason(
   controlRatio: number,
   boilerplateHits: number,
   avgWordLength: number,
+  repeatedBlock: { coverageRatio: number; distinctContentLength: number },
 ): QualityHardFailReason | undefined {
   if (length < MIN_LENGTH) return "too_short";
+  // Deliberately keyed on the ABSOLUTE amount of non-repeated content, not
+  // the coverage ratio alone -- found via a real bulk-import audit that a
+  // long multi-page document can legitimately have a high repeated-header
+  // ratio (a running header repeats on every page) while still containing
+  // many thousands of characters of genuine distinct text. Ratio alone
+  // hard-failed a 30,000-character Act with 10,000+ real characters just
+  // because ~63% of its word count was page furniture. Only the case where
+  // almost NOTHING distinct remains is a genuine "no real content" failure.
+  if (repeatedBlock.distinctContentLength < REPEATED_BLOCK_MIN_DISTINCT_CHARS) {
+    return "repeated_running_header";
+  }
   if (boilerplateHits >= 2) return "boilerplate";
   if (replacementRatio > MAX_REPLACEMENT_RATIO) return "replacement_chars";
   if (controlRatio > MAX_CONTROL_RATIO) return "control_chars";
@@ -188,6 +282,8 @@ export function assessExtractionQuality(text: string): QualityAssessment {
         boilerplateMarkerHits: 0,
         avgWordLength: 0,
         sentenceBoundaryCount: 0,
+        repeatedBlockCoverageRatio: 0,
+        distinctContentLength: 0,
       },
     };
   }
@@ -229,6 +325,7 @@ export function assessExtractionQuality(text: string): QualityAssessment {
   const words = text.split(/\s+/).filter(Boolean);
   const avgWordLength = words.length > 0 ? words.reduce((sum, w) => sum + w.length, 0) / words.length : 0;
   const sentenceBoundaryCount = (text.match(/[.!?](\s+[A-Z]|\s*$)/g) ?? []).length;
+  const repeatedBlock = computeRepeatedBlockCoverage(text);
 
   if (printableRatio < MIN_PRINTABLE_RATIO) {
     warnings.push(
@@ -249,6 +346,13 @@ export function assessExtractionQuality(text: string): QualityAssessment {
   }
   if (boilerplateMarkerHits >= 2) {
     warnings.push("Extracted text appears to contain embedded PDF font/licensing metadata rather than document content.");
+  }
+  if (repeatedBlock.coverageRatio >= REPEATED_BLOCK_HARD_FAIL_COVERAGE || repeatedBlock.distinctContentLength < REPEATED_BLOCK_MIN_DISTINCT_CHARS) {
+    warnings.push(
+      "Extracted text is mostly a repeated block (e.g. a running page header/footer) with little or no distinct document content.",
+    );
+  } else if (repeatedBlock.coverageRatio > REPEATED_BLOCK_WARN_COVERAGE) {
+    warnings.push("A sizeable portion of the extracted text is a repeated block — verify the document body was fully captured.");
   }
   if (/(\S{1,20})(\s+\1){6,}/i.test(text)) {
     warnings.push("Contains an excessively repeated token — a common artifact of scanning the wrong PDF stream.");
@@ -277,6 +381,7 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     controlRatio,
     boilerplateMarkerHits,
     avgWordLength,
+    repeatedBlock,
   );
 
   // Soft score: start at 1.0, subtract a fixed penalty per triggered
@@ -301,8 +406,34 @@ export function assessExtractionQuality(text: string): QualityAssessment {
       boilerplateMarkerHits,
       avgWordLength,
       sentenceBoundaryCount,
+      repeatedBlockCoverageRatio: repeatedBlock.coverageRatio,
+      distinctContentLength: repeatedBlock.distinctContentLength,
     },
   };
+}
+
+/**
+ * Content-quality status stored on `case_law`/`statutes` (see 0071/0072
+ * migrations) and checked by the `publish_*_import` RPCs before allowing
+ * publish. Derived once, client-side, from an `ExtractionEnvelope` so the
+ * database never needs to know that jsonb shape -- it only ever sees this
+ * plain enum string. `"unknown"` covers manual-paste text (never quality-
+ * gated, see `buildManualPasteEnvelope`) so a curator's own typed text is
+ * never blocked by an automated check.
+ */
+export type ContentQualityStatus = "good" | "fair" | "poor" | "failed" | "unknown";
+
+export function deriveContentQualityStatus(envelope: {
+  status: string;
+  qualityScore: number | null;
+  characterQuality: QualityBucket | null;
+  structuralQuality: QualityBucket | null;
+}): ContentQualityStatus {
+  if (envelope.status === "failed") return "failed";
+  if (envelope.qualityScore === null) return "unknown";
+  if (envelope.characterQuality === "poor" || envelope.structuralQuality === "poor") return "poor";
+  if (envelope.qualityScore >= CLEAN_SCORE_THRESHOLD) return "good";
+  return "fair";
 }
 
 export { CLEAN_SCORE_THRESHOLD };

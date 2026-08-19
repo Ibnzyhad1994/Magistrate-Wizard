@@ -4,6 +4,8 @@ Local harvest → heuristic filter → Review Queue **drafts**. Nothing here aut
 
 There is no in-app crawler. These scripts catalog official public indexes, keep only items that look like real Guyana legislation or official judgments, then create drafts a curator still has to vet.
 
+**Running a bulk import? Use [`INGESTION_CHECKLIST.md`](./INGESTION_CHECKLIST.md)** — the full harvest → prepare → ingest → automated quality gate → curator review → publish workflow as a literal checklist, including how to verify the quality gate actually worked (not just trust the summary line). Added after a real bulk-legislation run published 18 content-empty Acts and 74 heavily OCR-garbled ones because the ingest path was fabricating a fixed "perfect quality" result instead of running the real quality pipeline — that gap is closed, but the checklist is what keeps the next import honest.
+
 ## Layout
 
 | Path | What belongs there |
@@ -12,7 +14,9 @@ There is no in-app crawler. These scripts catalog official public indexes, keep 
 | `raw/` | Scratch harvest output. **Gitignored.** Re-run harvest to regenerate. |
 | `prepare-catalogs.mjs` | Apply [seed heuristics](#seed-heuristics). Writes eligible items to `catalogs/`. |
 | `catalogs/` | Numbered JSON that is allowed to become drafts (`01-…json`, `02-…`). Commit these when they are curated. |
-| `ingest-harvest.mjs` | Creates Review Queue drafts from `catalogs/` via the same RPCs as New Import. |
+| `ingest-harvest.mjs` | Creates Review Queue drafts from `catalogs/` via the same RPCs as New Import — runs the REAL `assessExtractionQuality()`/`extractLegislationMetadataWithConfidence()` pipeline (via the `@/` alias loader, same as `scripts/tests/`), not a fabricated envelope. |
+| `ingest-quality.mjs` | Pure, DB-free quality/title-decision helpers factored out of `ingest-harvest.mjs` so they're directly unit-testable (`scripts/tests/test-ingest-harvest-quality.mjs`). |
+| `text-cleanup.mjs` | HTML-entity decoding + OCR token-swap cleanup for titles/codes before insert. |
 | `seed-heuristics.mjs` | The rules below, shared by prepare + ingest. |
 
 Scratch HTML, PDFs, `_tmp_mola/`, GBA volume dumps, and `_inspect` JSON stay on disk for debugging and are not committed.

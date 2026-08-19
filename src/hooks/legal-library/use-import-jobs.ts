@@ -6,6 +6,7 @@ import {
   extractCaseLawMetadataWithConfidence,
   extractCaseNameFromFilename,
   extractLegislationHierarchy,
+  extractLegislationMetadataWithConfidence,
   findCaseLawDuplicates,
   findStatuteDuplicates,
   normalizeWhitespace,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/legal-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
 import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
+import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, deriveContentQualityStatus } from "@/lib/extraction-quality";
 import { ingestDocument } from "@/lib/ingest-document";
 import { matchCanonicalCourtScored, type CourtLike } from "@/lib/legal-taxonomy-match";
 import {
@@ -27,7 +29,7 @@ import {
 import { downloadDocumentAsFile, uploadDocumentToEntity } from "@/hooks/use-documents";
 import { caseLawKeys } from "@/hooks/case-law/use-case-law";
 import { legislationKeys } from "@/hooks/legislation/use-legislation";
-import type { Json } from "@/types/database.types";
+import type { Json, TablesUpdate } from "@/types/database.types";
 
 /**
  * Admin-only CRUD + orchestration over `import_jobs`/`import_batches`
@@ -364,6 +366,8 @@ export interface ImportBatchJobRow {
   filename: string;
   displayName: string | null;
   reviewStatus: string | null;
+  /** null for a bare job row with no linked draft (nothing to grade yet). */
+  contentQualityStatus: string | null;
 }
 
 /**
@@ -398,11 +402,35 @@ export function useImportBatchDetail(batchId: string | null) {
 
       const [caseLawRows, statuteRows] = await Promise.all([
         caseLawIds.length > 0
-          ? supabase.from("case_law").select("id, case_name, citation, original_filename, review_status").in("id", caseLawIds)
-          : Promise.resolve({ data: [] as { id: string; case_name: string; citation: string; original_filename: string | null; review_status: string }[] }),
+          ? supabase
+              .from("case_law")
+              .select("id, case_name, citation, original_filename, review_status, content_quality_status")
+              .in("id", caseLawIds)
+          : Promise.resolve({
+              data: [] as {
+                id: string;
+                case_name: string;
+                citation: string;
+                original_filename: string | null;
+                review_status: string;
+                content_quality_status: string;
+              }[],
+            }),
         statuteIds.length > 0
-          ? supabase.from("statutes").select("id, title, code, original_filename, review_status").in("id", statuteIds)
-          : Promise.resolve({ data: [] as { id: string; title: string; code: string; original_filename: string | null; review_status: string }[] }),
+          ? supabase
+              .from("statutes")
+              .select("id, title, code, original_filename, review_status, content_quality_status")
+              .in("id", statuteIds)
+          : Promise.resolve({
+              data: [] as {
+                id: string;
+                title: string;
+                code: string;
+                original_filename: string | null;
+                review_status: string;
+                content_quality_status: string;
+              }[],
+            }),
       ]);
 
       const caseLawById = new Map((caseLawRows.data ?? []).map((r) => [r.id, r]));
@@ -423,6 +451,7 @@ export function useImportBatchDetail(batchId: string | null) {
             filename: cl?.original_filename ?? "(unknown file)",
             displayName: cl ? `${cl.case_name} — ${cl.citation}` : null,
             reviewStatus: cl?.review_status ?? null,
+            contentQualityStatus: cl?.content_quality_status ?? null,
           };
         }
         if (j.target_statute_id) {
@@ -439,6 +468,7 @@ export function useImportBatchDetail(batchId: string | null) {
             filename: st?.original_filename ?? "(unknown file)",
             displayName: st ? `${st.title} (${st.code})` : null,
             reviewStatus: st?.review_status ?? null,
+            contentQualityStatus: st?.content_quality_status ?? null,
           };
         }
         // Bare job row (duplicate/failed/rejected) — no linked draft.
@@ -450,6 +480,7 @@ export function useImportBatchDetail(batchId: string | null) {
           target_case_law_id: null,
           target_statute_id: null,
           extracted_metadata: j.extracted_metadata,
+          contentQualityStatus: null,
           created_at: j.created_at,
           filename: readBareJobFilename(j.extracted_metadata) ?? "(unknown file)",
           displayName: null,
@@ -974,6 +1005,116 @@ export function useReprocessCaseLawExtraction() {
       toast.success("Extraction re-ran from the stored original. This draft was not published.");
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.detail(variables.caseLawId) });
+      void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+}
+
+export interface ReassessStatuteInput {
+  statuteId: string;
+  importJobId: string | null;
+  /** Text to assess — either the currently-stored `full_text` unchanged, or a curator-pasted replacement. Never re-fetched from a source URL (Legislation has no "re-run from original file" path — see StatuteReviewCard). */
+  fullText: string;
+  extractedMetadata: unknown;
+  current: {
+    short_title: string | null;
+    act_number: string | null;
+    enactment_year: number | null;
+    instrument_type: string | null;
+    chapter_number: string | null;
+  };
+}
+
+/**
+ * Re-assesses whatever text is currently on record for a Legislation
+ * draft against the real quality gate + the legislation metadata
+ * extractor, and writes the result back. Never re-fetches a source PDF —
+ * "re-check," not "re-run extraction," since nothing is re-extracted (see
+ * StatuteReviewCard's button label). Only backfills the optional metadata
+ * fields that are still empty — never overwrites a curator-entered value.
+ */
+export function useReassessStatuteExtraction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ReassessStatuteInput) => {
+      const text = normalizeWhitespace(sanitizeExtractedText(input.fullText).text);
+      const assessment = assessExtractionQuality(text);
+      const status: ExtractionEnvelope["status"] = !text
+        ? "pending"
+        : !assessment.passed
+          ? "failed"
+          : assessment.score >= CLEAN_SCORE_THRESHOLD
+            ? "extracted"
+            : "low_quality";
+      const envelope: ExtractionEnvelope = {
+        status,
+        method: "manual_paste",
+        text: status === "failed" ? "" : text,
+        charCount: status === "failed" ? 0 : text.length,
+        qualityScore: text ? assessment.score : null,
+        characterQuality: text ? assessment.characterQuality : null,
+        structuralQuality: text ? assessment.structuralQuality : null,
+        warnings: assessment.warnings,
+        ocrUsed: false,
+        requiresReview: true,
+        pages: [],
+        pageCount: 0,
+        unreadableReason: null,
+        hardFailReason: assessment.hardFailReason ?? null,
+      };
+      const contentQualityStatus = deriveContentQualityStatus(envelope);
+      const extracted = text ? extractLegislationMetadataWithConfidence(text) : null;
+
+      const statuteUpdate: TablesUpdate<"statutes"> = {
+        full_text: text || null,
+        content_quality_status: contentQualityStatus,
+        review_status: "needs_review",
+      };
+      if (!input.current.short_title && extracted?.fields.short_title) {
+        statuteUpdate.short_title = extracted.fields.short_title;
+      }
+      if (!input.current.act_number && extracted?.fields.act_number) {
+        statuteUpdate.act_number = extracted.fields.act_number;
+      }
+      if (!input.current.enactment_year && extracted?.fields.enactment_year) {
+        statuteUpdate.enactment_year = extracted.fields.enactment_year;
+      }
+      if (!input.current.instrument_type && extracted?.fields.instrument_type) {
+        statuteUpdate.instrument_type = extracted.fields.instrument_type;
+      }
+      if (!input.current.chapter_number && extracted?.fields.chapter_number) {
+        statuteUpdate.chapter_number = extracted.fields.chapter_number;
+      }
+
+      const { error: statuteError } = await supabase.from("statutes").update(statuteUpdate).eq("id", input.statuteId);
+      if (statuteError) throw statuteError;
+
+      if (input.importJobId) {
+        const prevMeta =
+          input.extractedMetadata && typeof input.extractedMetadata === "object"
+            ? (input.extractedMetadata as Record<string, unknown>)
+            : {};
+        const nextMeta = {
+          ...prevMeta,
+          _extraction: envelope,
+          _legislationMetadataProposal: extracted,
+        } as unknown as Json;
+        const { error: jobError } = await supabase
+          .from("import_jobs")
+          .update({ extracted_metadata: nextMeta, extracted_text: text || null, status: "needs_review" })
+          .eq("id", input.importJobId);
+        if (jobError) throw jobError;
+      }
+
+      return { envelope, contentQualityStatus };
+    },
+    onSuccess: (_result, variables) => {
+      toast.success("Extraction quality re-checked. This draft was not published.");
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.detail(variables.statuteId) });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
     onError: (error) => {

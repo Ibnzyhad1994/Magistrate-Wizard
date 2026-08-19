@@ -2,11 +2,19 @@
  * Ingest harvested official-law JSON into the local Legal Library as
  * Review Queue drafts. Never auto-publishes.
  *
- *   node scripts/seed-legal-library/ingest-harvest.mjs
+ *   npm run seed:ingest
+ *   (node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/seed-legal-library/ingest-harvest.mjs)
  *
  * Reads numbered JSON in scripts/seed-legal-library/catalogs/ (see README)
  * and creates Review Queue drafts via the same admin RPCs as New Import.
  * Duplicate citations/codes are skipped. Nothing is published.
+ *
+ * Runs through the same `@/` alias loader as scripts/tests/*.mjs so it can
+ * call the REAL extraction-quality gate and legislation metadata extractor
+ * (see ingest-quality.mjs) instead of fabricating a fixed "perfect
+ * quality" envelope — a prior version of this script did exactly that,
+ * which is how 18 boilerplate-only and 74 OCR-garbled Acts of Parliament
+ * reached `published` silently. See INGESTION_CHECKLIST.md.
  */
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
@@ -14,6 +22,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { evaluateSeedItem, isCatalogFilename } from "./seed-heuristics.mjs";
+import {
+  buildEnvelope,
+  deriveContentQualityStatus,
+  decideLegislationTitle,
+  applyLegislationContentCheck,
+} from "./ingest-quality.mjs";
+import { cleanLegislationLabel } from "./text-cleanup.mjs";
+import { extractLegislationMetadataWithConfidence } from "@/lib/legal-extraction";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const CATALOGS = join(ROOT, "scripts/seed-legal-library/catalogs");
@@ -28,27 +44,6 @@ const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefres
 
 function sha256Text(text) {
   return createHash("sha256").update(String(text ?? "").trim(), "utf8").digest("hex");
-}
-
-function envelope(text, method = "manual_paste") {
-  const trimmed = String(text ?? "").trim();
-  return {
-    status: trimmed ? "extracted" : "pending",
-    method: trimmed ? method : "none",
-    text: trimmed,
-    charCount: trimmed.length,
-    qualityScore: trimmed ? 1 : null,
-    characterQuality: trimmed ? "high" : null,
-    structuralQuality: trimmed ? "medium" : null,
-    warnings: trimmed
-      ? ["Seeded from an official public source. Curator must still vet before publish."]
-      : ["Catalog entry only — attach or paste the official text in Review Queue."],
-    ocrUsed: false,
-    requiresReview: true,
-    pages: [],
-    pageCount: 0,
-    unreadableReason: null,
-  };
 }
 
 function clientAs(token) {
@@ -81,6 +76,27 @@ async function ensureSource(sb, userId, harvest) {
   return data.id;
 }
 
+async function ensureBatch(sb, userId, file, harvest, items) {
+  const dominantKind = items.filter((i) => (i.kind ?? harvest.source?.source_type) === "case_law").length > items.length / 2
+    ? "case_law"
+    : "legislation";
+  const { data, error } = await sb
+    .from("import_batches")
+    .insert({
+      label: `Seed ingest — ${file} (${new Date().toISOString().slice(0, 10)})`,
+      content_type: dominantKind,
+      created_by: userId,
+      expected_file_count: items.length,
+    })
+    .select("id")
+    .single();
+  if (error) {
+    console.warn(`  batch registry failed for ${file}: ${error.message}`);
+    return null;
+  }
+  return data.id;
+}
+
 function matchCourt(courts, name) {
   if (!name) return null;
   const n = name.toLowerCase();
@@ -101,7 +117,7 @@ function matchJurisdiction(jurisdictions, name) {
   );
 }
 
-const stats = { legislation: 0, case_law: 0, skipped: 0, errors: 0 };
+const stats = { legislation: 0, case_law: 0, skipped: 0, errors: 0, quality_failed: 0, title_recovered: 0 };
 
 const { data: session, error: authErr } = await anon.auth.signInWithPassword({ email: EMAIL, password: PASSWORD });
 if (authErr) throw authErr;
@@ -129,10 +145,11 @@ for (const file of files) {
   } catch (err) {
     console.warn(`  source registry failed: ${err.message}`);
   }
+  const batchId = await ensureBatch(sb, userId, file, harvest, items);
 
   for (const item of items) {
     const kind = item.kind ?? harvest.source?.source_type;
-    const title = String(item.title ?? "").trim();
+    const rawTitle = String(item.title ?? "").trim();
     const verdict = evaluateSeedItem(item, harvest);
     if (!verdict.eligible) {
       stats.skipped += 1;
@@ -140,11 +157,15 @@ for (const file of files) {
     }
     const text = String(item.full_text ?? "").trim();
     const hash = text ? sha256Text(text) : item.source_url ? sha256Text(item.source_url) : null;
-    const env = envelope(text, text ? "manual_paste" : "none");
+    const baseEnv = buildEnvelope(text, text ? "manual_paste" : "none");
 
     try {
       if (kind === "case_law") {
-        const citation = String(item.citation ?? title).slice(0, 240);
+        const env = baseEnv;
+        const contentQualityStatus = deriveContentQualityStatus(env);
+        if (contentQualityStatus === "failed") stats.quality_failed += 1;
+        const citation = cleanLegislationLabel(String(item.citation ?? rawTitle).slice(0, 240));
+        const title = cleanLegislationLabel(rawTitle);
         const { data: dup } = await sb.from("case_law").select("id").eq("citation", citation).maybeSingle();
         if (dup?.id) {
           stats.skipped += 1;
@@ -164,20 +185,55 @@ for (const file of files) {
           p_neutral_citation: citation,
           p_reported_citation: null,
           p_decided_date: item.decided_date || null,
+          // Unlike the live browser pipeline, a failed item's text is kept
+          // (not withheld) — this is a curator-remediation queue, not an
+          // end-user display, and the curator needs to SEE why it failed
+          // (e.g. "this is just a repeated gazette header") to fix it via
+          // the Review Queue's re-check/paste-corrected-text flow. The
+          // content_quality_status='failed' flag + publish gate (0072) is
+          // what blocks it from reaching readers, not withholding the text.
           p_full_text: text || null,
           p_source_url: item.source_url ?? null,
           p_source_id: sourceId,
           p_original_filename: item.original_filename ?? null,
           p_document_hash: hash,
-          p_batch_id: null,
+          p_batch_id: batchId,
           p_extracted_metadata: { _extraction: env, harvest_error: item.harvest_error ?? null },
           p_proposed_tags: [],
           p_duplicate_warning: null,
+          p_content_quality_status: contentQualityStatus,
         });
         if (error) throw error;
         stats.case_law += 1;
       } else {
-        const code = String(item.code ?? title).slice(0, 120);
+        // Legislation-specific override on top of the shared quality gate
+        // — see applyLegislationContentCheck's doc comment: catches the
+        // "1-page cover sheet only, nothing repeats" shape the shared
+        // repeated-block detector structurally cannot see.
+        const env = applyLegislationContentCheck(baseEnv);
+        const contentQualityStatus = deriveContentQualityStatus(env);
+        if (contentQualityStatus === "failed") stats.quality_failed += 1;
+        // rawCode falls back to the title ONLY for the DB column (which is
+        // NOT NULL) and the duplicate-check query below -- the title-
+        // suspect check must see the TRUE original item.code (possibly
+        // absent), not this fallback. Many harvested items legitimately
+        // have no code at all (item.code is null); passing the already-
+        // defaulted value here would make title.toLowerCase() ===
+        // code.toLowerCase() trivially true for every one of them (since
+        // both would be the title string), wrongly flagging a perfectly
+        // good harvested title as suspect and overwriting it with a
+        // possibly-worse extracted guess.
+        const rawCode = String(item.code ?? rawTitle).slice(0, 120);
+        const code = cleanLegislationLabel(rawCode);
+        const extracted = text ? extractLegislationMetadataWithConfidence(text) : null;
+        const titleDecision = decideLegislationTitle({
+          harvestedTitle: rawTitle,
+          harvestedCode: item.code ?? null,
+          extracted,
+        });
+        if (titleDecision.source === "extracted") stats.title_recovered += 1;
+        const title = cleanLegislationLabel(titleDecision.title ?? rawTitle);
+
         const { data: dup } = await sb.from("statutes").select("id").eq("code", code).maybeSingle();
         if (dup?.id) {
           stats.skipped += 1;
@@ -189,28 +245,51 @@ for (const file of files) {
           p_title: title,
           p_jurisdiction: jur?.name ?? "Guyana",
           p_jurisdiction_id: jur?.id ?? null,
-          p_short_title: item.short_title ?? null,
+          p_short_title: extracted?.fields?.short_title ? cleanLegislationLabel(extracted.fields.short_title) : null,
+          // Unlike the live browser pipeline, a failed item's text is kept
+          // (not withheld) — this is a curator-remediation queue, not an
+          // end-user display, and the curator needs to SEE why it failed
+          // (e.g. "this is just a repeated gazette header") to fix it via
+          // the Review Queue's re-check/paste-corrected-text flow. The
+          // content_quality_status='failed' flag + publish gate (0072) is
+          // what blocks it from reaching readers, not withholding the text.
           p_full_text: text || null,
           p_source_url: item.source_url ?? null,
           p_source_id: sourceId,
           p_original_filename: item.original_filename ?? null,
           p_document_hash: hash,
-          p_batch_id: null,
-          p_extracted_metadata: { _extraction: env, harvest_error: item.harvest_error ?? null },
+          p_batch_id: batchId,
+          p_extracted_metadata: {
+            _extraction: env,
+            _legislationMetadataProposal: extracted,
+            harvest_error: item.harvest_error ?? null,
+          },
           p_proposed_tags: [],
           p_duplicate_warning: null,
           p_provisions: [],
+          p_act_number: extracted?.fields?.act_number ?? null,
+          p_enactment_year: extracted?.fields?.enactment_year ?? null,
+          p_instrument_type: extracted?.fields?.instrument_type ?? null,
+          p_chapter_number: extracted?.fields?.chapter_number ?? null,
+          p_effective_date: null,
+          p_content_quality_status: contentQualityStatus,
         });
         if (error) throw error;
         stats.legislation += 1;
       }
     } catch (err) {
       stats.errors += 1;
-      console.warn(`  FAIL ${title.slice(0, 80)} — ${err.message}`);
+      console.warn(`  FAIL ${rawTitle.slice(0, 80)} — ${err.message}`);
     }
   }
 }
 
 console.log("\nIngest complete (drafts only — nothing published).");
 console.log(stats);
+if (stats.quality_failed > 0) {
+  console.log(
+    `${stats.quality_failed} item(s) failed the automated content-quality gate — they were still created as drafts ` +
+      "(never auto-published) with content_quality_status='failed', and the publish RPCs will reject them until corrected.",
+  );
+}
 console.log("Open More → Legal Library → Review Queue to vet.");

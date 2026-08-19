@@ -23,7 +23,12 @@ import {
   type PdfUnreadableReason,
 } from "@/lib/pdf-text-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
-import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, type QualityBucket } from "@/lib/extraction-quality";
+import {
+  assessExtractionQuality,
+  CLEAN_SCORE_THRESHOLD,
+  type QualityBucket,
+  type QualityHardFailReason,
+} from "@/lib/extraction-quality";
 
 export type ExtractionStatus = "pending" | "extracted" | "low_quality" | "requires_ocr" | "failed";
 
@@ -52,6 +57,8 @@ export interface ExtractionEnvelope {
   ocrUsed: boolean;
   /** True whenever status is anything other than "extracted" — the Review Queue uses this to prompt closer curator attention, independent of the publication-validation gate. */
   requiresReview: boolean;
+  /** Set only when status is "failed" — the specific reason `assessExtractionQuality` rejected the text (see QualityHardFailReason), so a UI can show a plain-language explanation instead of one generic "extraction failed" message. `undefined`/`null` for every other status. */
+  hardFailReason?: QualityHardFailReason | null;
   /**
    * Page-aware breakdown (PRODUCTION DOCUMENT INGESTION PHASE, Section 5).
    * Only populated for method "pdf_text_layer" — a .txt file or manually
@@ -354,6 +361,7 @@ export async function runPdfExtractionPipeline(
       pages: [],
       pageCount: 0,
       unreadableReason: null,
+      hardFailReason: quality.hardFailReason,
     }
   }
 

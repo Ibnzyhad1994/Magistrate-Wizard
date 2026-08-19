@@ -48,6 +48,8 @@ export interface CaseLawPublishFields {
   jurisdiction: string;
   court_id: string | null;
   jurisdiction_id: string | null;
+  /** Mirrors the SQL-side `publish_case_law_import` gate (0072) — kept in sync deliberately, same dual-gate requirement 0061 established. */
+  content_quality_status?: string | null;
 }
 
 /** Returns a human-readable list of blocking reasons; empty array means publishable. */
@@ -61,6 +63,9 @@ export function validateCaseLawForPublish(fields: CaseLawPublishFields): string[
   if (!fields.court_id || isPlaceholderValue(fields.court)) {
     errors.push("Court is missing.");
   }
+  if (fields.content_quality_status === "failed") {
+    errors.push("Extracted text failed automated quality checks and requires correction before publish.");
+  }
   return errors;
 }
 
@@ -69,6 +74,8 @@ export interface LegislationPublishFields {
   title: string;
   jurisdiction: string;
   jurisdiction_id: string | null;
+  /** Mirrors the SQL-side `publish_legislation_import` gate (0072). */
+  content_quality_status?: string | null;
 }
 
 export function validateLegislationForPublish(fields: LegislationPublishFields): string[] {
@@ -77,6 +84,9 @@ export function validateLegislationForPublish(fields: LegislationPublishFields):
   if (isPlaceholderValue(fields.code)) errors.push("Code is missing.");
   if (!fields.jurisdiction_id || isPlaceholderValue(fields.jurisdiction)) {
     errors.push("Jurisdiction is missing.");
+  }
+  if (fields.content_quality_status === "failed") {
+    errors.push("Extracted text failed automated quality checks and requires correction before publish.");
   }
   return errors;
 }

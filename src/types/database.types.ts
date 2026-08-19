@@ -172,6 +172,7 @@ export type Database = {
         Row: {
           case_name: string
           citation: string
+          content_quality_status: string
           court: string
           court_id: string | null
           created_at: string
@@ -205,6 +206,7 @@ export type Database = {
         Insert: {
           case_name: string
           citation: string
+          content_quality_status?: string
           court: string
           court_id?: string | null
           created_at?: string
@@ -238,6 +240,7 @@ export type Database = {
         Update: {
           case_name?: string
           citation?: string
+          content_quality_status?: string
           court?: string
           court_id?: string | null
           created_at?: string
@@ -2025,6 +2028,7 @@ export type Database = {
           chapter_number: string | null
           code: string
           commencement_note: string | null
+          content_quality_status: string
           created_at: string
           created_by: string | null
           document_hash: string | null
@@ -2055,6 +2059,7 @@ export type Database = {
           chapter_number?: string | null
           code: string
           commencement_note?: string | null
+          content_quality_status?: string
           created_at?: string
           created_by?: string | null
           document_hash?: string | null
@@ -2085,6 +2090,7 @@ export type Database = {
           chapter_number?: string | null
           code?: string
           commencement_note?: string | null
+          content_quality_status?: string
           created_at?: string
           created_by?: string | null
           document_hash?: string | null
@@ -2225,6 +2231,7 @@ export type Database = {
           p_batch_id?: string
           p_case_name: string
           p_citation: string
+          p_content_quality_status?: string
           p_court: string
           p_court_id?: string
           p_decided_date?: string
@@ -2248,12 +2255,18 @@ export type Database = {
       }
       create_legislation_import: {
         Args: {
+          p_act_number?: string
           p_batch_id?: string
+          p_chapter_number?: string
           p_code: string
+          p_content_quality_status?: string
           p_document_hash?: string
           p_duplicate_warning?: string
+          p_effective_date?: string
+          p_enactment_year?: number
           p_extracted_metadata?: Json
           p_full_text?: string
+          p_instrument_type?: string
           p_jurisdiction: string
           p_jurisdiction_id?: string
           p_original_filename?: string

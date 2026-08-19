@@ -88,5 +88,60 @@ function check(label, actual, expected) {
   check("replacement-char hard-fail reason is replacement_chars", q.hardFailReason, "replacement_chars");
 }
 
+// Repeated running-header/footer boilerplate -- real-world pattern from a
+// bulk Legislation seed audit: 18 published Acts whose "full_text" was
+// 100% a gazette running header/footer repeated per page (with only the
+// page number/date changing), zero actual enacting text. The old
+// character-count-only check ("looks substantial") completely missed
+// this; must now hard-fail with reason "repeated_running_header".
+{
+  const pageHeader = (page) =>
+    `THE OFFICIAL GAZETTE ${page} LEGAL SUPPLEMENT A LAWS OF GUYANA A.D. 2025 No. 13 THE OFFICIAL GAZETTE`;
+  const gazetteBoilerplate = Array.from({ length: 20 }, (_, i) => pageHeader(i + 1)).join(" ");
+  const q = assessExtractionQuality(gazetteBoilerplate);
+  check("repeated gazette header/footer fails the quality gate", q.passed, false);
+  check(
+    "repeated gazette header/footer hard-fail reason is repeated_running_header",
+    q.hardFailReason,
+    "repeated_running_header",
+  );
+}
+
+// Regression check: replacement-char detection must still win over the new
+// repeated-block check when both could plausibly apply (garbled text that
+// also happens to repeat some short fragment) -- the new check must not
+// preempt an existing, working signal. Uses the same fixture shape as the
+// "Repeated missing-glyph" test above, confirming that pre-existing
+// behavior is unchanged now that repeated-block runs earlier in the
+// priority ladder.
+{
+  const boxes =
+    "Some readable words here, forming a normal sentence of reasonable length. " +
+    "�".repeat(50) +
+    " More readable words follow after this point in the text for good measure, " +
+    "again forming ordinary sentences so the only anomaly being tested is the replacement characters above.";
+  const q = assessExtractionQuality(boxes);
+  check("garbled text with replacement chars still fails (unaffected by new check)", q.passed, false);
+  check("garbled text still reports replacement_chars, not repeated_running_header", q.hardFailReason, "replacement_chars");
+}
+
+// A genuine long document legitimately has a SMALL running header/footer
+// repeated on every page (e.g. "Page N" or a short case citation line) --
+// this must NOT be penalized. Each "page" below has a real, distinct
+// paragraph of substantive content plus one short repeated footer line.
+{
+  const paragraphs = [
+    "The appellant was convicted of manslaughter following a trial in the High Court of Guyana before a judge and jury.",
+    "Counsel for the appellant argued that certain admissions made during police questioning were wrongly admitted as evidence.",
+    "The Court of Appeal reviewed the transcript of the summing up and considered whether the jury had been properly directed.",
+    "Several authorities from other Commonwealth Caribbean jurisdictions were cited on the question of admissibility of confessions.",
+    "Having considered the submissions of both parties the Court concluded the trial judge had correctly directed the jury throughout.",
+    "The appeal against conviction was accordingly dismissed and the original sentence imposed by the trial judge was affirmed in full.",
+  ];
+  const withSmallFooter = paragraphs.map((p, i) => `${p} — Judgment continued, page ${i + 1}`).join(" ");
+  const q = assessExtractionQuality(withSmallFooter);
+  check("long judgment with a small varying page footer still passes", q.passed, true);
+}
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
