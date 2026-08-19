@@ -3,6 +3,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
 import { PageLoader } from "@/components/common/page-loader";
+import { resolveProtectedRouteGate } from "@/lib/protected-route-gate";
 
 interface ProtectedRouteProps {
   /**
@@ -22,22 +23,20 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const status = useAuthStore((state) => state.status);
   const profile = useAuthStore((state) => state.profile);
   const location = useLocation();
+  const gate = resolveProtectedRouteGate({ status, profile, allowedRoles });
 
-  if (status === "loading") {
+  if (gate === "loading") {
     return <PageLoader />;
   }
 
-  if (status === "unauthenticated") {
+  if (gate === "login") {
     return (
       <Navigate to={ROUTES.login} state={{ from: location }} replace />
     );
   }
 
-  if (allowedRoles && allowedRoles.length > 0) {
-    const role = profile?.role;
-    if (!role || !allowedRoles.includes(role)) {
-      return <Navigate to={ROUTES.unauthorized} replace />;
-    }
+  if (gate === "unauthorized") {
+    return <Navigate to={ROUTES.unauthorized} replace />;
   }
 
   return <Outlet />;

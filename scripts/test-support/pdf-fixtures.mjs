@@ -414,3 +414,48 @@ export function makeImageOnlyPdf(name = "image-only.pdf") {
   const contentStream = { dict: "/Length 20", bytes: Buffer.from("q 1 0 0 1 0 0 cm Q", "latin1") };
   return toFile(assemblePdf([imageStream, contentStream]), name);
 }
+
+/**
+ * Page 1 is a short FlateDecode content stream (homemade parser finds it).
+ * Page 2 is a much longer ASCIIHexDecode stream (homemade skips unknown
+ * filters; pdf.js walks the page tree and recovers both pages).
+ */
+export function makeHomemadeShortPdfjsLongPdf(name = "homemade-short-pdfjs-long.pdf") {
+  const escape = (line) => line.replace(/[()\\]/g, (c) => "\\" + c);
+  const tj = (lines) =>
+    `BT /F1 12 Tf ${lines.map((line) => `(${escape(line)}) Tj T*`).join("\n")} ET`;
+  const page1 = tj([
+    "Perreira v Cummings — page one only.",
+    "The lightweight parser stops after this short first content stream while later pages use a filter it does not decode.",
+    "The Court heard a preliminary point and reserved its ruling on the application before it.",
+  ]);
+  const page1Bytes = deflate(page1);
+  const later = [];
+  for (let i = 1; i <= 24; i++) {
+    later.push(
+      `Later page paragraph ${i}: the appellant submitted that the learned trial judge misdirected the jury on the standard of proof and the meaning of recent possession in this matter.`,
+    );
+  }
+  const page2Hex = hexEncode(tj(later)) + ">";
+  const page2Bytes = Buffer.from(page2Hex, "latin1");
+  const font =
+    "7 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
+  const parts = ["%PDF-1.4\n"];
+  parts.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  parts.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>\nendobj\n");
+  parts.push(
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R >> >> >>\nendobj\n",
+  );
+  parts.push(`4 0 obj\n<< /Length ${page1Bytes.length} /Filter /FlateDecode >>\nstream\n`);
+  parts.push(page1Bytes.toString("latin1"));
+  parts.push("\nendstream\nendobj\n");
+  parts.push(
+    "5 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 7 0 R >> >> >>\nendobj\n",
+  );
+  parts.push(`6 0 obj\n<< /Length ${page2Bytes.length} /Filter /ASCIIHexDecode >>\nstream\n`);
+  parts.push(page2Bytes.toString("latin1"));
+  parts.push("\nendstream\nendobj\n");
+  parts.push(font);
+  parts.push("trailer\n<< /Root 1 0 R /Size 8 >>\n%%EOF");
+  return toFile(Buffer.from(parts.join(""), "latin1"), name);
+}

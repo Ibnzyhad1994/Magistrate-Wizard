@@ -16,8 +16,9 @@
 // user's specified patterns, since no other real judgment PDFs were
 // available in this sandbox.
 
-import { extractCaseLawMetadata, extractCaseNameFromFilename, proposeTags, shouldAutoFillCaseName } from "@/lib/legal-extraction";
+import { extractCaseLawMetadata, extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, normalizeMetadataHead, proposeTags, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
+import { mergeReprocessFields } from "@/lib/legal-library/machine-proposal";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -53,6 +54,31 @@ const COURTS = [
     canonical_name: "Caribbean Court of Justice",
     short_name: "CCJ",
     aliases: ["CCJ", "Caribbean Court Justice", "Caribbean Court of Justice"],
+    jurisdiction_id: null,
+  },
+  {
+    id: "high-court-guyana",
+    canonical_name: "High Court of Guyana",
+    short_name: "High Court of Guyana",
+    aliases: ["High Court", "High Court of Guyana"],
+    jurisdiction_id: "jur-guyana",
+  },
+  {
+    id: "full-court-guyana",
+    canonical_name: "Full Court of Guyana",
+    short_name: "Full Court",
+    aliases: ["Full Court", "Full Court of the High Court of Guyana", "Full Court of the High Court"],
+    jurisdiction_id: "jur-guyana",
+  },
+  {
+    id: "ec-coa",
+    canonical_name: "Eastern Caribbean Court of Appeal",
+    short_name: "ECSC Court of Appeal",
+    aliases: [
+      "Eastern Caribbean Court of Appeal",
+      "ECSC Court of Appeal",
+      "Court of Appeal of the Eastern Caribbean States",
+    ],
     jurisdiction_id: null,
   },
 ];
@@ -275,6 +301,73 @@ const COURTS = [
   check("Tags — large text still proposes Hearsay", large.includes("Hearsay"), true);
   check("Tags — large text completes under 500ms", ms < 500, true);
   if (ms >= 500) console.log(`  (tag propose wall ${ms}ms)`);
+}
+
+{
+  const raw =
+    "Perreira v Cummings 233 G a b c d e f g h j Perreira v Cummings FULL COURT OF THE HIGH COURT OF GUYANA " +
+    "[1987] AC 352 the earlier authority was applied. Delivered on 25 th MAY 1995. (1995) 54 WIR 233";
+  const cleaned = normalizeMetadataHead(raw);
+  check("WIR head strips column rails", /\ba\s+b\s+c\s+d\s+e\s+f\s+g\s+h\s+j\b/i.test(cleaned), false);
+  check("WIR head joins split ordinals", cleaned.includes("25th MAY"), true);
+
+  const extraction = extractCaseLawMetadataWithConfidence(raw, undefined, {
+    filename: "(1995) 54 WIR 233.pdf",
+  });
+  check("WIR identity citation is the filename WIR cite, not AC", extraction.fields.reported_citation, "(1995) 54 WIR 233");
+  check("WIR case name from running title", extraction.fields.case_name?.includes("Perreira v Cummings"), true);
+  check("WIR cited AC is not the record citation", extraction.fields.neutral_citation?.includes("AC") ?? false, false);
+  check("WIR name is proposed at least at low confidence", shouldProposeCaseName(extraction.caseNameConfidence, false), true);
+  check("WIR high auto-fill still requires high confidence", shouldAutoFillCaseName(extraction.caseNameConfidence, false) || extraction.caseNameConfidence === "low", true);
+
+  const court = matchCanonicalCourtScored(cleaned, COURTS);
+  check("WIR Full Court header beats High Court substring", court?.court.id, "full-court-guyana");
+
+  const scanMeta = extractCaseLawMetadataWithConfidence("", undefined, {
+    filename: "(1982) 31 WIR 219.pdf",
+  });
+  check("Scan filename fills WIR citation", scanMeta.fields.reported_citation, "(1982) 31 WIR 219");
+  check("Scan filename has no invented case name from citation-only file", scanMeta.fields.case_name, undefined);
+}
+
+{
+  const ec =
+    "Cox and Mitchell v The Queen\nCOURT OF APPEAL OF THE EASTERN CARIBBEAN STATES\n" +
+    "The High Court of Guyana was mentioned only as a body reference.";
+  const court = matchCanonicalCourtScored(ec, COURTS);
+  check("Eastern Caribbean CoA header phrase matches catalogue row", court?.court.id, "ec-coa");
+}
+
+{
+  const merged = mergeReprocessFields(
+    {
+      case_name: "Curator typed name",
+      citation: "(1995) 54 WIR 233",
+      court_id: "full-court-guyana",
+      jurisdiction_id: "jur-guyana",
+      decided_date: "",
+      full_text: "curator paste",
+    },
+    {
+      case_name: "Machine new name",
+      citation: "(1995) 54 WIR 233",
+      court_id: "full-court-guyana",
+      jurisdiction_id: "jur-guyana",
+      decided_date: "1995-05-25",
+      full_text: "machine text",
+    },
+    {
+      case_name: "Untitled (pending review)",
+      citation: "(1995) 54 WIR 233",
+      court_id: null,
+      jurisdiction_id: null,
+      decided_date: "",
+      full_text: "",
+    },
+  );
+  check("Reprocess keeps curator case name", merged.case_name, "Curator typed name");
+  check("Reprocess keeps curator paste", merged.full_text, "curator paste");
+  check("Reprocess fills blank date from machine", merged.decided_date, "1995-05-25");
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

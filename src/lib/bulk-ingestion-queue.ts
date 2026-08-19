@@ -103,6 +103,8 @@ export interface BulkQueueItem {
   duplicateReason: string | null;
   caseLawId: string | null;
   statuteId: string | null;
+  /** Live OCR/extract note (e.g. "Recognizing page 2 of 31") — not a status. */
+  progressNote: string | null;
 }
 
 export function createBulkQueueItem(file: File): BulkQueueItem {
@@ -115,6 +117,7 @@ export function createBulkQueueItem(file: File): BulkQueueItem {
     duplicateReason: null,
     caseLawId: null,
     statuteId: null,
+    progressNote: null,
   };
 }
 

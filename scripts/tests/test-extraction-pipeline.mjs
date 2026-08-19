@@ -10,7 +10,7 @@
 // Run with:
 //   node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-pipeline.mjs
 
-import { runPdfExtractionPipeline } from "@/lib/extraction-pipeline";
+import { runPdfExtractionPipeline, shouldPreferPdfjsText } from "@/lib/extraction-pipeline";
 import {
   makeTextPdf,
   makeConcatenatedTextPdf,
@@ -20,7 +20,10 @@ import {
   makeHexTextPdf,
   makeCompositeFontHexPdf,
   makeEncryptedPdf,
+  makeHomemadeShortPdfjsLongPdf,
 } from "../test-support/pdf-fixtures.mjs";
+import { extractPdfTextLayer } from "@/lib/pdf-text-extraction";
+import { shouldUseEmbeddedJpegsForOcr } from "@/lib/ocr/run-ocr";
 
 const NUL_CHAR = String.fromCharCode(0);
 
@@ -167,6 +170,29 @@ async function main() {
     await check("8. encrypted PDF status is requires_ocr", envelope.status, "requires_ocr");
     await check("8. encrypted PDF text withheld", envelope.text, "");
     await check("8. encrypted PDF unreadableReason is encrypted", envelope.unreadableReason, "encrypted");
+  }
+
+  await check("9. pdf.js upgrade helper prefers substantially longer text", shouldPreferPdfjsText(1495, 12497), true);
+  await check("9. pdf.js upgrade helper ignores a small difference", shouldPreferPdfjsText(1000, 1100), false);
+  await check("9. pdf.js upgrade helper ignores empty pdf.js", shouldPreferPdfjsText(500, 0), false);
+  await check("9. embedded JPEGs used only when rasterize failed", shouldUseEmbeddedJpegsForOcr(0, 3), true);
+  await check("9. embedded JPEGs not preferred when pages were rasterized", shouldUseEmbeddedJpegsForOcr(5, 3), false);
+
+  {
+    const file = makeHomemadeShortPdfjsLongPdf();
+    const homemade = await extractPdfTextLayer(file);
+    const envelope = await runPdfExtractionPipeline(file);
+    await check("9. multi-stream homemade is shorter than pipeline text", homemade.text.length < envelope.text.length, true);
+    await check(
+      "9. multi-stream fixture recovers later-page unique text",
+      envelope.text.includes("Later page paragraph 12"),
+      true,
+    );
+    await check(
+      "9. multi-stream status is usable",
+      envelope.status === "extracted" || envelope.status === "low_quality",
+      true,
+    );
   }
 
   console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

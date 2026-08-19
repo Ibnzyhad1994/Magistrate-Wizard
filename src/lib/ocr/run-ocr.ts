@@ -49,33 +49,38 @@ const failedOcr = (warnings: string[], ocrUsed: boolean): ExtractionEnvelope => 
   unreadableReason: "no_text_found",
 })
 
+export interface OcrRunOptions {
+  onProgress?: (page: number, total: number) => void
+  maxPages?: number
+}
+
+/**
+ * Prefer rasterized page images. Embedded JPEGs are often thumbnails in
+ * mixed PDFs; use them only when rasterize cannot produce pages.
+ */
+export function shouldUseEmbeddedJpegsForOcr(rasterPageCount: number, embeddedJpegCount: number): boolean {
+  return rasterPageCount === 0 && embeddedJpegCount > 0
+}
+
 interface PageImage {
   pageNumber: number
   bytes: Uint8Array
 }
 
-const collectPageImages = async (file: File): Promise<{ images: PageImage[]; warnings: string[] }> => {
+const collectPageImages = async (
+  file: File,
+  maxPages: number,
+): Promise<{ images: PageImage[]; warnings: string[] }> => {
   const warnings: string[] = []
+  let rasterCount = 0
 
   try {
-    const embedded = await extractEmbeddedJpegImages(file)
-    const substantial = embedded.filter((img) => img.bytes.length >= 20_000)
-    if (substantial.length > 0) {
-      return {
-        images: substantial.slice(0, MAX_OCR_PAGES).map((img, i) => ({ pageNumber: i + 1, bytes: img.bytes })),
-        warnings,
-      }
-    }
-  } catch (e) {
-    console.error("Embedded JPEG extraction for OCR failed:", e)
-  }
-
-  try {
-    const raster = await rasterizePdfPages(file)
+    const raster = await rasterizePdfPages(file, maxPages)
+    rasterCount = raster.length
     if (raster.length > 0) {
-      if (raster.length >= MAX_OCR_PAGES) {
+      if (raster.length >= maxPages) {
         warnings.push(
-          `Only the first ${MAX_OCR_PAGES} pages were recognized — paste any remaining pages manually if needed.`,
+          `Only the first ${maxPages} pages were recognized — paste any remaining pages manually if needed.`,
         )
       }
       return {
@@ -91,6 +96,19 @@ const collectPageImages = async (file: File): Promise<{ images: PageImage[]; war
     }
   }
 
+  try {
+    const embedded = await extractEmbeddedJpegImages(file)
+    const substantial = embedded.filter((img) => img.bytes.length >= 20_000)
+    if (shouldUseEmbeddedJpegsForOcr(rasterCount, substantial.length)) {
+      return {
+        images: substantial.slice(0, maxPages).map((img, i) => ({ pageNumber: i + 1, bytes: img.bytes })),
+        warnings,
+      }
+    }
+  } catch (e) {
+    console.error("Embedded JPEG extraction for OCR failed:", e)
+  }
+
   return { images: [], warnings }
 }
 
@@ -103,8 +121,9 @@ const toRecognizeInput = (bytes: Uint8Array): Buffer | Blob => {
   return new Blob([copy], { type: "image/png" })
 }
 
-export const runOcr = async (file: File): Promise<ExtractionEnvelope> => {
-  const { images, warnings: collectWarnings } = await collectPageImages(file)
+export const runOcr = async (file: File, options?: OcrRunOptions): Promise<ExtractionEnvelope> => {
+  const maxPages = options?.maxPages ?? MAX_OCR_PAGES
+  const { images, warnings: collectWarnings } = await collectPageImages(file, maxPages)
   if (images.length === 0) {
     return unavailable([
       ...collectWarnings,
@@ -118,6 +137,7 @@ export const runOcr = async (file: File): Promise<ExtractionEnvelope> => {
 
   for (let i = 0; i < images.length; i++) {
     const image = images[i]
+    options?.onProgress?.(image.pageNumber, images.length)
     try {
       const result = await recognizeImage(toRecognizeInput(image.bytes))
       const cleaned = postprocessOcrText(result.text)

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import {
   extractCaseLawMetadataWithConfidence,
+  extractCaseNameFromFilename,
   extractLegislationHierarchy,
   findCaseLawDuplicates,
   findStatuteDuplicates,
@@ -11,12 +12,19 @@ import {
   proposeTagsScored,
   sha256File,
   sha256Text,
-  shouldAutoFillCaseName,
+  shouldProposeCaseName,
   toTagProposalDetails,
 } from "@/lib/legal-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
 import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
-import { uploadDocumentToEntity } from "@/hooks/use-documents";
+import { ingestDocument } from "@/lib/ingest-document";
+import { matchCanonicalCourtScored, type CourtLike } from "@/lib/legal-taxonomy-match";
+import {
+  mergeReprocessFields,
+  readLastMachineProposal,
+  type MachineProposal,
+} from "@/lib/legal-library/machine-proposal";
+import { downloadDocumentAsFile, uploadDocumentToEntity } from "@/hooks/use-documents";
 import { caseLawKeys } from "@/hooks/case-law/use-case-law";
 import { legislationKeys } from "@/hooks/legislation/use-legislation";
 import type { Json } from "@/types/database.types";
@@ -596,16 +604,12 @@ export function useIngestCaseLaw() {
       // window built from pages is consistent with the rest of this flow.
       const normalizedPages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
       const extraction = usableForMetadata
-        ? extractCaseLawMetadataWithConfidence(text, normalizedPages)
-        : { fields: {}, caseNameConfidence: "none" as const };
+        ? extractCaseLawMetadataWithConfidence(text, normalizedPages, { filename: input.original_filename })
+        : { fields: {}, caseNameConfidence: "none" as const, authoritiesCited: [] as string[], citationSource: "none" as const };
       const proposed = extraction.fields;
       const scoredTags = usableForMetadata ? proposeTagsScored(text) : [];
       const tags = scoredTags.map((t) => t.name);
       const tagProposals = toTagProposalDetails(scoredTags);
-      // Prefer hashing the original file's bytes when one is attached (the
-      // authoritative source); fall back to the pasted/typed text hash so a
-      // PDF with no text yet still gets a real duplicate-detection signal
-      // instead of silently having none.
       const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
       const duplicates = hash || text
@@ -617,19 +621,23 @@ export function useIngestCaseLaw() {
           })
         : [];
 
+      const writtenCaseName =
+        input.known.case_name ??
+        (shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? proposed.case_name : undefined) ??
+        "Untitled (pending review)";
+      const writtenCitation = input.known.citation;
+      const writtenDate = input.known.decided_date ?? proposed.decided_date_guess ?? null;
+
       const { data, error } = await supabase.rpc("create_case_law_import", {
-        p_case_name:
-          input.known.case_name ??
-          (shouldAutoFillCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? proposed.case_name : undefined) ??
-          "Untitled (pending review)",
-        p_citation: input.known.citation,
+        p_case_name: writtenCaseName,
+        p_citation: writtenCitation,
         p_court: input.known.court,
         p_jurisdiction: input.known.jurisdiction,
         p_court_id: input.known.court_id ?? null,
         p_jurisdiction_id: input.known.jurisdiction_id ?? null,
         p_neutral_citation: proposed.neutral_citation ?? null,
         p_reported_citation: proposed.reported_citation ?? null,
-        p_decided_date: input.known.decided_date ?? proposed.decided_date_guess ?? null,
+        p_decided_date: writtenDate,
         p_full_text: text || null,
         p_source_url: input.source_url,
         p_source_id: input.source_id,
@@ -639,20 +647,22 @@ export function useIngestCaseLaw() {
         p_extracted_metadata: {
           ...proposed,
           tag_proposals: tagProposals,
+          authoritiesCited: extraction.authoritiesCited,
+          citationSource: extraction.citationSource,
           _extraction: envelope,
           _metadataConfidence: {
             caseName: extraction.caseNameConfidence,
-            // Records WHERE the final case_name actually came from, not
-            // just how confident the document-text extraction was —
-            // these can differ (e.g. a bulk item with low/none document
-            // confidence whose name was filled in from the filename
-            // instead). Falls back to "document"/"curator" heuristically
-            // only when the caller (single-import form) didn't already
-            // know: a non-empty known.case_name with no explicit source
-            // came from a human typing into the form.
             caseNameSource:
               input.known.case_name_source ??
-              (input.known.case_name ? "curator" : shouldAutoFillCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? "document" : undefined),
+              (input.known.case_name ? "curator" : shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? "document" : undefined),
+          },
+          _lastMachineProposal: {
+            case_name: writtenCaseName,
+            citation: writtenCitation,
+            court_id: input.known.court_id ?? null,
+            jurisdiction_id: input.known.jurisdiction_id ?? null,
+            decided_date: writtenDate ?? "",
+            full_text: text || "",
           },
         } as unknown as Json,
         p_proposed_tags: tags,
@@ -820,6 +830,150 @@ export function useIngestLegislation() {
         toast.success(`Draft created with ${result.provisionCount} provisions — sent to Review Queue.`);
       }
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
+      void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+}
+
+export interface ReprocessCaseLawInput {
+  caseLawId: string;
+  importJobId: string | null;
+  uploadedDocumentId: string;
+  originalFilename: string | null;
+  current: MachineProposal;
+  extractedMetadata: unknown;
+  courts: CourtLike[];
+  jurisdictions: { id: string; name: string }[];
+  onProgress?: (page: number, total: number) => void;
+  maxOcrPages?: number;
+}
+
+/**
+ * Re-run extraction from the stored original PDF. Updates machine
+ * proposals and full_text; does not auto-publish; does not overwrite
+ * curator-typed fields that differ from the last machine snapshot.
+ */
+export function useReprocessCaseLawExtraction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ReprocessCaseLawInput) => {
+      const file = await downloadDocumentAsFile(input.uploadedDocumentId);
+      const envelope = await ingestDocument(file, {
+        onOcrProgress: input.onProgress
+          ? (info) => input.onProgress?.(info.page, info.total)
+          : undefined,
+        maxOcrPages: input.maxOcrPages,
+      });
+      const text = normalizeWhitespace(sanitizeExtractedText(envelope.text).text);
+      const usable = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
+      const normalizedPages = envelope.pages.map((p) => ({
+        pageNumber: p.pageNumber,
+        text: normalizeWhitespace(p.text),
+      }));
+      const filename = input.originalFilename ?? file.name;
+      const extraction = usable
+        ? extractCaseLawMetadataWithConfidence(text, normalizedPages, { filename })
+        : {
+            fields: {},
+            caseNameConfidence: "none" as const,
+            authoritiesCited: [] as string[],
+            citationSource: "none" as const,
+          };
+      const proposed = extraction.fields;
+      const fromFilename = extractCaseNameFromFilename(filename);
+      const nextCitation =
+        fromFilename?.reported_citation ??
+        fromFilename?.neutral_citation ??
+        proposed.reported_citation ??
+        proposed.neutral_citation ??
+        "";
+      let nextName = "";
+      if (shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) && proposed.case_name) {
+        nextName = proposed.case_name;
+      } else if (fromFilename?.case_name && !envelope.ocrUsed) {
+        nextName = fromFilename.case_name;
+      }
+      let nextCourtId: string | null = null;
+      let nextJurisdictionId: string | null = null;
+      if (usable) {
+        const matched = matchCanonicalCourtScored(envelope.text, input.courts);
+        if (matched && matched.confidence !== "low") {
+          nextCourtId = matched.court.id;
+          nextJurisdictionId = matched.court.jurisdiction_id ?? null;
+        }
+      }
+      const next: MachineProposal = {
+        case_name: nextName || "Untitled (pending review)",
+        citation: nextCitation,
+        court_id: nextCourtId,
+        jurisdiction_id: nextJurisdictionId,
+        decided_date: proposed.decided_date_guess ?? "",
+        full_text: envelope.status === "requires_ocr" || envelope.status === "failed" ? "" : text,
+      };
+      const last = readLastMachineProposal(input.extractedMetadata);
+      const merged = mergeReprocessFields(input.current, next, last);
+      const courtName = input.courts.find((c) => c.id === merged.court_id)?.canonical_name ?? "Court";
+      const jurisdictionName =
+        input.jurisdictions.find((j) => j.id === merged.jurisdiction_id)?.name ?? "Jurisdiction";
+
+      const { error: caseError } = await supabase
+        .from("case_law")
+        .update({
+          case_name: merged.case_name,
+          citation: merged.citation,
+          decided_date: merged.decided_date || null,
+          court_id: merged.court_id,
+          jurisdiction_id: merged.jurisdiction_id,
+          court: courtName,
+          jurisdiction: jurisdictionName,
+          full_text: merged.full_text || null,
+          review_status: "needs_review",
+        })
+        .eq("id", input.caseLawId);
+      if (caseError) throw caseError;
+
+      const prevMeta =
+        input.extractedMetadata && typeof input.extractedMetadata === "object"
+          ? (input.extractedMetadata as Record<string, unknown>)
+          : {};
+      const nextMeta = {
+        ...prevMeta,
+        ...proposed,
+        authoritiesCited: extraction.authoritiesCited,
+        citationSource: extraction.citationSource,
+        _extraction: envelope,
+        _metadataConfidence: {
+          caseName: extraction.caseNameConfidence,
+          caseNameSource: shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed)
+            ? "document"
+            : fromFilename?.case_name
+              ? "filename"
+              : undefined,
+        },
+        _lastMachineProposal: next,
+      } as unknown as Json;
+
+      if (input.importJobId) {
+        const { error: jobError } = await supabase
+          .from("import_jobs")
+          .update({
+            extracted_metadata: nextMeta,
+            extracted_text: next.full_text || null,
+            status: "needs_review",
+          })
+          .eq("id", input.importJobId);
+        if (jobError) throw jobError;
+      }
+
+      return { envelope, merged, next };
+    },
+    onSuccess: (_result, variables) => {
+      toast.success("Extraction re-ran from the stored original. This draft was not published.");
+      void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
+      void queryClient.invalidateQueries({ queryKey: caseLawKeys.detail(variables.caseLawId) });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
     onError: (error) => {

@@ -116,6 +116,24 @@ export async function getDocumentDownloadUrl(filePath: string): Promise<string> 
   return data.signedUrl;
 }
 
+/** Download the stored original as a File (Review Queue reprocess). */
+export async function downloadDocumentAsFile(documentId: string): Promise<File> {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("file_name, file_path, mime_type")
+    .eq("id", documentId)
+    .single();
+  if (error) throw error;
+  if (!doc?.file_path) throw new Error("Original file is missing from storage.");
+  const { data: blob, error: downloadError } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .download(doc.file_path);
+  if (downloadError || !blob) throw downloadError ?? new Error("Could not download the original file.");
+  return new File([blob], doc.file_name || "original.pdf", {
+    type: doc.mime_type || blob.type || "application/pdf",
+  });
+}
+
 /**
  * Signed URL for in-app viewing (private bucket) — a longer expiry than
  * the download URL (5 minutes vs. 60 seconds) since a viewer may stay

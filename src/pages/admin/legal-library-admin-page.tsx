@@ -51,6 +51,7 @@ import {
   useIngestLegislation,
   useImportBatches,
   useImportBatchDetail,
+  useReprocessCaseLawExtraction,
   readDuplicateOfId,
   type ImportBatchJobRow,
 } from "@/hooks/legal-library/use-import-jobs";
@@ -77,8 +78,9 @@ import {
 } from "@/hooks/legislation/use-legislation";
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
+import { OCR_METADATA_PAGES } from "@/lib/ocr/constants";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
-import { extractCaseLawMetadataWithConfidence, normalizeWhitespace, shouldAutoFillCaseName } from "@/lib/legal-extraction";
+import { extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, normalizeWhitespace, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
   isPlaceholderValue,
@@ -1078,6 +1080,9 @@ function SingleImportPanel() {
     const envelope = await ingestDocument(f);
     applyExtractionResult(envelope);
 
+    const fromFilename = extractCaseNameFromFilename(f.name);
+    const filenameCitation = fromFilename?.reported_citation ?? fromFilename?.neutral_citation ?? "";
+
     if (envelope.status === "extracted" || envelope.status === "low_quality") {
       toast.success(ingestSuccessToast(envelope));
       if (contentType === "case_law") {
@@ -1085,15 +1090,21 @@ function SingleImportPanel() {
         const { fields: proposed, caseNameConfidence: computedConfidence } = extractCaseLawMetadataWithConfidence(
           normalizeWhitespace(envelope.text),
           normalizedPages,
+          { filename: f.name },
         );
         setCaseNameConfidence(computedConfidence);
-        const autoFillName = shouldAutoFillCaseName(computedConfidence, envelope.ocrUsed);
+        const proposeName = shouldProposeCaseName(computedConfidence, envelope.ocrUsed);
+        const highFill = shouldAutoFillCaseName(computedConfidence, envelope.ocrUsed);
         setCaseFields({
-          case_name: autoFillName ? (proposed.case_name ?? "") : "",
-          citation: proposed.reported_citation ?? proposed.neutral_citation ?? "",
+          case_name: proposeName ? (proposed.case_name ?? "") : "",
+          citation: filenameCitation || proposed.reported_citation || proposed.neutral_citation || "",
           decided_date: proposed.decided_date_guess ?? "",
         });
-        if (proposed.case_name && !autoFillName) {
+        if (proposed.case_name && proposeName && !highFill) {
+          toast.message(
+            `A possible case name was found ("${proposed.case_name}") — please verify it against the original before publishing.`,
+          );
+        } else if (proposed.case_name && !proposeName) {
           toast.message(
             envelope.ocrUsed
               ? `A possible case name was recognized ("${proposed.case_name}") but was not auto-filled because this text came from a scan — please verify it against the original.`
@@ -1127,15 +1138,13 @@ function SingleImportPanel() {
     }
 
     if (envelope.status === "requires_ocr") {
-      // Same specific, honest, plain-language reason ExtractionStatusPanel
-      // shows in the Review Queue (see reasonMessage in extraction-
-      // pipeline.ts) — a protected PDF, a font this parser can't decode,
-      // and a genuinely scanned document are three different situations,
-      // not one generic "requires OCR" message.
       toast.message(
         envelope.warnings[0] ??
           "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically — paste the text below to continue, or leave it for later.",
       );
+      if (contentType === "case_law" && filenameCitation) {
+        setCaseFields((prev) => ({ ...prev, citation: filenameCitation }));
+      }
     } else if (envelope.status === "failed") {
       toast.warning(
         "Automatic extraction produced text that failed quality checks (it looks like embedded PDF/font data rather than document content) and was discarded. The original file has been preserved — paste the text below to continue.",
@@ -1644,6 +1653,11 @@ function BulkImportPanel() {
                     {item.duplicateReason && (
                       <span className="max-w-[16rem] truncate text-muted-foreground" title={item.duplicateReason}>
                         {item.duplicateReason}
+                      </span>
+                    )}
+                    {item.progressNote && item.status === "extracting" && (
+                      <span className="max-w-[16rem] truncate text-muted-foreground" title={item.progressNote}>
+                        {item.progressNote}
                       </span>
                     )}
                     <Badge variant={BULK_STATUS_TONE[item.status]}>{BULK_STATUS_LABEL[item.status]}</Badge>
@@ -2249,6 +2263,7 @@ function CaseLawReviewCard({
   const update = useUpdateCanonicalCaseLaw(row.id);
   const setStatus = useSetCaseLawReviewStatus();
   const reject = useRejectCanonicalCaseLaw();
+  const reprocess = useReprocessCaseLawExtraction();
   const { data: sources } = useLegalSources();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
@@ -2272,6 +2287,13 @@ function CaseLawReviewCard({
     full_text: row.full_text ?? "",
   });
   const [confirmReject, setConfirmReject] = useState(false);
+  const [reprocessNote, setReprocessNote] = useState<string | null>(null);
+  const fullTextRef = useRef<HTMLTextAreaElement>(null);
+  const reviewEnvelope = readExtractionEnvelope(row.extracted_metadata);
+  const needsPaste = reviewEnvelope?.status === "requires_ocr" || reviewEnvelope?.status === "failed";
+  useEffect(() => {
+    if (needsPaste) fullTextRef.current?.focus();
+  }, [needsPaste, row.id]);
   const dirty =
     fields.case_name !== row.case_name ||
     fields.citation !== row.citation ||
@@ -2325,6 +2347,47 @@ function CaseLawReviewCard({
       summary: fields.summary || null,
       full_text: fields.full_text || null,
     });
+  }
+
+  function handleReprocess(maxOcrPages?: number) {
+    if (!row.uploaded_document_id) return;
+    setReprocessNote(null);
+    reprocess.mutate(
+      {
+        caseLawId: row.id,
+        importJobId: row.import_job_id,
+        uploadedDocumentId: row.uploaded_document_id,
+        originalFilename: row.original_filename,
+        current: {
+          case_name: fields.case_name,
+          citation: fields.citation,
+          court_id: fields.court_id,
+          jurisdiction_id: fields.jurisdiction_id,
+          decided_date: fields.decided_date,
+          full_text: fields.full_text,
+        },
+        extractedMetadata: row.extracted_metadata,
+        courts: courts ?? [],
+        jurisdictions: jurisdictions ?? [],
+        maxOcrPages,
+        onProgress: (page, total) => setReprocessNote(`Recognizing page ${page} of ${total}`),
+      },
+      {
+        onSuccess: (result) => {
+          setReprocessNote(null);
+          setFields((f) => ({
+            ...f,
+            case_name: result.merged.case_name,
+            citation: result.merged.citation,
+            court_id: result.merged.court_id,
+            jurisdiction_id: result.merged.jurisdiction_id,
+            decided_date: result.merged.decided_date,
+            full_text: result.merged.full_text,
+          }));
+        },
+        onSettled: () => setReprocessNote(null),
+      },
+    );
   }
 
   const selectedCourt = (courts ?? []).find((c) => c.id === fields.court_id) ?? null;
@@ -2448,11 +2511,16 @@ function CaseLawReviewCard({
             at ingest time (Section 14/4F — "No summary or full text on
             record" previously had no path to resolution short of direct
             database access). */}
-        <details className="rounded-md border border-border p-2.5 text-sm">
+        <details className="rounded-md border border-border p-2.5 text-sm" open={needsPaste || undefined}>
           <summary className="cursor-pointer select-none text-sm font-medium text-foreground">
             Summary and full text
             {!fields.summary && !fields.full_text && (
               <span className="ml-2 text-xs font-normal text-muted-foreground">— none on record yet</span>
+            )}
+            {needsPaste && (
+              <span className="ml-2 text-xs font-normal text-amber-700 dark:text-amber-400">
+                — paste the judgment text here
+              </span>
             )}
           </summary>
           <div className="mt-3 space-y-3">
@@ -2468,6 +2536,7 @@ function CaseLawReviewCard({
               hint="What machine extraction captured, if any — paste or correct it here (e.g. after OCR required/low-quality extraction, or copying from the original file)."
             >
               <Textarea
+                ref={fullTextRef}
                 value={fields.full_text}
                 onChange={(e) => setFields((f) => ({ ...f, full_text: e.target.value }))}
                 rows={6}
@@ -2508,6 +2577,32 @@ function CaseLawReviewCard({
 
         {/* ACTIONS */}
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {row.uploaded_document_id && (
+            <div className="mr-auto flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={reprocess.isPending}
+                onClick={() => handleReprocess()}
+              >
+                <RefreshCw className={`h-4 w-4 ${reprocess.isPending ? "animate-spin" : ""}`} />
+                Re-run extraction
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={reprocess.isPending}
+                onClick={() => handleReprocess(OCR_METADATA_PAGES)}
+              >
+                OCR first {OCR_METADATA_PAGES} pages
+              </Button>
+              {(reprocess.isPending || reprocessNote) && (
+                <span className="text-[11px] text-muted-foreground">
+                  {reprocessNote ?? "Re-running extraction from the stored original…"}
+                </span>
+              )}
+            </div>
+          )}
           <SaveIndicator state={saveState} onRetry={handleSave} />
           {dirty && (
             <Button size="sm" variant="outline" disabled={update.isPending} onClick={handleSave}>

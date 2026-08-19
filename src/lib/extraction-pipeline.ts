@@ -74,11 +74,35 @@ const TEXT_LAYER_UNREADABLE_MESSAGE: Record<PdfUnreadableReason, string> = {
   unsupported_font_encoding:
     "This PDF has a text layer, but uses an embedded font encoding the lightweight parser cannot decode. Trying the full PDF renderer, then text recognition if needed.",
   no_text_found:
-    "No extractable text layer was found — this looks like a scanned/image document. Attempting text recognition from the scanned pages.",
+    "The lightweight parser found no usable text layer. Trying the full PDF renderer, then text recognition if this is a scan.",
 }
 
 const shouldAttemptOcr = (reason: PdfUnreadableReason | null): boolean => {
   return reason === "no_text_found"
+}
+
+/** pdf.js must recover at least this much more text than the stream scan before it becomes the text layer of record. */
+export const PDFJS_FULLER_TEXT_RATIO = 1.25
+
+/**
+ * The homemade parser is a stream scan, not a page tree. Prefer pdf.js
+ * whenever it returns substantially more quality-gated text (typical of
+ * multi-stream WIR reports).
+ */
+export function shouldPreferPdfjsText(homemadeLength: number, pdfjsLength: number): boolean {
+  if (pdfjsLength <= 0) return false
+  return pdfjsLength > homemadeLength * PDFJS_FULLER_TEXT_RATIO
+}
+
+export interface ExtractionProgress {
+  page: number
+  total: number
+  phase: "ocr"
+}
+
+export interface ExtractionPipelineOptions {
+  onOcrProgress?: (info: ExtractionProgress) => void
+  maxOcrPages?: number
 }
 
 const envelopeFromSanitizedText = (
@@ -117,6 +141,7 @@ const tryPdfjsTextThenOcr = async (
   file: File,
   priorReason: PdfUnreadableReason | null,
   priorWarnings: string[],
+  options?: ExtractionPipelineOptions,
 ): Promise<ExtractionEnvelope> => {
   try {
     const { extractPdfjsTextContent } = await import("@/lib/ocr/rasterize-pdf")
@@ -131,17 +156,23 @@ const tryPdfjsTextThenOcr = async (
   } catch (e) {
     console.error("pdf.js text-layer recovery failed:", e)
   }
-  return tryOcrFallback(file, priorReason, priorWarnings)
+  return tryOcrFallback(file, priorReason, priorWarnings, options)
 }
 
 const tryOcrFallback = async (
   file: File,
   priorReason: PdfUnreadableReason | null,
   priorWarnings: string[],
+  options?: ExtractionPipelineOptions,
 ): Promise<ExtractionEnvelope> => {
   try {
     const { runOcr: runOcrEngine } = await import("@/lib/ocr/run-ocr")
-    const ocr = await runOcrEngine(file)
+    const ocr = await runOcrEngine(file, {
+      onProgress: options?.onOcrProgress
+        ? (page, total) => options.onOcrProgress?.({ page, total, phase: "ocr" })
+        : undefined,
+      maxPages: options?.maxOcrPages,
+    })
     if (ocr.status === "extracted" || ocr.status === "low_quality") {
       return ocr
     }
@@ -195,7 +226,10 @@ function pendingEnvelope(): ExtractionEnvelope {
  * (even totally unusable) PDF — every failure mode is communicated via
  * `status`, not an exception.
  */
-export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEnvelope> {
+export async function runPdfExtractionPipeline(
+  file: File,
+  options?: ExtractionPipelineOptions,
+): Promise<ExtractionEnvelope> {
   if (!isPdfExtractionSupported()) {
     return {
       status: "requires_ocr",
@@ -260,7 +294,7 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
       }
     }
     if (reason === "unsupported_font_encoding") {
-      return tryPdfjsTextThenOcr(file, reason, [warning])
+      return tryPdfjsTextThenOcr(file, reason, [warning], options)
     }
     if (!shouldAttemptOcr(reason)) {
       return {
@@ -279,7 +313,10 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
         unreadableReason: reason,
       }
     }
-    return tryOcrFallback(file, reason, [warning])
+    // WIR / CID-font reports often look like "no text" to the lightweight
+    // parser even though pdf.js can read a real text layer. Try that
+    // before raster OCR — same recovery path as unsupported_font_encoding.
+    return tryPdfjsTextThenOcr(file, reason, [warning], options)
   }
 
   const sanitized = sanitizeExtractedText(raw.text);
@@ -301,7 +338,7 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
     // the same wrong stream, so we do not fall through. too_short: almost
     // nothing usable came from the text layer; OCR may recover a scan.
     if (quality.hardFailReason === "too_short") {
-      return tryOcrFallback(file, "no_text_found", warnings)
+      return tryPdfjsTextThenOcr(file, "no_text_found", warnings, options)
     }
     return {
       status: "failed",
@@ -328,9 +365,9 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
     const pageSanitized = sanitizeExtractedText(p.text);
     return { pageNumber: p.pageNumber, text: pageSanitized.text, characterCount: pageSanitized.text.length };
   });
-  return {
+  const homemade = {
     status,
-    method: "pdf_text_layer",
+    method: "pdf_text_layer" as const,
     text: sanitized.text,
     charCount: sanitized.text.length,
     qualityScore: quality.score,
@@ -343,6 +380,23 @@ export async function runPdfExtractionPipeline(file: File): Promise<ExtractionEn
     pageCount: pages.length,
     unreadableReason: null,
   };
+  // The lightweight stream scan often catches only the first content
+  // stream. pdf.js walks the page tree and is the fuller text layer when
+  // it returns substantially more (typical of WIR two-column reports).
+  try {
+    const { extractPdfjsTextContent } = await import("@/lib/ocr/rasterize-pdf");
+    const recovered = await extractPdfjsTextContent(file);
+    if (recovered?.text && shouldPreferPdfjsText(sanitized.text.length, recovered.text.length)) {
+      const better = envelopeFromSanitizedText(recovered.text, recovered.pages, "pdf_text_layer", [
+        ...warnings,
+        "Used the full PDF renderer’s text layer — it recovered more of the document than the lightweight parser.",
+      ]);
+      if (better) return better;
+    }
+  } catch (e) {
+    console.error("pdf.js fuller-text upgrade failed:", e);
+  }
+  return homemade;
 }
 
 /** A .txt file is read verbatim by the browser — genuine, complete text extraction for that one format, still passed through the same sanitize+quality gate for consistency (a .txt file can itself contain stray control bytes). */

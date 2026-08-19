@@ -52,12 +52,12 @@ const canvasToPng = async (canvas: {
   throw new Error("No canvas PNG encoder available in this environment.")
 }
 
-export const rasterizePdfPages = async (file: File): Promise<RasterPage[]> => {
+export const rasterizePdfPages = async (file: File, maxPages = MAX_OCR_PAGES): Promise<RasterPage[]> => {
   const pdfjs = await loadPdfjs()
   const data = new Uint8Array(await file.arrayBuffer())
   const loadingTask = pdfjs.getDocument(pdfjsDocumentOptions(data))
   const pdf = await loadingTask.promise
-  const pageCount = Math.min(pdf.numPages, MAX_OCR_PAGES)
+  const pageCount = Math.min(pdf.numPages, maxPages)
   const pages: RasterPage[] = []
 
   for (let i = 1; i <= pageCount; i++) {

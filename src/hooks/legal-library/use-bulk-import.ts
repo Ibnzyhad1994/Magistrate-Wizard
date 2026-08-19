@@ -13,7 +13,7 @@ import {
   extractCaseLawMetadataWithConfidence,
   extractCaseNameFromFilename,
   normalizeWhitespace,
-  shouldAutoFillCaseName,
+  shouldProposeCaseName,
 } from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored, type CourtLike } from "@/lib/legal-taxonomy-match";
 import { ingestDocument } from "@/lib/ingest-document";
@@ -125,8 +125,12 @@ export function useBulkImportCaseLaw() {
         return;
       }
 
-      patchItem(item.id, { status: "extracting" });
-      const envelope = await ingestDocument(item.file);
+      patchItem(item.id, { status: "extracting", progressNote: null });
+      const envelope = await ingestDocument(item.file, {
+        onOcrProgress: ({ page, total }) => {
+          patchItem(item.id, { progressNote: `Recognizing page ${page} of ${total}` });
+        },
+      });
 
       let caseName: string | undefined;
       /** Provenance for `caseName` (Section 16/17/35-J) — never left ambiguous. Recorded on the created draft's `_metadataConfidence.caseNameSource` so the Review Queue can show "proposed from filename, please verify" rather than presenting a filename guess as if it came from the document itself. */
@@ -142,10 +146,14 @@ export function useBulkImportCaseLaw() {
       if (envelope.status === "extracted" || envelope.status === "low_quality") {
         const pages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
         const normalizedText = normalizeWhitespace(envelope.text);
-        const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(normalizedText, pages);
-        if (shouldAutoFillCaseName(caseNameConfidence, envelope.ocrUsed) && fields.case_name) {
+        const { fields, caseNameConfidence, citationSource } = extractCaseLawMetadataWithConfidence(
+          normalizedText,
+          pages,
+          { filename: item.file.name },
+        );
+        if (shouldProposeCaseName(caseNameConfidence, envelope.ocrUsed) && fields.case_name) {
           caseName = fields.case_name;
-          caseNameSource = "document";
+          caseNameSource = citationSource === "filename" && caseNameConfidence === "low" ? "filename" : "document";
         }
         reportedCitation = fields.reported_citation;
         neutralCitation = fields.neutral_citation;
@@ -165,16 +173,20 @@ export function useBulkImportCaseLaw() {
       // Filename-assisted SECONDARY support (Section 16) — only fills
       // gaps the document text left, never overrides a confident
       // document-text value. Never trusted as "high" confidence.
-      if (!caseName || (!reportedCitation && !neutralCitation)) {
-        const fromFilename = extractCaseNameFromFilename(item.file.name);
-        if (!caseName && fromFilename?.case_name) {
-          caseName = fromFilename.case_name;
-          caseNameSource = "filename";
-        }
-        if (!reportedCitation && !neutralCitation) {
-          reportedCitation = fromFilename?.reported_citation;
-          neutralCitation = fromFilename?.neutral_citation;
-        }
+      const fromFilename = extractCaseNameFromFilename(item.file.name);
+      if (!caseName && fromFilename?.case_name) {
+        caseName = fromFilename.case_name;
+        caseNameSource = "filename";
+      }
+      // WIR/WLR files are named after THIS report's citation. Document
+      // text often matches a cited authority first (e.g. "[1987] AC 352"
+      // inside Perreira v Cummings (1995) 54 WIR 233). Prefer the
+      // filename's own reported citation as the record identity.
+      if (fromFilename?.reported_citation) {
+        reportedCitation = fromFilename.reported_citation;
+      } else if (!reportedCitation && !neutralCitation) {
+        reportedCitation = fromFilename?.reported_citation;
+        neutralCitation = fromFilename?.neutral_citation;
       }
 
       // CANONICAL CITATION conflict pre-check — the actual root cause

@@ -113,7 +113,15 @@ export function matchCanonicalCourtScored(text: string, courts: CourtLike[]): Co
   if (candidates.length === 0) return null;
 
   candidates.sort((a, b) => scoreCandidate(b) - scoreCandidate(a) || a.index - b.index);
-  const best = candidates[0];
+  const visible = candidates.filter((c) => {
+    const name = c.name.toUpperCase();
+    return !candidates.some((other) => {
+      if (other === c) return false;
+      const otherName = other.name.toUpperCase();
+      return otherName.length > name.length && otherName.includes(name);
+    });
+  });
+  const best = (visible.length > 0 ? visible : candidates)[0];
   const bestScore = scoreCandidate(best);
   if (bestScore < MIN_CONFIDENCE_SCORE) return null;
 

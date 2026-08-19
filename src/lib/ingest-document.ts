@@ -12,6 +12,7 @@ import {
   emptyExtractionEnvelope,
   runPdfExtractionPipeline,
   type ExtractionEnvelope,
+  type ExtractionPipelineOptions,
 } from "@/lib/extraction-pipeline"
 import { extractDocxText } from "@/lib/docx-text-extraction"
 import { classifyIngestSource, ingestKindLabel } from "@/lib/ingest-source"
@@ -85,10 +86,13 @@ export const ingestPastedText = (rawText: string): ExtractionEnvelope => {
   return buildManualPasteEnvelope(rawText)
 }
 
-export const ingestDocument = async (file: File): Promise<ExtractionEnvelope> => {
+export const ingestDocument = async (
+  file: File,
+  options?: ExtractionPipelineOptions,
+): Promise<ExtractionEnvelope> => {
   const kind = classifyIngestSource(file)
 
-  if (kind === "pdf") return runPdfExtractionPipeline(file)
+  if (kind === "pdf") return runPdfExtractionPipeline(file, options)
 
   if (kind === "txt") {
     return buildTextFileEnvelope(await readFileAsText(file))

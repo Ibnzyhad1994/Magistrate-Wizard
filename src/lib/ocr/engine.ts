@@ -13,6 +13,7 @@
  */
 
 import * as TesseractNS from "tesseract.js"
+import { DEFAULT_OCR_PSM } from "@/lib/ocr/constants"
 
 type OcrWorker = {
   setParameters: (params: Record<string, string>) => Promise<unknown>
@@ -26,7 +27,7 @@ type TesseractApi = {
     oem?: number,
     options?: Record<string, unknown>,
   ) => Promise<OcrWorker>
-  PSM: { SINGLE_COLUMN: string }
+  PSM: { SINGLE_COLUMN: string; AUTO?: string; SPARSE_TEXT?: string }
 }
 
 const Tesseract = ((TesseractNS as { default?: TesseractApi }).default ?? TesseractNS) as TesseractApi
@@ -60,7 +61,7 @@ const getWorker = async (): Promise<OcrWorker> => {
     workerPromise = (async () => {
       const worker = await Tesseract.createWorker("eng", 1, workerOptions())
       await worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN,
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO ?? DEFAULT_OCR_PSM,
         preserve_interword_spaces: "1",
         user_defined_dpi: "300",
         tessedit_do_invert: "0",

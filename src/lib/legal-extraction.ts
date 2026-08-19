@@ -85,6 +85,15 @@ export const shouldAutoFillCaseName = (
 ): boolean => confidence === "high" && !ocrUsed
 
 /**
+ * Drafts may carry a low-confidence running title (WIR heads, filename
+ * pairing). Still never from OCR, and never treated as silent publish.
+ */
+export const shouldProposeCaseName = (
+  confidence: "high" | "low" | "none" | null | undefined,
+  ocrUsed: boolean,
+): boolean => (confidence === "high" || confidence === "low") && !ocrUsed
+
+/**
  * Medium-neutral citation, e.g. "[1969] SCR 525", "[2015] UKSC 20", or
  * "[1969] S.C.R. 525" — the reporter/court abbreviation may be written as
  * one unbroken token or with a period after each letter/group, both of
@@ -121,7 +130,7 @@ const NEUTRAL_CITATION_RE =
   /\[(\d{4})\]\s?[A-Z]{1,4}(?:\.[A-Z]{1,4})*\.?\s?\d+|\b(?:19|20)\d{2}\s+(?=[A-Za-z]{0,9}[A-Z][A-Za-z]{0,8}[A-Z])[A-Za-z]{2,10}\s+\d{1,5}\b/;
 const REPORTED_CITATION_RE = /\(\d{4}\)\s?\d+\s?[A-Z][A-Za-z.]*\s?\d+/;
 const DATE_RE =
-  /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/i;
+  /\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/i;
 
 const MONTHS: Record<string, string> = {
   january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
@@ -209,6 +218,119 @@ const BODY_REFERENCE_MARKERS = [
  * check.
  */
 const CONTINUATION_START_RE = /^(and|also|further|moreover|in addition|likewise|similarly|but|however|thus|hence|therefore)\b/i;
+
+const COURT_RUNNING_HEADING_RE =
+  /\b(FULL COURT(?: OF THE HIGH COURT(?: OF [A-Z. ]+)?)?|COURT OF APPEAL(?: OF THE EASTERN CARIBBEAN STATES| OF [A-Z. ]+)?|CARIBBEAN COURT OF JUSTICE)\b/i;
+
+/**
+ * WIR two-column reports print letter rails (`a b c d e f g h j`) and
+ * split ordinals (`25 th MAY`) in the extracted head. Clean only the
+ * metadata window — stored full text is left as extracted.
+ */
+export function normalizeMetadataHead(head: string): string {
+  return head
+    .replace(/\b(\d{1,2})\s+(st|nd|rd|th)\b/gi, "$1$2")
+    .replace(/\b(?:[a-j](?:\s+|$)){3,}/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function normalizeCitationKey(citation: string): string {
+  return citation.replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+export function citationReporterSeries(citation: string): string | null {
+  const reported = citation.match(/\(\d{4}\)\s?\d+\s?([A-Z][A-Za-z.]*)\s?\d+/i);
+  if (reported?.[1]) return reported[1].replace(/\./g, "").toUpperCase();
+  const neutral = citation.match(/\[(\d{4})\]\s?(?:\d+\s+)?([A-Z][A-Za-z.]*)/i);
+  if (neutral?.[2]) return neutral[2].replace(/\./g, "").toUpperCase();
+  return null;
+}
+
+function citationsMatchIdentity(candidate: string, identity: string): boolean {
+  if (normalizeCitationKey(candidate) === normalizeCitationKey(identity)) return true;
+  const a = citationReporterSeries(candidate);
+  const b = citationReporterSeries(identity);
+  return !!a && !!b && a === b;
+}
+
+export interface RecordCitationResolution {
+  reported?: string;
+  neutral?: string;
+  source: "filename" | "document" | "none";
+  authoritiesCited: string[];
+}
+
+/**
+ * Record identity is THIS report's citation, not the first authority
+ * cited in a WIR headnote.
+ */
+export function resolveRecordCitation(opts: {
+  filename?: string | null;
+  reportedFromText?: string;
+  neutralFromText?: string;
+  head?: string;
+}): RecordCitationResolution {
+  const fromFilename = opts.filename ? extractCaseNameFromFilename(opts.filename) : undefined;
+  const authorities: string[] = [];
+  const pushAuthority = (value?: string) => {
+    if (!value) return;
+    if (!authorities.some((a) => normalizeCitationKey(a) === normalizeCitationKey(value))) {
+      authorities.push(value);
+    }
+  };
+
+  if (fromFilename?.reported_citation) {
+    if (opts.reportedFromText && !citationsMatchIdentity(opts.reportedFromText, fromFilename.reported_citation)) {
+      pushAuthority(opts.reportedFromText);
+    }
+    if (opts.neutralFromText && !citationsMatchIdentity(opts.neutralFromText, fromFilename.reported_citation)) {
+      pushAuthority(opts.neutralFromText);
+    }
+    return {
+      reported: fromFilename.reported_citation,
+      neutral: fromFilename.neutral_citation,
+      source: "filename",
+      authoritiesCited: authorities,
+    };
+  }
+  if (fromFilename?.neutral_citation) {
+    if (opts.reportedFromText && !citationsMatchIdentity(opts.reportedFromText, fromFilename.neutral_citation)) {
+      pushAuthority(opts.reportedFromText);
+    }
+    if (opts.neutralFromText && !citationsMatchIdentity(opts.neutralFromText, fromFilename.neutral_citation)) {
+      pushAuthority(opts.neutralFromText);
+    }
+    return {
+      reported: fromFilename.reported_citation,
+      neutral: fromFilename.neutral_citation,
+      source: "filename",
+      authoritiesCited: authorities,
+    };
+  }
+
+  if (opts.head) {
+    const headerSeries = opts.head.match(/\(\d{4}\)\s?\d+\s?[A-Z][A-Za-z.]*(?:\s?\d+)?/);
+    if (headerSeries && opts.reportedFromText && citationsMatchIdentity(opts.reportedFromText, headerSeries[0])) {
+      return {
+        reported: opts.reportedFromText,
+        neutral: opts.neutralFromText,
+        source: "document",
+        authoritiesCited: [],
+      };
+    }
+  }
+
+  if (opts.reportedFromText || opts.neutralFromText) {
+    return {
+      reported: opts.reportedFromText,
+      neutral: opts.neutralFromText,
+      source: "document",
+      authoritiesCited: [],
+    };
+  }
+  return { source: "none", authoritiesCited: [] };
+}
 
 /** Trims a raw case-name candidate down to a clean "Party v Party" string, or returns undefined if it doesn't survive cleanup. Never used to invent a case name — only to clean one already found. */
 function cleanCaseNameCandidate(raw: string): string | undefined {
@@ -312,7 +434,10 @@ interface CaseNameCandidateResult {
   citationType: "reported" | "neutral" | null;
 }
 
-function extractCaseNameCandidate(head: string): CaseNameCandidateResult | undefined {
+function extractCaseNameCandidate(
+  head: string,
+  preferredCitation?: string,
+): CaseNameCandidateResult | undefined {
   const matches: { index: number; end: number; text: string; type: "reported" | "neutral" }[] = [];
   for (const { re, type } of [
     { re: REPORTED_CITATION_RE, type: "reported" as const },
@@ -327,7 +452,7 @@ function extractCaseNameCandidate(head: string): CaseNameCandidateResult | undef
   }
   matches.sort((a, b) => a.index - b.index);
 
-  const survivors: { candidate: string; positionScore: number; match: (typeof matches)[number] }[] = [];
+  const survivors: { candidate: string; positionScore: number; match: (typeof matches)[number]; identityBonus: number }[] = [];
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
     const prevEnd = i > 0 ? matches[i - 1].end : 0;
@@ -336,17 +461,32 @@ function extractCaseNameCandidate(head: string): CaseNameCandidateResult | undef
     if (!candidate) continue;
     const { disqualified, positionScore } = scoreCaseNameCandidate(candidate, m.index);
     if (disqualified) continue;
-    survivors.push({ candidate, positionScore, match: m });
+    const identityBonus =
+      preferredCitation && citationsMatchIdentity(m.text, preferredCitation) ? 1000 : 0;
+    survivors.push({ candidate, positionScore, match: m, identityBonus });
   }
 
   if (survivors.length > 0) {
-    survivors.sort((a, b) => b.positionScore - a.positionScore);
+    survivors.sort((a, b) => b.identityBonus - a.identityBonus || b.positionScore - a.positionScore);
     const winner = survivors[0];
     return {
       name: winner.candidate,
       citationIndex: winner.match.index,
       citationText: winner.match.text,
       citationType: winner.match.type,
+    };
+  }
+
+  const runningTitle = extractRunningTitleBeforeCourt(head);
+  if (runningTitle) {
+    const identityMatch = preferredCitation
+      ? matches.find((m) => citationsMatchIdentity(m.text, preferredCitation))
+      : undefined;
+    return {
+      name: runningTitle,
+      citationIndex: identityMatch?.index ?? null,
+      citationText: identityMatch?.text ?? null,
+      citationType: identityMatch?.type ?? null,
     };
   }
 
@@ -361,6 +501,18 @@ function extractCaseNameCandidate(head: string): CaseNameCandidateResult | undef
   const cleaned = cleanCaseNameCandidate(firstLine);
   if (!cleaned || scoreCaseNameCandidate(cleaned, 0).disqualified) return undefined;
   return { name: cleaned, citationIndex: null, citationText: null, citationType: null };
+}
+
+function extractRunningTitleBeforeCourt(head: string): string | undefined {
+  const m = COURT_RUNNING_HEADING_RE.exec(head);
+  if (!m || m.index < 8) return undefined;
+  const before = head.slice(0, m.index);
+  const vMatches = [...before.matchAll(/\b([A-Z][\w.''\-]*(?:\s+[A-Z][\w.''\-]*){0,8}\s+v(?:s)?\.?\s+[A-Z][\w.''\-]*(?:\s+[A-Z&][\w.''\-]*){0,10})\b/g)];
+  const last = vMatches[vMatches.length - 1];
+  if (!last?.[1]) return undefined;
+  const cleaned = cleanCaseNameCandidate(last[1]);
+  if (!cleaned || scoreCaseNameCandidate(cleaned, 0).disqualified) return undefined;
+  return cleaned;
 }
 
 export interface FilenameProposal {
@@ -478,10 +630,17 @@ export type MetadataConfidence = "high" | "low" | "none";
  */
 const HIGH_CONFIDENCE_CITATION_WINDOW = 600;
 
+export interface CaseLawExtractionOptions {
+  filename?: string | null;
+}
+
 export interface CaseLawExtractionResult {
   fields: ProposedCaseLawFields;
   /** Confidence in `fields.case_name` specifically — case name is the field most prone to a "false success" (a plausible-LOOKING but wrong proposal), per Task 4. Citation/date fields are direct pattern matches (or, when available, the exact citation the case name itself was validated against) rather than a positional judgment call, so they are not gated the same way. */
   caseNameConfidence: MetadataConfidence;
+  /** Citations in the head that are not this report's identity. */
+  authoritiesCited: string[];
+  citationSource: "filename" | "document" | "none";
 }
 
 /** Minimal shape needed from an ExtractionEnvelope's page breakdown — declared locally rather than importing extraction-pipeline.ts's type, so this module has no dependency in that direction. */
@@ -522,32 +681,37 @@ function buildHeadWindow(text: string, pages?: PageLike[]): string {
  * pages for header signals (see buildHeadWindow above) — optional and
  * backward compatible.
  */
-export function extractCaseLawMetadataWithConfidence(text: string, pages?: PageLike[]): CaseLawExtractionResult {
-  const head = buildHeadWindow(text, pages);
+export function extractCaseLawMetadataWithConfidence(
+  text: string,
+  pages?: PageLike[],
+  options?: CaseLawExtractionOptions,
+): CaseLawExtractionResult {
+  const head = normalizeMetadataHead(buildHeadWindow(text, pages));
   const result: ProposedCaseLawFields = {};
   let caseNameConfidence: MetadataConfidence = "none";
+  const filenameProposal = options?.filename ? extractCaseNameFromFilename(options.filename) : undefined;
+  const preferredCitation = filenameProposal?.reported_citation ?? filenameProposal?.neutral_citation;
 
-  const nameResult = extractCaseNameCandidate(head);
+  const nameResult = extractCaseNameCandidate(head, preferredCitation);
   if (nameResult) {
     result.case_name = nameResult.name;
-    // Reuse the EXACT citation the name was validated against, rather
-    // than independently re-matching the head — keeps the two fields
-    // genuinely paired instead of each picking a possibly different
-    // citation occurrence.
     if (nameResult.citationType === "reported" && nameResult.citationText) {
       result.reported_citation = nameResult.citationText;
     } else if (nameResult.citationType === "neutral" && nameResult.citationText) {
       result.neutral_citation = nameResult.citationText;
     }
+    const pairedWithIdentity =
+      !!preferredCitation &&
+      !!nameResult.citationText &&
+      citationsMatchIdentity(nameResult.citationText, preferredCitation);
     caseNameConfidence =
-      nameResult.citationIndex !== null && nameResult.citationIndex <= HIGH_CONFIDENCE_CITATION_WINDOW ? "high" : "low";
+      nameResult.citationIndex !== null &&
+      nameResult.citationIndex <= HIGH_CONFIDENCE_CITATION_WINDOW &&
+      (!preferredCitation || pairedWithIdentity)
+        ? "high"
+        : "low";
   }
 
-  // Fill in whichever citation TYPE the winning case-name anchor did not
-  // already supply — a document can genuinely carry both a neutral and a
-  // reported citation for the same case, and a document with no
-  // confident case name at all should still surface whatever citation
-  // pattern the text contains.
   if (!result.neutral_citation) {
     const neutral = head.match(NEUTRAL_CITATION_RE);
     if (neutral) result.neutral_citation = neutral[0];
@@ -557,10 +721,30 @@ export function extractCaseLawMetadataWithConfidence(text: string, pages?: PageL
     if (reported) result.reported_citation = reported[0];
   }
 
+  const identity = resolveRecordCitation({
+    filename: options?.filename,
+    reportedFromText: result.reported_citation,
+    neutralFromText: result.neutral_citation,
+    head,
+  });
+  if (identity.reported) result.reported_citation = identity.reported;
+  if (identity.neutral) result.neutral_citation = identity.neutral;
+  if (
+    result.neutral_citation &&
+    identity.authoritiesCited.some((a) => citationsMatchIdentity(a, result.neutral_citation as string))
+  ) {
+    result.neutral_citation = undefined;
+  }
+
   const decidedDate = extractDecidedDate(head);
   if (decidedDate) result.decided_date_guess = decidedDate;
 
-  return { fields: result, caseNameConfidence };
+  return {
+    fields: result,
+    caseNameConfidence,
+    authoritiesCited: identity.authoritiesCited,
+    citationSource: identity.source,
+  };
 }
 
 /** Backward-compatible convenience wrapper — same extraction, without the confidence detail. Prefer `extractCaseLawMetadataWithConfidence` for any call site that auto-populates a form field, per Phase 3. */
