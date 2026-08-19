@@ -12,6 +12,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Local-only Supabase seed data scraped from the cloud project (real user
+# content — never committed; supabase/seed.sql is the committed synthetic seed)
+supabase/seed.local.sql
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
