@@ -16,7 +16,7 @@ Covered in [Court assignment](02-court-assignment.md). Recap:
 
 Open **Legal Library**. Typical tabs:
 
-1. **Sources** — a register of places law *might* come from. Saving a source does **not** download anything. There is no crawler yet.
+1. **Sources** — a register of places law *might* come from. Saving a source does **not** download anything. Official index harvest (MoLA / Parliament / CCJ) is a local script, not an in-app crawler — see [Official Legal Library seeding](../legal-library-official-seeding.md).
 2. **New Import** — one document at a time.
 3. **Review Queue** — drafts waiting for a human.
 4. **Batches** — bulk import history. Every file should leave a trail, including duplicates.
