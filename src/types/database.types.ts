@@ -1,2470 +1,2428 @@
-/**
- * Hand-reconstructed from the LIVE Supabase project (gipijpeahkznfwitjccy)
- * schema as of migration 0048_audit_extensions (applied version
- * 20260811031037), via direct `information_schema.columns` /
- * `pg_enum` / FK-constraint / `pg_proc` introspection queries.
- *
- * WHY THIS IS HAND-WRITTEN, NOT CLI-GENERATED:
- * This sandbox environment blocks both the `generate_typescript_types`
- * MCP tool's full output (truncated to a host-side temp path this
- * environment cannot read) and `npm`/`npx` access to the public npm
- * registry (403), so the `supabase` CLI cannot be installed here to run
- * `npm run supabase:types`. Every table, column, type, nullability,
- * default, enum, foreign key, and function signature below was verified
- * directly against live Postgres system catalogs in this session — this
- * is not guessed or carried over from the prior (stale, pre-0013) file.
- *
- * SIMPLIFICATION DISCLOSED: `Insert`/`Update` optionality is derived
- * mechanically (nullable OR has a default OR generated => optional),
- * which is what the real generator does too, but CHECK-constraint-based
- * string unions (e.g. `docket_matter_parties.party_type`/`role`) are
- * intentionally left as `string` rather than invented literal unions,
- * since the real generator does not infer those from plain `text`
- * columns either. See the comment above `docket_matter_parties` for the
- * live constraint values.
- *
- * RECOMMENDATION: run the official `npm run supabase:types` (or
- * `supabase gen types typescript --project-id gipijpeahkznfwitjccy`)
- * from an environment with npm-registry access to obtain the fully
- * authoritative, tool-generated version of this file when convenient.
- * This file should be functionally equivalent for all tables that exist
- * today.
- */
-
 export type Json =
   | string
   | number
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
-  __InternalSupabase: {
-    PostgrestVersion: "14.15";
-  };
   public: {
     Tables: {
       audit_log: {
         Row: {
-          action: Database["public"]["Enums"]["audit_action"];
-          actor_id: string | null;
-          created_at: string;
-          id: number;
-          new_data: Json | null;
-          old_data: Json | null;
-          record_id: string | null;
-          table_name: string;
-        };
+          action: Database["public"]["Enums"]["audit_action"]
+          actor_id: string | null
+          created_at: string
+          id: number
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string
+        }
         Insert: {
-          action: Database["public"]["Enums"]["audit_action"];
-          actor_id?: string | null;
-          created_at?: string;
-          id?: never;
-          new_data?: Json | null;
-          old_data?: Json | null;
-          record_id?: string | null;
-          table_name: string;
-        };
+          action: Database["public"]["Enums"]["audit_action"]
+          actor_id?: string | null
+          created_at?: string
+          id?: never
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name: string
+        }
         Update: {
-          action?: Database["public"]["Enums"]["audit_action"];
-          actor_id?: string | null;
-          created_at?: string;
-          id?: never;
-          new_data?: Json | null;
-          old_data?: Json | null;
-          record_id?: string | null;
-          table_name?: string;
-        };
+          action?: Database["public"]["Enums"]["audit_action"]
+          actor_id?: string | null
+          created_at?: string
+          id?: never
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "audit_log_actor_id_fkey";
-            columns: ["actor_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       bench_note_tags: {
         Row: {
-          bench_note_id: string;
-          created_at: string;
-          tag_id: string;
-        };
+          bench_note_id: string
+          created_at: string
+          tag_id: string
+        }
         Insert: {
-          bench_note_id: string;
-          created_at?: string;
-          tag_id: string;
-        };
+          bench_note_id: string
+          created_at?: string
+          tag_id: string
+        }
         Update: {
-          bench_note_id?: string;
-          created_at?: string;
-          tag_id?: string;
-        };
+          bench_note_id?: string
+          created_at?: string
+          tag_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "bench_note_tags_bench_note_id_fkey";
-            columns: ["bench_note_id"];
-            isOneToOne: false;
-            referencedRelation: "bench_notes";
-            referencedColumns: ["id"];
+            foreignKeyName: "bench_note_tags_bench_note_id_fkey"
+            columns: ["bench_note_id"]
+            isOneToOne: false
+            referencedRelation: "bench_notes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bench_note_tags_tag_id_fkey";
-            columns: ["tag_id"];
-            isOneToOne: false;
-            referencedRelation: "tags";
-            referencedColumns: ["id"];
+            foreignKeyName: "bench_note_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /**
-       * Polymorphic parent since 0038, extended 0054. `entity_type`
-       * ('docket_matter' | 'judgment' | 'case_law' | 'statute') +
-       * `entity_id`, validated procedurally by bench_notes_entity_guard()
-       * (no declarative FK spans 4 tables). RLS is strictly author-only
-       * on all commands with no parent-access cascade — `is_private` is
-       * inert for visibility (author-only regardless); do not use it to
-       * gate display.
-       */
+        ]
+      }
       bench_notes: {
         Row: {
-          author_id: string;
-          content: Json;
-          content_text: string;
-          created_at: string;
-          entity_id: string;
-          entity_type: string;
-          id: string;
-          is_private: boolean;
-          search_vector: unknown | null;
-          status: Database["public"]["Enums"]["note_status"];
-          title: string;
-          updated_at: string;
-        };
+          author_id: string
+          content: Json
+          content_text: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          is_private: boolean
+          search_vector: unknown
+          status: Database["public"]["Enums"]["note_status"]
+          title: string
+          updated_at: string
+        }
         Insert: {
-          author_id: string;
-          content?: Json;
-          content_text?: string;
-          created_at?: string;
-          entity_id: string;
-          entity_type: string;
-          id?: string;
-          is_private?: boolean;
-          search_vector?: unknown | null;
-          status?: Database["public"]["Enums"]["note_status"];
-          title: string;
-          updated_at?: string;
-        };
+          author_id: string
+          content?: Json
+          content_text?: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          is_private?: boolean
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["note_status"]
+          title: string
+          updated_at?: string
+        }
         Update: {
-          author_id?: string;
-          content?: Json;
-          content_text?: string;
-          created_at?: string;
-          entity_id?: string;
-          entity_type?: string;
-          id?: string;
-          is_private?: boolean;
-          search_vector?: unknown | null;
-          status?: Database["public"]["Enums"]["note_status"];
-          title?: string;
-          updated_at?: string;
-        };
+          author_id?: string
+          content?: Json
+          content_text?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          is_private?: boolean
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["note_status"]
+          title?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "bench_notes_author_id_fkey";
-            columns: ["author_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "bench_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** entity_id has no FK — polymorphic across the 7 approved entity types. */
+        ]
+      }
       bookmarks: {
         Row: {
-          created_at: string;
-          entity_id: string;
-          entity_type: Database["public"]["Enums"]["bookmark_entity_type"];
-          id: string;
-          user_id: string;
-        };
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["bookmark_entity_type"]
+          id: string
+          user_id: string
+        }
         Insert: {
-          created_at?: string;
-          entity_id: string;
-          entity_type: Database["public"]["Enums"]["bookmark_entity_type"];
-          id?: string;
-          user_id: string;
-        };
+          created_at?: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["bookmark_entity_type"]
+          id?: string
+          user_id: string
+        }
         Update: {
-          created_at?: string;
-          entity_id?: string;
-          entity_type?: Database["public"]["Enums"]["bookmark_entity_type"];
-          id?: string;
-          user_id?: string;
-        };
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["bookmark_entity_type"]
+          id?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "bookmarks_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "bookmarks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** owner_id IS NULL => canonical (shared) row; owner_id set => personal/private row. */
+        ]
+      }
       case_law: {
         Row: {
-          case_name: string;
-          citation: string;
-          court: string;
-          court_id: string | null;
-          created_at: string;
-          created_by: string | null;
-          decided_date: string | null;
-          disposition: string | null;
-          document_hash: string | null;
-          full_text: string | null;
-          id: string;
-          import_job_id: string | null;
-          is_discoverable: boolean;
-          issues: string | null;
-          judges: string | null;
-          jurisdiction: string;
-          jurisdiction_id: string | null;
-          key_passages: string | null;
-          neutral_citation: string | null;
-          original_filename: string | null;
-          owner_id: string | null;
-          parties: string | null;
-          principles: string | null;
-          reported_citation: string | null;
-          retrieved_at: string | null;
-          review_status: string;
-          search_vector: unknown | null;
-          source_id: string | null;
-          source_url: string | null;
-          summary: string | null;
-          updated_at: string;
-        };
+          case_name: string
+          citation: string
+          court: string
+          court_id: string | null
+          created_at: string
+          created_by: string | null
+          decided_date: string | null
+          disposition: string | null
+          document_hash: string | null
+          full_text: string | null
+          id: string
+          import_job_id: string | null
+          is_discoverable: boolean
+          issues: string | null
+          judges: string | null
+          jurisdiction: string
+          jurisdiction_id: string | null
+          key_passages: string | null
+          neutral_citation: string | null
+          original_filename: string | null
+          owner_id: string | null
+          parties: string | null
+          principles: string | null
+          reported_citation: string | null
+          retrieved_at: string | null
+          review_status: string
+          search_vector: unknown
+          source_id: string | null
+          source_url: string | null
+          summary: string | null
+          updated_at: string
+        }
         Insert: {
-          case_name: string;
-          citation: string;
-          court: string;
-          court_id?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          decided_date?: string | null;
-          disposition?: string | null;
-          document_hash?: string | null;
-          full_text?: string | null;
-          id?: string;
-          import_job_id?: string | null;
-          is_discoverable?: boolean;
-          issues?: string | null;
-          judges?: string | null;
-          jurisdiction: string;
-          jurisdiction_id?: string | null;
-          key_passages?: string | null;
-          neutral_citation?: string | null;
-          original_filename?: string | null;
-          owner_id?: string | null;
-          parties?: string | null;
-          principles?: string | null;
-          reported_citation?: string | null;
-          retrieved_at?: string | null;
-          review_status?: string;
-          search_vector?: unknown | null;
-          source_id?: string | null;
-          source_url?: string | null;
-          summary?: string | null;
-          updated_at?: string;
-        };
+          case_name: string
+          citation: string
+          court: string
+          court_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decided_date?: string | null
+          disposition?: string | null
+          document_hash?: string | null
+          full_text?: string | null
+          id?: string
+          import_job_id?: string | null
+          is_discoverable?: boolean
+          issues?: string | null
+          judges?: string | null
+          jurisdiction: string
+          jurisdiction_id?: string | null
+          key_passages?: string | null
+          neutral_citation?: string | null
+          original_filename?: string | null
+          owner_id?: string | null
+          parties?: string | null
+          principles?: string | null
+          reported_citation?: string | null
+          retrieved_at?: string | null
+          review_status?: string
+          search_vector?: unknown
+          source_id?: string | null
+          source_url?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
         Update: {
-          case_name?: string;
-          citation?: string;
-          court?: string;
-          court_id?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          decided_date?: string | null;
-          disposition?: string | null;
-          document_hash?: string | null;
-          full_text?: string | null;
-          id?: string;
-          import_job_id?: string | null;
-          is_discoverable?: boolean;
-          issues?: string | null;
-          judges?: string | null;
-          jurisdiction?: string;
-          jurisdiction_id?: string | null;
-          key_passages?: string | null;
-          neutral_citation?: string | null;
-          original_filename?: string | null;
-          owner_id?: string | null;
-          parties?: string | null;
-          principles?: string | null;
-          reported_citation?: string | null;
-          retrieved_at?: string | null;
-          review_status?: string;
-          search_vector?: unknown | null;
-          source_id?: string | null;
-          source_url?: string | null;
-          summary?: string | null;
-          updated_at?: string;
-        };
+          case_name?: string
+          citation?: string
+          court?: string
+          court_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decided_date?: string | null
+          disposition?: string | null
+          document_hash?: string | null
+          full_text?: string | null
+          id?: string
+          import_job_id?: string | null
+          is_discoverable?: boolean
+          issues?: string | null
+          judges?: string | null
+          jurisdiction?: string
+          jurisdiction_id?: string | null
+          key_passages?: string | null
+          neutral_citation?: string | null
+          original_filename?: string | null
+          owner_id?: string | null
+          parties?: string | null
+          principles?: string | null
+          reported_citation?: string | null
+          retrieved_at?: string | null
+          review_status?: string
+          search_vector?: unknown
+          source_id?: string | null
+          source_url?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "case_law_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "legal_authority_courts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_owner_id_fkey";
-            columns: ["owner_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_sources";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_import_job_id_fkey"
+            columns: ["import_job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_import_job_id_fkey";
-            columns: ["import_job_id"];
-            isOneToOne: false;
-            referencedRelation: "import_jobs";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_jurisdiction_id_fkey"
+            columns: ["jurisdiction_id"]
+            isOneToOne: false
+            referencedRelation: "legal_jurisdictions"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_court_id_fkey";
-            columns: ["court_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_authority_courts";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_jurisdiction_id_fkey";
-            columns: ["jurisdiction_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_jurisdictions";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sources"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       case_law_annotations: {
         Row: {
-          annotation_text: string;
-          case_law_id: string;
-          created_at: string;
-          id: string;
-          owner_id: string;
-          updated_at: string;
-        };
+          annotation_text: string
+          case_law_id: string
+          created_at: string
+          id: string
+          owner_id: string
+          updated_at: string
+        }
         Insert: {
-          annotation_text: string;
-          case_law_id: string;
-          created_at?: string;
-          id?: string;
-          owner_id?: string;
-          updated_at?: string;
-        };
+          annotation_text: string
+          case_law_id: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
         Update: {
-          annotation_text?: string;
-          case_law_id?: string;
-          created_at?: string;
-          id?: string;
-          owner_id?: string;
-          updated_at?: string;
-        };
+          annotation_text?: string
+          case_law_id?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "case_law_annotations_case_law_id_fkey";
-            columns: ["case_law_id"];
-            isOneToOne: false;
-            referencedRelation: "case_law";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_annotations_case_law_id_fkey"
+            columns: ["case_law_id"]
+            isOneToOne: false
+            referencedRelation: "case_law"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_annotations_owner_id_fkey";
-            columns: ["owner_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_annotations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       case_law_tags: {
         Row: {
-          case_law_id: string;
-          created_at: string;
-          tag_id: string;
-        };
+          case_law_id: string
+          created_at: string
+          tag_id: string
+        }
         Insert: {
-          case_law_id: string;
-          created_at?: string;
-          tag_id: string;
-        };
+          case_law_id: string
+          created_at?: string
+          tag_id: string
+        }
         Update: {
-          case_law_id?: string;
-          created_at?: string;
-          tag_id?: string;
-        };
+          case_law_id?: string
+          created_at?: string
+          tag_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "case_law_tags_case_law_id_fkey";
-            columns: ["case_law_id"];
-            isOneToOne: false;
-            referencedRelation: "case_law";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_tags_case_law_id_fkey"
+            columns: ["case_law_id"]
+            isOneToOne: false
+            referencedRelation: "case_law"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_law_tags_tag_id_fkey";
-            columns: ["tag_id"];
-            isOneToOne: false;
-            referencedRelation: "tags";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_law_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Legacy pre-Docket table. Not part of the current Docket workspace model — do not build new features on it. */
+        ]
+      }
       case_parties: {
         Row: {
-          attorney_name: string | null;
-          case_id: string;
-          contact_info: string | null;
-          created_at: string;
-          full_name: string;
-          id: string;
-          role: Database["public"]["Enums"]["party_role"];
-        };
+          attorney_name: string | null
+          case_id: string
+          contact_info: string | null
+          created_at: string
+          full_name: string
+          id: string
+          role: Database["public"]["Enums"]["party_role"]
+        }
         Insert: {
-          attorney_name?: string | null;
-          case_id: string;
-          contact_info?: string | null;
-          created_at?: string;
-          full_name: string;
-          id?: string;
-          role?: Database["public"]["Enums"]["party_role"];
-        };
+          attorney_name?: string | null
+          case_id: string
+          contact_info?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          role?: Database["public"]["Enums"]["party_role"]
+        }
         Update: {
-          attorney_name?: string | null;
-          case_id?: string;
-          contact_info?: string | null;
-          created_at?: string;
-          full_name?: string;
-          id?: string;
-          role?: Database["public"]["Enums"]["party_role"];
-        };
+          attorney_name?: string | null
+          case_id?: string
+          contact_info?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          role?: Database["public"]["Enums"]["party_role"]
+        }
         Relationships: [
           {
-            foreignKeyName: "case_parties_case_id_fkey";
-            columns: ["case_id"];
-            isOneToOne: false;
-            referencedRelation: "cases";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_parties_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       case_tags: {
         Row: {
-          case_id: string;
-          created_at: string;
-          tag_id: string;
-        };
+          case_id: string
+          created_at: string
+          tag_id: string
+        }
         Insert: {
-          case_id: string;
-          created_at?: string;
-          tag_id: string;
-        };
+          case_id: string
+          created_at?: string
+          tag_id: string
+        }
         Update: {
-          case_id?: string;
-          created_at?: string;
-          tag_id?: string;
-        };
+          case_id?: string
+          created_at?: string
+          tag_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "case_tags_case_id_fkey";
-            columns: ["case_id"];
-            isOneToOne: false;
-            referencedRelation: "cases";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_tags_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "case_tags_tag_id_fkey";
-            columns: ["tag_id"];
-            isOneToOne: false;
-            referencedRelation: "tags";
-            referencedColumns: ["id"];
+            foreignKeyName: "case_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Legacy pre-Docket table, superseded by docket_matters. Retained for compatibility, not the active Docket model. */
+        ]
+      }
       cases: {
         Row: {
-          assigned_magistrate_id: string | null;
-          case_number: string;
-          case_type: string | null;
-          closed_date: string | null;
-          court_id: string;
-          created_at: string;
-          created_by: string;
-          description: string | null;
-          filed_date: string | null;
-          id: string;
-          search_vector: unknown | null;
-          status: Database["public"]["Enums"]["case_status"];
-          title: string;
-          updated_at: string;
-        };
+          assigned_magistrate_id: string | null
+          case_number: string
+          case_type: string | null
+          closed_date: string | null
+          court_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          filed_date: string | null
+          id: string
+          search_vector: unknown
+          status: Database["public"]["Enums"]["case_status"]
+          title: string
+          updated_at: string
+        }
         Insert: {
-          assigned_magistrate_id?: string | null;
-          case_number: string;
-          case_type?: string | null;
-          closed_date?: string | null;
-          court_id: string;
-          created_at?: string;
-          created_by: string;
-          description?: string | null;
-          filed_date?: string | null;
-          id?: string;
-          search_vector?: unknown | null;
-          status?: Database["public"]["Enums"]["case_status"];
-          title: string;
-          updated_at?: string;
-        };
+          assigned_magistrate_id?: string | null
+          case_number: string
+          case_type?: string | null
+          closed_date?: string | null
+          court_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          filed_date?: string | null
+          id?: string
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["case_status"]
+          title: string
+          updated_at?: string
+        }
         Update: {
-          assigned_magistrate_id?: string | null;
-          case_number?: string;
-          case_type?: string | null;
-          closed_date?: string | null;
-          court_id?: string;
-          created_at?: string;
-          created_by?: string;
-          description?: string | null;
-          filed_date?: string | null;
-          id?: string;
-          search_vector?: unknown | null;
-          status?: Database["public"]["Enums"]["case_status"];
-          title?: string;
-          updated_at?: string;
-        };
+          assigned_magistrate_id?: string | null
+          case_number?: string
+          case_type?: string | null
+          closed_date?: string | null
+          court_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          filed_date?: string | null
+          id?: string
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["case_status"]
+          title?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "cases_assigned_magistrate_id_fkey";
-            columns: ["assigned_magistrate_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "cases_assigned_magistrate_id_fkey"
+            columns: ["assigned_magistrate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "cases_court_id_fkey";
-            columns: ["court_id"];
-            isOneToOne: false;
-            referencedRelation: "courts";
-            referencedColumns: ["id"];
+            foreignKeyName: "cases_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "cases_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "cases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Legacy table; still directly references bench_note_id (pre-polymorphic). Tier 4, not audited, not built upon. */
+        ]
+      }
       comments: {
         Row: {
-          author_id: string;
-          bench_note_id: string | null;
-          case_id: string | null;
-          content: string;
-          created_at: string;
-          id: string;
-          updated_at: string;
-        };
+          author_id: string
+          bench_note_id: string | null
+          case_id: string | null
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
         Insert: {
-          author_id: string;
-          bench_note_id?: string | null;
-          case_id?: string | null;
-          content: string;
-          created_at?: string;
-          id?: string;
-          updated_at?: string;
-        };
+          author_id: string
+          bench_note_id?: string | null
+          case_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
         Update: {
-          author_id?: string;
-          bench_note_id?: string | null;
-          case_id?: string | null;
-          content?: string;
-          created_at?: string;
-          id?: string;
-          updated_at?: string;
-        };
+          author_id?: string
+          bench_note_id?: string | null
+          case_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "comments_author_id_fkey";
-            columns: ["author_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "comments_bench_note_id_fkey";
-            columns: ["bench_note_id"];
-            isOneToOne: false;
-            referencedRelation: "bench_notes";
-            referencedColumns: ["id"];
+            foreignKeyName: "comments_bench_note_id_fkey"
+            columns: ["bench_note_id"]
+            isOneToOne: false
+            referencedRelation: "bench_notes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "comments_case_id_fkey";
-            columns: ["case_id"];
-            isOneToOne: false;
-            referencedRelation: "cases";
-            referencedColumns: ["id"];
+            foreignKeyName: "comments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       courts: {
         Row: {
-          address: string | null;
-          created_at: string;
-          district_id: string | null;
-          id: string;
-          is_active: boolean;
-          jurisdiction: string;
-          name: string;
-          updated_at: string;
-        };
+          address: string | null
+          created_at: string
+          district_id: string | null
+          id: string
+          is_active: boolean
+          jurisdiction: string
+          name: string
+          updated_at: string
+        }
         Insert: {
-          address?: string | null;
-          created_at?: string;
-          district_id?: string | null;
-          id?: string;
-          is_active?: boolean;
-          jurisdiction: string;
-          name: string;
-          updated_at?: string;
-        };
+          address?: string | null
+          created_at?: string
+          district_id?: string | null
+          id?: string
+          is_active?: boolean
+          jurisdiction: string
+          name: string
+          updated_at?: string
+        }
         Update: {
-          address?: string | null;
-          created_at?: string;
-          district_id?: string | null;
-          id?: string;
-          is_active?: boolean;
-          jurisdiction?: string;
-          name?: string;
-          updated_at?: string;
-        };
+          address?: string | null
+          created_at?: string
+          district_id?: string | null
+          id?: string
+          is_active?: boolean
+          jurisdiction?: string
+          name?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "courts_district_id_fkey";
-            columns: ["district_id"];
-            isOneToOne: false;
-            referencedRelation: "magisterial_districts";
-            referencedColumns: ["id"];
+            foreignKeyName: "courts_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "magisterial_districts"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       docket_events: {
         Row: {
-          created_at: string;
-          created_by: string;
-          docket_matter_id: string;
-          event_status: string;
-          event_type: string | null;
-          external_calendar_event_id: string | null;
-          external_calendar_provider: string | null;
-          external_calendar_synced_at: string | null;
-          id: string;
-          last_updated_by: string | null;
-          location: string | null;
-          notes: string | null;
-          orders_made_at_event: string | null;
-          outcome_at_event: string | null;
-          presiding_magistrate_id: string | null;
-          scheduled_date: string;
-          scheduled_time: string | null;
-          stage_at_event: string | null;
-          updated_at: string;
-        };
+          created_at: string
+          created_by: string
+          docket_matter_id: string
+          event_status: string
+          event_type: string | null
+          external_calendar_event_id: string | null
+          external_calendar_provider: string | null
+          external_calendar_synced_at: string | null
+          id: string
+          last_updated_by: string | null
+          location: string | null
+          notes: string | null
+          orders_made_at_event: string | null
+          outcome_at_event: string | null
+          presiding_magistrate_id: string | null
+          scheduled_date: string
+          scheduled_time: string | null
+          stage_at_event: string | null
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id: string;
-          event_status?: string;
-          event_type?: string | null;
-          external_calendar_event_id?: string | null;
-          external_calendar_provider?: string | null;
-          external_calendar_synced_at?: string | null;
-          id?: string;
-          last_updated_by?: string | null;
-          location?: string | null;
-          notes?: string | null;
-          orders_made_at_event?: string | null;
-          outcome_at_event?: string | null;
-          presiding_magistrate_id?: string | null;
-          scheduled_date: string;
-          scheduled_time?: string | null;
-          stage_at_event?: string | null;
-          updated_at?: string;
-        };
+          created_at?: string
+          created_by?: string
+          docket_matter_id: string
+          event_status?: string
+          event_type?: string | null
+          external_calendar_event_id?: string | null
+          external_calendar_provider?: string | null
+          external_calendar_synced_at?: string | null
+          id?: string
+          last_updated_by?: string | null
+          location?: string | null
+          notes?: string | null
+          orders_made_at_event?: string | null
+          outcome_at_event?: string | null
+          presiding_magistrate_id?: string | null
+          scheduled_date: string
+          scheduled_time?: string | null
+          stage_at_event?: string | null
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id?: string;
-          event_status?: string;
-          event_type?: string | null;
-          external_calendar_event_id?: string | null;
-          external_calendar_provider?: string | null;
-          external_calendar_synced_at?: string | null;
-          id?: string;
-          last_updated_by?: string | null;
-          location?: string | null;
-          notes?: string | null;
-          orders_made_at_event?: string | null;
-          outcome_at_event?: string | null;
-          presiding_magistrate_id?: string | null;
-          scheduled_date?: string;
-          scheduled_time?: string | null;
-          stage_at_event?: string | null;
-          updated_at?: string;
-        };
+          created_at?: string
+          created_by?: string
+          docket_matter_id?: string
+          event_status?: string
+          event_type?: string | null
+          external_calendar_event_id?: string | null
+          external_calendar_provider?: string | null
+          external_calendar_synced_at?: string | null
+          id?: string
+          last_updated_by?: string | null
+          location?: string | null
+          notes?: string | null
+          orders_made_at_event?: string | null
+          outcome_at_event?: string | null
+          presiding_magistrate_id?: string | null
+          scheduled_date?: string
+          scheduled_time?: string | null
+          stage_at_event?: string | null
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_events_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_events_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_events_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_events_last_updated_by_fkey";
-            columns: ["last_updated_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_events_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_events_presiding_magistrate_id_fkey";
-            columns: ["presiding_magistrate_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_events_presiding_magistrate_id_fkey"
+            columns: ["presiding_magistrate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** "reason" is free text with an established convention (e.g. 'retained_part_heard'); no DB enum. */
+        ]
+      }
       docket_matter_assignments: {
         Row: {
-          created_at: string;
-          docket_matter_id: string;
-          ended_at: string | null;
-          granted_by: string | null;
-          id: string;
-          notes: string | null;
-          profile_id: string | null;
-          reason: string;
-          started_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          docket_matter_id: string
+          ended_at: string | null
+          granted_by: string | null
+          id: string
+          notes: string | null
+          profile_id: string | null
+          reason: string
+          started_at: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          docket_matter_id: string;
-          ended_at?: string | null;
-          granted_by?: string | null;
-          id?: string;
-          notes?: string | null;
-          profile_id?: string | null;
-          reason?: string;
-          started_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          docket_matter_id: string
+          ended_at?: string | null
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          profile_id?: string | null
+          reason?: string
+          started_at?: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          docket_matter_id?: string;
-          ended_at?: string | null;
-          granted_by?: string | null;
-          id?: string;
-          notes?: string | null;
-          profile_id?: string | null;
-          reason?: string;
-          started_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          docket_matter_id?: string
+          ended_at?: string | null
+          granted_by?: string | null
+          id?: string
+          notes?: string | null
+          profile_id?: string | null
+          reason?: string
+          started_at?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_matter_assignments_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_assignments_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_assignments_granted_by_fkey";
-            columns: ["granted_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_assignments_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_assignments_profile_id_fkey";
-            columns: ["profile_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       docket_matter_case_law: {
         Row: {
-          case_law_id: string;
-          created_at: string;
-          created_by: string;
-          docket_matter_id: string;
-          id: string;
-        };
+          case_law_id: string
+          created_at: string
+          created_by: string
+          docket_matter_id: string
+          id: string
+        }
         Insert: {
-          case_law_id: string;
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id: string;
-          id?: string;
-        };
+          case_law_id: string
+          created_at?: string
+          created_by?: string
+          docket_matter_id: string
+          id?: string
+        }
         Update: {
-          case_law_id?: string;
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id?: string;
-          id?: string;
-        };
+          case_law_id?: string
+          created_at?: string
+          created_by?: string
+          docket_matter_id?: string
+          id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_matter_case_law_case_law_id_fkey";
-            columns: ["case_law_id"];
-            isOneToOne: false;
-            referencedRelation: "case_law";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_case_law_case_law_id_fkey"
+            columns: ["case_law_id"]
+            isOneToOne: false
+            referencedRelation: "case_law"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_case_law_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_case_law_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_case_law_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_case_law_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       docket_matter_judgments: {
         Row: {
-          created_at: string;
-          created_by: string;
-          docket_matter_id: string;
-          id: string;
-          judgment_id: string;
-        };
+          created_at: string
+          created_by: string
+          docket_matter_id: string
+          id: string
+          judgment_id: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id: string;
-          id?: string;
-          judgment_id: string;
-        };
+          created_at?: string
+          created_by?: string
+          docket_matter_id: string
+          id?: string
+          judgment_id: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id?: string;
-          id?: string;
-          judgment_id?: string;
-        };
+          created_at?: string
+          created_by?: string
+          docket_matter_id?: string
+          id?: string
+          judgment_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_matter_judgments_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_judgments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_judgments_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_judgments_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_judgments_judgment_id_fkey";
-            columns: ["judgment_id"];
-            isOneToOne: false;
-            referencedRelation: "judgments";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_judgments_judgment_id_fkey"
+            columns: ["judgment_id"]
+            isOneToOne: false
+            referencedRelation: "judgments"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /**
-       * `party_type` and `role` are plain `text` with live CHECK constraints
-       * (not Postgres enums), verified this session:
-       *   party_type: 'individual' | 'organization' | 'government_body' | 'estate' | 'other'
-       *   role: 'accused' | 'complainant' | 'applicant' | 'respondent' | 'plaintiff'
-       *       | 'defendant' | 'petitioner' | 'appellant' | 'appellee' | 'landlord'
-       *       | 'tenant' | 'child' | 'other'
-       * Enforce these in the frontend form (zod) — TypeScript alone won't.
-       * `contact_info` must never be exposed outside lawful access paths.
-       */
+        ]
+      }
       docket_matter_parties: {
         Row: {
-          attorney_name: string | null;
-          contact_info: string | null;
-          created_at: string;
-          created_by: string;
-          docket_matter_id: string;
-          full_name: string;
-          id: string;
-          identification_photo_path: string | null;
-          last_updated_by: string | null;
-          party_status: string;
-          party_type: string;
-          role: string;
-          updated_at: string;
-        };
+          attorney_name: string | null
+          contact_info: string | null
+          created_at: string
+          created_by: string
+          docket_matter_id: string
+          full_name: string
+          id: string
+          identification_photo_path: string | null
+          last_updated_by: string | null
+          party_status: string
+          party_type: string
+          role: string
+          updated_at: string
+        }
         Insert: {
-          attorney_name?: string | null;
-          contact_info?: string | null;
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id: string;
-          full_name: string;
-          id?: string;
-          identification_photo_path?: string | null;
-          last_updated_by?: string | null;
-          party_status?: string;
-          party_type?: string;
-          role: string;
-          updated_at?: string;
-        };
+          attorney_name?: string | null
+          contact_info?: string | null
+          created_at?: string
+          created_by?: string
+          docket_matter_id: string
+          full_name: string
+          id?: string
+          identification_photo_path?: string | null
+          last_updated_by?: string | null
+          party_status?: string
+          party_type?: string
+          role: string
+          updated_at?: string
+        }
         Update: {
-          attorney_name?: string | null;
-          contact_info?: string | null;
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id?: string;
-          full_name?: string;
-          id?: string;
-          identification_photo_path?: string | null;
-          last_updated_by?: string | null;
-          party_status?: string;
-          party_type?: string;
-          role?: string;
-          updated_at?: string;
-        };
+          attorney_name?: string | null
+          contact_info?: string | null
+          created_at?: string
+          created_by?: string
+          docket_matter_id?: string
+          full_name?: string
+          id?: string
+          identification_photo_path?: string | null
+          last_updated_by?: string | null
+          party_status?: string
+          party_type?: string
+          role?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_matter_parties_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_parties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_parties_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_parties_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_parties_last_updated_by_fkey";
-            columns: ["last_updated_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_parties_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Case-insensitive de-dup is enforced by the DB, not the frontend. Do not revive the legacy global `tags` table for Docket. */
+        ]
+      }
       docket_matter_tags: {
         Row: {
-          created_at: string;
-          created_by: string;
-          docket_matter_id: string;
-          id: string;
-          tag_name: string;
-        };
+          created_at: string
+          created_by: string
+          docket_matter_id: string
+          id: string
+          tag_name: string
+        }
         Insert: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id: string;
-          id?: string;
-          tag_name: string;
-        };
+          created_at?: string
+          created_by?: string
+          docket_matter_id: string
+          id?: string
+          tag_name: string
+        }
         Update: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id?: string;
-          id?: string;
-          tag_name?: string;
-        };
+          created_at?: string
+          created_by?: string
+          docket_matter_id?: string
+          id?: string
+          tag_name?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_matter_tags_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matter_tags_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matter_tags_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Access = current Court assignment OR retained assignment OR active Docket share (three-path predicate). Use the RLS helper RPCs, not ad-hoc frontend checks. */
+        ]
+      }
       docket_matters: {
         Row: {
-          case_number: string;
-          charge_or_issue: string | null;
-          court_id: string;
-          cover_image_path: string | null;
-          created_at: string;
-          created_by: string;
-          district_id: string;
-          id: string;
-          last_updated_by: string | null;
-          matter_title: string;
-          orders_summary: string | null;
-          outcome: string | null;
-          search_vector: unknown | null;
-          status: Database["public"]["Enums"]["docket_matter_status"];
-          updated_at: string;
-        };
+          case_number: string
+          charge_or_issue: string | null
+          court_id: string
+          cover_image_path: string | null
+          created_at: string
+          created_by: string
+          district_id: string
+          id: string
+          last_updated_by: string | null
+          matter_title: string
+          orders_summary: string | null
+          outcome: string | null
+          search_vector: unknown
+          status: Database["public"]["Enums"]["docket_matter_status"]
+          updated_at: string
+        }
         Insert: {
-          case_number: string;
-          charge_or_issue?: string | null;
-          court_id: string;
-          cover_image_path?: string | null;
-          created_at?: string;
-          created_by?: string;
-          district_id: string;
-          id?: string;
-          last_updated_by?: string | null;
-          matter_title: string;
-          orders_summary?: string | null;
-          outcome?: string | null;
-          search_vector?: unknown | null;
-          status?: Database["public"]["Enums"]["docket_matter_status"];
-          updated_at?: string;
-        };
+          case_number: string
+          charge_or_issue?: string | null
+          court_id: string
+          cover_image_path?: string | null
+          created_at?: string
+          created_by?: string
+          district_id: string
+          id?: string
+          last_updated_by?: string | null
+          matter_title: string
+          orders_summary?: string | null
+          outcome?: string | null
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["docket_matter_status"]
+          updated_at?: string
+        }
         Update: {
-          case_number?: string;
-          charge_or_issue?: string | null;
-          court_id?: string;
-          cover_image_path?: string | null;
-          created_at?: string;
-          created_by?: string;
-          district_id?: string;
-          id?: string;
-          last_updated_by?: string | null;
-          matter_title?: string;
-          orders_summary?: string | null;
-          outcome?: string | null;
-          search_vector?: unknown | null;
-          status?: Database["public"]["Enums"]["docket_matter_status"];
-          updated_at?: string;
-        };
+          case_number?: string
+          charge_or_issue?: string | null
+          court_id?: string
+          cover_image_path?: string | null
+          created_at?: string
+          created_by?: string
+          district_id?: string
+          id?: string
+          last_updated_by?: string | null
+          matter_title?: string
+          orders_summary?: string | null
+          outcome?: string | null
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["docket_matter_status"]
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "docket_matters_court_id_fkey";
-            columns: ["court_id"];
-            isOneToOne: false;
-            referencedRelation: "courts";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matters_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matters_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matters_district_id_fkey";
-            columns: ["district_id"];
-            isOneToOne: false;
-            referencedRelation: "magisterial_districts";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matters_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "magisterial_districts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "docket_matters_last_updated_by_fkey";
-            columns: ["last_updated_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "docket_matters_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Polymorphic (entity_type/entity_id, 7 approved parent types since 0055: docket_matter/judgment/case_law/quick_code/bench_note/case/statute); no FK on entity_id by design. Delete order: Storage API first, then this row — never delete the storage object via SQL. */
+        ]
+      }
       documents: {
         Row: {
-          created_at: string;
-          entity_id: string | null;
-          entity_type: string | null;
-          file_name: string;
-          file_path: string;
-          file_size: number;
-          id: string;
-          mime_type: string;
-          purpose: string;
-          uploaded_by: string;
-        };
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string
+          purpose: string
+          uploaded_by: string
+        }
         Insert: {
-          created_at?: string;
-          entity_id?: string | null;
-          entity_type?: string | null;
-          file_name: string;
-          file_path: string;
-          file_size: number;
-          id?: string;
-          mime_type: string;
-          purpose?: string;
-          uploaded_by: string;
-        };
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          mime_type: string
+          purpose?: string
+          uploaded_by: string
+        }
         Update: {
-          created_at?: string;
-          entity_id?: string | null;
-          entity_type?: string | null;
-          file_name?: string;
-          file_path?: string;
-          file_size?: number;
-          id?: string;
-          mime_type?: string;
-          purpose?: string;
-          uploaded_by?: string;
-        };
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          purpose?: string
+          uploaded_by?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "documents_uploaded_by_fkey";
-            columns: ["uploaded_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      judgment_tags: {
-        Row: {
-          created_at: string;
-          created_by: string;
-          id: string;
-          judgment_id: string;
-          tag_name: string;
-        };
-        Insert: {
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          judgment_id: string;
-          tag_name: string;
-        };
-        Update: {
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          judgment_id?: string;
-          tag_name?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "judgment_tags_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "judgment_tags_judgment_id_fkey";
-            columns: ["judgment_id"];
-            isOneToOne: false;
-            referencedRelation: "judgments";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      /** Visibility = owner-or-is_discoverable only, no admin bypass. `status`/finalized_* govern the atomic unlock-then-edit-separately lifecycle model — mirror it in the UI, do not invent versioning. */
-      judgments: {
-        Row: {
-          case_number: string | null;
-          citation: string | null;
-          content: Json | null;
-          content_text: string | null;
-          court_name: string | null;
-          created_at: string;
-          finalized_at: string | null;
-          finalized_by: string | null;
-          id: string;
-          is_discoverable: boolean;
-          judgment_date: string | null;
-          owner_id: string;
-          search_vector: unknown | null;
-          status: string;
-          title: string;
-          updated_at: string;
-        };
-        Insert: {
-          case_number?: string | null;
-          citation?: string | null;
-          content?: Json | null;
-          content_text?: string | null;
-          court_name?: string | null;
-          created_at?: string;
-          finalized_at?: string | null;
-          finalized_by?: string | null;
-          id?: string;
-          is_discoverable?: boolean;
-          judgment_date?: string | null;
-          owner_id?: string;
-          search_vector?: unknown | null;
-          status?: string;
-          title: string;
-          updated_at?: string;
-        };
-        Update: {
-          case_number?: string | null;
-          citation?: string | null;
-          content?: Json | null;
-          content_text?: string | null;
-          court_name?: string | null;
-          created_at?: string;
-          finalized_at?: string | null;
-          finalized_by?: string | null;
-          id?: string;
-          is_discoverable?: boolean;
-          judgment_date?: string | null;
-          owner_id?: string;
-          search_vector?: unknown | null;
-          status?: string;
-          title?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "judgments_finalized_by_fkey";
-            columns: ["finalized_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "judgments_owner_id_fkey";
-            columns: ["owner_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      magisterial_districts: {
-        Row: {
-          created_at: string;
-          id: string;
-          is_active: boolean;
-          name: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          is_active?: boolean;
-          name: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          is_active?: boolean;
-          name?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      /** A magistrate's current-Court context. `my_court_id()` / `can_access_court()` read from here — prefer those RPCs over querying this table directly for authority checks. */
-      magistrate_courts: {
-        Row: {
-          assignment_type: string;
-          court_id: string;
-          created_at: string;
-          ended_at: string | null;
-          id: string;
-          profile_id: string;
-          started_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          assignment_type?: string;
-          court_id: string;
-          created_at?: string;
-          ended_at?: string | null;
-          id?: string;
-          profile_id: string;
-          started_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          assignment_type?: string;
-          court_id?: string;
-          created_at?: string;
-          ended_at?: string | null;
-          id?: string;
-          profile_id?: string;
-          started_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "magistrate_courts_court_id_fkey";
-            columns: ["court_id"];
-            isOneToOne: false;
-            referencedRelation: "courts";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "magistrate_courts_profile_id_fkey";
-            columns: ["profile_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      /** `id` also has a cross-schema FK to `auth.users(id)` not reflected in `public`-schema Relationships. */
-      profiles: {
-        Row: {
-          avatar_url: string | null;
-          court_id: string | null;
-          court_name: string | null;
-          created_at: string;
-          email: string;
-          full_name: string | null;
-          id: string;
-          is_active: boolean;
-          jurisdiction: string | null;
-          role: Database["public"]["Enums"]["user_role"];
-          updated_at: string;
-        };
-        Insert: {
-          avatar_url?: string | null;
-          court_id?: string | null;
-          court_name?: string | null;
-          created_at?: string;
-          email: string;
-          full_name?: string | null;
-          id: string;
-          is_active?: boolean;
-          jurisdiction?: string | null;
-          role?: Database["public"]["Enums"]["user_role"];
-          updated_at?: string;
-        };
-        Update: {
-          avatar_url?: string | null;
-          court_id?: string | null;
-          court_name?: string | null;
-          created_at?: string;
-          email?: string;
-          full_name?: string | null;
-          id?: string;
-          is_active?: boolean;
-          jurisdiction?: string | null;
-          role?: Database["public"]["Enums"]["user_role"];
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "profiles_court_id_fkey";
-            columns: ["court_id"];
-            isOneToOne: false;
-            referencedRelation: "courts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      quick_code_case_law: {
-        Row: {
-          case_law_id: string;
-          created_at: string;
-          created_by: string;
-          id: string;
-          quick_code_id: string;
-        };
-        Insert: {
-          case_law_id: string;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          quick_code_id: string;
-        };
-        Update: {
-          case_law_id?: string;
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          quick_code_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "quick_code_case_law_case_law_id_fkey";
-            columns: ["case_law_id"];
-            isOneToOne: false;
-            referencedRelation: "case_law";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "quick_code_case_law_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "quick_code_case_law_quick_code_id_fkey";
-            columns: ["quick_code_id"];
-            isOneToOne: false;
-            referencedRelation: "quick_codes";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      quick_code_docket_matters: {
-        Row: {
-          created_at: string;
-          created_by: string;
-          docket_matter_id: string;
-          id: string;
-          quick_code_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id: string;
-          id?: string;
-          quick_code_id: string;
-        };
-        Update: {
-          created_at?: string;
-          created_by?: string;
-          docket_matter_id?: string;
-          id?: string;
-          quick_code_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "quick_code_docket_matters_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "quick_code_docket_matters_docket_matter_id_fkey";
-            columns: ["docket_matter_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "quick_code_docket_matters_quick_code_id_fkey";
-            columns: ["quick_code_id"];
-            isOneToOne: false;
-            referencedRelation: "quick_codes";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      quick_code_judgments: {
-        Row: {
-          created_at: string;
-          created_by: string;
-          id: string;
-          judgment_id: string;
-          quick_code_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          judgment_id: string;
-          quick_code_id: string;
-        };
-        Update: {
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          judgment_id?: string;
-          quick_code_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "quick_code_judgments_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "quick_code_judgments_judgment_id_fkey";
-            columns: ["judgment_id"];
-            isOneToOne: false;
-            referencedRelation: "judgments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "quick_code_judgments_quick_code_id_fkey";
-            columns: ["quick_code_id"];
-            isOneToOne: false;
-            referencedRelation: "quick_codes";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      /** Owner-only CRUD, no Court/Docket/admin bypass — do not reopen. */
-      quick_codes: {
-        Row: {
-          category: string | null;
-          code_word: string;
-          content: string;
-          created_at: string;
-          description: string | null;
-          id: string;
-          owner_id: string;
-          search_vector: unknown | null;
-          title: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          category?: string | null;
-          code_word: string;
-          content: string;
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          owner_id?: string;
-          search_vector?: unknown | null;
-          title?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          category?: string | null;
-          code_word?: string;
-          content?: string;
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          owner_id?: string;
-          search_vector?: unknown | null;
-          title?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "quick_codes_owner_id_fkey";
-            columns: ["owner_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      /** `item_id` is FK-constrained to docket_matters only — Sharing is currently Docket-Matter-specific, not a general polymorphic mechanism. `permission` is 'view' | 'edit' (text, not enum) by convention. No resharing. */
-      shares: {
-        Row: {
-          created_at: string;
-          granted_by: string | null;
-          id: string;
-          item_id: string;
-          item_type: string;
-          permission: string;
-          recipient_id: string | null;
-          revoked_at: string | null;
-        };
-        Insert: {
-          created_at?: string;
-          granted_by?: string | null;
-          id?: string;
-          item_id: string;
-          item_type: string;
-          permission: string;
-          recipient_id?: string | null;
-          revoked_at?: string | null;
-        };
-        Update: {
-          created_at?: string;
-          granted_by?: string | null;
-          id?: string;
-          item_id?: string;
-          item_type?: string;
-          permission?: string;
-          recipient_id?: string | null;
-          revoked_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "shares_granted_by_fkey";
-            columns: ["granted_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "shares_item_id_fkey";
-            columns: ["item_id"];
-            isOneToOne: false;
-            referencedRelation: "docket_matters";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "shares_recipient_id_fkey";
-            columns: ["recipient_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      statute_tags: {
-        Row: {
-          created_at: string;
-          statute_id: string;
-          tag_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          statute_id: string;
-          tag_id: string;
-        };
-        Update: {
-          created_at?: string;
-          statute_id?: string;
-          tag_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "statute_tags_statute_id_fkey";
-            columns: ["statute_id"];
-            isOneToOne: false;
-            referencedRelation: "statutes";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "statute_tags_tag_id_fkey";
-            columns: ["tag_id"];
-            isOneToOne: false;
-            referencedRelation: "tags";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      statutes: {
-        Row: {
-          act_number: string | null;
-          amendment_note: string | null;
-          chapter_number: string | null;
-          code: string;
-          commencement_note: string | null;
-          created_at: string;
-          created_by: string | null;
-          document_hash: string | null;
-          effective_date: string | null;
-          enactment_year: number | null;
-          full_text: string | null;
-          id: string;
-          import_job_id: string | null;
-          instrument_type: string | null;
-          is_current_version: boolean;
-          jurisdiction: string;
-          jurisdiction_id: string | null;
-          original_filename: string | null;
-          retrieved_at: string | null;
-          review_status: string;
-          search_vector: unknown | null;
-          short_title: string | null;
-          source_id: string | null;
-          source_url: string | null;
-          summary: string | null;
-          supersedes_statute_id: string | null;
-          title: string;
-          updated_at: string;
-        };
-        Insert: {
-          act_number?: string | null;
-          amendment_note?: string | null;
-          chapter_number?: string | null;
-          code: string;
-          commencement_note?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          document_hash?: string | null;
-          effective_date?: string | null;
-          enactment_year?: number | null;
-          full_text?: string | null;
-          id?: string;
-          import_job_id?: string | null;
-          instrument_type?: string | null;
-          is_current_version?: boolean;
-          jurisdiction: string;
-          jurisdiction_id?: string | null;
-          original_filename?: string | null;
-          retrieved_at?: string | null;
-          review_status?: string;
-          search_vector?: unknown | null;
-          short_title?: string | null;
-          source_id?: string | null;
-          source_url?: string | null;
-          summary?: string | null;
-          supersedes_statute_id?: string | null;
-          title: string;
-          updated_at?: string;
-        };
-        Update: {
-          act_number?: string | null;
-          amendment_note?: string | null;
-          chapter_number?: string | null;
-          code?: string;
-          commencement_note?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          document_hash?: string | null;
-          effective_date?: string | null;
-          enactment_year?: number | null;
-          full_text?: string | null;
-          id?: string;
-          import_job_id?: string | null;
-          instrument_type?: string | null;
-          is_current_version?: boolean;
-          jurisdiction?: string;
-          jurisdiction_id?: string | null;
-          original_filename?: string | null;
-          retrieved_at?: string | null;
-          review_status?: string;
-          search_vector?: unknown | null;
-          short_title?: string | null;
-          source_id?: string | null;
-          source_url?: string | null;
-          summary?: string | null;
-          supersedes_statute_id?: string | null;
-          title?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "statutes_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "statutes_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_sources";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "statutes_import_job_id_fkey";
-            columns: ["import_job_id"];
-            isOneToOne: false;
-            referencedRelation: "import_jobs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "statutes_supersedes_statute_id_fkey";
-            columns: ["supersedes_statute_id"];
-            isOneToOne: false;
-            referencedRelation: "statutes";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "statutes_jurisdiction_id_fkey";
-            columns: ["jurisdiction_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_jurisdictions";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      statute_provisions: {
-        Row: {
-          body_text: string | null;
-          created_at: string;
-          heading: string | null;
-          id: string;
-          level: string;
-          number: string | null;
-          parent_provision_id: string | null;
-          search_vector: unknown | null;
-          sort_order: number;
-          statute_id: string;
-          updated_at: string;
-        };
-        Insert: {
-          body_text?: string | null;
-          created_at?: string;
-          heading?: string | null;
-          id?: string;
-          level: string;
-          number?: string | null;
-          parent_provision_id?: string | null;
-          search_vector?: unknown | null;
-          sort_order?: number;
-          statute_id: string;
-          updated_at?: string;
-        };
-        Update: {
-          body_text?: string | null;
-          created_at?: string;
-          heading?: string | null;
-          id?: string;
-          level?: string;
-          number?: string | null;
-          parent_provision_id?: string | null;
-          search_vector?: unknown | null;
-          sort_order?: number;
-          statute_id?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "statute_provisions_statute_id_fkey";
-            columns: ["statute_id"];
-            isOneToOne: false;
-            referencedRelation: "statutes";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "statute_provisions_parent_provision_id_fkey";
-            columns: ["parent_provision_id"];
-            isOneToOne: false;
-            referencedRelation: "statute_provisions";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      legal_regional_groups: {
-        Row: {
-          created_at: string;
-          id: string;
-          name: string;
-          sort_order: number;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          name: string;
-          sort_order?: number;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          name?: string;
-          sort_order?: number;
-        };
-        Relationships: [];
-      };
-      legal_jurisdictions: {
-        Row: {
-          created_at: string;
-          id: string;
-          name: string;
-          regional_group_id: string;
-          sort_order: number;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          name: string;
-          regional_group_id: string;
-          sort_order?: number;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          name?: string;
-          regional_group_id?: string;
-          sort_order?: number;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "legal_jurisdictions_regional_group_id_fkey";
-            columns: ["regional_group_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_regional_groups";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      legal_authority_courts: {
-        Row: {
-          aliases: string[];
-          canonical_name: string;
-          court_level: string | null;
-          created_at: string;
-          id: string;
-          is_active: boolean;
-          jurisdiction_id: string | null;
-          regional_group_id: string | null;
-          short_name: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          aliases?: string[];
-          canonical_name: string;
-          court_level?: string | null;
-          created_at?: string;
-          id?: string;
-          is_active?: boolean;
-          jurisdiction_id?: string | null;
-          regional_group_id?: string | null;
-          short_name?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          aliases?: string[];
-          canonical_name?: string;
-          court_level?: string | null;
-          created_at?: string;
-          id?: string;
-          is_active?: boolean;
-          jurisdiction_id?: string | null;
-          regional_group_id?: string | null;
-          short_name?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "legal_authority_courts_jurisdiction_id_fkey";
-            columns: ["jurisdiction_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_jurisdictions";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "legal_authority_courts_regional_group_id_fkey";
-            columns: ["regional_group_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_regional_groups";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      legal_sources: {
-        Row: {
-          base_url: string | null;
-          canonical_trusted: boolean;
-          connector_type: string;
-          created_at: string;
-          created_by: string | null;
-          id: string;
-          jurisdiction: string;
-          last_checked_at: string | null;
-          last_successful_import_at: string | null;
-          name: string;
-          notes: string | null;
-          source_type: string;
-          status: string;
-          updated_at: string;
-        };
-        Insert: {
-          base_url?: string | null;
-          canonical_trusted?: boolean;
-          connector_type: string;
-          created_at?: string;
-          created_by?: string | null;
-          id?: string;
-          jurisdiction: string;
-          last_checked_at?: string | null;
-          last_successful_import_at?: string | null;
-          name: string;
-          notes?: string | null;
-          source_type: string;
-          status?: string;
-          updated_at?: string;
-        };
-        Update: {
-          base_url?: string | null;
-          canonical_trusted?: boolean;
-          connector_type?: string;
-          created_at?: string;
-          created_by?: string | null;
-          id?: string;
-          jurisdiction?: string;
-          last_checked_at?: string | null;
-          last_successful_import_at?: string | null;
-          name?: string;
-          notes?: string | null;
-          source_type?: string;
-          status?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "legal_sources_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+        ]
+      }
       import_batches: {
         Row: {
-          content_type: string;
-          created_at: string;
-          created_by: string | null;
-          expected_file_count: number | null;
-          id: string;
-          label: string;
-        };
+          content_type: string
+          created_at: string
+          created_by: string | null
+          expected_file_count: number | null
+          id: string
+          label: string
+        }
         Insert: {
-          content_type: string;
-          created_at?: string;
-          created_by?: string | null;
-          expected_file_count?: number | null;
-          id?: string;
-          label: string;
-        };
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          expected_file_count?: number | null
+          id?: string
+          label: string
+        }
         Update: {
-          content_type?: string;
-          created_at?: string;
-          created_by?: string | null;
-          expected_file_count?: number | null;
-          id?: string;
-          label?: string;
-        };
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          expected_file_count?: number | null
+          id?: string
+          label?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "import_batches_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "import_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       import_jobs: {
         Row: {
-          batch_id: string | null;
-          completed_at: string | null;
-          content_type: string;
-          created_at: string;
-          created_by: string;
-          duplicate_warning: string | null;
-          error_summary: string | null;
-          extracted_metadata: Json | null;
-          extracted_text: string | null;
-          id: string;
-          proposed_tags: string[] | null;
-          retry_count: number;
-          source_id: string | null;
-          source_url: string | null;
-          started_at: string | null;
-          status: string;
-          target_case_law_id: string | null;
-          target_statute_id: string | null;
-          updated_at: string;
-          uploaded_document_id: string | null;
-        };
+          batch_id: string | null
+          completed_at: string | null
+          content_type: string
+          created_at: string
+          created_by: string
+          duplicate_warning: string | null
+          error_summary: string | null
+          extracted_metadata: Json | null
+          extracted_text: string | null
+          id: string
+          proposed_tags: string[] | null
+          retry_count: number
+          source_id: string | null
+          source_url: string | null
+          started_at: string | null
+          status: string
+          target_case_law_id: string | null
+          target_statute_id: string | null
+          updated_at: string
+          uploaded_document_id: string | null
+        }
         Insert: {
-          batch_id?: string | null;
-          completed_at?: string | null;
-          content_type: string;
-          created_at?: string;
-          created_by: string;
-          duplicate_warning?: string | null;
-          error_summary?: string | null;
-          extracted_metadata?: Json | null;
-          extracted_text?: string | null;
-          id?: string;
-          proposed_tags?: string[] | null;
-          retry_count?: number;
-          source_id?: string | null;
-          source_url?: string | null;
-          started_at?: string | null;
-          status?: string;
-          target_case_law_id?: string | null;
-          target_statute_id?: string | null;
-          updated_at?: string;
-          uploaded_document_id?: string | null;
-        };
+          batch_id?: string | null
+          completed_at?: string | null
+          content_type: string
+          created_at?: string
+          created_by: string
+          duplicate_warning?: string | null
+          error_summary?: string | null
+          extracted_metadata?: Json | null
+          extracted_text?: string | null
+          id?: string
+          proposed_tags?: string[] | null
+          retry_count?: number
+          source_id?: string | null
+          source_url?: string | null
+          started_at?: string | null
+          status?: string
+          target_case_law_id?: string | null
+          target_statute_id?: string | null
+          updated_at?: string
+          uploaded_document_id?: string | null
+        }
         Update: {
-          batch_id?: string | null;
-          completed_at?: string | null;
-          content_type?: string;
-          created_at?: string;
-          created_by?: string;
-          duplicate_warning?: string | null;
-          error_summary?: string | null;
-          extracted_metadata?: Json | null;
-          extracted_text?: string | null;
-          id?: string;
-          proposed_tags?: string[] | null;
-          retry_count?: number;
-          source_id?: string | null;
-          source_url?: string | null;
-          started_at?: string | null;
-          status?: string;
-          target_case_law_id?: string | null;
-          target_statute_id?: string | null;
-          updated_at?: string;
-          uploaded_document_id?: string | null;
-        };
+          batch_id?: string | null
+          completed_at?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          duplicate_warning?: string | null
+          error_summary?: string | null
+          extracted_metadata?: Json | null
+          extracted_text?: string | null
+          id?: string
+          proposed_tags?: string[] | null
+          retry_count?: number
+          source_id?: string | null
+          source_url?: string | null
+          started_at?: string | null
+          status?: string
+          target_case_law_id?: string | null
+          target_statute_id?: string | null
+          updated_at?: string
+          uploaded_document_id?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "import_jobs_batch_id_fkey";
-            columns: ["batch_id"];
-            isOneToOne: false;
-            referencedRelation: "import_batches";
-            referencedColumns: ["id"];
+            foreignKeyName: "import_jobs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "import_jobs_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "legal_sources";
-            referencedColumns: ["id"];
+            foreignKeyName: "import_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "import_jobs_target_case_law_id_fkey";
-            columns: ["target_case_law_id"];
-            isOneToOne: false;
-            referencedRelation: "case_law";
-            referencedColumns: ["id"];
+            foreignKeyName: "import_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sources"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "import_jobs_target_statute_id_fkey";
-            columns: ["target_statute_id"];
-            isOneToOne: false;
-            referencedRelation: "statutes";
-            referencedColumns: ["id"];
+            foreignKeyName: "import_jobs_target_case_law_id_fkey"
+            columns: ["target_case_law_id"]
+            isOneToOne: false
+            referencedRelation: "case_law"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "import_jobs_uploaded_document_id_fkey";
-            columns: ["uploaded_document_id"];
-            isOneToOne: false;
-            referencedRelation: "documents";
-            referencedColumns: ["id"];
+            foreignKeyName: "import_jobs_target_statute_id_fkey"
+            columns: ["target_statute_id"]
+            isOneToOne: false
+            referencedRelation: "statutes"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      /** Legacy global tag table (used by cases/case_law/bench_notes/statutes). Docket uses its own `docket_matter_tags`/`judgment_tags` free-text model instead — do not conflate the two. */
+          {
+            foreignKeyName: "import_jobs_uploaded_document_id_fkey"
+            columns: ["uploaded_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      judgment_tags: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          judgment_id: string
+          tag_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          judgment_id: string
+          tag_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          judgment_id?: string
+          tag_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judgment_tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judgment_tags_judgment_id_fkey"
+            columns: ["judgment_id"]
+            isOneToOne: false
+            referencedRelation: "judgments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      judgments: {
+        Row: {
+          case_number: string | null
+          citation: string | null
+          content: Json | null
+          content_text: string | null
+          court_name: string | null
+          created_at: string
+          finalized_at: string | null
+          finalized_by: string | null
+          id: string
+          is_discoverable: boolean
+          judgment_date: string | null
+          owner_id: string
+          search_vector: unknown
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          case_number?: string | null
+          citation?: string | null
+          content?: Json | null
+          content_text?: string | null
+          court_name?: string | null
+          created_at?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          is_discoverable?: boolean
+          judgment_date?: string | null
+          owner_id?: string
+          search_vector?: unknown
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          case_number?: string | null
+          citation?: string | null
+          content?: Json | null
+          content_text?: string | null
+          court_name?: string | null
+          created_at?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          is_discoverable?: boolean
+          judgment_date?: string | null
+          owner_id?: string
+          search_vector?: unknown
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judgments_finalized_by_fkey"
+            columns: ["finalized_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judgments_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_authority_courts: {
+        Row: {
+          aliases: string[]
+          canonical_name: string
+          court_level: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          jurisdiction_id: string | null
+          regional_group_id: string | null
+          short_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          canonical_name: string
+          court_level?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          jurisdiction_id?: string | null
+          regional_group_id?: string | null
+          short_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          canonical_name?: string
+          court_level?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          jurisdiction_id?: string | null
+          regional_group_id?: string | null
+          short_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_authority_courts_jurisdiction_id_fkey"
+            columns: ["jurisdiction_id"]
+            isOneToOne: false
+            referencedRelation: "legal_jurisdictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_authority_courts_regional_group_id_fkey"
+            columns: ["regional_group_id"]
+            isOneToOne: false
+            referencedRelation: "legal_regional_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_jurisdictions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          regional_group_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          regional_group_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          regional_group_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_jurisdictions_regional_group_id_fkey"
+            columns: ["regional_group_id"]
+            isOneToOne: false
+            referencedRelation: "legal_regional_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_regional_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      legal_sources: {
+        Row: {
+          base_url: string | null
+          canonical_trusted: boolean
+          connector_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          jurisdiction: string
+          last_checked_at: string | null
+          last_successful_import_at: string | null
+          name: string
+          notes: string | null
+          source_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          base_url?: string | null
+          canonical_trusted?: boolean
+          connector_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          jurisdiction: string
+          last_checked_at?: string | null
+          last_successful_import_at?: string | null
+          name: string
+          notes?: string | null
+          source_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string | null
+          canonical_trusted?: boolean
+          connector_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          jurisdiction?: string
+          last_checked_at?: string | null
+          last_successful_import_at?: string | null
+          name?: string
+          notes?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_sources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      magisterial_districts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      magistrate_courts: {
+        Row: {
+          assignment_type: string
+          court_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          profile_id: string
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_type?: string
+          court_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          profile_id: string
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_type?: string
+          court_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          profile_id?: string
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magistrate_courts_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "magistrate_courts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          court_id: string | null
+          court_name: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean
+          jurisdiction: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          court_id?: string | null
+          court_name?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          is_active?: boolean
+          jurisdiction?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          court_id?: string | null
+          court_name?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          jurisdiction?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_code_case_law: {
+        Row: {
+          case_law_id: string
+          created_at: string
+          created_by: string
+          id: string
+          quick_code_id: string
+        }
+        Insert: {
+          case_law_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          quick_code_id: string
+        }
+        Update: {
+          case_law_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          quick_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_code_case_law_case_law_id_fkey"
+            columns: ["case_law_id"]
+            isOneToOne: false
+            referencedRelation: "case_law"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_code_case_law_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_code_case_law_quick_code_id_fkey"
+            columns: ["quick_code_id"]
+            isOneToOne: false
+            referencedRelation: "quick_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_code_docket_matters: {
+        Row: {
+          created_at: string
+          created_by: string
+          docket_matter_id: string
+          id: string
+          quick_code_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          docket_matter_id: string
+          id?: string
+          quick_code_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          docket_matter_id?: string
+          id?: string
+          quick_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_code_docket_matters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_code_docket_matters_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_code_docket_matters_quick_code_id_fkey"
+            columns: ["quick_code_id"]
+            isOneToOne: false
+            referencedRelation: "quick_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_code_judgments: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          judgment_id: string
+          quick_code_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          judgment_id: string
+          quick_code_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          judgment_id?: string
+          quick_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_code_judgments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_code_judgments_judgment_id_fkey"
+            columns: ["judgment_id"]
+            isOneToOne: false
+            referencedRelation: "judgments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_code_judgments_quick_code_id_fkey"
+            columns: ["quick_code_id"]
+            isOneToOne: false
+            referencedRelation: "quick_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_codes: {
+        Row: {
+          category: string | null
+          code_word: string
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          owner_id: string
+          search_vector: unknown
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          code_word: string
+          content: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id?: string
+          search_vector?: unknown
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          code_word?: string
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id?: string
+          search_vector?: unknown
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_codes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shares: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          item_id: string
+          item_type: string
+          permission: string
+          recipient_id: string | null
+          revoked_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          permission: string
+          recipient_id?: string | null
+          revoked_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          permission?: string
+          recipient_id?: string | null
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shares_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shares_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shares_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statute_provisions: {
+        Row: {
+          body_text: string | null
+          created_at: string
+          heading: string | null
+          id: string
+          level: string
+          number: string | null
+          parent_provision_id: string | null
+          search_vector: unknown
+          sort_order: number
+          statute_id: string
+          updated_at: string
+        }
+        Insert: {
+          body_text?: string | null
+          created_at?: string
+          heading?: string | null
+          id?: string
+          level: string
+          number?: string | null
+          parent_provision_id?: string | null
+          search_vector?: unknown
+          sort_order?: number
+          statute_id: string
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string | null
+          created_at?: string
+          heading?: string | null
+          id?: string
+          level?: string
+          number?: string | null
+          parent_provision_id?: string | null
+          search_vector?: unknown
+          sort_order?: number
+          statute_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statute_provisions_parent_provision_id_fkey"
+            columns: ["parent_provision_id"]
+            isOneToOne: false
+            referencedRelation: "statute_provisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statute_provisions_statute_id_fkey"
+            columns: ["statute_id"]
+            isOneToOne: false
+            referencedRelation: "statutes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statute_tags: {
+        Row: {
+          created_at: string
+          statute_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          statute_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          statute_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statute_tags_statute_id_fkey"
+            columns: ["statute_id"]
+            isOneToOne: false
+            referencedRelation: "statutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statute_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statutes: {
+        Row: {
+          act_number: string | null
+          amendment_note: string | null
+          chapter_number: string | null
+          code: string
+          commencement_note: string | null
+          created_at: string
+          created_by: string | null
+          document_hash: string | null
+          effective_date: string | null
+          enactment_year: number | null
+          full_text: string | null
+          id: string
+          import_job_id: string | null
+          instrument_type: string | null
+          is_current_version: boolean
+          jurisdiction: string
+          jurisdiction_id: string | null
+          original_filename: string | null
+          retrieved_at: string | null
+          review_status: string
+          search_vector: unknown
+          short_title: string | null
+          source_id: string | null
+          source_url: string | null
+          summary: string | null
+          supersedes_statute_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          act_number?: string | null
+          amendment_note?: string | null
+          chapter_number?: string | null
+          code: string
+          commencement_note?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_hash?: string | null
+          effective_date?: string | null
+          enactment_year?: number | null
+          full_text?: string | null
+          id?: string
+          import_job_id?: string | null
+          instrument_type?: string | null
+          is_current_version?: boolean
+          jurisdiction: string
+          jurisdiction_id?: string | null
+          original_filename?: string | null
+          retrieved_at?: string | null
+          review_status?: string
+          search_vector?: unknown
+          short_title?: string | null
+          source_id?: string | null
+          source_url?: string | null
+          summary?: string | null
+          supersedes_statute_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          act_number?: string | null
+          amendment_note?: string | null
+          chapter_number?: string | null
+          code?: string
+          commencement_note?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_hash?: string | null
+          effective_date?: string | null
+          enactment_year?: number | null
+          full_text?: string | null
+          id?: string
+          import_job_id?: string | null
+          instrument_type?: string | null
+          is_current_version?: boolean
+          jurisdiction?: string
+          jurisdiction_id?: string | null
+          original_filename?: string | null
+          retrieved_at?: string | null
+          review_status?: string
+          search_vector?: unknown
+          short_title?: string | null
+          source_id?: string | null
+          source_url?: string | null
+          summary?: string | null
+          supersedes_statute_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statutes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statutes_import_job_id_fkey"
+            columns: ["import_job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statutes_jurisdiction_id_fkey"
+            columns: ["jurisdiction_id"]
+            isOneToOne: false
+            referencedRelation: "legal_jurisdictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statutes_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statutes_supersedes_statute_id_fkey"
+            columns: ["supersedes_statute_id"]
+            isOneToOne: false
+            referencedRelation: "statutes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
-          color: string;
-          created_at: string;
-          created_by: string | null;
-          id: string;
-          name: string;
-        };
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
         Insert: {
-          color?: string;
-          created_at?: string;
-          created_by?: string | null;
-          id?: string;
-          name: string;
-        };
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
         Update: {
-          color?: string;
-          created_at?: string;
-          created_by?: string | null;
-          id?: string;
-          name?: string;
-        };
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "tags_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
+            foreignKeyName: "tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-    };
+        ]
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      can_access_court: { Args: { p_court_id: string }; Returns: boolean };
-      can_edit_case_law: { Args: { p_case_law_id: string }; Returns: boolean };
+      apply_case_law_tags: {
+        Args: { p_case_law_id: string; p_tag_names: string[] }
+        Returns: undefined
+      }
+      apply_statute_tags: {
+        Args: { p_statute_id: string; p_tag_names: string[] }
+        Returns: undefined
+      }
+      can_access_court: { Args: { p_court_id: string }; Returns: boolean }
+      can_edit_case_law: { Args: { p_case_law_id: string }; Returns: boolean }
       can_edit_docket_matter: {
-        Args: { p_docket_matter_id: string };
-        Returns: boolean;
-      };
-      can_edit_judgment: { Args: { p_judgment_id: string }; Returns: boolean };
-      can_view_case_law: { Args: { p_case_law_id: string }; Returns: boolean };
+        Args: { p_docket_matter_id: string }
+        Returns: boolean
+      }
+      can_edit_judgment: { Args: { p_judgment_id: string }; Returns: boolean }
+      can_view_case_law: { Args: { p_case_law_id: string }; Returns: boolean }
       can_view_docket_matter: {
-        Args: { p_docket_matter_id: string };
-        Returns: boolean;
-      };
-      can_view_judgment: { Args: { p_judgment_id: string }; Returns: boolean };
-      global_search: {
-        Args: { p_limit?: number; p_query: string };
-        Returns: Database["public"]["CompositeTypes"]["search_result"][];
-      };
-      has_docket_matter_authority: {
-        Args: { p_docket_matter_id: string };
-        Returns: boolean;
-      };
-      has_docket_share: {
-        Args: { p_docket_matter_id: string; p_required_permission?: string };
-        Returns: boolean;
-      };
-      has_retained_assignment: {
-        Args: { p_docket_matter_id: string };
-        Returns: boolean;
-      };
-      is_admin: { Args: Record<string, never>; Returns: boolean };
-      my_court_id: { Args: Record<string, never>; Returns: string };
-      /** Narrow, authority-gated recipient lookup for Share creation (0051) — NOT a directory search. Zero rows for any failure (unauthorized caller, unknown/partial/self email, inactive recipient). */
-      resolve_docket_share_recipient: {
-        Args: { p_docket_matter_id: string; p_email: string };
-        Returns: { profile_id: string; display_name: string }[];
-      };
-      /** Prefer this over a broad `profiles` SELECT for displaying who a Docket assignment belongs to. */
-      resolve_docket_assignment_identity: {
-        Args: { p_assignment_id: string };
-        Returns: { profile_id: string; display_name: string }[];
-      };
-      /** Prefer this over a broad `profiles` SELECT for displaying Share grantor/recipient identity. */
-      resolve_docket_share_identity: {
-        Args: { p_share_id: string };
-        Returns: {
-          recipient_id: string;
-          recipient_display_name: string;
-          granted_by: string;
-          grantor_display_name: string;
-        }[];
-      };
-      search_bench_notes: {
-        Args: { p_limit?: number; p_query: string };
-        Returns: {
-          id: string;
-          entity_type: string;
-          entity_id: string;
-          title: string;
-          rank: number;
-          headline: string;
-        }[];
-      };
-      search_case_law: {
-        Args: { p_limit?: number; p_query: string };
-        Returns: {
-          id: string;
-          case_name: string;
-          citation: string;
-          court: string;
-          jurisdiction: string;
-          summary: string;
-          rank: number;
-          headline: string;
-        }[];
-      };
-      /** Court/Jurisdiction/Tag-scoped variant of search_case_law (0058) — used by the Browse-by-Court/Jurisdiction UI. p_query may be null/empty (browse with no text search); all filters are optional and AND together. */
-      search_case_law_scoped: {
-        Args: {
-          p_query?: string | null;
-          p_limit?: number;
-          p_court_id?: string | null;
-          p_jurisdiction_id?: string | null;
-          p_tag_id?: string | null;
-        };
-        Returns: {
-          id: string;
-          case_name: string;
-          citation: string;
-          court: string;
-          jurisdiction: string;
-          summary: string;
-          rank: number;
-          headline: string;
-        }[];
-      };
-      /** RLS-respecting (SECURITY INVOKER) result counts for the Browse-by-Court UI — never counts draft/inaccessible rows for a non-admin caller. */
+        Args: { p_docket_matter_id: string }
+        Returns: boolean
+      }
+      can_view_judgment: { Args: { p_judgment_id: string }; Returns: boolean }
+      can_view_statute: { Args: { p_statute_id: string }; Returns: boolean }
       case_law_counts_by_court: {
-        Args: Record<string, never>;
-        Returns: { court_id: string; result_count: number }[];
-      };
+        Args: never
+        Returns: {
+          court_id: string
+          result_count: number
+        }[]
+      }
       case_law_counts_by_jurisdiction: {
-        Args: Record<string, never>;
-        Returns: { jurisdiction_id: string; result_count: number }[];
-      };
-      /** Admin-only, SECURITY DEFINER, transactional (0058): creates the draft case_law row + import_jobs row + bidirectional link in one atomic operation. */
+        Args: never
+        Returns: {
+          jurisdiction_id: string
+          result_count: number
+        }[]
+      }
       create_case_law_import: {
         Args: {
-          p_case_name: string;
-          p_citation: string;
-          p_court: string;
-          p_jurisdiction: string;
-          p_court_id?: string | null;
-          p_jurisdiction_id?: string | null;
-          p_neutral_citation?: string | null;
-          p_reported_citation?: string | null;
-          p_decided_date?: string | null;
-          p_full_text?: string | null;
-          p_source_url?: string | null;
-          p_source_id?: string | null;
-          p_original_filename?: string | null;
-          p_document_hash?: string | null;
-          p_batch_id?: string | null;
-          p_extracted_metadata?: Json | null;
-          p_proposed_tags?: string[] | null;
-          p_duplicate_warning?: string | null;
-        };
-        Returns: { case_law_id: string; import_job_id: string }[];
-      };
-      /** Admin-only, SECURITY DEFINER, transactional (0058): creates the draft statutes row + statute_provisions (from a jsonb array) + import_jobs row + bidirectional link in one atomic operation. */
+          p_batch_id?: string
+          p_case_name: string
+          p_citation: string
+          p_court: string
+          p_court_id?: string
+          p_decided_date?: string
+          p_document_hash?: string
+          p_duplicate_warning?: string
+          p_extracted_metadata?: Json
+          p_full_text?: string
+          p_jurisdiction: string
+          p_jurisdiction_id?: string
+          p_neutral_citation?: string
+          p_original_filename?: string
+          p_proposed_tags?: string[]
+          p_reported_citation?: string
+          p_source_id?: string
+          p_source_url?: string
+        }
+        Returns: {
+          case_law_id: string
+          import_job_id: string
+        }[]
+      }
       create_legislation_import: {
         Args: {
-          p_code: string;
-          p_title: string;
-          p_jurisdiction: string;
-          p_jurisdiction_id?: string | null;
-          p_short_title?: string | null;
-          p_full_text?: string | null;
-          p_source_url?: string | null;
-          p_source_id?: string | null;
-          p_original_filename?: string | null;
-          p_document_hash?: string | null;
-          p_batch_id?: string | null;
-          p_extracted_metadata?: Json | null;
-          p_proposed_tags?: string[] | null;
-          p_duplicate_warning?: string | null;
-          p_provisions?: Json;
-        };
-        Returns: { statute_id: string; import_job_id: string; provision_count: number }[];
-      };
-      /** Admin-only, SECURITY DEFINER (0060): reconciles case_law_tags to exactly the supplied tag NAME list -- finds an existing `tags` row by case-insensitive exact match first, only creates a new canonical tag when none matches (prevents synonym duplicates), then adds/removes links atomically. */
-      apply_case_law_tags: {
-        Args: { p_case_law_id: string; p_tag_names: string[] };
-        Returns: undefined;
-      };
-      apply_statute_tags: {
-        Args: { p_statute_id: string; p_tag_names: string[] };
-        Returns: undefined;
-      };
-      /** Admin-only, SECURITY DEFINER (0059): sets case_law.review_status to draft/needs_review/ready and syncs the linked import_jobs.status when that value exists in both vocabularies (needs_review/ready). Use publish_case_law_import/reject_case_law_import for the terminal transitions instead. */
-      set_case_law_review_status: {
-        Args: { p_case_law_id: string; p_status: string };
-        Returns: undefined;
-      };
-      set_legislation_review_status: {
-        Args: { p_statute_id: string; p_status: string };
-        Returns: undefined;
-      };
-      /** Admin-only, SECURITY DEFINER (0058): review_status='published' on the record AND its linked import_jobs.status='published', atomically. */
-      publish_case_law_import: { Args: { p_case_law_id: string }; Returns: undefined };
-      publish_legislation_import: { Args: { p_statute_id: string }; Returns: undefined };
-      /** Admin-only, SECURITY DEFINER (0058): deletes the draft record (cascading provisions/documents-metadata) and reconciles its import_jobs row to status='failed' rather than leaving it orphaned/dangling. Caller must remove any Storage object(s) via the Storage API BEFORE calling this. */
+          p_batch_id?: string
+          p_code: string
+          p_document_hash?: string
+          p_duplicate_warning?: string
+          p_extracted_metadata?: Json
+          p_full_text?: string
+          p_jurisdiction: string
+          p_jurisdiction_id?: string
+          p_original_filename?: string
+          p_proposed_tags?: string[]
+          p_provisions?: Json
+          p_short_title?: string
+          p_source_id?: string
+          p_source_url?: string
+          p_title: string
+        }
+        Returns: {
+          import_job_id: string
+          provision_count: number
+          statute_id: string
+        }[]
+      }
+      global_search: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: Database["public"]["CompositeTypes"]["search_result"][]
+        SetofOptions: {
+          from: "*"
+          to: "search_result"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      has_docket_matter_authority: {
+        Args: { p_docket_matter_id: string }
+        Returns: boolean
+      }
+      has_docket_share: {
+        Args: { p_docket_matter_id: string; p_required_permission?: string }
+        Returns: boolean
+      }
+      has_retained_assignment: {
+        Args: { p_docket_matter_id: string }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      my_court_id: { Args: never; Returns: string }
+      publish_case_law_import: {
+        Args: { p_case_law_id: string }
+        Returns: undefined
+      }
+      publish_legislation_import: {
+        Args: { p_statute_id: string }
+        Returns: undefined
+      }
       reject_case_law_import: {
-        Args: { p_case_law_id: string; p_reason?: string | null };
-        Returns: undefined;
-      };
+        Args: { p_case_law_id: string; p_reason?: string }
+        Returns: undefined
+      }
       reject_legislation_import: {
-        Args: { p_statute_id: string; p_reason?: string | null };
-        Returns: undefined;
-      };
+        Args: { p_reason?: string; p_statute_id: string }
+        Returns: undefined
+      }
+      resolve_docket_assignment_identity: {
+        Args: { p_assignment_id: string }
+        Returns: {
+          display_name: string
+          profile_id: string
+        }[]
+      }
+      resolve_docket_share_identity: {
+        Args: { p_share_id: string }
+        Returns: {
+          granted_by: string
+          grantor_display_name: string
+          recipient_display_name: string
+          recipient_id: string
+        }[]
+      }
+      resolve_docket_share_recipient: {
+        Args: { p_docket_matter_id: string; p_email: string }
+        Returns: {
+          display_name: string
+          profile_id: string
+        }[]
+      }
+      search_bench_notes: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          entity_id: string
+          entity_type: string
+          headline: string
+          id: string
+          rank: number
+          title: string
+        }[]
+      }
+      search_case_law: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          case_name: string
+          citation: string
+          court: string
+          headline: string
+          id: string
+          jurisdiction: string
+          rank: number
+          summary: string
+        }[]
+      }
+      search_case_law_scoped: {
+        Args: {
+          p_court_id?: string
+          p_jurisdiction_id?: string
+          p_limit?: number
+          p_query?: string
+          p_tag_id?: string
+        }
+        Returns: {
+          case_name: string
+          citation: string
+          court: string
+          headline: string
+          id: string
+          jurisdiction: string
+          rank: number
+          summary: string
+        }[]
+      }
       search_cases: {
-        Args: { p_limit?: number; p_query: string };
+        Args: { p_limit?: number; p_query: string }
         Returns: {
-          id: string;
-          case_number: string;
-          title: string;
-          status: Database["public"]["Enums"]["case_status"];
-          rank: number;
-          headline: string;
-        }[];
-      };
+          case_number: string
+          headline: string
+          id: string
+          rank: number
+          status: Database["public"]["Enums"]["case_status"]
+          title: string
+        }[]
+      }
       search_docket_matters: {
-        Args: { p_limit?: number; p_query: string };
+        Args: { p_limit?: number; p_query: string }
         Returns: {
-          id: string;
-          case_number: string;
-          matter_title: string;
-          status: Database["public"]["Enums"]["docket_matter_status"];
-          rank: number;
-          headline: string;
-          cover_image_path: string | null;
-          charge_or_issue: string | null;
-        }[];
-      };
+          case_number: string
+          charge_or_issue: string
+          cover_image_path: string
+          headline: string
+          id: string
+          matter_title: string
+          rank: number
+          status: Database["public"]["Enums"]["docket_matter_status"]
+        }[]
+      }
       search_judgments: {
-        Args: { p_limit?: number; p_query: string };
+        Args: { p_limit?: number; p_query: string }
         Returns: {
-          id: string;
-          title: string;
-          case_number: string;
-          citation: string;
-          status: string;
-          rank: number;
-          headline: string;
-        }[];
-      };
+          case_number: string
+          citation: string
+          headline: string
+          id: string
+          rank: number
+          status: string
+          title: string
+        }[]
+      }
       search_quick_codes: {
-        Args: { p_limit?: number; p_query: string };
+        Args: { p_limit?: number; p_query: string }
         Returns: {
-          id: string;
-          code_word: string;
-          title: string;
-          rank: number;
-          headline: string;
-        }[];
-      };
+          code_word: string
+          headline: string
+          id: string
+          rank: number
+          title: string
+        }[]
+      }
       search_statutes: {
-        Args: { p_limit?: number; p_query: string };
+        Args: { p_limit?: number; p_query: string }
         Returns: {
-          id: string;
-          code: string;
-          title: string;
-          jurisdiction: string;
-          summary: string;
-          rank: number;
-          headline: string;
-        }[];
-      };
+          code: string
+          headline: string
+          id: string
+          jurisdiction: string
+          rank: number
+          summary: string
+          title: string
+        }[]
+      }
+      set_case_law_review_status: {
+        Args: { p_case_law_id: string; p_status: string }
+        Returns: undefined
+      }
+      set_legislation_review_status: {
+        Args: { p_status: string; p_statute_id: string }
+        Returns: undefined
+      }
       user_can_access_bench_note: {
-        Args: { p_note_id: string };
-        Returns: boolean;
-      };
-      user_can_access_case: { Args: { p_case_id: string }; Returns: boolean };
-    };
+        Args: { p_note_id: string }
+        Returns: boolean
+      }
+      user_can_access_case: { Args: { p_case_id: string }; Returns: boolean }
+    }
     Enums: {
-      audit_action: "insert" | "update" | "delete";
+      audit_action: "insert" | "update" | "delete"
       bookmark_entity_type:
         | "case"
         | "bench_note"
@@ -2473,10 +2431,10 @@ export type Database = {
         | "docket_matter"
         | "judgment"
         | "quick_code"
-        | "statute_provision";
-      case_status: "open" | "pending" | "closed" | "archived";
-      docket_matter_status: "active" | "stayed" | "completed" | "archived";
-      note_status: "draft" | "published";
+        | "statute_provision"
+      case_status: "open" | "pending" | "closed" | "archived"
+      docket_matter_status: "active" | "stayed" | "completed" | "archived"
+      note_status: "draft" | "published"
       party_role:
         | "plaintiff"
         | "defendant"
@@ -2485,45 +2443,42 @@ export type Database = {
         | "appellant"
         | "appellee"
         | "witness"
-        | "other";
-      user_role: "magistrate" | "clerk" | "admin";
-    };
+        | "other"
+      user_role: "magistrate" | "clerk" | "admin"
+    }
     CompositeTypes: {
       search_result: {
-        entity_type: string | null;
-        id: string | null;
-        title: string | null;
-        subtitle: string | null;
-        headline: string | null;
-        rank: number | null;
-      };
-    };
-  };
-};
+        entity_type: string | null
+        id: string | null
+        title: string | null
+        subtitle: string | null
+        headline: string | null
+        rank: number | null
+      }
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<
-  keyof Database,
-  "public"
->];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+      Row: infer R
     }
     ? R
     : never
@@ -2531,95 +2486,95 @@ export type Tables<
         DefaultSchema["Views"])
     ? (DefaultSchema["Tables"] &
         DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
+      Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
+        Insert: infer I
       }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
+      Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
+        Update: infer U
       }
       ? U
       : never
-    : never;
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never;
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never;
+    : never
 
 export const Constants = {
   public: {
@@ -2651,7 +2606,7 @@ export const Constants = {
       user_role: ["magistrate", "clerk", "admin"],
     },
   },
-} as const;
+} as const
 
 // --- Magistrate Wizard convenience aliases (not part of the generated output) -----
 
@@ -2693,3 +2648,4 @@ export type QuickCodeDocketMatter = Tables<"quick_code_docket_matters">;
 export type QuickCodeJudgment = Tables<"quick_code_judgments">;
 export type QuickCodeCaseLaw = Tables<"quick_code_case_law">;
 export type Share = Tables<"shares">;
+

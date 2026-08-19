@@ -244,7 +244,7 @@ export function useRejectCanonicalStatute() {
 
       const { error } = await supabase.rpc("reject_legislation_import", {
         p_statute_id: id,
-        p_reason: reason ?? null,
+        p_reason: reason ?? undefined,
       });
       if (error) throw error;
     },

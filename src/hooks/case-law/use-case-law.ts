@@ -54,10 +54,10 @@ export function useCaseLawScopedSearch(params: {
     ],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("search_case_law_scoped", {
-        p_query: params.query.trim() || null,
-        p_court_id: params.courtId,
-        p_jurisdiction_id: params.jurisdictionId,
-        p_tag_id: params.tagId,
+        p_query: params.query.trim() || undefined,
+        p_court_id: params.courtId ?? undefined,
+        p_jurisdiction_id: params.jurisdictionId ?? undefined,
+        p_tag_id: params.tagId ?? undefined,
         p_limit: 200,
       });
       if (error) throw error;
@@ -348,7 +348,7 @@ export function useRejectCanonicalCaseLaw() {
 
       const { error } = await supabase.rpc("reject_case_law_import", {
         p_case_law_id: id,
-        p_reason: reason ?? null,
+        p_reason: reason ?? undefined,
       });
       if (error) throw error;
     },

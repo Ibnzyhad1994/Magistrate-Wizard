@@ -633,17 +633,17 @@ export function useIngestCaseLaw() {
         p_citation: writtenCitation,
         p_court: input.known.court,
         p_jurisdiction: input.known.jurisdiction,
-        p_court_id: input.known.court_id ?? null,
-        p_jurisdiction_id: input.known.jurisdiction_id ?? null,
-        p_neutral_citation: proposed.neutral_citation ?? null,
-        p_reported_citation: proposed.reported_citation ?? null,
-        p_decided_date: writtenDate,
-        p_full_text: text || null,
-        p_source_url: input.source_url,
-        p_source_id: input.source_id,
-        p_original_filename: input.original_filename,
-        p_document_hash: hash,
-        p_batch_id: input.batch_id,
+        p_court_id: input.known.court_id ?? undefined,
+        p_jurisdiction_id: input.known.jurisdiction_id ?? undefined,
+        p_neutral_citation: proposed.neutral_citation ?? undefined,
+        p_reported_citation: proposed.reported_citation ?? undefined,
+        p_decided_date: writtenDate ?? undefined,
+        p_full_text: text || undefined,
+        p_source_url: input.source_url ?? undefined,
+        p_source_id: input.source_id ?? undefined,
+        p_original_filename: input.original_filename ?? undefined,
+        p_document_hash: hash ?? undefined,
+        p_batch_id: input.batch_id ?? undefined,
         p_extracted_metadata: {
           ...proposed,
           tag_proposals: tagProposals,
@@ -669,7 +669,7 @@ export function useIngestCaseLaw() {
         p_duplicate_warning:
           duplicates.length > 0
             ? duplicates.map((d) => `${d.strength}: ${d.reason} (${d.existingLabel})`).join(" | ")
-            : null,
+            : undefined,
       });
       if (error) throw error;
       const row = data?.[0];
@@ -765,14 +765,14 @@ export function useIngestLegislation() {
         p_code: input.known.code,
         p_title: input.known.title,
         p_jurisdiction: input.known.jurisdiction,
-        p_jurisdiction_id: input.known.jurisdiction_id ?? null,
-        p_short_title: input.known.short_title ?? null,
-        p_full_text: text || null,
-        p_source_url: input.source_url,
-        p_source_id: input.source_id,
-        p_original_filename: input.original_filename,
-        p_document_hash: hash,
-        p_batch_id: input.batch_id,
+        p_jurisdiction_id: input.known.jurisdiction_id ?? undefined,
+        p_short_title: input.known.short_title ?? undefined,
+        p_full_text: text || undefined,
+        p_source_url: input.source_url ?? undefined,
+        p_source_id: input.source_id ?? undefined,
+        p_original_filename: input.original_filename ?? undefined,
+        p_document_hash: hash ?? undefined,
+        p_batch_id: input.batch_id ?? undefined,
         p_extracted_metadata: {
           provisionCount: provisions.length,
           tag_proposals: tagProposals,
@@ -782,7 +782,7 @@ export function useIngestLegislation() {
         p_duplicate_warning:
           duplicates.length > 0
             ? duplicates.map((d) => `${d.strength}: ${d.reason} (${d.existingLabel})`).join(" | ")
-            : null,
+            : undefined,
         p_provisions: provisions.map((p) => ({
           level: p.level,
           number: p.number,
