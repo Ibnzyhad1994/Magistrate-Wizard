@@ -68,9 +68,9 @@ export function DocketStageStrip({
           Setting Judgment to Delivered does not pin a written ruling — use the Judgments tab
           for that.
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-2">
           {PROCEDURE_COLUMNS.map((column) => (
-            <div key={column.key} className="min-w-[6.5rem] space-y-1">
+            <div key={column.key} className="min-w-0 space-y-1 sm:min-w-[6.5rem]">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {column.label}
               </p>

@@ -66,7 +66,7 @@ export default function DocketListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Docket"
-        description="List view is the working sheet — stage columns you can edit. Tiles stay for cover-photo browse. Events still hold the dates."
+        description="List is the working sheet — swipe for stages on a phone. Tiles stay for cover-photo browse. Events still hold the dates."
         showViewSelect
         viewSelectValue={docketBrowseView}
         onViewSelectChange={setDocketBrowseView}
@@ -91,7 +91,7 @@ export default function DocketListPage() {
         </p>
       )}
 
-      <div className="relative mb-4 max-w-sm">
+      <div className="relative mb-4 w-full max-w-lg">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}

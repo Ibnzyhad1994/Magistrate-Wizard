@@ -73,60 +73,75 @@ export function DocketStageSheet({
     }
   }
 
+  const caseColBase =
+    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+
   return (
-    <div className="relative w-full overflow-auto rounded-sm border border-white/10">
-      <Table className="min-w-[72rem] border-separate border-spacing-0">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="sticky left-0 z-30 min-w-[14rem] bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)]">
-              Case
-            </TableHead>
-            {PROCEDURE_COLUMNS.map((column) => (
-              <TableHead key={column.key} className="sticky top-0 z-20 min-w-[7rem] whitespace-nowrap bg-[#181818]">
-                {column.label}
+    <div className="relative">
+      <p className="mb-2 text-xs text-white/50 sm:hidden">
+        Swipe sideways for the stage columns.
+      </p>
+      <div className="relative rounded-sm border border-white/10 [&>div]:max-h-[min(28rem,58dvh)] sm:[&>div]:max-h-none">
+        <Table className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={`${caseColBase} z-30`}>Case</TableHead>
+              {PROCEDURE_COLUMNS.map((column) => (
+                <TableHead
+                  key={column.key}
+                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
+                >
+                  {column.label}
+                </TableHead>
+              ))}
+              <TableHead className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7.5rem]">
+                Next date
               </TableHead>
-            ))}
-            <TableHead className="sticky top-0 z-20 min-w-[7.5rem] whitespace-nowrap bg-[#181818]">
-              Next date
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => {
-            const stage = currentStage(snapshotOf(row));
-            return (
-              <TableRow key={row.id}>
-                <TableCell className="sticky left-0 z-20 bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)]">
-                  <Link
-                    to={ROUTES.docketMatter(row.id)}
-                    className="block min-w-0 hover:underline"
-                  >
-                    <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
-                    <p className="truncate text-sm text-white">{row.matter_title}</p>
-                    {row.charge_or_issue && (
-                      <p className="truncate text-xs text-white/45">{row.charge_or_issue}</p>
-                    )}
-                  </Link>
-                </TableCell>
-                {PROCEDURE_COLUMNS.map((column) => (
-                  <TableCell key={column.key} className="p-1.5">
-                    <DocketStageCell
-                      column={column.key}
-                      value={String(row[column.key] ?? column.emptyValue)}
-                      canEdit={row.can_edit}
-                      isCurrent={stage === column.stage}
-                      onChange={(next) => void handleChange(row, column.key, next)}
-                    />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => {
+              const stage = currentStage(snapshotOf(row));
+              return (
+                <TableRow key={row.id}>
+                  <TableCell className={`${caseColBase} z-20`}>
+                    <Link
+                      to={ROUTES.docketMatter(row.id)}
+                      className="block min-w-0 hover:underline"
+                    >
+                      <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
+                      <p className="truncate text-sm text-white">{row.matter_title}</p>
+                      {row.charge_or_issue && (
+                        <p className="hidden truncate text-xs text-white/45 sm:block">
+                          {row.charge_or_issue}
+                        </p>
+                      )}
+                    </Link>
                   </TableCell>
-                ))}
-                <TableCell className="whitespace-nowrap text-xs text-white/70">
-                  {row.next_appearance ? formatDate(row.next_appearance) : "—"}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                  {PROCEDURE_COLUMNS.map((column) => (
+                    <TableCell key={column.key} className="p-1.5">
+                      <DocketStageCell
+                        column={column.key}
+                        value={String(row[column.key] ?? column.emptyValue)}
+                        canEdit={row.can_edit}
+                        isCurrent={stage === column.stage}
+                        onChange={(next) => void handleChange(row, column.key, next)}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell className="whitespace-nowrap text-xs text-white/70">
+                    {row.next_appearance ? formatDate(row.next_appearance) : "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-px right-px w-8 rounded-r-sm bg-gradient-to-l from-[#181818] to-transparent sm:hidden"
+        />
+      </div>
     </div>
   );
 }

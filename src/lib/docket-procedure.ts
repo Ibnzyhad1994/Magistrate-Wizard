@@ -185,14 +185,18 @@ export function currentStage(row: ProcedureSnapshot): ProcedureStage {
   return "appeal";
 }
 
-export function hasActiveProcedureFilters(filters: ProcedureFilters): boolean {
+export function activeProcedureFilterCount(filters: ProcedureFilters): number {
   return (
-    filters.stages.length > 0 ||
-    filters.custody.length > 0 ||
-    filters.disclosure.length > 0 ||
-    filters.trial.length > 0 ||
-    filters.nextDate.length > 0
+    filters.stages.length +
+    filters.custody.length +
+    filters.disclosure.length +
+    filters.trial.length +
+    filters.nextDate.length
   );
+}
+
+export function hasActiveProcedureFilters(filters: ProcedureFilters): boolean {
+  return activeProcedureFilterCount(filters) > 0;
 }
 
 export function toggleFilterValue<T>(list: T[], value: T): T[] {

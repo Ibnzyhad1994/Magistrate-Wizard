@@ -2,6 +2,7 @@ import {
   currentStage,
   filtersToRpcArgs,
   hasActiveProcedureFilters,
+  activeProcedureFilterCount,
   matchesProcedureFilters,
   procedureCellLabel,
   procedureCellMode,
@@ -95,10 +96,20 @@ check(
 );
 
 check("empty filters are inactive", hasActiveProcedureFilters(EMPTY_PROCEDURE_FILTERS), false);
+check("empty filters count is 0", activeProcedureFilterCount(EMPTY_PROCEDURE_FILTERS), 0);
 check(
   "stage chip counts as active",
   hasActiveProcedureFilters({ ...EMPTY_PROCEDURE_FILTERS, stages: ["trial"] }),
   true,
+);
+check(
+  "two groups add to filter count",
+  activeProcedureFilterCount({
+    ...EMPTY_PROCEDURE_FILTERS,
+    stages: ["trial"],
+    custody: ["remanded"],
+  }),
+  2,
 );
 
 const row = {

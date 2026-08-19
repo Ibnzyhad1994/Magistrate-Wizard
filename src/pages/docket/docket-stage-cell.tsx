@@ -44,10 +44,10 @@ export function DocketStageCell({
   const tone = procedureCellTone(column, value);
   const label = procedureCellLabel(value);
   const className = cn(
-    "inline-flex max-w-full items-center rounded px-1.5 py-0.5 text-left text-xs font-medium",
+    "inline-flex max-w-full touch-manipulation items-center rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
     isCurrent && "ring-1 ring-white/45",
-    compact ? "min-h-6" : "min-h-7 min-w-[5.5rem]",
+    compact ? "min-h-8" : "min-h-9 min-w-[5.5rem] sm:min-h-7",
     mode === "edit" && "cursor-pointer hover:brightness-110",
   );
 
@@ -68,10 +68,10 @@ export function DocketStageCell({
           {label}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[9rem]">
+      <DropdownMenuContent align="start" collisionPadding={16} className="min-w-[11rem]">
         <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
+            <DropdownMenuRadioItem key={option.value} value={option.value} className="min-h-10">
               {option.label}
             </DropdownMenuRadioItem>
           ))}
@@ -79,7 +79,10 @@ export function DocketStageCell({
         {procedureHasClear(column) && value !== procedureEmptyValue(column) && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => onChange(procedureEmptyValue(column))}>
+            <DropdownMenuItem
+              className="min-h-10"
+              onSelect={() => onChange(procedureEmptyValue(column))}
+            >
               Clear
             </DropdownMenuItem>
           </>
