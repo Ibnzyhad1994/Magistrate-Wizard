@@ -47,3 +47,11 @@ scripts/tests/ingest-ocr-robustness-results.json
 scripts/tests/ocr-slow-system-results.json
 scripts/tests/persona-workflow-results.json
 scripts/tests/propose-tags-before-after.json
+
+# Official-law harvest scratch (HTML/PDF dumps, unfiltered JSON)
+scripts/seed-legal-library/_tmp_mola/
+scripts/seed-legal-library/raw/_fetch/
+scripts/seed-legal-library/raw/_fetch2/
+scripts/seed-legal-library/raw/_harvest/
+scripts/seed-legal-library/raw/_pdfs/
+scripts/seed-legal-library/raw/_tmp_gy/
