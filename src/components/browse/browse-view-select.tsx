@@ -1,10 +1,19 @@
 import { Select } from "@/components/ui/select";
-import { BROWSE_VIEW_LABELS, isBrowseView } from "@/lib/browse-prefs";
+import { BROWSE_VIEW_LABELS, isBrowseView, type BrowseView } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
 
-export function BrowseViewSelect({ className }: { className?: string }) {
-  const browseView = useUiStore((s) => s.browseView);
-  const setBrowseView = useUiStore((s) => s.setBrowseView);
+export function BrowseViewSelect({
+  className,
+  value,
+  onChange,
+}: {
+  className?: string;
+  value?: BrowseView;
+  onChange?: (view: BrowseView) => void;
+}) {
+  const storedView = useUiStore((s) => s.browseView);
+  const setStoredView = useUiStore((s) => s.setBrowseView);
+  const browseView = value ?? storedView;
 
   return (
     <div className={className}>
@@ -12,7 +21,9 @@ export function BrowseViewSelect({ className }: { className?: string }) {
         className="w-[8.5rem]"
         value={browseView}
         onChange={(e) => {
-          if (isBrowseView(e.target.value)) setBrowseView(e.target.value);
+          if (!isBrowseView(e.target.value)) return;
+          if (onChange) onChange(e.target.value);
+          else setStoredView(e.target.value);
         }}
         aria-label="Browse layout"
       >

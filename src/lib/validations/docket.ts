@@ -35,12 +35,14 @@ export const DOCKET_EVENT_STATUSES = [
 export const EVENT_TYPES = [
   "Hearing",
   "Mention",
+  "Arraignment",
   "Trial",
   "Sentencing",
   "Case Management",
   "Preliminary Inquiry",
   "Committal",
   "Bail",
+  "Disclosure",
   "Decision/Judgment",
   "Review",
 ] as const;

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BrowseViewSelect } from "@/components/browse/browse-view-select";
+import type { BrowseView } from "@/lib/browse-prefs";
 
 interface BrowseHeaderProps {
   title: string;
@@ -7,6 +8,8 @@ interface BrowseHeaderProps {
   action?: ReactNode;
   /** Hide the Tiles / List control (e.g. Settings, admin tools). */
   showViewSelect?: boolean;
+  viewSelectValue?: BrowseView;
+  onViewSelectChange?: (view: BrowseView) => void;
 }
 
 export function BrowseHeader({
@@ -14,6 +17,8 @@ export function BrowseHeader({
   description,
   action,
   showViewSelect = false,
+  viewSelectValue,
+  onViewSelectChange,
 }: BrowseHeaderProps) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -27,7 +32,9 @@ export function BrowseHeader({
       </div>
       {(showViewSelect || action) && (
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {showViewSelect && <BrowseViewSelect />}
+          {showViewSelect && (
+            <BrowseViewSelect value={viewSelectValue} onChange={onViewSelectChange} />
+          )}
           {action}
         </div>
       )}

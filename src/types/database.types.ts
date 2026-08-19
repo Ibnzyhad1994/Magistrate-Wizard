@@ -984,54 +984,81 @@ export type Database = {
       }
       docket_matters: {
         Row: {
+          appeal_status: string
+          arraignment_status: string
           case_number: string
           charge_or_issue: string | null
           court_id: string
           cover_image_path: string | null
           created_at: string
           created_by: string
+          custody_status: string
+          disclosure_status: string
           district_id: string
           id: string
+          judgment_status: string
           last_updated_by: string | null
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          procedure_stage: string | null
+          ruling_status: string
           search_vector: unknown
+          sentence_status: string
           status: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status: string
           updated_at: string
         }
         Insert: {
+          appeal_status?: string
+          arraignment_status?: string
           case_number: string
           charge_or_issue?: string | null
           court_id: string
           cover_image_path?: string | null
           created_at?: string
           created_by?: string
+          custody_status?: string
+          disclosure_status?: string
           district_id: string
           id?: string
+          judgment_status?: string
           last_updated_by?: string | null
           matter_title: string
           orders_summary?: string | null
           outcome?: string | null
+          procedure_stage?: string | null
+          ruling_status?: string
           search_vector?: unknown
+          sentence_status?: string
           status?: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status?: string
           updated_at?: string
         }
         Update: {
+          appeal_status?: string
+          arraignment_status?: string
           case_number?: string
           charge_or_issue?: string | null
           court_id?: string
           cover_image_path?: string | null
           created_at?: string
           created_by?: string
+          custody_status?: string
+          disclosure_status?: string
           district_id?: string
           id?: string
+          judgment_status?: string
           last_updated_by?: string | null
           matter_title?: string
           orders_summary?: string | null
           outcome?: string | null
+          procedure_stage?: string | null
+          ruling_status?: string
           search_vector?: unknown
+          sentence_status?: string
           status?: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status?: string
           updated_at?: string
         }
         Relationships: [
@@ -2266,6 +2293,43 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      list_docket_matters: {
+        Args: {
+          p_custody?: string[]
+          p_disclosure?: string[]
+          p_limit?: number
+          p_next_date?: string[]
+          p_procedure_stages?: string[]
+          p_query?: string
+          p_trial?: string[]
+        }
+        Returns: {
+          appeal_status: string
+          arraignment_status: string
+          can_edit: boolean
+          case_number: string
+          charge_or_issue: string
+          court_id: string
+          court_name: string
+          cover_image_path: string
+          created_at: string
+          custody_status: string
+          disclosure_status: string
+          district_id: string
+          headline: string
+          id: string
+          judgment_status: string
+          matter_title: string
+          next_appearance: string
+          procedure_stage: string
+          rank: number
+          ruling_status: string
+          sentence_status: string
+          status: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status: string
+          updated_at: string
+        }[]
+      }
       my_court_id: { Args: never; Returns: string }
       publish_case_law_import: {
         Args: { p_case_law_id: string }
@@ -2363,14 +2427,23 @@ export type Database = {
       search_docket_matters: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
+          appeal_status: string
+          arraignment_status: string
           case_number: string
           charge_or_issue: string
           cover_image_path: string
+          custody_status: string
+          disclosure_status: string
           headline: string
           id: string
+          judgment_status: string
           matter_title: string
+          procedure_stage: string
           rank: number
+          ruling_status: string
+          sentence_status: string
           status: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status: string
         }[]
       }
       search_judgments: {

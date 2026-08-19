@@ -14,6 +14,8 @@
 
 The district is filled in from the Court. You do not choose it. Case numbers must be unique **inside that district**, not worldwide — two districts may both have "45/2024".
 
+On **Docket**, **List** is the working sheet: one row per file, procedure as columns you can click. **Tiles** is cover-photo browse. Quick filters (stage, custody, disclosure, trial, next date) sit above the list.
+
 ```mermaid
 flowchart TD
     Start[Docket list] --> Q{Do I currently sit a Court?}
@@ -27,8 +29,8 @@ flowchart TD
 
 | Tab | What it is for |
 |---|---|
-| Overview | Charge or issue, rolling orders, overall outcome, status, cover image, retain |
-| Events | Each listed date |
+| Overview | Charge or issue, **procedure strip**, rolling orders, overall outcome, status, cover image, retain |
+| Events | Each listed date — when they must return and what was ordered that day |
 | Parties | People and roles, optional identification photo |
 | Tags | Court-visible labels such as "urgent" (not your private sticky notes) |
 | Judgments | Pin *your* written rulings to this file |
@@ -37,6 +39,16 @@ flowchart TD
 | Sharing | Let one named colleague in |
 
 You can bookmark the matter from the header.
+
+## Procedure board
+
+The sheet (and the strip on Overview) is the live record of where the file is:
+
+Arraignment → Custody (on bail **or** remanded) → Disclosure → Trial → Ruling → Judgment → Sentence → Appeal.
+
+Click a cell to set the result. That does **not** create an Event. After a change you can optionally **Log appearance** to record the date. Completing the board does not mark the matter Completed — that status is still separate.
+
+Setting **Judgment** to Delivered does not pin a written ruling. Pin your reasons on the **Judgments** tab.
 
 ## Status
 

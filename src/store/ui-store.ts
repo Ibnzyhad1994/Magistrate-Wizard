@@ -10,11 +10,14 @@ import {
   type TileSize,
 } from "@/lib/browse-prefs";
 
+const DEFAULT_DOCKET_BROWSE_VIEW: BrowseView = "list";
+
 interface UiState {
   sidebarCollapsed: boolean;
   mobileNavOpen: boolean;
   commandPaletteOpen: boolean;
   browseView: BrowseView;
+  docketBrowseView: BrowseView;
   tileSize: TileSize;
 }
 
@@ -24,6 +27,7 @@ interface UiActions {
   setMobileNavOpen: (open: boolean) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setBrowseView: (view: BrowseView) => void;
+  setDocketBrowseView: (view: BrowseView) => void;
   setTileSize: (size: TileSize) => void;
 }
 
@@ -39,6 +43,7 @@ export const useUiStore = create<UiState & UiActions>()(
       mobileNavOpen: false,
       commandPaletteOpen: false,
       browseView: DEFAULT_BROWSE_VIEW,
+      docketBrowseView: DEFAULT_DOCKET_BROWSE_VIEW,
       tileSize: DEFAULT_TILE_SIZE,
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -47,6 +52,7 @@ export const useUiStore = create<UiState & UiActions>()(
       setMobileNavOpen: (open) => set({ mobileNavOpen: open }),
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
       setBrowseView: (view) => set({ browseView: view }),
+      setDocketBrowseView: (view) => set({ docketBrowseView: view }),
       setTileSize: (size) => set({ tileSize: size }),
     }),
     {
@@ -54,6 +60,7 @@ export const useUiStore = create<UiState & UiActions>()(
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         browseView: state.browseView,
+        docketBrowseView: state.docketBrowseView,
         tileSize: state.tileSize,
       }),
       merge: (persisted, current) => {
@@ -62,6 +69,9 @@ export const useUiStore = create<UiState & UiActions>()(
           ...current,
           ...stored,
           browseView: isBrowseView(stored.browseView) ? stored.browseView : current.browseView,
+          docketBrowseView: isBrowseView(stored.docketBrowseView)
+            ? stored.docketBrowseView
+            : current.docketBrowseView,
           tileSize: isTileSize(stored.tileSize) ? stored.tileSize : current.tileSize,
         };
       },

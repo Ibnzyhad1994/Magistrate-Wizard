@@ -33,7 +33,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useUpdateDocketMatter } from "@/hooks/docket/use-docket-matters";
+import { useUpdateDocketMatter, usePatchDocketProcedure } from "@/hooks/docket/use-docket-matters";
 import {
   useCreateRetainedAssignment,
   useDocketAssignments,
@@ -52,6 +52,8 @@ import {
   useSetMatterCover,
 } from "@/hooks/docket/use-identification-images";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
+import { DocketStageStrip, type OverviewLogAppearance } from "@/pages/docket/docket-stage-strip";
+import { DocketEventDialog } from "@/pages/docket/event-dialog";
 
 interface OverviewSectionProps {
   matter: DocketMatter & {
@@ -65,11 +67,13 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const [retainOpen, setRetainOpen] = useState(false);
   const [retainNotes, setRetainNotes] = useState("");
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
+  const [logAppearance, setLogAppearance] = useState<OverviewLogAppearance | null>(null);
   const { user } = useAuth();
   const { data: access } = useDocketMatterAccess(matter.id);
   const canEdit = access?.canEdit ?? false;
   const canManage = access?.canManage ?? false;
   const updateMatter = useUpdateDocketMatter(matter.id);
+  const patchProcedure = usePatchDocketProcedure();
   const setCover = useSetMatterCover(matter.id);
   const clearCover = useClearMatterCover(matter.id);
   const createRetained = useCreateRetainedAssignment(matter.id);
@@ -117,6 +121,13 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           )}
         </CardContent>
       </Card>
+
+      <DocketStageStrip
+        matter={matter}
+        canEdit={canEdit}
+        onPatch={(values) => patchProcedure.mutateAsync({ id: matter.id, values })}
+        onLogAppearance={setLogAppearance}
+      />
 
       <Card className="lg:col-span-3">
         <CardHeader>
@@ -376,6 +387,14 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           }
         }}
       />
+      {logAppearance && (
+        <DocketEventDialog
+          matterId={matter.id}
+          event={null}
+          defaults={logAppearance}
+          onClose={() => setLogAppearance(null)}
+        />
+      )}
     </div>
   );
 }

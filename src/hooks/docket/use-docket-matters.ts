@@ -1,11 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { TablesInsert, TablesUpdate } from "@/types/database.types";
+import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
+import {
+  currentStage,
+  filtersToRpcArgs,
+  type ProcedureFilters,
+  type ProcedureSnapshot,
+} from "@/lib/docket-procedure";
 
 export const docketMattersKeys = {
   all: ["docket-matters"] as const,
   list: (search: string) => ["docket-matters", "list", search] as const,
+  board: (search: string, filters: ProcedureFilters) =>
+    ["docket-matters", "board", search, filters] as const,
   detail: (id: string) => ["docket-matters", "detail", id] as const,
 };
 
@@ -98,6 +106,92 @@ export function useUpdateDocketMatter(id: string) {
         queryKey: docketMattersKeys.detail(id),
       });
       void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
+    },
+  });
+}
+
+export type DocketMatterBoardRow =
+  Database["public"]["Functions"]["list_docket_matters"]["Returns"][number];
+
+/**
+ * Spreadsheet / filtered Docket list. Uses list_docket_matters so stage
+ * filters apply server-side (the 100-row cap still shows the right files).
+ */
+export function useDocketMatterBoard(search: string, filters: ProcedureFilters) {
+  const trimmed = search.trim();
+  return useQuery({
+    queryKey: docketMattersKeys.board(trimmed, filters),
+    queryFn: async () => {
+      const args = filtersToRpcArgs(filters);
+      const { data, error } = await supabase.rpc("list_docket_matters", {
+        p_query: trimmed,
+        p_limit: 100,
+        ...args,
+      });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Quiet PATCH for procedure cells — caller owns the toast. */
+export function usePatchDocketProcedure() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: TablesUpdate<"docket_matters">;
+    }) => {
+      const { data, error } = await supabase
+        .from("docket_matters")
+        .update(values)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ id, values }) => {
+      await queryClient.cancelQueries({ queryKey: docketMattersKeys.all });
+      const previous = queryClient.getQueriesData<DocketMatterBoardRow[]>({
+        queryKey: ["docket-matters", "board"],
+      });
+      queryClient.setQueriesData<DocketMatterBoardRow[]>(
+        { queryKey: ["docket-matters", "board"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((row): DocketMatterBoardRow => {
+            if (row.id !== id) return row;
+            const next = { ...row, ...values };
+            const snapshot: ProcedureSnapshot = {
+              arraignment_status: next.arraignment_status as ProcedureSnapshot["arraignment_status"],
+              custody_status: next.custody_status as ProcedureSnapshot["custody_status"],
+              disclosure_status: next.disclosure_status as ProcedureSnapshot["disclosure_status"],
+              trial_status: next.trial_status as ProcedureSnapshot["trial_status"],
+              ruling_status: next.ruling_status as ProcedureSnapshot["ruling_status"],
+              judgment_status: next.judgment_status as ProcedureSnapshot["judgment_status"],
+              sentence_status: next.sentence_status as ProcedureSnapshot["sentence_status"],
+              appeal_status: next.appeal_status as ProcedureSnapshot["appeal_status"],
+            };
+            return { ...row, ...values, procedure_stage: currentStage(snapshot) } as DocketMatterBoardRow;
+          });
+        },
+      );
+      return { previous, id };
+    },
+    onError: (_error, _values, context) => {
+      for (const [key, data] of context?.previous ?? []) {
+        queryClient.setQueryData(key, data);
+      }
+    },
+    onSettled: (_data, _error, variables) => {
+      void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
+      void queryClient.invalidateQueries({
+        queryKey: docketMattersKeys.detail(variables.id),
+      });
     },
   });
 }
