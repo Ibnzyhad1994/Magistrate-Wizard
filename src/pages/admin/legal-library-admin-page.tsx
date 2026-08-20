@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { SaveIndicator, type SaveState } from "@/components/common/save-indicator";
 import { toast } from "sonner";
@@ -45,6 +46,9 @@ import {
 import {
   useLegalJurisdictions,
   useLegalAuthorityCourts,
+  useLegalRegionalGroups,
+  useCreateLegalJurisdiction,
+  useCreateLegalAuthorityCourt,
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useIngestCaseLaw,
@@ -100,9 +104,9 @@ import {
   INGEST_FILE_ACCEPT,
 } from "@/lib/ingest-document";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, getErrorMessage } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import type { CaseLaw, Statute } from "@/types/database.types";
+import type { CaseLaw, Statute, LegalJurisdiction, LegalAuthorityCourt } from "@/types/database.types";
 
 /** Small labeled-field wrapper — every editable Review Queue / New Import field renders through this so no field is ever identifiable only by placeholder text (§5). */
 function Field({
@@ -125,6 +129,270 @@ function Field({
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
+  );
+}
+
+/** Sentinel option value for the "+ Add new…" entry in the Court/
+ * Jurisdiction selects below — never a real row id, so it can't collide
+ * with an actual uuid. */
+const ADD_NEW_SENTINEL = "__add_new__";
+
+function AddJurisdictionDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (jurisdiction: LegalJurisdiction) => void;
+}) {
+  const { data: regionalGroups } = useLegalRegionalGroups();
+  const create = useCreateLegalJurisdiction();
+  const [name, setName] = useState("");
+  const [regionalGroupId, setRegionalGroupId] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setName("");
+      setRegionalGroupId("");
+    }
+  }, [open]);
+
+  function handleCreate() {
+    if (!name.trim() || !regionalGroupId) return;
+    create.mutate(
+      { name: name.trim(), regional_group_id: regionalGroupId },
+      {
+        onSuccess: (row) => {
+          toast.success(`"${row.name}" added to the Jurisdiction catalogue.`);
+          onCreated(row);
+          onOpenChange(false);
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add a new Jurisdiction</DialogTitle>
+          <DialogDescription>
+            Added to the shared canonical catalogue — every future Case Law/Legislation record can select it, not
+            just this one.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Field label="Name" required>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Saint Lucia"
+              autoFocus
+            />
+          </Field>
+          <Field label="Regional group" required hint="Where this jurisdiction belongs in the Browse taxonomy.">
+            <Select value={regionalGroupId} onChange={(e) => setRegionalGroupId(e.target.value)}>
+              <option value="">Select a regional group</option>
+              {(regionalGroups ?? []).map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleCreate} disabled={!name.trim() || !regionalGroupId || create.isPending}>
+            Add Jurisdiction
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddCourtDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (court: LegalAuthorityCourt) => void;
+}) {
+  const { data: jurisdictions } = useLegalJurisdictions();
+  const create = useCreateLegalAuthorityCourt();
+  const [canonicalName, setCanonicalName] = useState("");
+  const [shortName, setShortName] = useState("");
+  const [jurisdictionId, setJurisdictionId] = useState("");
+  const [courtLevel, setCourtLevel] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setCanonicalName("");
+      setShortName("");
+      setJurisdictionId("");
+      setCourtLevel("");
+    }
+  }, [open]);
+
+  function handleCreate() {
+    if (!canonicalName.trim()) return;
+    create.mutate(
+      {
+        canonical_name: canonicalName.trim(),
+        short_name: shortName || null,
+        jurisdiction_id: jurisdictionId || null,
+        court_level: courtLevel || null,
+      },
+      {
+        onSuccess: (row) => {
+          toast.success(`"${row.canonical_name}" added to the Court catalogue.`);
+          onCreated(row);
+          onOpenChange(false);
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add a new Court</DialogTitle>
+          <DialogDescription>
+            Added to the shared canonical catalogue — every future Case Law record can select it, not just this
+            one. Leave Jurisdiction unset for a regional/supranational court (e.g. CCJ, Privy Council).
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Field label="Canonical name" required>
+            <Input
+              value={canonicalName}
+              onChange={(e) => setCanonicalName(e.target.value)}
+              placeholder="e.g. Court of Appeal of Saint Lucia"
+              autoFocus
+            />
+          </Field>
+          <Field label="Short name">
+            <Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="Optional" />
+          </Field>
+          <Field label="Jurisdiction" hint="Leave unset for a regional/supranational court.">
+            <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
+              <option value="">None (regional/supranational)</option>
+              {(jurisdictions ?? []).map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Court level">
+            <Select value={courtLevel} onChange={(e) => setCourtLevel(e.target.value)}>
+              <option value="">Unspecified</option>
+              <option value="apex">Apex</option>
+              <option value="appellate">Appellate</option>
+              <option value="superior">Superior</option>
+            </Select>
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleCreate} disabled={!canonicalName.trim() || create.isPending}>
+            Add Court
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Jurisdiction <Field>+<Select> with an inline "+ Add new Jurisdiction…" escape hatch — used everywhere Jurisdiction is selected (New Import, Review Queue). Never a free-text override; a new entry becomes a real canonical row so it never gets catalogued twice under different spellings. */
+function JurisdictionField({
+  value,
+  onChange,
+  jurisdictions,
+  required = true,
+  hint,
+}: {
+  value: string | null;
+  onChange: (jurisdictionId: string | null) => void;
+  jurisdictions: LegalJurisdiction[];
+  required?: boolean;
+  hint?: string;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  return (
+    <Field label="Jurisdiction" required={required} hint={hint}>
+      <Select
+        value={value ?? ""}
+        onChange={(e) => {
+          if (e.target.value === ADD_NEW_SENTINEL) {
+            setShowAdd(true);
+            return;
+          }
+          onChange(e.target.value || null);
+        }}
+      >
+        <option value="">Select Jurisdiction — needs review</option>
+        {jurisdictions.map((j) => (
+          <option key={j.id} value={j.id}>
+            {j.name}
+          </option>
+        ))}
+        <option value={ADD_NEW_SENTINEL}>+ Add new Jurisdiction…</option>
+      </Select>
+      <AddJurisdictionDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(j) => onChange(j.id)} />
+    </Field>
+  );
+}
+
+/** Court <Field>+<Select> with the same inline "+ Add new Court…" escape hatch. `onChange` receives the full created/selected court (or null) rather than just an id, so a caller can auto-populate Jurisdiction from it exactly as it already does for an existing catalogue court. */
+function CourtField({
+  value,
+  onChange,
+  courts,
+  required = true,
+  hint = "Selecting a Court automatically sets Jurisdiction where known.",
+}: {
+  value: string | null;
+  onChange: (court: LegalAuthorityCourt | null) => void;
+  courts: LegalAuthorityCourt[];
+  required?: boolean;
+  hint?: string;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  return (
+    <Field label="Court" required={required} hint={hint}>
+      <Select
+        value={value ?? ""}
+        onChange={(e) => {
+          if (e.target.value === ADD_NEW_SENTINEL) {
+            setShowAdd(true);
+            return;
+          }
+          const next = courts.find((c) => c.id === e.target.value) ?? null;
+          onChange(next);
+        }}
+      >
+        <option value="">Select deciding Court — needs review</option>
+        {courts.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.canonical_name}
+          </option>
+        ))}
+        <option value={ADD_NEW_SENTINEL}>+ Add new Court…</option>
+      </Select>
+      <AddCourtDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(c) => onChange(c)} />
+    </Field>
   );
 }
 
@@ -1013,8 +1281,6 @@ function ImportTab() {
 function SingleImportPanel() {
   const [contentType, setContentType] = useState<"case_law" | "legislation">("case_law");
   const [text, setText] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [sourceId, setSourceId] = useState<string>("");
   const [courtId, setCourtId] = useState<string>("");
   const [jurisdictionId, setJurisdictionId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
@@ -1031,23 +1297,15 @@ function SingleImportPanel() {
 
   const ingestCaseLaw = useIngestCaseLaw();
   const ingestLegislation = useIngestLegislation();
-  const { data: sources } = useLegalSources();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const navigate = useNavigate();
 
-  // Source selection is about PROVENANCE (which repository the document
-  // came from) and is entirely separate from Jurisdiction/Court (which
-  // court decided the case) — §7/§8/§12. A source may be left unassigned.
-  const approvedSources = (sources ?? []).filter((s) => s.status === "approved");
-  const otherSources = (sources ?? []).filter((s) => s.status !== "approved");
-
   const selectedCourt = (courts ?? []).find((c) => c.id === courtId) ?? null;
 
-  /** Selecting a canonical Court auto-populates Jurisdiction where the court has one on file (§3/§4) — a national court like "Court of Appeal of Guyana" always carries its Jurisdiction; a regional/supranational court (CCJ, JCPC) has `jurisdiction_id: null` in the catalogue and is deliberately left for the curator to set explicitly rather than forcing one nation onto it. */
-  function handleCourtChange(newCourtId: string) {
-    setCourtId(newCourtId);
-    const court = (courts ?? []).find((c) => c.id === newCourtId);
+  /** Selecting a canonical Court auto-populates Jurisdiction where the court has one on file (§3/§4) — a national court like "Court of Appeal of Guyana" always carries its Jurisdiction; a regional/supranational court (CCJ, JCPC) has `jurisdiction_id: null` in the catalogue and is deliberately left for the curator to set explicitly rather than forcing one nation onto it. Takes the full court object (not just an id) so a just-created Court (see CourtField/AddCourtDialog) works identically to an existing one — the freshly-created row isn't in the `courts` list yet at the moment of selection, since query invalidation is async. */
+  function handleCourtChange(court: LegalAuthorityCourt | null) {
+    setCourtId(court?.id ?? "");
     if (court?.jurisdiction_id) {
       setJurisdictionId(court.jurisdiction_id);
     }
@@ -1063,15 +1321,10 @@ function SingleImportPanel() {
    * A's metadata. This must be impossible: every field derived from a
    * previously selected file is cleared SYNCHRONOUSLY, before any async
    * extraction work starts for the new file — never conditionally, never
-   * only on the success path. Source Repository (`sourceId`) is the one
-   * deliberately-selected piece of provenance that survives a file switch
-   * (a curator legitimately batches several documents from the same
-   * repository); Source URL is per-document and is cleared with everything
-   * else.
+   * only on the success path.
    */
   function resetFileDerivedState() {
     setText("");
-    setSourceUrl("");
     setCourtId("");
     setJurisdictionId("");
     setCaseFields(EMPTY_CASE_FIELDS);
@@ -1251,38 +1504,6 @@ function SingleImportPanel() {
             />
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Source URL" hint="Optional — provenance only, not fetched.">
-              <Input
-                value={sourceUrl}
-                onChange={(e) => setSourceUrl(e.target.value)}
-              />
-            </Field>
-            <Field label="Source repository" hint="Where the document came from — does not decide the Jurisdiction or Court below.">
-              <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
-                <option value="">Unassigned</option>
-                {approvedSources.length > 0 && (
-                  <optgroup label="Approved">
-                    {approvedSources.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {otherSources.length > 0 && (
-                  <optgroup label="Not yet approved">
-                    {otherSources.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({SOURCE_STATUS_LABEL[s.status] ?? s.status})
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </Select>
-            </Field>
-          </div>
-
           {contentType === "case_law" ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Case name" hint="Proposed from extracted text if left blank.">
@@ -1303,34 +1524,22 @@ function SingleImportPanel() {
                   onChange={(v) => setCaseFields((f) => ({ ...f, decided_date: v }))}
                 />
               </Field>
-              <Field
-                label="Jurisdiction"
-                required
+              <JurisdictionField
+                value={jurisdictionId || null}
+                onChange={(id) => setJurisdictionId(id ?? "")}
+                jurisdictions={jurisdictions ?? []}
                 hint={
                   selectedCourt?.jurisdiction_id
                     ? "Auto-set from the selected Court."
                     : "This court spans multiple jurisdictions — set explicitly."
                 }
-              >
-                <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
-                  <option value="">Select Jurisdiction — needs review</option>
-                  {(jurisdictions ?? []).map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Court" required hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both.">
-                <Select value={courtId} onChange={(e) => handleCourtChange(e.target.value)}>
-                  <option value="">Select deciding Court — needs review</option>
-                  {(courts ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.canonical_name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              />
+              <CourtField
+                value={courtId || null}
+                onChange={handleCourtChange}
+                courts={courts ?? []}
+                hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both."
+              />
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -1352,16 +1561,11 @@ function SingleImportPanel() {
                   onChange={(e) => setStatuteFields((f) => ({ ...f, short_title: e.target.value }))}
                 />
               </Field>
-              <Field label="Jurisdiction" required>
-                <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
-                  <option value="">Select Jurisdiction — needs review</option>
-                  {(jurisdictions ?? []).map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <JurisdictionField
+                value={jurisdictionId || null}
+                onChange={(id) => setJurisdictionId(id ?? "")}
+                jurisdictions={jurisdictions ?? []}
+              />
             </div>
           )}
 
@@ -1390,8 +1594,8 @@ function SingleImportPanel() {
                       text,
                       file,
                       extractionEnvelope,
-                      source_url: sourceUrl.trim() || null,
-                      source_id: sourceId || null,
+                      source_url: null,
+                      source_id: null,
                       original_filename: file?.name ?? null,
                       batch_id: null,
                       known: {
@@ -1431,8 +1635,8 @@ function SingleImportPanel() {
                       text,
                       file,
                       extractionEnvelope,
-                      source_url: sourceUrl.trim() || null,
-                      source_id: sourceId || null,
+                      source_url: null,
+                      source_id: null,
                       original_filename: file?.name ?? null,
                       batch_id: null,
                       known: {
@@ -1501,14 +1705,9 @@ function BulkSummaryChip({
  */
 function BulkImportPanel() {
   const { items, isRunning, startBulkImport, reset, lastBatchId, retryItem } = useBulkImportCaseLaw();
-  const [sourceId, setSourceId] = useState<string>("");
-  const { data: sources } = useLegalSources();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const navigate = useNavigate();
-
-  const approvedSources = (sources ?? []).filter((s) => s.status === "approved");
-  const otherSources = (sources ?? []).filter((s) => s.status !== "approved");
 
   const summary = summarizeBulkQueue(items);
   const hasItems = items.length > 0;
@@ -1525,10 +1724,9 @@ function BulkImportPanel() {
   function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
     const files = Array.from(fileList);
-    const sourceName = (sources ?? []).find((s) => s.id === sourceId)?.name ?? null;
     void startBulkImport(files, {
-      sourceId: sourceId || null,
-      sourceName,
+      sourceId: null,
+      sourceName: null,
       courts: courts ?? [],
       jurisdictions: (jurisdictions ?? []).map((j) => ({ id: j.id, name: j.name })),
     });
@@ -1546,33 +1744,6 @@ function BulkImportPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Field
-          label="Source repository"
-          hint="Applied to every file in this batch — does not decide Jurisdiction or Court."
-        >
-          <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="max-w-xs">
-            <option value="">Unassigned</option>
-            {approvedSources.length > 0 && (
-              <optgroup label="Approved">
-                {approvedSources.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {otherSources.length > 0 && (
-              <optgroup label="Not yet approved">
-                {otherSources.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.status})
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </Select>
-        </Field>
-
         <div className="flex flex-wrap items-center gap-3">
           <label
             className={`inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted ${
@@ -2423,12 +2594,11 @@ function CaseLawReviewCard({
           ? "error"
           : "idle";
 
-  /** Selecting a canonical Court auto-populates Jurisdiction where the court has one on file (§3/§4) — regional/supranational courts (CCJ, JCPC) carry no fixed jurisdiction_id and are left for the curator to set explicitly. */
-  function handleCourtChange(newCourtId: string) {
-    const court = (courts ?? []).find((c) => c.id === newCourtId);
+  /** Selecting a canonical Court auto-populates Jurisdiction where the court has one on file (§3/§4) — regional/supranational courts (CCJ, JCPC) carry no fixed jurisdiction_id and are left for the curator to set explicitly. Takes the full court object (not just an id) so a just-created Court works identically to an existing one — see CourtField/AddCourtDialog. */
+  function handleCourtChange(court: LegalAuthorityCourt | null) {
     setFields((f) => ({
       ...f,
-      court_id: newCourtId || null,
+      court_id: court?.id ?? null,
       jurisdiction_id: court?.jurisdiction_id ?? f.jurisdiction_id,
     }));
   }
@@ -2576,9 +2746,10 @@ function CaseLawReviewCard({
             />
           </Field>
           <div />
-          <Field
-            label="Jurisdiction"
-            required
+          <JurisdictionField
+            value={fields.jurisdiction_id}
+            onChange={(id) => setFields((f) => ({ ...f, jurisdiction_id: id }))}
+            jurisdictions={jurisdictions ?? []}
             hint={
               selectedCourt?.jurisdiction_id
                 ? "Auto-set from the selected Court."
@@ -2586,29 +2757,8 @@ function CaseLawReviewCard({
                   ? "This court spans multiple jurisdictions — set explicitly."
                   : undefined
             }
-          >
-            <Select
-              value={fields.jurisdiction_id ?? ""}
-              onChange={(e) => setFields((f) => ({ ...f, jurisdiction_id: e.target.value || null }))}
-            >
-              <option value="">Select Jurisdiction — needs review</option>
-              {(jurisdictions ?? []).map((j) => (
-                <option key={j.id} value={j.id}>
-                  {j.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Court" required hint="Selecting a Court automatically sets Jurisdiction where known.">
-            <Select value={fields.court_id ?? ""} onChange={(e) => handleCourtChange(e.target.value)}>
-              <option value="">Select deciding Court — needs review</option>
-              {(courts ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.canonical_name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          />
+          <CourtField value={fields.court_id} onChange={handleCourtChange} courts={courts ?? []} />
         </div>
 
         {/* TEXT — editable here specifically because nowhere else in the
@@ -2880,17 +3030,11 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
             onChange={(e) => setFields((f) => ({ ...f, chapter_number: e.target.value }))}
             placeholder="Chapter number"
           />
-          <Select
-            value={fields.jurisdiction_id ?? ""}
-            onChange={(e) => setFields((f) => ({ ...f, jurisdiction_id: e.target.value || null }))}
-          >
-            <option value="">Canonical Jurisdiction — needs review</option>
-            {(jurisdictions ?? []).map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.name}
-              </option>
-            ))}
-          </Select>
+          <JurisdictionField
+            value={fields.jurisdiction_id}
+            onChange={(id) => setFields((f) => ({ ...f, jurisdiction_id: id }))}
+            jurisdictions={jurisdictions ?? []}
+          />
           <Input
             value={fields.short_title}
             onChange={(e) => setFields((f) => ({ ...f, short_title: e.target.value }))}

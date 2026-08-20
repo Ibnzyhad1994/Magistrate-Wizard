@@ -1,15 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import type { TablesInsert } from "@/types/database.types";
 
 /**
- * Read-only frontend surface for the normalized Court/Jurisdiction
- * reference catalogue (0058): `legal_regional_groups` / `legal_jurisdictions`
- * / `legal_authority_courts`. Shared reference data — readable by every
- * authenticated user, write-restricted to admins at the RLS layer (no
- * admin-only write UI is built in this pass; the seeded catalogue is
- * extended by direct data entry later, per the explicit "do not hard-code
- * the entire Court list inside one React component" instruction — these
- * hooks read the data-driven table, they don't define it).
+ * Frontend surface for the normalized Court/Jurisdiction reference
+ * catalogue (0058): `legal_regional_groups` / `legal_jurisdictions` /
+ * `legal_authority_courts`. Shared reference data — readable by every
+ * authenticated user, write-restricted to admins at the RLS layer.
+ *
+ * The read hooks were originally the only thing here ("no admin-only
+ * write UI is built in this pass; the seeded catalogue is extended by
+ * direct data entry later" — that "later" is `useCreateLegalJurisdiction`/
+ * `useCreateLegalAuthorityCourt` below, added so a curator can add a
+ * missing Court/Jurisdiction inline while cataloguing Case Law/Legislation
+ * instead of needing direct DB access). Deliberately still going through
+ * this catalogue rather than a free-text override on the case_law/statutes
+ * row itself — a raw free-text field would let the same Court get entered
+ * under several different spellings across records; going through this
+ * table keeps one canonical row no matter how many records reference it.
  *
  * Deliberately distinct from `legal_sources` (use-legal-sources.ts, the
  * SOURCE REPOSITORY a document came from) and from the unrelated `courts`
@@ -79,6 +87,51 @@ export function useCaseLawCountsByCourt() {
       return new Map((data ?? []).map((r) => [r.court_id, r.result_count]));
     },
     staleTime: 60 * 1000,
+  });
+}
+
+/** Admin-only (enforced by RLS — `useMutation` here does not itself check role, the INSERT policy does). Used by the inline "+ Add new Jurisdiction" flow so a curator never has to leave the Case Law/Legislation form to catalogue a missing one. */
+export function useCreateLegalJurisdiction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; regional_group_id: string }) => {
+      const payload: TablesInsert<"legal_jurisdictions"> = {
+        name: input.name.trim(),
+        regional_group_id: input.regional_group_id,
+      };
+      const { data, error } = await supabase.from("legal_jurisdictions").insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: legalTaxonomyKeys.jurisdictions });
+    },
+  });
+}
+
+/** Admin-only (RLS-enforced). `jurisdiction_id` is optional — a regional/supranational court (CCJ, JCPC) legitimately has none, exactly like the seeded catalogue. */
+export function useCreateLegalAuthorityCourt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      canonical_name: string;
+      short_name?: string | null;
+      jurisdiction_id?: string | null;
+      court_level?: string | null;
+    }) => {
+      const payload: TablesInsert<"legal_authority_courts"> = {
+        canonical_name: input.canonical_name.trim(),
+        short_name: input.short_name?.trim() || null,
+        jurisdiction_id: input.jurisdiction_id || null,
+        court_level: input.court_level || null,
+      };
+      const { data, error } = await supabase.from("legal_authority_courts").insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: legalTaxonomyKeys.courts });
+    },
   });
 }
 
