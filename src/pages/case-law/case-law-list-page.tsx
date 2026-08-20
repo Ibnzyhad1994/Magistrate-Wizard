@@ -14,8 +14,10 @@ import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import {
   useLegalJurisdictions,
   useLegalAuthorityCourts,
+  useLegalCaseCategories,
   useCaseLawCountsByCourt,
   useCaseLawCountsByJurisdiction,
+  useCaseLawCountsByCategory,
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import { CreateCaseLawDialog } from "@/pages/case-law/create-case-law-dialog";
 import { ROUTES } from "@/routes/paths";
@@ -25,12 +27,15 @@ export default function CaseLawListPage() {
   const [query, setQuery] = useState("");
   const [courtId, setCourtId] = useState<string | null>(null);
   const [jurisdictionId, setJurisdictionId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useCaseLawList();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
+  const { data: categories } = useLegalCaseCategories();
   const { data: courtCounts } = useCaseLawCountsByCourt();
   const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction();
+  const { data: categoryCounts } = useCaseLawCountsByCategory();
 
   // Real full-text search over Case Law's own search_vector — used for the
   // My Research / Discoverable tabs (personal rows have no Court/
@@ -44,18 +49,28 @@ export default function CaseLawListPage() {
     query,
   );
 
-  const scopeActive = !!courtId || !!jurisdictionId || !!query.trim();
+  const scopeActive = !!courtId || !!jurisdictionId || !!categoryId || !!query.trim();
   const { data: scopedResults, isPending: scopedPending } = useCaseLawScopedSearch({
     query,
     courtId,
     jurisdictionId,
     tagId: null,
+    categoryId,
   });
 
   const { canonical, mine, discoverable } = useMemo(() => {
-    const all = data ?? [];
+    const all = (data ?? []).map((c) => ({
+      ...c,
+      category_name: (c.legal_case_categories as { name: string } | null)?.name ?? null,
+    }));
     const q = query.trim();
-    const matches = (row: (typeof all)[number]) => !q || (matchingIds?.has(row.id) ?? false);
+    // Category applies uniformly across all three tabs (personal research
+    // can carry a category same as canonical rows) -- unlike Court/
+    // Jurisdiction, which only ever scope the Canonical tab below, since a
+    // personal research row has no court_id/jurisdiction_id relationship
+    // to filter by.
+    const matches = (row: (typeof all)[number]) =>
+      (!q || (matchingIds?.has(row.id) ?? false)) && (!categoryId || row.category_id === categoryId);
     return {
       canonical: all.filter((c) => c.owner_id === null && matches(c)),
       mine: all.filter((c) => c.owner_id === user?.id && matches(c)),
@@ -63,10 +78,10 @@ export default function CaseLawListPage() {
         (c) => c.owner_id !== null && c.owner_id !== user?.id && c.is_discoverable && matches(c),
       ),
     };
-  }, [data, user?.id, query, matchingIds]);
+  }, [data, user?.id, query, matchingIds, categoryId]);
 
   const canonicalRows =
-    scopeActive && (courtId || jurisdictionId)
+    scopeActive && (courtId || jurisdictionId || categoryId)
       ? (scopedResults ?? []).map((r) => ({
           id: r.id,
           case_name: r.case_name,
@@ -75,6 +90,7 @@ export default function CaseLawListPage() {
           jurisdiction: r.jurisdiction,
           owner_id: null,
           updated_at: null,
+          category_name: null,
         }))
       : canonical;
 
@@ -136,13 +152,28 @@ export default function CaseLawListPage() {
             </option>
           ))}
         </Select>
-        {(courtId || jurisdictionId) && (
+        <Select
+          className="max-w-[220px]"
+          value={categoryId ?? ""}
+          onChange={(e) => setCategoryId(e.target.value || null)}
+          aria-label="Filter by Category"
+        >
+          <option value="">All Categories</option>
+          {(categories ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {categoryCounts?.get(c.id) ? ` (${categoryCounts.get(c.id)})` : ""}
+            </option>
+          ))}
+        </Select>
+        {(courtId || jurisdictionId || categoryId) && (
           <Button
             size="sm"
             variant="ghost"
             onClick={() => {
               setCourtId(null);
               setJurisdictionId(null);
+              setCategoryId(null);
             }}
           >
             <X className="h-3.5 w-3.5" />
@@ -203,6 +234,8 @@ interface CaseLawRow {
   owner_id: string | null;
   /** null when the row came from the Court/Jurisdiction-scoped RPC, which doesn't select updated_at. */
   updated_at: string | null;
+  /** null when uncategorized, or when the row came from the scoped-search RPC (which doesn't select it). */
+  category_name: string | null;
 }
 
 function CaseLawTable({
@@ -243,7 +276,7 @@ function CaseLawTable({
           tone="case-law"
           eyebrow={row.citation}
           title={row.case_name}
-          subtitle={[row.court, row.jurisdiction].filter(Boolean).join(" · ")}
+          subtitle={[row.court, row.jurisdiction, row.category_name].filter(Boolean).join(" · ")}
           badge={row.owner_id === null ? "Canonical" : undefined}
           href={ROUTES.caseLawDetail(row.id)}
         />

@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -23,6 +24,7 @@ import {
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useCreatePersonalCaseLaw } from "@/hooks/case-law/use-case-law";
+import { useLegalCaseCategories } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   caseLawFieldsSchema,
   type CaseLawFieldsFormValues,
@@ -38,6 +40,7 @@ interface CreateCaseLawDialogProps {
 export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogProps) {
   const navigate = useNavigate();
   const createCaseLaw = useCreatePersonalCaseLaw();
+  const { data: categories } = useLegalCaseCategories();
 
   const form = useForm<CaseLawFieldsFormValues>({
     resolver: zodResolver(caseLawFieldsSchema),
@@ -50,6 +53,7 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
       source_url: "",
       summary: "",
       full_text: "",
+      category_id: "",
     },
   });
 
@@ -64,6 +68,7 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
         source_url: values.source_url || null,
         summary: values.summary || null,
         full_text: values.full_text || null,
+        category_id: values.category_id || null,
       });
       onOpenChange(false);
       form.reset();
@@ -93,6 +98,26 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
                   <FormLabel>Case name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. R v. Smith" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category (optional)</FormLabel>
+                  <FormControl>
+                    <Select value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)}>
+                      <option value="">No category</option>
+                      {(categories ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

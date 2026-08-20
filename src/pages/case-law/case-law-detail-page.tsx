@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,10 +31,12 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useCaseLawItem,
   useDeleteCaseLaw,
+  useDeleteCanonicalCaseLaw,
   useSetCaseLawDiscoverable,
   useUpdateCaseLawFields,
 } from "@/hooks/case-law/use-case-law";
 import { useCaseLawTags } from "@/hooks/case-law/use-case-law-tags";
+import { useLegalCaseCategories } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useCaseLawAnnotations,
   useCreateCaseLawAnnotation,
@@ -58,10 +61,13 @@ export default function CaseLawDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.caseLaw, "Back to Case Law");
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { data: caseLaw, isPending, isError, error, refetch } = useCaseLawItem(id);
   const deleteCaseLaw = useDeleteCaseLaw();
+  const deleteCanonicalCaseLaw = useDeleteCanonicalCaseLaw();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteCanonical, setConfirmDeleteCanonical] = useState(false);
+  const { data: categories } = useLegalCaseCategories();
 
   if (isPending) {
     return (
@@ -83,6 +89,8 @@ export default function CaseLawDetailPage() {
   const isCanonical = caseLaw.owner_id === null;
   const isOwner = caseLaw.owner_id === user?.id;
   const isEditable = isOwner; // Canonical edits are Admin-only; no frontend bypass here.
+  const isAdmin = hasRole("admin");
+  const categoryName = (categories ?? []).find((c) => c.id === caseLaw.category_id)?.name;
 
   return (
     <>
@@ -100,6 +108,7 @@ export default function CaseLawDetailPage() {
           <Badge variant={isCanonical ? "canonical" : "secondary"}>
             {isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"}
           </Badge>
+          {categoryName && <Badge variant="outline">{categoryName}</Badge>}
           <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />
         </div>
 
@@ -117,6 +126,24 @@ export default function CaseLawDetailPage() {
           <p className="text-xs text-muted-foreground">
             This permanently deletes your research entry, including its
             annotations.
+          </p>
+        </div>
+      )}
+
+      {isCanonical && isAdmin && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmDeleteCanonical(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Admin action — permanently removes this canonical record for
+            every magistrate, including any attached documents.
           </p>
         </div>
       )}
@@ -163,6 +190,20 @@ export default function CaseLawDetailPage() {
           })
         }
       />
+
+      <AlertDialog
+        open={confirmDeleteCanonical}
+        onOpenChange={setConfirmDeleteCanonical}
+        title="Delete this canonical Case Law record?"
+        description="This permanently removes it from the shared library for every magistrate — including its tags, links to Docket Matters, and any attached documents. This cannot be undone."
+        confirmLabel="Delete"
+        isConfirming={deleteCanonicalCaseLaw.isPending}
+        onConfirm={() =>
+          deleteCanonicalCaseLaw.mutate(caseLaw.id, {
+            onSuccess: () => navigate(ROUTES.caseLaw),
+          })
+        }
+      />
     </div>
     </>
   );
@@ -179,6 +220,7 @@ interface CaseLawDetail {
   summary: string | null;
   full_text: string | null;
   is_discoverable: boolean;
+  category_id: string | null;
 }
 
 function FieldsCard({
@@ -189,6 +231,8 @@ function FieldsCard({
   isEditable: boolean;
 }) {
   const updateFields = useUpdateCaseLawFields(caseLaw.id);
+  const { data: categories } = useLegalCaseCategories();
+  const categoryName = (categories ?? []).find((c) => c.id === caseLaw.category_id)?.name;
   const form = useForm<CaseLawFieldsFormValues>({
     resolver: zodResolver(caseLawFieldsSchema),
     values: {
@@ -200,6 +244,7 @@ function FieldsCard({
       source_url: caseLaw.source_url ?? "",
       summary: caseLaw.summary ?? "",
       full_text: caseLaw.full_text ?? "",
+      category_id: caseLaw.category_id ?? "",
     },
   });
 
@@ -214,6 +259,7 @@ function FieldsCard({
         source_url: values.source_url || null,
         summary: values.summary || null,
         full_text: values.full_text || null,
+        category_id: values.category_id || null,
       });
     } catch {
       // Surfaced globally via the mutation cache toast subscriber.
@@ -227,6 +273,12 @@ function FieldsCard({
           <CardTitle className="text-base">Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
+          {categoryName && (
+            <p>
+              <span className="font-medium text-foreground">Category: </span>
+              <span className="text-muted-foreground">{categoryName}</span>
+            </p>
+          )}
           {caseLaw.decided_date && (
             <p>
               <span className="font-medium text-foreground">Decided: </span>
@@ -347,6 +399,26 @@ function FieldsCard({
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <FormControl>
+                    <Select value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)}>
+                      <option value="">No category</option>
+                      {(categories ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="source_url"

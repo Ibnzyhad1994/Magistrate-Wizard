@@ -171,6 +171,7 @@ export type Database = {
       case_law: {
         Row: {
           case_name: string
+          category_id: string | null
           citation: string
           content_quality_status: string
           court: string
@@ -205,6 +206,7 @@ export type Database = {
         }
         Insert: {
           case_name: string
+          category_id?: string | null
           citation: string
           content_quality_status?: string
           court: string
@@ -239,6 +241,7 @@ export type Database = {
         }
         Update: {
           case_name?: string
+          category_id?: string | null
           citation?: string
           content_quality_status?: string
           court?: string
@@ -272,6 +275,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "case_law_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "legal_case_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "case_law_court_id_fkey"
             columns: ["court_id"]
@@ -1454,6 +1464,27 @@ export type Database = {
           },
         ]
       }
+      legal_case_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       legal_jurisdictions: {
         Row: {
           created_at: string
@@ -2212,6 +2243,13 @@ export type Database = {
       }
       can_view_judgment: { Args: { p_judgment_id: string }; Returns: boolean }
       can_view_statute: { Args: { p_statute_id: string }; Returns: boolean }
+      case_law_counts_by_category: {
+        Args: never
+        Returns: {
+          category_id: string
+          result_count: number
+        }[]
+      }
       case_law_counts_by_court: {
         Args: never
         Returns: {
@@ -2230,6 +2268,7 @@ export type Database = {
         Args: {
           p_batch_id?: string
           p_case_name: string
+          p_category_id?: string
           p_citation: string
           p_content_quality_status?: string
           p_court: string
@@ -2409,6 +2448,7 @@ export type Database = {
       }
       search_case_law_scoped: {
         Args: {
+          p_category_id?: string
           p_court_id?: string
           p_jurisdiction_id?: string
           p_limit?: number
@@ -2709,6 +2749,7 @@ export type LegalSource = Tables<"legal_sources">;
 export type LegalRegionalGroup = Tables<"legal_regional_groups">;
 export type LegalJurisdiction = Tables<"legal_jurisdictions">;
 export type LegalAuthorityCourt = Tables<"legal_authority_courts">;
+export type LegalCaseCategory = Tables<"legal_case_categories">;
 export type ImportBatch = Tables<"import_batches">;
 export type ImportJob = Tables<"import_jobs">;
 export type CaseLaw = Tables<"case_law">;

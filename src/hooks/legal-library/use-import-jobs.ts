@@ -571,6 +571,8 @@ interface IngestCaseLawInput {
     jurisdiction: string;
     court_id?: string | null;
     jurisdiction_id?: string | null;
+    /** The type of matter this case relates to (legal_case_categories, 0073) — curator-selected, never inferred. */
+    category_id?: string | null;
     /** Curator-confirmed decision date — takes priority over the deterministic extraction guess when supplied. */
     decided_date?: string | null;
     /**
@@ -666,6 +668,7 @@ export function useIngestCaseLaw() {
         p_jurisdiction: input.known.jurisdiction,
         p_court_id: input.known.court_id ?? undefined,
         p_jurisdiction_id: input.known.jurisdiction_id ?? undefined,
+        p_category_id: input.known.category_id ?? undefined,
         p_neutral_citation: proposed.neutral_citation ?? undefined,
         p_reported_citation: proposed.reported_citation ?? undefined,
         p_decided_date: writtenDate ?? undefined,

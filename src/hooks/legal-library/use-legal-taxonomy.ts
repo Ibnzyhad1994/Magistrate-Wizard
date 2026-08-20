@@ -28,6 +28,7 @@ export const legalTaxonomyKeys = {
   regionalGroups: ["legal-taxonomy", "regional-groups"] as const,
   jurisdictions: ["legal-taxonomy", "jurisdictions"] as const,
   courts: ["legal-taxonomy", "courts"] as const,
+  categories: ["legal-taxonomy", "categories"] as const,
 };
 
 export function useLegalRegionalGroups() {
@@ -142,6 +143,57 @@ export function useCaseLawCountsByJurisdiction() {
       const { data, error } = await supabase.rpc("case_law_counts_by_jurisdiction");
       if (error) throw error;
       return new Map((data ?? []).map((r) => [r.jurisdiction_id, r.result_count]));
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * `legal_case_categories` (0073) -- the TYPE OF MATTER a Case Law record
+ * relates to (e.g. "Murder", "Narcotics"), used for Browse/filter
+ * navigation. Same shared-reference-data shape as Jurisdiction/Court above:
+ * readable by every authenticated user, write-restricted to admins.
+ * Deliberately distinct from `tags` -- see the 0073 migration header.
+ */
+export function useLegalCaseCategories() {
+  return useQuery({
+    queryKey: legalTaxonomyKeys.categories,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("legal_case_categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Admin-only (RLS-enforced). Used by the inline "+ Add new Category…" flow so a curator never has to leave the Case Law form to catalogue a missing one. */
+export function useCreateLegalCaseCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string }) => {
+      const payload: TablesInsert<"legal_case_categories"> = { name: input.name.trim() };
+      const { data, error } = await supabase.from("legal_case_categories").insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: legalTaxonomyKeys.categories });
+    },
+  });
+}
+
+/** RLS-respecting published-result counts per category, for Browse UI badges (0073 `case_law_counts_by_category`). */
+export function useCaseLawCountsByCategory() {
+  return useQuery({
+    queryKey: ["legal-taxonomy", "case-law-counts-by-category"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("case_law_counts_by_category");
+      if (error) throw error;
+      return new Map((data ?? []).map((r) => [r.category_id, r.result_count]));
     },
     staleTime: 60 * 1000,
   });

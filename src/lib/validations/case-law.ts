@@ -14,5 +14,6 @@ export const caseLawFieldsSchema = z.object({
   source_url: z.string().url("Enter a valid URL").optional().or(z.literal("")),
   summary: z.string().max(5000).optional().or(z.literal("")),
   full_text: z.string().optional().or(z.literal("")),
+  category_id: z.string().optional().or(z.literal("")),
 });
 export type CaseLawFieldsFormValues = z.infer<typeof caseLawFieldsSchema>;

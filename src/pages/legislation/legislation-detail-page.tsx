@@ -5,15 +5,23 @@ import {
   ExternalLink,
   Menu,
   StickyNote,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { InlineError } from "@/components/common/inline-error";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
-import { useStatute, useStatuteProvisions } from "@/hooks/legislation/use-legislation";
+import { DocumentsPanel } from "@/components/common/documents-panel";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  useStatute,
+  useStatuteProvisions,
+  useDeleteCanonicalStatute,
+} from "@/hooks/legislation/use-legislation";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { formatDate, cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
@@ -55,10 +63,13 @@ export default function LegislationDetailPage() {
   const { id, provisionId } = useParams<{ id: string; provisionId?: string }>();
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.legislation, "Back to Legislation");
+  const { hasRole } = useAuth();
   const { data: statute, isPending, isError, error, refetch } = useStatute(id);
   const { data: provisions, isPending: provisionsPending } = useStatuteProvisions(id);
+  const deleteStatute = useDeleteCanonicalStatute();
   const [noteOpen, setNoteOpen] = useState(false);
   const [navSheetOpen, setNavSheetOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const selected = useMemo(
     () => provisions?.find((p) => p.id === provisionId) ?? null,
@@ -82,6 +93,7 @@ export default function LegislationDetailPage() {
     );
   }
 
+  const isAdmin = hasRole("admin");
   const hasStructure = !provisionsPending && (provisions?.length ?? 0) > 0;
 
   function citationFor(p: StatuteProvision) {
@@ -177,6 +189,25 @@ export default function LegislationDetailPage() {
           )}
           <BookmarkToggle entityType="statute" entityId={statute.id} />
         </div>
+
+      {isAdmin && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Admin action — permanently removes this canonical record for
+            every magistrate, including its provisions and any attached
+            documents.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
@@ -314,6 +345,21 @@ export default function LegislationDetailPage() {
         </>
       )}
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Attaching to canonical Legislation is Admin-only per the live
+              documents INSERT policy (0055) — hide Upload rather than show
+              a control that will always be RLS-denied for an ordinary
+              magistrate. Viewing/downloading an already-attached document
+              (e.g. the original Act PDF) is open to any magistrate who can
+              view this record, same as Case Law. */}
+          <DocumentsPanel entityType="statute" entityId={statute.id} canUpload={isAdmin} />
+        </CardContent>
+      </Card>
+
       <CreateBenchNoteDialog
         open={noteOpen}
         onOpenChange={setNoteOpen}
@@ -325,6 +371,20 @@ export default function LegislationDetailPage() {
                 label: `${statute.title} — ${LEVEL_LABELS[selected.level] ?? selected.level}${selected.number ? ` ${selected.number}` : ""}`,
               }
             : { entityType: "statute", entityId: statute.id, label: statute.title }
+        }
+      />
+
+      <AlertDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this Legislation record?"
+        description="This permanently removes it from the shared library for every magistrate — including its provisions and any attached documents. This cannot be undone."
+        confirmLabel="Delete"
+        isConfirming={deleteStatute.isPending}
+        onConfirm={() =>
+          deleteStatute.mutate(statute.id, {
+            onSuccess: () => navigate(ROUTES.legislation),
+          })
         }
       />
     </div>

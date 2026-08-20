@@ -42,8 +42,10 @@ export function useCaseLawScopedSearch(params: {
   courtId: string | null;
   jurisdictionId: string | null;
   tagId: string | null;
+  categoryId: string | null;
 }) {
-  const active = !!params.query.trim() || !!params.courtId || !!params.jurisdictionId || !!params.tagId;
+  const active =
+    !!params.query.trim() || !!params.courtId || !!params.jurisdictionId || !!params.tagId || !!params.categoryId;
   return useQuery({
     queryKey: [
       "case-law-scoped-search",
@@ -51,6 +53,7 @@ export function useCaseLawScopedSearch(params: {
       params.courtId,
       params.jurisdictionId,
       params.tagId,
+      params.categoryId,
     ],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("search_case_law_scoped", {
@@ -58,6 +61,7 @@ export function useCaseLawScopedSearch(params: {
         p_court_id: params.courtId ?? undefined,
         p_jurisdiction_id: params.jurisdictionId ?? undefined,
         p_tag_id: params.tagId ?? undefined,
+        p_category_id: params.categoryId ?? undefined,
         p_limit: 200,
       });
       if (error) throw error;
@@ -74,7 +78,7 @@ export function useCaseLawList() {
       const { data, error } = await supabase
         .from("case_law")
         .select(
-          "id, case_name, citation, court, jurisdiction, decided_date, is_discoverable, owner_id, review_status, updated_at",
+          "id, case_name, citation, court, jurisdiction, decided_date, is_discoverable, owner_id, review_status, updated_at, category_id, legal_case_categories(name)",
         )
         .order("updated_at", { ascending: false })
         .limit(300);
@@ -154,6 +158,7 @@ interface CaseLawInput {
   source_url: string | null;
   summary: string | null;
   full_text: string | null;
+  category_id?: string | null;
 }
 
 /** Always creates PERSONAL research (owner_id = caller) — see validations/case-law.ts. */
@@ -205,6 +210,7 @@ interface CanonicalCaseLawInput {
   document_hash: string | null;
   retrieved_at: string | null;
   import_job_id: string | null;
+  category_id: string | null;
 }
 
 /**
@@ -402,7 +408,7 @@ export function useSetCaseLawDiscoverable(id: string) {
   });
 }
 
-/** Owner-only per RLS (canonical rows have no Delete control in this frontend — admin-only, out of scope here). */
+/** Deletes the caller's own PERSONAL research entry. Owner-only per RLS — see `useDeleteCanonicalCaseLaw` below for the separate, admin-only canonical delete path. */
 export function useDeleteCaseLaw() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -413,6 +419,56 @@ export function useDeleteCaseLaw() {
     onSuccess: () => {
       toast.success("Research entry deleted.");
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });
+    },
+  });
+}
+
+/**
+ * Admin-only: permanently deletes a canonical Case Law record AT ANY
+ * review_status, including published — distinct from
+ * `useRejectCanonicalCaseLaw` above, which is specifically the
+ * reject-a-draft-import workflow step (clears the linked import_jobs row,
+ * named for that meaning). RLS already permits an admin to delete any
+ * canonical `case_law` row unconditionally ("Admins delete canonical Case
+ * Law...", 0035) — this hook adds the Storage cleanup step a raw DELETE
+ * can't do (SQL only cascades the `documents` METADATA row via
+ * `documents_parent_cascade_delete`, never the underlying Storage blob).
+ * Attempting this as a non-admin fails at the RLS layer with a normal
+ * Postgres error, surfaced through the same toast as any other mutation
+ * failure.
+ */
+export function useDeleteCanonicalCaseLaw() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: docs, error: docsError } = await supabase
+        .from("documents")
+        .select("file_path")
+        .eq("entity_type", "case_law")
+        .eq("entity_id", id);
+      if (docsError) throw docsError;
+      if (docs && docs.length > 0) {
+        const { error: removeError } = await supabase.storage
+          .from("documents")
+          .remove(docs.map((d) => d.file_path));
+        if (removeError) {
+          console.error("Storage cleanup failed during canonical Case Law deletion:", removeError);
+          throw new Error(
+            `Could not remove ${docs.length} attached file(s) from storage. The record was left in place so nothing is silently lost -- retry deletion once storage cleanup succeeds.`,
+          );
+        }
+      }
+
+      const { error } = await supabase.from("case_law").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Case Law record deleted.");
+      void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });
+      void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

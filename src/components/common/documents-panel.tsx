@@ -29,8 +29,8 @@ import { INGEST_FILE_ACCEPT } from "@/lib/ingest-source";
 import type { Document } from "@/types/database.types";
 
 interface DocumentsPanelProps {
-  /** One of the six approved polymorphic parent types. */
-  entityType: "docket_matter" | "judgment" | "case_law" | "quick_code" | "bench_note";
+  /** One of the approved polymorphic parent types (`documents_entity_type_check`, 0040/0055). */
+  entityType: "docket_matter" | "judgment" | "case_law" | "quick_code" | "bench_note" | "statute";
   entityId: string;
   /**
    * Whether the caller is currently allowed to attach documents here per

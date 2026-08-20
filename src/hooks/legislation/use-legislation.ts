@@ -260,6 +260,56 @@ export function useRejectCanonicalStatute() {
 }
 
 /**
+ * Admin-only: permanently deletes a canonical Legislation record AT ANY
+ * review_status, including published — distinct from
+ * `useRejectCanonicalStatute` above, which is specifically the
+ * reject-a-draft-import workflow step (clears the linked import_jobs row,
+ * named for that meaning). RLS already permits an admin to delete any
+ * canonical `statutes` row unconditionally ("Admins can delete statutes",
+ * 0012) — this hook adds the Storage cleanup step a raw DELETE can't do
+ * (SQL only cascades the `documents` METADATA row via
+ * `documents_parent_cascade_delete`, never the underlying Storage blob;
+ * `statute_provisions` cascade automatically via their own FK). Attempting
+ * this as a non-admin fails at the RLS layer with a normal Postgres error,
+ * surfaced through the same toast as any other mutation failure.
+ */
+export function useDeleteCanonicalStatute() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: docs, error: docsError } = await supabase
+        .from("documents")
+        .select("file_path")
+        .eq("entity_type", "statute")
+        .eq("entity_id", id);
+      if (docsError) throw docsError;
+      if (docs && docs.length > 0) {
+        const { error: removeError } = await supabase.storage
+          .from("documents")
+          .remove(docs.map((d) => d.file_path));
+        if (removeError) {
+          console.error("Storage cleanup failed during canonical Legislation deletion:", removeError);
+          throw new Error(
+            `Could not remove ${docs.length} attached file(s) from storage. The record was left in place so nothing is silently lost -- retry deletion once storage cleanup succeeds.`,
+          );
+        }
+      }
+
+      const { error } = await supabase.from("statutes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Legislation record deleted.");
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.all });
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+}
+
+/**
  * Ordered Part/Chapter/Section/Subsection/Paragraph/Schedule hierarchy for
  * one Act. Ordered by `sort_order` (document order) so the caller can
  * build a tree client-side from `parent_provision_id` without an extra

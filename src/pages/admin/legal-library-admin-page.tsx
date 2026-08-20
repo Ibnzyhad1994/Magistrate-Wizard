@@ -47,8 +47,10 @@ import {
   useLegalJurisdictions,
   useLegalAuthorityCourts,
   useLegalRegionalGroups,
+  useLegalCaseCategories,
   useCreateLegalJurisdiction,
   useCreateLegalAuthorityCourt,
+  useCreateLegalCaseCategory,
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useIngestCaseLaw,
@@ -106,7 +108,7 @@ import {
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatDateTime, getErrorMessage } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import type { CaseLaw, Statute, LegalJurisdiction, LegalAuthorityCourt } from "@/types/database.types";
+import type { CaseLaw, Statute, LegalJurisdiction, LegalAuthorityCourt, LegalCaseCategory } from "@/types/database.types";
 
 /** Small labeled-field wrapper — every editable Review Queue / New Import field renders through this so no field is ever identifiable only by placeholder text (§5). */
 function Field({
@@ -392,6 +394,110 @@ function CourtField({
         <option value={ADD_NEW_SENTINEL}>+ Add new Court…</option>
       </Select>
       <AddCourtDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(c) => onChange(c)} />
+    </Field>
+  );
+}
+
+function AddCategoryDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (category: LegalCaseCategory) => void;
+}) {
+  const create = useCreateLegalCaseCategory();
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    if (open) setName("");
+  }, [open]);
+
+  function handleCreate() {
+    if (!name.trim()) return;
+    create.mutate(
+      { name: name.trim() },
+      {
+        onSuccess: (row) => {
+          toast.success(`"${row.name}" added to the Category catalogue.`);
+          onCreated(row);
+          onOpenChange(false);
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add a new Category</DialogTitle>
+          <DialogDescription>
+            Added to the shared canonical catalogue — every future Case Law record can select it, not just this
+            one.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Field label="Name" required>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Narcotics"
+              autoFocus
+            />
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleCreate} disabled={!name.trim() || create.isPending}>
+            Add Category
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Category <Field>+<Select> with an inline "+ Add new Category…" escape hatch, same pattern as Jurisdiction/Court above. The type of matter a Case Law record relates to (e.g. "Murder", "Narcotics") — used for Browse/filter navigation, distinct from the free-text `tags` classification below. */
+function CategoryField({
+  value,
+  onChange,
+  categories,
+  required = false,
+  hint,
+}: {
+  value: string | null;
+  onChange: (categoryId: string | null) => void;
+  categories: LegalCaseCategory[];
+  required?: boolean;
+  hint?: string;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  return (
+    <Field label="Category" required={required} hint={hint}>
+      <Select
+        value={value ?? ""}
+        onChange={(e) => {
+          if (e.target.value === ADD_NEW_SENTINEL) {
+            setShowAdd(true);
+            return;
+          }
+          onChange(e.target.value || null);
+        }}
+      >
+        <option value="">No category</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+        <option value={ADD_NEW_SENTINEL}>+ Add new Category…</option>
+      </Select>
+      <AddCategoryDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(c) => onChange(c.id)} />
     </Field>
   );
 }
@@ -1283,6 +1389,7 @@ function SingleImportPanel() {
   const [text, setText] = useState("");
   const [courtId, setCourtId] = useState<string>("");
   const [jurisdictionId, setJurisdictionId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [extractionEnvelope, setExtractionEnvelope] = useState<ExtractionEnvelope>(emptyExtractionEnvelope());
   /** Case-name metadata confidence for the CURRENT file (Phase 3/8) — surfaced live in the New Import panel, not just after the draft is created. `null` = not yet computed / no case name found at all. */
@@ -1297,9 +1404,39 @@ function SingleImportPanel() {
 
   const ingestCaseLaw = useIngestCaseLaw();
   const ingestLegislation = useIngestLegislation();
+  const publishCaseLaw = useSetCaseLawReviewStatus();
+  const publishStatute = useSetStatuteReviewStatus();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
+  const { data: categories } = useLegalCaseCategories();
   const navigate = useNavigate();
+
+  /**
+   * A single manually-entered document (this panel, as opposed to Bulk
+   * Import's batch-of-files path) has every identifying field explicitly
+   * typed/selected by the curator right here — unlike a bulk/OCR item,
+   * there's no reason to make them re-open the Review Queue and click
+   * Publish separately. Auto-publish immediately after the draft is
+   * created, through the SAME `publish_case_law_import`/
+   * `publish_legislation_import` quality gate the manual Review Queue
+   * Publish button already uses (0072) — never a bypass of it. If the
+   * gate rejects it (missing field, failed content-quality check), the
+   * mutation's own onError toasts the exact reason and the record simply
+   * stays a draft in the Review Queue for the curator to fix, same as
+   * today. Bulk Import is deliberately untouched — those items are
+   * machine-proposed per file and still need individual review.
+   */
+  function publishThenNavigate(
+    kind: "case_law" | "legislation",
+    id: string,
+  ) {
+    const mutation = kind === "case_law" ? publishCaseLaw : publishStatute;
+    const route = kind === "case_law" ? ROUTES.caseLawDetail(id) : ROUTES.legislationDetail(id);
+    mutation.mutate(
+      { id, review_status: "published" },
+      { onSettled: () => navigate(route) },
+    );
+  }
 
   const selectedCourt = (courts ?? []).find((c) => c.id === courtId) ?? null;
 
@@ -1327,6 +1464,7 @@ function SingleImportPanel() {
     setText("");
     setCourtId("");
     setJurisdictionId("");
+    setCategoryId("");
     setCaseFields(EMPTY_CASE_FIELDS);
     setStatuteFields(EMPTY_STATUTE_FIELDS);
     setExtractionEnvelope(emptyExtractionEnvelope());
@@ -1455,9 +1593,12 @@ function SingleImportPanel() {
           <CardTitle className="text-base">Deterministic ingestion — no AI</CardTitle>
           <CardDescription>
             Hashing, citation/date/section-heading parsing, and canonical tag
-            proposals run automatically over the text below. Nothing is
-            published immediately — this creates a draft record sent to the
-            Review Queue.
+            proposals run automatically over the text below. Since you're
+            entering this record's fields yourself, it publishes immediately
+            once created — unless it fails the same quality checks the
+            Review Queue's Publish button enforces (e.g. a missing field, or
+            extracted text that failed automated quality checks), in which
+            case it's left as a draft in the Review Queue for you to fix.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1540,6 +1681,11 @@ function SingleImportPanel() {
                 courts={courts ?? []}
                 hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both."
               />
+              <CategoryField
+                value={categoryId || null}
+                onChange={(id) => setCategoryId(id ?? "")}
+                categories={categories ?? []}
+              />
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -1612,17 +1758,18 @@ function SingleImportPanel() {
                         jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
                         court_id: courtId || null,
                         jurisdiction_id: jurisdictionId || null,
+                        category_id: categoryId || null,
                         decided_date: caseFields.decided_date || null,
                       },
                     },
                     {
-                      onSuccess: (result) => navigate(ROUTES.caseLawDetail(result.caseLawId)),
+                      onSuccess: (result) => publishThenNavigate("case_law", result.caseLawId),
                     },
                   )
                 }
               >
                 <FileText className="h-4 w-4" />
-                Create draft Case Law record
+                Create &amp; publish Case Law record
               </Button>
             ) : (
               <Button
@@ -1648,13 +1795,13 @@ function SingleImportPanel() {
                       },
                     },
                     {
-                      onSuccess: (result) => navigate(ROUTES.legislationDetail(result.statuteId)),
+                      onSuccess: (result) => publishThenNavigate("legislation", result.statuteId),
                     },
                   )
                 }
               >
                 <ScrollText className="h-4 w-4" />
-                Create draft Act
+                Create &amp; publish Act
               </Button>
             )}
           </div>
@@ -2544,6 +2691,7 @@ function CaseLawReviewCard({
   const { data: sources } = useLegalSources();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
+  const { data: categories } = useLegalCaseCategories();
   const { data: appliedTags } = useCaseLawTags(row.id);
   const applyTags = useApplyCaseLawTags(row.id);
   const [fields, setFields] = useState({
@@ -2552,6 +2700,7 @@ function CaseLawReviewCard({
     decided_date: row.decided_date ?? "",
     court_id: row.court_id,
     jurisdiction_id: row.jurisdiction_id,
+    category_id: row.category_id,
     // Section 4F/14: previously nowhere in the app could a curator fix a
     // low-quality/missing extraction before publishing — the canonical
     // detail page can't edit a canonical row at all (owner_id IS NULL),
@@ -2577,6 +2726,7 @@ function CaseLawReviewCard({
     fields.decided_date !== (row.decided_date ?? "") ||
     fields.court_id !== row.court_id ||
     fields.jurisdiction_id !== row.jurisdiction_id ||
+    fields.category_id !== row.category_id ||
     fields.summary !== (row.summary ?? "") ||
     fields.full_text !== (row.full_text ?? "");
 
@@ -2618,6 +2768,7 @@ function CaseLawReviewCard({
       decided_date: fields.decided_date || null,
       court_id: fields.court_id,
       jurisdiction_id: fields.jurisdiction_id,
+      category_id: fields.category_id,
       court,
       jurisdiction,
       summary: fields.summary || null,
@@ -2803,6 +2954,12 @@ function CaseLawReviewCard({
         </details>
 
         {/* CLASSIFICATION */}
+        <CategoryField
+          value={fields.category_id}
+          onChange={(id) => setFields((f) => ({ ...f, category_id: id }))}
+          categories={categories ?? []}
+          hint="The type of matter this case relates to — used for Browse/filter navigation."
+        />
         <TagReviewEditor
           proposed={row.proposed_tags}
           proposals={readTagProposals(row.extracted_metadata, row.proposed_tags)}
