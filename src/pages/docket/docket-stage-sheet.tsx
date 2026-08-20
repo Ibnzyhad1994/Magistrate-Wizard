@@ -19,6 +19,7 @@ import {
 import { formatDate } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
+import { useUploadDocument } from "@/hooks/use-documents";
 import type { TablesUpdate } from "@/types/database.types";
 
 export type LogAppearanceRequest = {
@@ -41,20 +42,30 @@ function snapshotOf(row: DocketMatterBoardRow): ProcedureSnapshot {
   };
 }
 
-export function DocketStageSheet({
-  rows,
+/** purpose isn't a ProcedureColumnKey property — this maps the two columns that carry a file attachment to the `documents.purpose` value that tags it (0074). */
+const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgment">> = {
+  ruling_status: "ruling",
+  judgment_status: "judgment",
+};
+
+/** One board row — a real component (not inlined in .map()) so each matter gets its own `useUploadDocument` mutation instance for its Ruling/Judgment "Attach file…" action. */
+function DocketStageRow({
+  row,
+  stage,
   onPatch,
   onLogAppearance,
 }: {
-  rows: DocketMatterBoardRow[];
+  row: DocketMatterBoardRow;
+  stage: ReturnType<typeof currentStage>;
   onPatch: (id: string, values: TablesUpdate<"docket_matters">) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
-  async function handleChange(
-    row: DocketMatterBoardRow,
-    column: ProcedureColumnKey,
-    next: string,
-  ) {
+  const uploadRuling = useUploadDocument("docket_matter", row.id);
+  const uploadJudgment = useUploadDocument("docket_matter", row.id);
+  const caseColBase =
+    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+
+  async function handleChange(column: ProcedureColumnKey, next: string) {
     try {
       await onPatch(row.id, { [column]: next });
       const hint = appearanceHintForColumn(column, next);
@@ -73,6 +84,57 @@ export function DocketStageSheet({
     }
   }
 
+  return (
+    <TableRow>
+      <TableCell className={`${caseColBase} z-20`}>
+        <Link to={ROUTES.docketMatter(row.id)} className="block min-w-0 hover:underline">
+          <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
+          <p className="truncate text-sm text-white">{row.matter_title}</p>
+          {row.charge_or_issue && (
+            <p className="hidden truncate text-xs text-white/45 sm:block">{row.charge_or_issue}</p>
+          )}
+        </Link>
+      </TableCell>
+      {PROCEDURE_COLUMNS.map((column) => {
+        const purpose = ATTACHMENT_PURPOSE[column.key];
+        const uploadMutation = purpose === "ruling" ? uploadRuling : purpose === "judgment" ? uploadJudgment : null;
+        return (
+          <TableCell key={column.key} className="p-1.5">
+            <DocketStageCell
+              column={column.key}
+              value={String(row[column.key] ?? column.emptyValue)}
+              canEdit={row.can_edit}
+              isCurrent={stage === column.stage}
+              onChange={(next) => void handleChange(column.key, next)}
+              attachments={
+                purpose && uploadMutation && row.can_edit
+                  ? {
+                      hasFile: purpose === "ruling" ? row.has_ruling_document : row.has_judgment_document,
+                      isUploading: uploadMutation.isPending,
+                      onUpload: (file) => uploadMutation.mutate({ file, purpose }),
+                    }
+                  : undefined
+              }
+            />
+          </TableCell>
+        );
+      })}
+      <TableCell className="whitespace-nowrap text-xs text-white/70">
+        {row.next_appearance ? formatDate(row.next_appearance) : "—"}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+export function DocketStageSheet({
+  rows,
+  onPatch,
+  onLogAppearance,
+}: {
+  rows: DocketMatterBoardRow[];
+  onPatch: (id: string, values: TablesUpdate<"docket_matters">) => Promise<unknown>;
+  onLogAppearance: (request: LogAppearanceRequest) => void;
+}) {
   const caseColBase =
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
 
@@ -100,41 +162,15 @@ export function DocketStageSheet({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => {
-              const stage = currentStage(snapshotOf(row));
-              return (
-                <TableRow key={row.id}>
-                  <TableCell className={`${caseColBase} z-20`}>
-                    <Link
-                      to={ROUTES.docketMatter(row.id)}
-                      className="block min-w-0 hover:underline"
-                    >
-                      <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
-                      <p className="truncate text-sm text-white">{row.matter_title}</p>
-                      {row.charge_or_issue && (
-                        <p className="hidden truncate text-xs text-white/45 sm:block">
-                          {row.charge_or_issue}
-                        </p>
-                      )}
-                    </Link>
-                  </TableCell>
-                  {PROCEDURE_COLUMNS.map((column) => (
-                    <TableCell key={column.key} className="p-1.5">
-                      <DocketStageCell
-                        column={column.key}
-                        value={String(row[column.key] ?? column.emptyValue)}
-                        canEdit={row.can_edit}
-                        isCurrent={stage === column.stage}
-                        onChange={(next) => void handleChange(row, column.key, next)}
-                      />
-                    </TableCell>
-                  ))}
-                  <TableCell className="whitespace-nowrap text-xs text-white/70">
-                    {row.next_appearance ? formatDate(row.next_appearance) : "—"}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {rows.map((row) => (
+              <DocketStageRow
+                key={row.id}
+                row={row}
+                stage={currentStage(snapshotOf(row))}
+                onPatch={onPatch}
+                onLogAppearance={onLogAppearance}
+              />
+            ))}
           </TableBody>
         </Table>
         <div

@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { FileText, Upload, Trash2, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -20,6 +22,7 @@ import {
   useDeleteDocument,
   useDocuments,
   useUploadDocument,
+  type DocumentPurpose,
 } from "@/hooks/use-documents";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/utils";
@@ -57,6 +60,17 @@ function formatBytes(bytes: number): string {
  * upload failure). One implementation instead of duplicating this
  * across Docket/Judgment/Case Law/Quick Code/Bench Note detail pages.
  */
+const DOCKET_PURPOSE_OPTIONS: { value: DocumentPurpose; label: string }[] = [
+  { value: "attachment", label: "Attachment" },
+  { value: "ruling", label: "Ruling" },
+  { value: "judgment", label: "Judgment" },
+];
+
+const PURPOSE_BADGE_LABEL: Partial<Record<DocumentPurpose, string>> = {
+  ruling: "Ruling",
+  judgment: "Judgment",
+};
+
 export function DocumentsPanel({ entityType, entityId, canUpload = true }: DocumentsPanelProps) {
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useDocuments(entityType, entityId);
@@ -66,6 +80,11 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
   const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
+  // Ruling/Judgment is a docket_matter-only concept (0074) — the type
+  // picker only appears there, and always resets to the generic default
+  // rather than silently remembering the last choice across uploads.
+  const [uploadPurpose, setUploadPurpose] = useState<DocumentPurpose>("attachment");
+  const isDocketMatter = entityType === "docket_matter";
   const visibleDocs = (data ?? []).filter(
     (doc) => doc.purpose !== "identification_photo" && doc.purpose !== "cover",
   );
@@ -85,7 +104,21 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
   return (
     <div className="mt-4 space-y-4">
       {canUpload && (
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          {isDocketMatter && (
+            <Select
+              className="w-40"
+              value={uploadPurpose}
+              onChange={(e) => setUploadPurpose(e.target.value as DocumentPurpose)}
+              aria-label="Document type"
+            >
+              {DOCKET_PURPOSE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -93,8 +126,9 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) upload.mutate(file);
+              if (file) upload.mutate(isDocketMatter ? { file, purpose: uploadPurpose } : file);
               e.target.value = "";
+              setUploadPurpose("attachment");
             }}
           />
           <Button
@@ -140,15 +174,22 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
             {visibleDocs.map((doc) => (
               <TableRow key={doc.id}>
                 <TableCell className="font-medium text-foreground">
-                  <button
-                    type="button"
-                    onClick={() => setViewingDoc(doc)}
-                    className="truncate text-left hover:underline"
-                    title="Open"
-                    aria-label={`View ${doc.file_name}`}
-                  >
-                    {doc.file_name}
-                  </button>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc(doc)}
+                      className="truncate text-left hover:underline"
+                      title="Open"
+                      aria-label={`View ${doc.file_name}`}
+                    >
+                      {doc.file_name}
+                    </button>
+                    {PURPOSE_BADGE_LABEL[doc.purpose as DocumentPurpose] && (
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
+                        {PURPOSE_BADGE_LABEL[doc.purpose as DocumentPurpose]}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatBytes(doc.file_size)}

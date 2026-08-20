@@ -2368,6 +2368,8 @@ export type Database = {
           custody_status: string
           disclosure_status: string
           district_id: string
+          has_judgment_document: boolean
+          has_ruling_document: boolean
           headline: string
           id: string
           judgment_status: string

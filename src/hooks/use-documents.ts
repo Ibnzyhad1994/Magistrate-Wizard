@@ -48,11 +48,13 @@ export function useDocuments(entityType: string, entityId: string | undefined) {
  * already known at render time. Same upload-then-insert-then-cleanup-on-
  * failure behavior in both cases -- no divergence between the two paths.
  */
+export type DocumentPurpose = "attachment" | "cover" | "identification_photo" | "ruling" | "judgment";
+
 export async function uploadDocumentToEntity(
   entityType: string,
   entityId: string,
   file: File,
-  purpose: "attachment" | "cover" | "identification_photo" = "attachment",
+  purpose: DocumentPurpose = "attachment",
 ) {
   const {
     data: { user },
@@ -94,12 +96,23 @@ export async function uploadDocumentToEntity(
 export function useUploadDocument(entityType: string, entityId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File) => uploadDocumentToEntity(entityType, entityId, file),
+    mutationFn: async (input: File | { file: File; purpose: DocumentPurpose }) =>
+      input instanceof File
+        ? uploadDocumentToEntity(entityType, entityId, input)
+        : uploadDocumentToEntity(entityType, entityId, input.file, input.purpose),
     onSuccess: () => {
       toast.success("Document uploaded.");
       void queryClient.invalidateQueries({
         queryKey: key(entityType, entityId),
       });
+      // Ruling/Judgment purpose docs drive the Docket board's
+      // has_ruling_document/has_judgment_document indicator (0074) --
+      // literal key, not an import of docketMattersKeys, to avoid coupling
+      // this generic module to one feature area (same tradeoff already
+      // made for importJobsQueryKey elsewhere in this codebase).
+      if (entityType === "docket_matter") {
+        void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
+      }
     },
     onError: (error) => {
       toast.error(getErrorMessage(error));
@@ -189,6 +202,9 @@ export function useDeleteDocument(entityType: string, entityId: string) {
       void queryClient.invalidateQueries({
         queryKey: key(entityType, entityId),
       });
+      if (entityType === "docket_matter") {
+        void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
+      }
     },
     onError: (error) => {
       toast.error(getErrorMessage(error));

@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -17,6 +19,7 @@ import {
   procedureSelectableValues,
   type ProcedureColumnKey,
 } from "@/lib/docket-procedure";
+import { INGEST_FILE_ACCEPT } from "@/lib/ingest-source";
 
 const TONE_CLASS: Record<ReturnType<typeof procedureCellTone>, string> = {
   muted: "text-white/40",
@@ -25,6 +28,15 @@ const TONE_CLASS: Record<ReturnType<typeof procedureCellTone>, string> = {
   remand: "bg-rose-400/20 text-rose-200",
 };
 
+/** Ruling/Judgment-only: lets the cell attach the actual file, not just record a status (0074). */
+export interface StageCellAttachments {
+  hasFile: boolean;
+  isUploading: boolean;
+  onUpload: (file: File) => void;
+  /** Per-file download actions — provided where full document metadata is already on hand (the matter detail page); omitted on the list/glance board, which only carries a boolean flag per row for performance. */
+  files?: { id: string; file_name: string; onDownload: () => void }[];
+}
+
 export function DocketStageCell({
   column,
   value,
@@ -32,6 +44,7 @@ export function DocketStageCell({
   isCurrent,
   compact,
   onChange,
+  attachments,
 }: {
   column: ProcedureColumnKey;
   value: string;
@@ -39,22 +52,29 @@ export function DocketStageCell({
   isCurrent?: boolean;
   compact?: boolean;
   onChange: (next: string) => void;
+  attachments?: StageCellAttachments;
 }) {
   const mode = procedureCellMode(canEdit);
   const tone = procedureCellTone(column, value);
   const label = procedureCellLabel(value);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const className = cn(
-    "inline-flex max-w-full touch-manipulation items-center rounded px-2 py-1 text-left text-xs font-medium",
+    "inline-flex max-w-full touch-manipulation items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
     isCurrent && "ring-1 ring-white/45",
     compact ? "min-h-8" : "min-h-9 min-w-[5.5rem] sm:min-h-7",
     mode === "edit" && "cursor-pointer hover:brightness-110",
   );
 
+  const attachmentIcon = attachments?.hasFile && (
+    <Paperclip className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+  );
+
   if (mode === "read") {
     return (
       <span className={className} title={label}>
         {label}
+        {attachmentIcon}
       </span>
     );
   }
@@ -64,8 +84,13 @@ export function DocketStageCell({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className={className} aria-label={`${column.replace(/_/g, " ")}: ${label}`}>
+        <button
+          type="button"
+          className={className}
+          aria-label={`${column.replace(/_/g, " ")}: ${label}${attachments?.hasFile ? " (file attached)" : ""}`}
+        >
           {label}
+          {attachmentIcon}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" collisionPadding={16} className="min-w-[11rem]">
@@ -84,6 +109,46 @@ export function DocketStageCell({
               onSelect={() => onChange(procedureEmptyValue(column))}
             >
               Clear
+            </DropdownMenuItem>
+          </>
+        )}
+        {attachments && (
+          <>
+            <DropdownMenuSeparator />
+            {attachments.files?.map((file) => (
+              <DropdownMenuItem
+                key={file.id}
+                className="min-h-10 truncate"
+                onSelect={() => file.onDownload()}
+              >
+                ↓ {file.file_name}
+              </DropdownMenuItem>
+            ))}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={INGEST_FILE_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) attachments.onUpload(file);
+                e.target.value = "";
+              }}
+            />
+            <DropdownMenuItem
+              className="min-h-10"
+              disabled={attachments.isUploading}
+              onSelect={(e) => {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }}
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              {attachments.isUploading
+                ? "Uploading…"
+                : attachments.hasFile
+                  ? "Attach another file…"
+                  : "Attach file…"}
             </DropdownMenuItem>
           </>
         )}
