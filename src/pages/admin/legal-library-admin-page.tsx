@@ -34,7 +34,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { SaveIndicator, type SaveState } from "@/components/common/save-indicator";
 import { toast } from "sonner";
@@ -46,11 +45,7 @@ import {
 import {
   useLegalJurisdictions,
   useLegalAuthorityCourts,
-  useLegalRegionalGroups,
   useLegalCaseCategories,
-  useCreateLegalJurisdiction,
-  useCreateLegalAuthorityCourt,
-  useCreateLegalCaseCategory,
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useIngestCaseLaw,
@@ -85,6 +80,7 @@ import {
 } from "@/hooks/legislation/use-legislation";
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
+import { Field, JurisdictionField, CourtField, CategoryField } from "@/components/legal-library/taxonomy-fields";
 import { OCR_METADATA_PAGES } from "@/lib/ocr/constants";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, normalizeWhitespace, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
@@ -106,401 +102,9 @@ import {
   INGEST_FILE_ACCEPT,
 } from "@/lib/ingest-document";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, formatDateTime, getErrorMessage } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import type { CaseLaw, Statute, LegalJurisdiction, LegalAuthorityCourt, LegalCaseCategory } from "@/types/database.types";
-
-/** Small labeled-field wrapper — every editable Review Queue / New Import field renders through this so no field is ever identifiable only by placeholder text (§5). */
-function Field({
-  label,
-  hint,
-  required,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="block text-xs font-medium text-muted-foreground">
-        {label}
-        {required && <span className="ml-0.5 text-destructive">*</span>}
-      </label>
-      {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
-
-/** Sentinel option value for the "+ Add new…" entry in the Court/
- * Jurisdiction selects below — never a real row id, so it can't collide
- * with an actual uuid. */
-const ADD_NEW_SENTINEL = "__add_new__";
-
-function AddJurisdictionDialog({
-  open,
-  onOpenChange,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: (jurisdiction: LegalJurisdiction) => void;
-}) {
-  const { data: regionalGroups } = useLegalRegionalGroups();
-  const create = useCreateLegalJurisdiction();
-  const [name, setName] = useState("");
-  const [regionalGroupId, setRegionalGroupId] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setName("");
-      setRegionalGroupId("");
-    }
-  }, [open]);
-
-  function handleCreate() {
-    if (!name.trim() || !regionalGroupId) return;
-    create.mutate(
-      { name: name.trim(), regional_group_id: regionalGroupId },
-      {
-        onSuccess: (row) => {
-          toast.success(`"${row.name}" added to the Jurisdiction catalogue.`);
-          onCreated(row);
-          onOpenChange(false);
-        },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a new Jurisdiction</DialogTitle>
-          <DialogDescription>
-            Added to the shared canonical catalogue — every future Case Law/Legislation record can select it, not
-            just this one.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Field label="Name" required>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Saint Lucia"
-              autoFocus
-            />
-          </Field>
-          <Field label="Regional group" required hint="Where this jurisdiction belongs in the Browse taxonomy.">
-            <Select value={regionalGroupId} onChange={(e) => setRegionalGroupId(e.target.value)}>
-              <option value="">Select a regional group</option>
-              {(regionalGroups ?? []).map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleCreate} disabled={!name.trim() || !regionalGroupId || create.isPending}>
-            Add Jurisdiction
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddCourtDialog({
-  open,
-  onOpenChange,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: (court: LegalAuthorityCourt) => void;
-}) {
-  const { data: jurisdictions } = useLegalJurisdictions();
-  const create = useCreateLegalAuthorityCourt();
-  const [canonicalName, setCanonicalName] = useState("");
-  const [shortName, setShortName] = useState("");
-  const [jurisdictionId, setJurisdictionId] = useState("");
-  const [courtLevel, setCourtLevel] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setCanonicalName("");
-      setShortName("");
-      setJurisdictionId("");
-      setCourtLevel("");
-    }
-  }, [open]);
-
-  function handleCreate() {
-    if (!canonicalName.trim()) return;
-    create.mutate(
-      {
-        canonical_name: canonicalName.trim(),
-        short_name: shortName || null,
-        jurisdiction_id: jurisdictionId || null,
-        court_level: courtLevel || null,
-      },
-      {
-        onSuccess: (row) => {
-          toast.success(`"${row.canonical_name}" added to the Court catalogue.`);
-          onCreated(row);
-          onOpenChange(false);
-        },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a new Court</DialogTitle>
-          <DialogDescription>
-            Added to the shared canonical catalogue — every future Case Law record can select it, not just this
-            one. Leave Jurisdiction unset for a regional/supranational court (e.g. CCJ, Privy Council).
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Field label="Canonical name" required>
-            <Input
-              value={canonicalName}
-              onChange={(e) => setCanonicalName(e.target.value)}
-              placeholder="e.g. Court of Appeal of Saint Lucia"
-              autoFocus
-            />
-          </Field>
-          <Field label="Short name">
-            <Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="Optional" />
-          </Field>
-          <Field label="Jurisdiction" hint="Leave unset for a regional/supranational court.">
-            <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
-              <option value="">None (regional/supranational)</option>
-              {(jurisdictions ?? []).map((j) => (
-                <option key={j.id} value={j.id}>
-                  {j.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Court level">
-            <Select value={courtLevel} onChange={(e) => setCourtLevel(e.target.value)}>
-              <option value="">Unspecified</option>
-              <option value="apex">Apex</option>
-              <option value="appellate">Appellate</option>
-              <option value="superior">Superior</option>
-            </Select>
-          </Field>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleCreate} disabled={!canonicalName.trim() || create.isPending}>
-            Add Court
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** Jurisdiction <Field>+<Select> with an inline "+ Add new Jurisdiction…" escape hatch — used everywhere Jurisdiction is selected (New Import, Review Queue). Never a free-text override; a new entry becomes a real canonical row so it never gets catalogued twice under different spellings. */
-function JurisdictionField({
-  value,
-  onChange,
-  jurisdictions,
-  required = true,
-  hint,
-}: {
-  value: string | null;
-  onChange: (jurisdictionId: string | null) => void;
-  jurisdictions: LegalJurisdiction[];
-  required?: boolean;
-  hint?: string;
-}) {
-  const [showAdd, setShowAdd] = useState(false);
-  return (
-    <Field label="Jurisdiction" required={required} hint={hint}>
-      <Select
-        value={value ?? ""}
-        onChange={(e) => {
-          if (e.target.value === ADD_NEW_SENTINEL) {
-            setShowAdd(true);
-            return;
-          }
-          onChange(e.target.value || null);
-        }}
-      >
-        <option value="">Select Jurisdiction — needs review</option>
-        {jurisdictions.map((j) => (
-          <option key={j.id} value={j.id}>
-            {j.name}
-          </option>
-        ))}
-        <option value={ADD_NEW_SENTINEL}>+ Add new Jurisdiction…</option>
-      </Select>
-      <AddJurisdictionDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(j) => onChange(j.id)} />
-    </Field>
-  );
-}
-
-/** Court <Field>+<Select> with the same inline "+ Add new Court…" escape hatch. `onChange` receives the full created/selected court (or null) rather than just an id, so a caller can auto-populate Jurisdiction from it exactly as it already does for an existing catalogue court. */
-function CourtField({
-  value,
-  onChange,
-  courts,
-  required = true,
-  hint = "Selecting a Court automatically sets Jurisdiction where known.",
-}: {
-  value: string | null;
-  onChange: (court: LegalAuthorityCourt | null) => void;
-  courts: LegalAuthorityCourt[];
-  required?: boolean;
-  hint?: string;
-}) {
-  const [showAdd, setShowAdd] = useState(false);
-  return (
-    <Field label="Court" required={required} hint={hint}>
-      <Select
-        value={value ?? ""}
-        onChange={(e) => {
-          if (e.target.value === ADD_NEW_SENTINEL) {
-            setShowAdd(true);
-            return;
-          }
-          const next = courts.find((c) => c.id === e.target.value) ?? null;
-          onChange(next);
-        }}
-      >
-        <option value="">Select deciding Court — needs review</option>
-        {courts.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.canonical_name}
-          </option>
-        ))}
-        <option value={ADD_NEW_SENTINEL}>+ Add new Court…</option>
-      </Select>
-      <AddCourtDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(c) => onChange(c)} />
-    </Field>
-  );
-}
-
-function AddCategoryDialog({
-  open,
-  onOpenChange,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: (category: LegalCaseCategory) => void;
-}) {
-  const create = useCreateLegalCaseCategory();
-  const [name, setName] = useState("");
-
-  useEffect(() => {
-    if (open) setName("");
-  }, [open]);
-
-  function handleCreate() {
-    if (!name.trim()) return;
-    create.mutate(
-      { name: name.trim() },
-      {
-        onSuccess: (row) => {
-          toast.success(`"${row.name}" added to the Category catalogue.`);
-          onCreated(row);
-          onOpenChange(false);
-        },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a new Category</DialogTitle>
-          <DialogDescription>
-            Added to the shared canonical catalogue — every future Case Law record can select it, not just this
-            one.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Field label="Name" required>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Narcotics"
-              autoFocus
-            />
-          </Field>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleCreate} disabled={!name.trim() || create.isPending}>
-            Add Category
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** Category <Field>+<Select> with an inline "+ Add new Category…" escape hatch, same pattern as Jurisdiction/Court above. The type of matter a Case Law record relates to (e.g. "Murder", "Narcotics") — used for Browse/filter navigation, distinct from the free-text `tags` classification below. */
-function CategoryField({
-  value,
-  onChange,
-  categories,
-  required = false,
-  hint,
-}: {
-  value: string | null;
-  onChange: (categoryId: string | null) => void;
-  categories: LegalCaseCategory[];
-  required?: boolean;
-  hint?: string;
-}) {
-  const [showAdd, setShowAdd] = useState(false);
-  return (
-    <Field label="Category" required={required} hint={hint}>
-      <Select
-        value={value ?? ""}
-        onChange={(e) => {
-          if (e.target.value === ADD_NEW_SENTINEL) {
-            setShowAdd(true);
-            return;
-          }
-          onChange(e.target.value || null);
-        }}
-      >
-        <option value="">No category</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-        <option value={ADD_NEW_SENTINEL}>+ Add new Category…</option>
-      </Select>
-      <AddCategoryDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(c) => onChange(c.id)} />
-    </Field>
-  );
-}
+import type { CaseLaw, Statute, LegalAuthorityCourt } from "@/types/database.types";
 
 type ReviewRow<T> = T & {
   duplicate_warning: string | null;
@@ -1058,6 +662,7 @@ export default function LegalLibraryAdminPage() {
     ? (tabParam as LegalLibraryTab)
     : "import";
   const highlightCaseLawId = searchParams.get("caseLaw");
+  const highlightStatuteId = searchParams.get("statute");
   const initialBatchId = searchParams.get("batch");
   // Same `batch` param, read again under a name that makes sense on the
   // Review Queue tab: "which batch did this deep link come FROM" (so the
@@ -1101,7 +706,11 @@ export default function LegalLibraryAdminPage() {
           <ImportBatchesTab initialBatchId={initialBatchId} />
         </TabsContent>
         <TabsContent value="review">
-          <ReviewQueueTab highlightCaseLawId={highlightCaseLawId} fromBatchId={reviewFromBatchId} />
+          <ReviewQueueTab
+            highlightCaseLawId={highlightCaseLawId}
+            highlightStatuteId={highlightStatuteId}
+            fromBatchId={reviewFromBatchId}
+          />
         </TabsContent>
       </Tabs>
     </BrowsePage>
@@ -2476,10 +2085,12 @@ const REVIEW_PAGE_SIZE = 20;
 
 function ReviewQueueTab({
   highlightCaseLawId,
+  highlightStatuteId,
   fromBatchId,
 }: {
   highlightCaseLawId?: string | null;
-  /** The batch this deep link came from (Section 12), if any — passed through to CaseLawReviewCard so it can offer "Back to batch" instead of only "Review Queue" as the only way out. */
+  highlightStatuteId?: string | null;
+  /** The batch this deep link came from (Section 12), if any — passed through to CaseLawReviewCard/StatuteReviewCard so it can offer "Back to batch" instead of only "Review Queue" as the only way out. */
   fromBatchId?: string | null;
 }) {
   const { data: caseLawQueue, isPending: caseLawPending } = useCaseLawReviewQueue();
@@ -2538,8 +2149,14 @@ function ReviewQueueTab({
   const effectiveCaseLawVisible =
     highlightIndex >= 0 ? Math.max(caseLawVisible, highlightIndex + 1) : caseLawVisible;
 
+  const statuteHighlightIndex = highlightStatuteId
+    ? filteredStatuteAll.findIndex((s) => s.row.id === highlightStatuteId)
+    : -1;
+  const effectiveStatuteVisible =
+    statuteHighlightIndex >= 0 ? Math.max(statuteVisible, statuteHighlightIndex + 1) : statuteVisible;
+
   const filteredCaseLaw = filteredCaseLawAll.slice(0, effectiveCaseLawVisible);
-  const filteredStatute = filteredStatuteAll.slice(0, statuteVisible);
+  const filteredStatute = filteredStatuteAll.slice(0, effectiveStatuteVisible);
 
   const activeLabel = activeCategory === "all" ? null : REVIEW_CATEGORY_LABEL[activeCategory].toLowerCase();
 
@@ -2643,17 +2260,22 @@ function ReviewQueueTab({
         ) : (
           <div className="mt-2 space-y-3">
             {filteredStatute.map(({ row }) => (
-              <StatuteReviewCard key={row.id} row={row} />
+              <StatuteReviewCard
+                key={row.id}
+                row={row}
+                highlight={row.id === highlightStatuteId}
+                fromBatchId={fromBatchId}
+              />
             ))}
-            {filteredStatuteAll.length > statuteVisible && (
+            {filteredStatuteAll.length > effectiveStatuteVisible && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setStatuteVisible((n) => n + REVIEW_PAGE_SIZE)}
               >
-                Show {Math.min(REVIEW_PAGE_SIZE, filteredStatuteAll.length - statuteVisible)} more (
-                {filteredStatuteAll.length - statuteVisible} remaining)
+                Show {Math.min(REVIEW_PAGE_SIZE, filteredStatuteAll.length - effectiveStatuteVisible)} more (
+                {filteredStatuteAll.length - effectiveStatuteVisible} remaining)
               </Button>
             )}
           </div>
@@ -3071,8 +2693,26 @@ function CaseLawReviewCard({
   );
 }
 
-function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
+function StatuteReviewCard({
+  row,
+  highlight = false,
+  fromBatchId = null,
+}: {
+  row: ReviewRow<Statute>;
+  highlight?: boolean;
+  /** Batch this card was reached from (Section 12) — renders "Back to batch" alongside "View full record" when set, so a curator who arrived via Batch Detail isn't left with only the full, unfiltered Review Queue to return to. */
+  fromBatchId?: string | null;
+}) {
   const navigate = useNavigate();
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Deep-link target (from a Batch Detail row, or the Legislation detail
+  // page's "Edit" action reopening a published record) — scrolled into
+  // view and briefly outlined once, on arrival, mirroring CaseLawReviewCard.
+  useEffect(() => {
+    if (highlight && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlight]);
   const update = useUpdateCanonicalStatute(row.id);
   const setStatus = useSetStatuteReviewStatus();
   const reject = useRejectCanonicalStatute();
@@ -3126,7 +2766,7 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
   });
 
   return (
-    <Card>
+    <Card ref={cardRef} className={highlight ? "ring-2 ring-primary transition-shadow" : undefined}>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -3139,9 +2779,17 @@ function StatuteReviewCard({ row }: { row: ReviewRow<Statute> }) {
             {formatDate(row.created_at)} · {(provisions ?? []).length} provision(s) extracted
           </CardDescription>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.legislationDetail(row.id))}>
-          View full record
-        </Button>
+        <div className="flex items-center gap-1">
+          {fromBatchId && (
+            <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.adminLegalLibraryBatch(fromBatchId))}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to batch
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.legislationDetail(row.id))}>
+            View full record
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {row.duplicate_warning && (

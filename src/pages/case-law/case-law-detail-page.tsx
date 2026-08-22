@@ -33,6 +33,7 @@ import {
   useDeleteCaseLaw,
   useDeleteCanonicalCaseLaw,
   useSetCaseLawDiscoverable,
+  useSetCaseLawReviewStatus,
   useUpdateCaseLawFields,
 } from "@/hooks/case-law/use-case-law";
 import { useCaseLawTags } from "@/hooks/case-law/use-case-law-tags";
@@ -65,6 +66,7 @@ export default function CaseLawDetailPage() {
   const { data: caseLaw, isPending, isError, error, refetch } = useCaseLawItem(id);
   const deleteCaseLaw = useDeleteCaseLaw();
   const deleteCanonicalCaseLaw = useDeleteCanonicalCaseLaw();
+  const setReviewStatus = useSetCaseLawReviewStatus();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmDeleteCanonical, setConfirmDeleteCanonical] = useState(false);
   const { data: categories } = useLegalCaseCategories();
@@ -135,6 +137,22 @@ export default function CaseLawDetailPage() {
           <Button
             size="sm"
             variant="outline"
+            disabled={setReviewStatus.isPending}
+            onClick={() =>
+              setReviewStatus.mutate(
+                { id: caseLaw.id, review_status: "needs_review" },
+                {
+                  onSuccess: () => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(caseLaw.id)),
+                },
+              )
+            }
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             className="text-destructive hover:text-destructive"
             onClick={() => setConfirmDeleteCanonical(true)}
           >
@@ -142,8 +160,10 @@ export default function CaseLawDetailPage() {
             Delete
           </Button>
           <p className="text-xs text-muted-foreground">
-            Admin action — permanently removes this canonical record for
-            every magistrate, including any attached documents.
+            Edit reopens this record for review — it moves to the Review
+            Queue, off the public library, until you publish it again.
+            Delete permanently removes it for every magistrate, including
+            any attached documents.
           </p>
         </div>
       )}
@@ -173,7 +193,7 @@ export default function CaseLawDetailPage() {
               rather than show a control that will always be RLS-denied
               for an ordinary magistrate viewing canonical/discoverable
               research they don't own. */}
-          <DocumentsPanel entityType="case_law" entityId={caseLaw.id} canUpload={isOwner} />
+          <DocumentsPanel entityType="case_law" entityId={caseLaw.id} canUpload={isOwner || (isCanonical && isAdmin)} />
         </TabsContent>
       </Tabs>
 
@@ -215,6 +235,8 @@ interface CaseLawDetail {
   citation: string;
   court: string;
   jurisdiction: string;
+  court_id: string | null;
+  jurisdiction_id: string | null;
   decided_date: string | null;
   source_url: string | null;
   summary: string | null;
@@ -233,6 +255,7 @@ function FieldsCard({
   const updateFields = useUpdateCaseLawFields(caseLaw.id);
   const { data: categories } = useLegalCaseCategories();
   const categoryName = (categories ?? []).find((c) => c.id === caseLaw.category_id)?.name;
+
   const form = useForm<CaseLawFieldsFormValues>({
     resolver: zodResolver(caseLawFieldsSchema),
     values: {

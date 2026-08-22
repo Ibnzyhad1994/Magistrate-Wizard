@@ -4,6 +4,7 @@ import {
   Copy,
   ExternalLink,
   Menu,
+  Pencil,
   StickyNote,
   Trash2,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   useStatute,
   useStatuteProvisions,
   useDeleteCanonicalStatute,
+  useSetStatuteReviewStatus,
 } from "@/hooks/legislation/use-legislation";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { formatDate, cn } from "@/lib/utils";
@@ -67,6 +69,7 @@ export default function LegislationDetailPage() {
   const { data: statute, isPending, isError, error, refetch } = useStatute(id);
   const { data: provisions, isPending: provisionsPending } = useStatuteProvisions(id);
   const deleteStatute = useDeleteCanonicalStatute();
+  const setReviewStatus = useSetStatuteReviewStatus();
   const [noteOpen, setNoteOpen] = useState(false);
   const [navSheetOpen, setNavSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -195,6 +198,22 @@ export default function LegislationDetailPage() {
           <Button
             size="sm"
             variant="outline"
+            disabled={setReviewStatus.isPending}
+            onClick={() =>
+              setReviewStatus.mutate(
+                { id: statute.id, review_status: "needs_review" },
+                {
+                  onSuccess: () => navigate(ROUTES.adminLegalLibraryReviewStatute(statute.id)),
+                },
+              )
+            }
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             className="text-destructive hover:text-destructive"
             onClick={() => setConfirmDelete(true)}
           >
@@ -202,9 +221,10 @@ export default function LegislationDetailPage() {
             Delete
           </Button>
           <p className="text-xs text-muted-foreground">
-            Admin action — permanently removes this canonical record for
-            every magistrate, including its provisions and any attached
-            documents.
+            Edit reopens this record for review — it moves to the Review
+            Queue, off the public library, until you publish it again.
+            Delete permanently removes it for every magistrate, including
+            its provisions and any attached documents.
           </p>
         </div>
       )}
