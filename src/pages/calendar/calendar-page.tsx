@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCalendarEvents, type CalendarEventRow } from "@/hooks/docket/use-calendar-events";
+import { BREAKPOINTS } from "@/hooks/use-media-query";
 import { ROUTES } from "@/routes/paths";
 import {
   cn,
@@ -56,7 +57,9 @@ export default function CalendarPage() {
     year: initial.getFullYear(),
     month: initial.getMonth(),
   }));
-  const [view, setView] = useState<"month" | "agenda">("month");
+  const [view, setView] = useState<"month" | "agenda">(() =>
+    typeof window !== "undefined" && window.matchMedia(BREAKPOINTS.md).matches ? "month" : "agenda",
+  );
 
   const from = monthStart(cursor.year, cursor.month);
   const to = monthEnd(cursor.year, cursor.month);
@@ -144,17 +147,17 @@ export default function CalendarPage() {
 
       {view === "month" && !isPending && !isError ? (
         <div className="overflow-x-auto rounded-md border border-white/10 bg-[#181818]">
-          <div className="grid min-w-[640px] grid-cols-7 border-b border-white/10">
+          <div className="grid grid-cols-7 border-b border-white/10">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-white/50"
+                className="px-0.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-white/50 sm:px-2 sm:text-[11px]"
               >
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid min-w-[640px] grid-cols-7">
+          <div className="grid grid-cols-7">
             {cells.map((date) => {
               const inMonth = date.startsWith(from.slice(0, 7));
               const dayEvents = byDate.get(date) ?? [];
@@ -163,7 +166,7 @@ export default function CalendarPage() {
                 <div
                   key={date}
                   className={cn(
-                    "min-h-[6.5rem] border-b border-r border-white/5 p-1.5",
+                    "min-h-[3.25rem] border-b border-r border-white/5 p-1 sm:min-h-[6.5rem] sm:p-1.5",
                     !inMonth && "bg-black/20 text-white/35",
                   )}
                 >
@@ -175,7 +178,19 @@ export default function CalendarPage() {
                   >
                     {Number(date.slice(8))}
                   </div>
-                  <ul className="space-y-1">
+                  <div className="flex flex-wrap gap-0.5 sm:hidden" aria-hidden={dayEvents.length === 0}>
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <span
+                        key={event.id}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full bg-primary",
+                          event.pending && "bg-amber-300",
+                          isInactiveEventStatus(event.event_status) && "bg-white/30",
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <ul className="hidden space-y-1 sm:block">
                     {dayEvents.slice(0, 3).map((event) => (
                       <li key={event.id}>
                         <button
@@ -184,8 +199,9 @@ export default function CalendarPage() {
                           className={cn(
                             "block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-white/90 hover:bg-white/10",
                             isInactiveEventStatus(event.event_status) && "text-white/40 line-through",
+                            event.pending && "text-amber-200/90",
                           )}
-                          aria-label={`${event.case_number} ${event.matter_title}`}
+                          aria-label={`${event.case_number} ${event.matter_title}${event.pending ? " (on this device)" : ""}`}
                         >
                           {event.scheduled_time
                             ? `${formatTimeOnly(event.scheduled_time)} · `
@@ -215,6 +231,7 @@ export default function CalendarPage() {
                 className={cn(
                   "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
+                  event.pending && "text-amber-100",
                 )}
               >
                 <div>
@@ -224,6 +241,7 @@ export default function CalendarPage() {
                   <p className="text-xs text-white/60">
                     {toTitleCase(event.event_type || "Hearing")}
                     {event.location ? ` · ${event.location}` : ""}
+                    {event.pending ? " · On this device" : ""}
                     {isInactiveEventStatus(event.event_status)
                       ? ` · ${toTitleCase(event.event_status)}`
                       : ""}

@@ -8,6 +8,10 @@ import {
   type ProcedureFilters,
   type ProcedureSnapshot,
 } from "@/lib/docket-procedure";
+import { isQueueableError, MATTER_UNAVAILABLE_OFFLINE } from "@/lib/offline/is-queueable-error";
+import { currentProfileId } from "@/lib/offline/runtime";
+import { getProfileCache } from "@/lib/offline/store";
+import { seedMatterDetail } from "@/lib/offline/seed";
 
 export const docketMattersKeys = {
   all: ["docket-matters"] as const,
@@ -54,17 +58,42 @@ export function useDocketMatter(id: string | undefined) {
   return useQuery({
     queryKey: docketMattersKeys.detail(id ?? ""),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("docket_matters")
-        .select(
-          "*, courts(id, name, jurisdiction), magisterial_districts(id, name)",
-        )
-        .eq("id", id as string)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from("docket_matters")
+          .select(
+            "*, courts(id, name, jurisdiction), magisterial_districts(id, name)",
+          )
+          .eq("id", id as string)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          const profileId = await currentProfileId();
+          if (profileId) {
+            await seedMatterDetail(profileId, {
+              ...data,
+              courts: data.courts ?? null,
+              magisterial_districts: data.magisterial_districts ?? null,
+            });
+          }
+        }
+        return data;
+      } catch (error) {
+        if (!isQueueableError(error) || !id) throw error;
+        const profileId = await currentProfileId();
+        const cached = getProfileCache(profileId ?? undefined).matters[id];
+        if (cached?.detail) {
+          return {
+            ...cached.detail,
+            courts: cached.detail.courts ?? null,
+            magisterial_districts: cached.detail.magisterial_districts ?? null,
+          };
+        }
+        throw new Error(MATTER_UNAVAILABLE_OFFLINE);
+      }
     },
     enabled: !!id,
+    retry: (failureCount, error) => !isQueueableError(error) && failureCount < 1,
   });
 }
 

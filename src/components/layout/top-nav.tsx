@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
-import { useIsDesktop } from "@/hooks/use-media-query";
+import { useIsDesktop, useMediaQuery } from "@/hooks/use-media-query";
 
 const PRIMARY_HREFS = new Set<string>([
   ROUTES.dashboard,
@@ -43,6 +43,7 @@ export function TopNav() {
   const mobileNavOpen = useUiStore((state) => state.mobileNavOpen);
   const setMobileNavOpen = useUiStore((state) => state.setMobileNavOpen);
   const isDesktop = useIsDesktop();
+  const showWordmark = useMediaQuery("(min-width: 400px)");
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export function TopNav() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 flex h-[calc(68px+env(safe-area-inset-top))] items-center gap-6 pt-[env(safe-area-inset-top)] transition-colors duration-300",
+        "fixed inset-x-0 top-0 z-50 flex h-[calc(68px+env(safe-area-inset-top,0px))] items-center gap-2 overflow-hidden pt-[env(safe-area-inset-top,0px)] transition-colors duration-300 sm:gap-3 lg:gap-6",
         "browse-gutter",
         scrolled
           ? "bg-[#141414]"
@@ -94,7 +95,7 @@ export function TopNav() {
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden text-white hover:bg-white/10"
+        className="min-h-11 min-w-11 shrink-0 touch-manipulation text-white hover:bg-white/10 lg:hidden"
         onClick={handleOpenMobileNav}
         aria-label="Open navigation"
         aria-expanded={mobileNavOpen}
@@ -103,8 +104,11 @@ export function TopNav() {
         <Menu className="h-6 w-6" />
       </Button>
 
-      <Link to={ROUTES.dashboard} className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-        <AppLogo size="md" />
+      <Link
+        to={ROUTES.dashboard}
+        className="min-w-0 shrink rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <AppLogo size="md" markOnly={!showWordmark} />
       </Link>
 
       <nav className="hidden items-center gap-5 text-sm font-medium text-white/80 lg:flex">
@@ -147,7 +151,7 @@ export function TopNav() {
         )}
       </nav>
 
-      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
         {isDesktop && searchOpen ? (
           <form onSubmit={handleSearchSubmit} className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
@@ -167,7 +171,7 @@ export function TopNav() {
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-white/10"
+            className="min-h-11 min-w-11 shrink-0 touch-manipulation text-white hover:bg-white/10"
             onClick={handleOpenSearch}
             aria-label="Search"
             aria-haspopup={isDesktop ? undefined : "dialog"}

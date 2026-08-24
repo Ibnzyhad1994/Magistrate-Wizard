@@ -4,6 +4,8 @@ import {
   shouldIgnoreUnlinkedGoogleEvent,
   toGoogleEvent,
 } from "../../src/lib/google-calendar/map-event.ts";
+import { selectGoogleClientId } from "../../src/lib/google-calendar/platform.ts";
+import { secretForClientId } from "../google-oauth-token-proxy.mjs";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -95,6 +97,36 @@ check(
   "Guyana evening does not become the next UTC date",
   eveningUtcTrap.scheduled_date,
   "2026-08-24",
+);
+
+const ids = { web: "web-client", desktop: "desktop-client", android: "android-client", ios: "ios-client" };
+check(
+  "loopback browser uses Desktop PKCE client, not confidential Web client",
+  selectGoogleClientId("web", ids, "127.0.0.1"),
+  "desktop-client",
+);
+check("localhost browser also uses Desktop client", selectGoogleClientId("web", ids, "localhost"), "desktop-client");
+check("hosted web keeps the Web client", selectGoogleClientId("web", ids, "app.example.gov.gy"), "web-client");
+check("Electron uses Desktop client", selectGoogleClientId("desktop", ids, "127.0.0.1"), "desktop-client");
+check(
+  "token proxy maps Web client id to Web secret",
+  secretForClientId("web-client", {
+    VITE_GOOGLE_OAUTH_CLIENT_ID_WEB: "web-client",
+    GOOGLE_OAUTH_CLIENT_SECRET_WEB: "web-secret",
+    VITE_GOOGLE_OAUTH_CLIENT_ID_DESKTOP: "desktop-client",
+    GOOGLE_OAUTH_CLIENT_SECRET_DESKTOP: "desktop-secret",
+  }),
+  "web-secret",
+);
+check(
+  "token proxy maps Desktop client id to Desktop secret",
+  secretForClientId("desktop-client", {
+    VITE_GOOGLE_OAUTH_CLIENT_ID_WEB: "web-client",
+    GOOGLE_OAUTH_CLIENT_SECRET_WEB: "web-secret",
+    VITE_GOOGLE_OAUTH_CLIENT_ID_DESKTOP: "desktop-client",
+    GOOGLE_OAUTH_CLIENT_SECRET_DESKTOP: "desktop-secret",
+  }),
+  "desktop-secret",
 );
 
 check("unlinked Google events are ignored", shouldIgnoreUnlinkedGoogleEvent(false), true);

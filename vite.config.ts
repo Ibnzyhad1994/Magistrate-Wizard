@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { googleOAuthTokenProxyPlugin } from "./scripts/google-oauth-token-proxy.mjs";
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf8")) as {
   version: string;
@@ -36,6 +37,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      googleOAuthTokenProxyPlugin(env),
       {
         name: "csp-html",
         transformIndexHtml(html: string) {

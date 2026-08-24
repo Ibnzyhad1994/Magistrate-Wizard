@@ -1,5 +1,6 @@
 /**
- * Capacitor-only chrome: status bar colour and OAuth deep-link return.
+ * Capacitor-only chrome: status bar colour, OAuth deep-link return,
+ * and flush queued hearings when the app comes back to the foreground.
  * No-ops in the browser and in Electron.
  */
 export const initNativeShell = async () => {
@@ -10,6 +11,9 @@ export const initNativeShell = async () => {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setBackgroundColor({ color: "#141414" });
     await StatusBar.setStyle({ style: Style.Dark });
+    // Keep the WebView below the status bar / punch-hole so the hamburger
+    // is not sitting under the Galaxy S22 camera cutout.
+    await StatusBar.setOverlaysWebView({ overlay: false });
   } catch {
     /* plugin unavailable in some web previews */
   }
@@ -21,6 +25,12 @@ export const initNativeShell = async () => {
       const parsed = new URL(url.replace(/^magistratewizard:/, "http://localhost"));
       const next = `/settings${parsed.search}`;
       window.location.assign(next);
+    });
+    App.addListener("appStateChange", ({ isActive }) => {
+      if (!isActive) return;
+      void import("@/lib/offline/runtime").then(({ flushPendingHearings }) => {
+        void flushPendingHearings();
+      });
     });
   } catch {
     /* App plugin missing */

@@ -12,6 +12,22 @@ import {
 
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+const DEV_TOKEN_PROXY = "/__mw/google-oauth-token";
+
+const googleTokenUrl = () => {
+  if (import.meta.env.DEV && typeof window !== "undefined" && !window.magistrateWizard?.isElectron) {
+    return DEV_TOKEN_PROXY;
+  }
+  return TOKEN_ENDPOINT;
+};
+
+const googleTokenError = (json: Record<string, unknown>, fallback: string) => {
+  const description = String(json.error_description ?? json.error ?? fallback);
+  if (/client_secret is missing/i.test(description)) {
+    return "Google still needs a client secret for this OAuth client. Restart the Vite server after adding GOOGLE_OAUTH_CLIENT_SECRET_* to .env.local, then click Connect again.";
+  }
+  return description;
+};
 
 export const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
@@ -93,14 +109,14 @@ export const exchangeGoogleCode = async (input: {
     grant_type: "authorization_code",
     redirect_uri: input.redirectUri,
   });
-  const res = await fetch(TOKEN_ENDPOINT, {
+  const res = await fetch(googleTokenUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
   const json = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error(String(json.error_description ?? json.error ?? "Google token exchange failed."));
+    throw new Error(googleTokenError(json, "Google token exchange failed."));
   }
   return tokensFromTokenResponse(json);
 };
@@ -111,14 +127,14 @@ export const refreshGoogleAccessToken = async (refreshToken: string, clientId: s
     refresh_token: refreshToken,
     grant_type: "refresh_token",
   });
-  const res = await fetch(TOKEN_ENDPOINT, {
+  const res = await fetch(googleTokenUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
   const json = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error(String(json.error_description ?? json.error ?? "Google token refresh failed."));
+    throw new Error(googleTokenError(json, "Google token refresh failed."));
   }
   return tokensFromTokenResponse(json, { access_token: "", refresh_token: refreshToken, expiry: 0 });
 };
@@ -137,7 +153,12 @@ export const getValidAccessToken = async () => {
 export const beginGoogleOAuth = async () => {
   const started = await buildGoogleAuthUrl();
   const state = await loadGoogleCalendarState();
-  await saveGoogleCalendarState({ ...state, pkceVerifier: started.verifier });
+  await saveGoogleCalendarState({
+    ...state,
+    pkceVerifier: started.verifier,
+    oauthClientId: started.clientId,
+    oauthRedirectUri: started.redirectUri,
+  });
 
   if (started.platform === "desktop" && window.magistrateWizard?.startGoogleOAuth) {
     const result = await window.magistrateWizard.startGoogleOAuth(started.url);
@@ -151,6 +172,8 @@ export const beginGoogleOAuth = async () => {
       ...state,
       tokens,
       pkceVerifier: undefined,
+      oauthClientId: undefined,
+      oauthRedirectUri: undefined,
     });
     return { connected: true as const };
   }
@@ -172,14 +195,16 @@ export const completeGoogleOAuthFromCallback = async (params: URLSearchParams) =
   const platform = detectOAuthPlatform();
   const tokens = await exchangeGoogleCode({
     code,
-    redirectUri: googleRedirectUriFor(platform),
+    redirectUri: state.oauthRedirectUri || googleRedirectUriFor(platform),
     verifier: state.pkceVerifier,
-    clientId: googleClientIdFor(platform),
+    clientId: state.oauthClientId || googleClientIdFor(platform),
   });
   await saveGoogleCalendarState({
     ...state,
     tokens,
     pkceVerifier: undefined,
+    oauthClientId: undefined,
+    oauthRedirectUri: undefined,
   });
   return true;
 };

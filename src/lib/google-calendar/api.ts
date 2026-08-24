@@ -36,8 +36,8 @@ export const googleApi = async <T>(
   return json;
 };
 
-export const listCalendars = () =>
-  googleApi<{ items?: Array<{ id: string; summary?: string }> }>("/users/me/calendarList");
+export const getCalendar = (calendarId: string) =>
+  googleApi<{ id: string; summary?: string }>(`/calendars/${encodeURIComponent(calendarId)}`);
 
 export const createCalendar = (summary: string) =>
   googleApi<{ id: string }>("/calendars", {
@@ -45,14 +45,41 @@ export const createCalendar = (summary: string) =>
     body: JSON.stringify({ summary, timeZone: "America/Guyana" }),
   });
 
-export const ensureDedicatedCalendarId = async (existingId: string | null) => {
-  if (existingId) return existingId;
-  const list = await listCalendars();
-  const found = list.items?.find((item) => item.summary === DEDICATED_CALENDAR_NAME);
-  if (found?.id) return found.id;
-  const created = await createCalendar(DEDICATED_CALENDAR_NAME);
-  return created.id;
+/**
+ * Do not call calendarList. That API needs calendar.calendarlist, which we
+ * do not request. calendar.calendars covers get-by-id and create.
+ */
+export const reuseOrCreateCalendarId = async (input: {
+  existingId: string | null;
+  getById: (id: string) => Promise<string | null>;
+  create: () => Promise<string>;
+}) => {
+  if (input.existingId) {
+    const id = await input.getById(input.existingId);
+    if (id) return id;
+  }
+  return input.create();
 };
+
+export const ensureDedicatedCalendarId = async (existingId: string | null) =>
+  reuseOrCreateCalendarId({
+    existingId,
+    getById: async (id) => {
+      try {
+        const calendar = await getCalendar(id);
+        return calendar.id ?? null;
+      } catch (error) {
+        if (error instanceof GoogleCalendarHttpError && (error.status === 404 || error.status === 410)) {
+          return null;
+        }
+        throw error;
+      }
+    },
+    create: async () => {
+      const created = await createCalendar(DEDICATED_CALENDAR_NAME);
+      return created.id;
+    },
+  });
 
 export const createGoogleEvent = (calendarId: string, body: GoogleEventPayload) =>
   googleApi<{ id: string; etag?: string; status?: string }>(

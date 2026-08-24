@@ -6,6 +6,7 @@ import {
   uniqueLinkKey,
 } from "../../src/lib/google-calendar/sync.ts";
 import { toGoogleEvent } from "../../src/lib/google-calendar/map-event.ts";
+import { reuseOrCreateCalendarId } from "../../src/lib/google-calendar/api.ts";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -171,6 +172,27 @@ const result = await pushAfterLocalSave(localInsert, async () => {
 });
 check("Google down does not block docket insert", result.saved, localInsert);
 check("Google down reports unsynced", result.synced, false);
+
+check(
+  "first sync creates the dedicated calendar without listing the user's calendar list",
+  await reuseOrCreateCalendarId({
+    existingId: null,
+    getById: async () => {
+      throw new Error("calendarList must not be used");
+    },
+    create: async () => "cal-created",
+  }),
+  "cal-created",
+);
+check(
+  "later syncs reuse the stored calendar id",
+  await reuseOrCreateCalendarId({
+    existingId: "cal-existing",
+    getById: async (id) => id,
+    create: async () => "should-not-create",
+  }),
+  "cal-existing",
+);
 
 if (failures > 0) {
   console.error(`${failures} calendar sync checks failed`);

@@ -64,7 +64,7 @@ export function MobileNav() {
     <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
       <SheetContent
         side="left"
-        className="flex w-[min(20rem,88vw)] flex-col border-white/10 bg-[#141414] p-0 text-white"
+        className="flex w-[min(20rem,88vw)] flex-col border-white/10 bg-[#141414] p-0 pt-[env(safe-area-inset-top,0px)] text-white"
       >
         <SheetHeader className="px-4 pb-3 pt-4 text-left">
           <SheetTitle className="text-left font-normal">

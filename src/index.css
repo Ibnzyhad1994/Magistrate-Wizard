@@ -66,6 +66,8 @@
     text-size-adjust: 100%;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+    overflow-x: clip;
+    max-width: 100%;
   }
 
   body {
@@ -74,6 +76,8 @@
       "rlig" 1,
       "calt" 1;
     padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: clip;
+    max-width: 100%;
   }
 
   #root {

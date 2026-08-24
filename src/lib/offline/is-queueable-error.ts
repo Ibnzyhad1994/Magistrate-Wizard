@@ -1,0 +1,64 @@
+/**
+ * Queue a hearing save only when the device could not reach the API.
+ * Permission and validation failures must surface, not retry forever.
+ */
+
+const PERMISSION_CODES = new Set([
+  "401",
+  "403",
+  "42501",
+  "PGRST301",
+  "PGRST116",
+  "22P02",
+  "23502",
+  "23505",
+  "23514",
+])
+
+const NETWORK_MESSAGE =
+  /failed to fetch|networkerror|network request failed|load failed|fetch failed|you appear to be offline/i
+
+const readCode = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") return undefined
+  const rec = error as { code?: unknown; status?: unknown }
+  if (typeof rec.code === "string" && rec.code) return rec.code
+  if (typeof rec.code === "number") return String(rec.code)
+  if (typeof rec.status === "number") return String(rec.status)
+  if (typeof rec.status === "string" && rec.status) return rec.status
+  return undefined
+}
+
+const readMessage = (error: unknown): string => {
+  if (!error) return ""
+  if (typeof error === "string") return error
+  if (error instanceof Error) return error.message
+  if (typeof error === "object" && "message" in error && typeof (error as { message: unknown }).message === "string") {
+    return (error as { message: string }).message
+  }
+  return ""
+}
+
+export const isPermissionOrValidationError = (error: unknown): boolean => {
+  const code = readCode(error)
+  if (code && PERMISSION_CODES.has(code)) return true
+  const status = Number(code)
+  if (status === 401 || status === 403 || status === 422) return true
+  return false
+}
+
+export const isQueueableError = (
+  error: unknown,
+  online = typeof navigator === "undefined" ? true : navigator.onLine,
+): boolean => {
+  if (isPermissionOrValidationError(error)) return false
+  if (!online) return true
+  if (error instanceof TypeError) return true
+  if (error && typeof error === "object" && "name" in error) {
+    const name = String((error as { name: unknown }).name)
+    if (/RetryableFetch|NetworkError/i.test(name)) return true
+  }
+  return NETWORK_MESSAGE.test(readMessage(error))
+}
+
+export const MATTER_UNAVAILABLE_OFFLINE =
+  "This matter is not available offline yet. Open it once while you are online."

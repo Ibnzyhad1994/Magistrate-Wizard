@@ -146,10 +146,13 @@ export const runFullSync = async (
     syncToken: string | null;
     from: string;
     to: string;
+    skipPull?: boolean;
   },
 ) => {
   const calendarId = await deps.google.ensureCalendar(input.calendarId);
-  const pulled = await pullChanges(deps, calendarId, input.syncToken);
+  const pulled = input.skipPull
+    ? { results: [], nextSyncToken: input.syncToken }
+    : await pullChanges(deps, calendarId, input.syncToken);
   const windowEvents = await deps.docket.listWindow(input.from, input.to, input.origin);
   for (const event of windowEvents) {
     await pushOneEvent(deps, {
@@ -337,6 +340,9 @@ export const syncDocketEventToGoogle = async (eventId: string) => {
 };
 
 export const runGoogleCalendarSyncNow = async () => {
+  const { flushPendingHearings } = await import("@/lib/offline/runtime");
+  const { getOutboxJobs } = await import("@/lib/offline/store");
+  await flushPendingHearings();
   const state = await loadGoogleCalendarState();
   if (!isGoogleConnected(state)) throw new Error("Google Calendar is not connected.");
   const profileId = await currentUserId();
@@ -349,6 +355,7 @@ export const runGoogleCalendarSyncNow = async () => {
     syncToken: state.syncToken,
     from: bounds.from,
     to: bounds.to,
+    skipPull: getOutboxJobs(profileId).length > 0,
   });
   await saveGoogleCalendarState({
     ...state,

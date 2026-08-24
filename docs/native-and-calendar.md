@@ -24,10 +24,13 @@ Keep secrets in `.env` / `.env.local` (gitignored). Copy `.env.example`.
 | `VITE_SUPABASE_ANON_KEY` | from `npm run db:status` | same key |
 
 Google OAuth uses **PKCE public clients** (no client secret in the app).
-Enable the Calendar API in Google Cloud, then create OAuth clients:
+Google “Web application” clients are confidential and reject token exchange
+without a secret. The local browser on `127.0.0.1` / `localhost` therefore
+uses the **Desktop** client ID. Enable the Calendar API in Google Cloud, then
+create OAuth clients:
 
-- Web — redirect `http://127.0.0.1:5373/settings` (and the production origin `/settings`)
-- Desktop / Electron — loopback `http://127.0.0.1/oauth/google/callback` (any ephemeral port)
+- Web — only needed for a hosted HTTPS origin; redirect `{origin}/settings`
+- Desktop / Electron / local Vite — loopback `http://127.0.0.1/oauth/google/callback` (any port). Local Vite also returns to `http://127.0.0.1:5373/settings`.
 - Android — package `gy.magistrate.wizard` + debug SHA-1; custom scheme `magistratewizard://oauth/google/callback`
 - iOS — bundle id `gy.magistrate.wizard`; same custom scheme
 
@@ -74,13 +77,13 @@ Google Cloud clients from step 1.
 6. **Disconnect.** Settings → Disconnect. Further docket edits must not
    call Google. Existing Google events stay in place and stop updating.
 7. **Out of scope until you ask.** App Store / Play listing, signing
-   certs, push notifications, offline Postgres replica, merging this
+   certs, push notifications, a full offline replica, merging this
    branch to `main`.
 
 Automated checks that should stay green:
 `npm run test:calendar-map`, `npm run test:calendar-sync`,
-`npm run test:docket-procedure`, `npm run test:protected-route`,
-`npm run test:pentest`.
+`npm run test:offline-outbox`, `npm run test:docket-procedure`,
+`npm run test:protected-route`, `npm run test:pentest`.
 
 ## Scripts
 
@@ -104,7 +107,26 @@ open ios/App/App.xcworkspace
 ```
 
 Out of scope for v1: App Store / Play listing, signing certs, push
-notifications, offline Postgres replica.
+notifications, a full offline Postgres replica (new matters, parties,
+documents). Hearing saves can already queue on-device; see below.
+
+## Offline hearings
+
+Add/edit hearings on a matter opened on this device while online. The
+row is stored in a device outbox (same storage as Google tokens:
+localStorage on web/Electron, Capacitor Preferences on Android/iOS),
+keyed by signed-in profile. Calendar and the matter Events tab show
+pending items as **On this device**. When the network returns, Docket
+is written first, then Google. Tokens stay on the device; Postgres only
+keeps event-id mappings.
+
+On a phone the same React app runs inside Capacitor. Flush also runs
+when the app is foregrounded and when `@capacitor/network` reports
+connectivity again (the WebView `online` event is unreliable on
+Android).
+
+A matter never opened on this device is not available offline. Sign-out
+clears that profile’s outbox and snapshot.
 
 ## Calendar UI
 
@@ -140,8 +162,19 @@ Per-user mappings live in `docket_event_calendar_links`. The old
 4. **Disconnect:** Settings → Disconnect. Further docket edits must not
    call Google. Existing Google events are **left in place** (not
    cancelled) and are no longer updated.
+5. **Offline hearing:** open a matter while online, then DevTools
+   offline, add a hearing. Confirm Calendar and Events show it as
+   pending. Go online and confirm `docket_events` (and Google, if
+   connected). Reload while still offline after a prior open: Events
+   still lists cached + pending hearings. Sign out: pending list gone.
+6. **Android / iOS:** same flow with airplane mode instead of DevTools.
+   Emulator Supabase is `http://10.0.2.2:55321`. After installing
+   `@capacitor/network`, `npx cap sync` (or `npm run native:android`)
+   so the plugin is in the native project. Turning the radio back on
+   or returning to the app should flush the banner.
 
 Automated: `npm run test:calendar-map`, `npm run test:calendar-sync`,
-`npm run test:docket-procedure`, `npm run test:protected-route`,
+`npm run test:offline-outbox`, `npm run test:docket-procedure`,
+`npm run test:protected-route`,
 `npm run test:pentest` (anon/outsider must not read
 `docket_event_calendar_links`).
