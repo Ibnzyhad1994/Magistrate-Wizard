@@ -235,6 +235,20 @@ const main = async () => {
       makeFile("Ramsingh.docx", docxBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
     )
     checkTrue("magic accepts zip/docx", true)
+    {
+      const zip = new JSZip()
+      zip.file("inner.pdf", "%PDF-1.4\n%%EOF")
+      const buf = await zip.generateAsync({ type: "arraybuffer" })
+      let zipAsDocxRejected = false
+      try {
+        await assertFileContentMatchesKind(
+          makeFile("archive.docx", buf, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        )
+      } catch {
+        zipAsDocxRejected = true
+      }
+      checkTrue("magic rejects zip without [Content_Types].xml labeled as docx", zipAsDocxRejected)
+    }
     await assertFileContentMatchesKind(makeFile("notes.md", PROSE, "text/markdown"))
     checkTrue("magic accepts markdown prose", true)
   }

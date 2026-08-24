@@ -275,6 +275,20 @@ const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
  * RLS denials, missing foreign keys) and returns plain English instead of
  * the raw driver/Postgres exception text.
  */
+export function isCanonicalCitationUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const code = "code" in error ? String((error as { code: unknown }).code) : ""
+  if (code !== "23505") return false
+  const haystack = [
+    "message" in error ? String((error as { message: unknown }).message ?? "") : "",
+    "details" in error ? String((error as { details: unknown }).details ?? "") : "",
+    "hint" in error ? String((error as { hint: unknown }).hint ?? "") : "",
+  ]
+    .join(" ")
+    .toLowerCase()
+  return haystack.includes("case_law_citation_canonical_unique_idx")
+}
+
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const code = "code" in error ? String((error as { code: unknown }).code) : undefined;

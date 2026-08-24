@@ -3,6 +3,8 @@
  * Extension wins when the browser leaves `file.type` empty (common for .md).
  */
 
+import JSZip from "jszip"
+
 export type IngestKind = "pdf" | "txt" | "markdown" | "docx" | "doc" | "image" | "unsupported"
 
 export const INGEST_FILE_ACCEPT = ".pdf,.txt,.md,.markdown,.docx,.doc,image/png,image/jpeg,image/webp"
@@ -111,6 +113,16 @@ export const sniffMagicMime = (bytes: Uint8Array): SniffedMime => {
   return null
 }
 
+const isDocxZip = async (bytes: Uint8Array): Promise<boolean> => {
+  try {
+    const zip = await JSZip.loadAsync(bytes)
+    const names = Object.keys(zip.files)
+    return names.some((name) => name === "[Content_Types].xml" || name.endsWith("/[Content_Types].xml"))
+  } catch {
+    return false
+  }
+}
+
 const CONTENT_MISMATCH = "This file's contents do not match its type. Upload was blocked."
 
 /**
@@ -143,11 +155,14 @@ export const assertFileContentMatchesKind = async (file: { name: string; type?: 
       }
       return
     }
-    case "docx":
+    case "docx": {
       if (sniffed !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
         throw new Error(CONTENT_MISMATCH)
       }
+      const full = new Uint8Array(await file.slice(0).arrayBuffer())
+      if (!(await isDocxZip(full))) throw new Error(CONTENT_MISMATCH)
       return
+    }
     case "doc":
       if (sniffed !== "application/msword") throw new Error(CONTENT_MISMATCH)
       return

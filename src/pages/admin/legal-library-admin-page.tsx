@@ -58,6 +58,8 @@ import {
   useReprocessCaseLawExtraction,
   useReassessStatuteExtraction,
   readDuplicateOfId,
+  readRejectedBeforeProcessing,
+  readCancelledJob,
   type ImportBatchJobRow,
 } from "@/hooks/legal-library/use-import-jobs";
 import { useBulkImportCaseLaw } from "@/hooks/legal-library/use-bulk-import";
@@ -1675,6 +1677,7 @@ const BULK_STATUS_TONE: Record<BulkItemStatus, "canonical" | "destructive" | "ou
   failed: "destructive",
   completed: "canonical",
   rejected: "destructive",
+  cancelled: "outline",
 };
 
 function BulkSummaryChip({
@@ -1705,7 +1708,7 @@ function BulkSummaryChip({
  * INGESTION IS NOT BULK PUBLICATION").
  */
 function BulkImportPanel() {
-  const { items, isRunning, startBulkImport, reset, lastBatchId, retryItem } = useBulkImportCaseLaw();
+  const { items, isRunning, startBulkImport, cancelBulkImport, reset, lastBatchId, retryItem } = useBulkImportCaseLaw();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const navigate = useNavigate();
@@ -1720,7 +1723,7 @@ function BulkImportPanel() {
   // needs_review, duplicate, failed, rejected, completed) — still queued/
   // hashing/extracting counts as in progress.
   const doneCount =
-    summary.ready + summary.completed + summary.needs_review + summary.duplicate + summary.failed + summary.rejected;
+    summary.ready + summary.completed + summary.needs_review + summary.duplicate + summary.failed + summary.rejected + summary.cancelled;
 
   function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
@@ -1791,10 +1794,15 @@ function BulkImportPanel() {
             />
           </label>
           {isRunning && (
-            <Badge variant="secondary" className="gap-1">
-              <Sparkles className="h-3 w-3" />
-              {items.length > 0 ? `Processing ${doneCount} of ${items.length}…` : "Processing…"}
-            </Badge>
+            <>
+              <Badge variant="secondary" className="gap-1">
+                <Sparkles className="h-3 w-3" />
+                {items.length > 0 ? `Processing ${doneCount} of ${items.length}…` : "Processing…"}
+              </Badge>
+              <Button size="sm" variant="outline" onClick={cancelBulkImport}>
+                Cancel
+              </Button>
+            </>
           )}
           {hasItems && !isRunning && lastBatchId && (
             // The persistent record (Import Batches), not this temporary
@@ -1825,6 +1833,7 @@ function BulkImportPanel() {
               />
               <BulkSummaryChip label="Failed" count={summary.failed} tone="destructive" />
               <BulkSummaryChip label="Rejected" count={summary.rejected} tone="destructive" />
+              <BulkSummaryChip label="Cancelled" count={summary.cancelled} tone="outline" />
             </div>
 
             <div className="max-h-[28rem] space-y-1 overflow-y-auto rounded-md border border-border p-2">
@@ -1938,6 +1947,19 @@ const JOB_STATUS_TONE: Record<string, "canonical" | "destructive" | "outline" | 
   failed: "destructive",
   duplicate: "outline",
 };
+
+function batchJobDisplayStatus(row: ImportBatchJobRow): { label: string; tone: "canonical" | "destructive" | "outline" | "secondary" } {
+  if (row.status === "failed" && readRejectedBeforeProcessing(row.extracted_metadata)) {
+    return { label: "Rejected", tone: "destructive" }
+  }
+  if (row.status === "failed" && readCancelledJob(row.extracted_metadata)) {
+    return { label: "Cancelled", tone: "outline" }
+  }
+  return {
+    label: JOB_STATUS_LABEL[row.status] ?? row.status,
+    tone: JOB_STATUS_TONE[row.status] ?? "secondary",
+  }
+}
 
 /**
  * The batch accounting invariant (Section 5), rendered honestly:
@@ -2157,6 +2179,12 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
                   ))}
                 </div>
               )}
+              {(data.interruptedCount ?? 0) > 0 && (
+                <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">
+                  {data.interruptedCount} file{data.interruptedCount === 1 ? "" : "s"} never completed — re-select
+                  files to resume.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -2183,6 +2211,7 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
 function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string }) {
   const navigate = useNavigate();
   const duplicateOfId = readDuplicateOfId(row.extracted_metadata);
+  const display = batchJobDisplayStatus(row);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
@@ -2195,7 +2224,7 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
         {row.error_summary && <p className="mt-0.5 max-w-xl text-xs text-destructive">{row.error_summary}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Badge variant={JOB_STATUS_TONE[row.status] ?? "secondary"}>{JOB_STATUS_LABEL[row.status] ?? row.status}</Badge>
+        <Badge variant={display.tone}>{display.label}</Badge>
         {row.contentQualityStatus === "failed" && <Badge variant="destructive">Quality: Failed</Badge>}
         {row.target_case_law_id && row.reviewStatus === "published" && (
           <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.caseLawDetail(row.target_case_law_id as string))}>

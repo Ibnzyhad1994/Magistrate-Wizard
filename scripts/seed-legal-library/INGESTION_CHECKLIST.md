@@ -15,7 +15,10 @@ source is added.
       both seed files).
 - [ ] `npm run test:ingestion` passes clean on `main` before you touch
       anything (establishes your baseline — if it's red before you start,
-      that's not your bug to inherit silently).
+      that's not your bug to inherit silently). This chain now includes
+      `test:ingest-ocr-robustness` and bulk-queue tests. For the gated
+      brutal subset plus the rest of the adversarial circuit, run
+      `npm run test:ingestion:full`.
 
 ## 1. Harvest
 

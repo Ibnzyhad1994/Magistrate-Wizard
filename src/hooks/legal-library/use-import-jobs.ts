@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { interpretDuplicateQuery } from "@/lib/duplicate-check";
 import {
   extractCaseLawMetadataWithConfidence,
   extractCaseNameFromFilename,
@@ -137,13 +138,17 @@ export async function checkExactDuplicateByHash(
   hash: string,
 ): Promise<{ id: string; label: string } | null> {
   if (contentType === "case_law") {
-    const { data } = await supabase.from("case_law").select("id, case_name, citation").eq("document_hash", hash).limit(1);
-    const row = data?.[0];
-    return row ? { id: row.id, label: `${row.case_name} (${row.citation})` } : null;
+    const { data, error } = await supabase.from("case_law").select("id, case_name, citation").eq("document_hash", hash).limit(1);
+    return interpretDuplicateQuery({ data, error }, (row) => ({
+      id: row.id,
+      label: `${row.case_name} (${row.citation})`,
+    }));
   }
-  const { data } = await supabase.from("statutes").select("id, title, code").eq("document_hash", hash).limit(1);
-  const row = data?.[0];
-  return row ? { id: row.id, label: `${row.title} (${row.code})` } : null;
+  const { data, error } = await supabase.from("statutes").select("id, title, code").eq("document_hash", hash).limit(1);
+  return interpretDuplicateQuery({ data, error }, (row) => ({
+    id: row.id,
+    label: `${row.title} (${row.code})`,
+  }));
 }
 
 /**
@@ -172,14 +177,16 @@ export async function checkCanonicalCitationConflict(
 ): Promise<{ id: string; label: string } | null> {
   const trimmed = citation.trim();
   if (!trimmed) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("case_law")
     .select("id, case_name, citation")
     .eq("citation", trimmed)
     .is("owner_id", null)
     .limit(1);
-  const row = data?.[0];
-  return row ? { id: row.id, label: `${row.case_name} (${row.citation})` } : null;
+  return interpretDuplicateQuery({ data, error }, (row) => ({
+    id: row.id,
+    label: `${row.case_name} (${row.citation})`,
+  }));
 }
 
 /**
@@ -213,11 +220,38 @@ export async function recordBulkNonDraftJob(input: {
   originalFilename: string;
   /** The existing canonical record this item collided with, when known (Section 8: a duplicate row should link to the existing record). */
   duplicateOfId?: string | null;
+  /** When set, UPDATE this existing queued/extracting row instead of inserting a second job. */
+  jobId?: string | null;
+  retryCount?: number;
+  outcomeFlag?: "rejected" | "cancelled" | null;
 }): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in.");
+
+  const extracted_metadata = {
+    _originalFilename: input.originalFilename,
+    _duplicateOfId: input.duplicateOfId ?? null,
+    _rejectedBeforeProcessing: input.outcomeFlag === "rejected",
+    _cancelled: input.outcomeFlag === "cancelled",
+  } as unknown as Json;
+
+  if (input.jobId) {
+    const { error } = await supabase
+      .from("import_jobs")
+      .update({
+        status: input.status,
+        error_summary: input.status === "failed" ? input.reason : null,
+        duplicate_warning: input.status === "duplicate" ? input.reason : null,
+        completed_at: new Date().toISOString(),
+        retry_count: input.retryCount ?? undefined,
+        extracted_metadata,
+      })
+      .eq("id", input.jobId);
+    if (error) throw error;
+    return;
+  }
 
   const { error } = await supabase.from("import_jobs").insert({
     batch_id: input.batch_id,
@@ -229,21 +263,114 @@ export async function recordBulkNonDraftJob(input: {
     created_by: user.id,
     started_at: new Date().toISOString(),
     completed_at: new Date().toISOString(),
-    // No case_law/statutes row exists for this outcome, so the original
-    // filename and (for duplicates) the conflicting record's id are the
-    // only way Batch Detail can identify which file this row is about —
-    // stored under extracted_metadata (already a flexible jsonb used for
-    // exactly this kind of provenance elsewhere in this file), not a new
-    // column, since this is the only place these two fields are needed.
-    extracted_metadata: {
-      _originalFilename: input.originalFilename,
-      _duplicateOfId: input.duplicateOfId ?? null,
-    } as unknown as Json,
+    retry_count: input.retryCount ?? 0,
+    extracted_metadata,
   });
   if (error) throw error;
 }
 
-/** Same bare-row insert as recordBulkNonDraftJob, but for the pre-processing "rejected" outcome (Section 27: a file rejected by client-side validation, e.g. oversized or wrong type, before any processing was even attempted) — batched as one multi-row insert since these are cheap, synchronous rejections with no per-item async work. */
+export async function insertQueuedBulkJobs(input: {
+  items: { queueId: string; originalFilename: string }[];
+  batch_id: string | null;
+  content_type: "case_law" | "legislation";
+  source_id: string | null;
+}): Promise<Record<string, string>> {
+  if (input.items.length === 0) return {};
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+
+  const rows = input.items.map((item) => ({
+    batch_id: input.batch_id,
+    content_type: input.content_type,
+    source_id: input.source_id,
+    status: "queued" as const,
+    created_by: user.id,
+    started_at: null,
+    completed_at: null,
+    extracted_metadata: { _originalFilename: item.originalFilename, _queueId: item.queueId } as unknown as Json,
+  }));
+  const { data, error } = await supabase.from("import_jobs").insert(rows).select("id, extracted_metadata");
+  if (error) throw error;
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    const meta = row.extracted_metadata as { _queueId?: string } | null;
+    if (meta?._queueId && row.id) map[meta._queueId] = row.id;
+  }
+  return map;
+}
+
+export async function markBulkJobExtracting(jobId: string, retryCount?: number): Promise<void> {
+  const { error } = await supabase
+    .from("import_jobs")
+    .update({
+      status: "extracting",
+      started_at: new Date().toISOString(),
+      completed_at: null,
+      error_summary: null,
+      ...(typeof retryCount === "number" ? { retry_count: retryCount } : {}),
+    })
+    .eq("id", jobId);
+  if (error) throw error;
+}
+
+export async function markBulkJobsCancelled(jobIds: string[]): Promise<void> {
+  if (jobIds.length === 0) return;
+  const { error } = await supabase
+    .from("import_jobs")
+    .update({
+      status: "failed",
+      error_summary: "Cancelled before this file finished processing.",
+      completed_at: new Date().toISOString(),
+      extracted_metadata: { _cancelled: true } as unknown as Json,
+    })
+    .in("id", jobIds);
+  if (error) throw error;
+}
+
+/** Copy the RPC-created draft job onto the existing queued row, then delete the extra RPC row so batch counts stay honest. */
+export async function adoptRpcImportJob(queuedJobId: string, rpcJobId: string): Promise<void> {
+  if (queuedJobId === rpcJobId) return;
+  const { data: rpc, error: readError } = await supabase.from("import_jobs").select("*").eq("id", rpcJobId).single();
+  if (readError) throw readError;
+  const { data: queued } = await supabase.from("import_jobs").select("extracted_metadata, retry_count").eq("id", queuedJobId).single();
+  const queuedMeta =
+    queued?.extracted_metadata && typeof queued.extracted_metadata === "object"
+      ? (queued.extracted_metadata as Record<string, unknown>)
+      : {};
+  const rpcMeta =
+    rpc.extracted_metadata && typeof rpc.extracted_metadata === "object"
+      ? (rpc.extracted_metadata as Record<string, unknown>)
+      : {};
+  const { error: updateError } = await supabase
+    .from("import_jobs")
+    .update({
+      status: rpc.status,
+      target_case_law_id: rpc.target_case_law_id,
+      target_statute_id: rpc.target_statute_id,
+      extracted_text: rpc.extracted_text,
+      extracted_metadata: { ...queuedMeta, ...rpcMeta } as unknown as Json,
+      proposed_tags: rpc.proposed_tags,
+      duplicate_warning: rpc.duplicate_warning,
+      error_summary: rpc.error_summary,
+      uploaded_document_id: rpc.uploaded_document_id,
+      completed_at: rpc.completed_at ?? new Date().toISOString(),
+      started_at: rpc.started_at,
+      retry_count: queued?.retry_count ?? 0,
+    })
+    .eq("id", queuedJobId);
+  if (updateError) throw updateError;
+  if (rpc.target_case_law_id) {
+    const { error: linkError } = await supabase
+      .from("case_law")
+      .update({ import_job_id: queuedJobId })
+      .eq("id", rpc.target_case_law_id);
+    if (linkError) throw linkError;
+  }
+  const { error: deleteError } = await supabase.from("import_jobs").delete().eq("id", rpcJobId);
+  if (deleteError) throw deleteError;
+}
 export async function recordBulkRejectedJobs(
   items: { batch_id: string | null; content_type: "case_law" | "legislation"; reason: string; originalFilename: string }[],
 ): Promise<void> {
@@ -281,6 +408,22 @@ export function readDuplicateOfId(extractedMetadata: unknown): string | null {
   if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
   const v = (extractedMetadata as Record<string, unknown>)._duplicateOfId;
   return typeof v === "string" ? v : null;
+}
+
+export function readRejectedBeforeProcessing(extractedMetadata: unknown): boolean {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return false;
+  return (extractedMetadata as Record<string, unknown>)._rejectedBeforeProcessing === true;
+}
+
+export function readCancelledJob(extractedMetadata: unknown): boolean {
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return false;
+  return (extractedMetadata as Record<string, unknown>)._cancelled === true;
+}
+
+export const IN_FLIGHT_IMPORT_JOB_STATUSES = new Set(["queued", "fetching", "extracting", "structuring"]);
+
+export function isInFlightImportJobStatus(status: string): boolean {
+  return IN_FLIGHT_IMPORT_JOB_STATUSES.has(status);
 }
 
 export interface ImportBatchSummary {
@@ -489,12 +632,14 @@ export function useImportBatchDetail(batchId: string | null) {
       });
 
       const expected = (batch as { expected_file_count: number | null }).expected_file_count;
+      const hasInterrupted = (jobs ?? []).some((j) => isInFlightImportJobStatus(j.status));
       return {
         batch,
         rows,
         expected_file_count: expected,
         isLegacyIncomplete: expected === null,
-        isFullyAccounted: expected !== null && rows.length >= expected,
+        isFullyAccounted: expected !== null && rows.length >= expected && !hasInterrupted,
+        interruptedCount: (jobs ?? []).filter((j) => isInFlightImportJobStatus(j.status)).length,
       };
     },
   });
@@ -586,6 +731,8 @@ interface IngestCaseLawInput {
      */
     case_name_source?: "document" | "filename" | "curator";
   };
+  /** When bulk import already inserted a queued job row, the RPC-created job is folded onto this id. */
+  existingJobId?: string | null;
 }
 
 /**
@@ -705,6 +852,15 @@ export function useIngestCaseLaw() {
       if (error) throw error;
       const row = data?.[0];
       if (!row) throw new Error("create_case_law_import did not return an id.");
+
+      if (input.existingJobId) {
+        try {
+          await adoptRpcImportJob(input.existingJobId, row.import_job_id as string);
+          row.import_job_id = input.existingJobId;
+        } catch (e) {
+          console.error("Could not fold the draft job onto the queued row:", e);
+        }
+      }
 
       let uploadError: string | null = null;
       if (input.file) {

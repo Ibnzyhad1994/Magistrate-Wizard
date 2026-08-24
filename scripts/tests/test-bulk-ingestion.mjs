@@ -218,6 +218,34 @@ async function main() {
     check("J. a filename with no case-name-shaped content yields nothing (never fabricated)", noUsefulPattern, undefined);
   }
 
+  {
+    const items = [
+      { id: "keep", done: false },
+      { id: "later-a", done: false },
+      { id: "later-b", done: false },
+    ];
+    const controller = new AbortController();
+    await runBoundedConcurrent(
+      items,
+      async (item) => {
+        if (item.id === "keep") {
+          item.done = true;
+          controller.abort();
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 30));
+        item.done = true;
+      },
+      1,
+      { signal: controller.signal },
+    );
+    checkTrue("cancel. first item ran before abort", items[0].done);
+    checkTrue(
+      "cancel. later items were not started after abort",
+      items.filter((it) => it.done).length === 1,
+    );
+  }
+
   console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
   process.exit(failures === 0 ? 0 : 1);
 }

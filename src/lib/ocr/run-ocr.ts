@@ -7,6 +7,7 @@
  * bytes.
  */
 
+import { isAbortError, throwIfAborted } from "@/lib/async-timeout"
 import type { ExtractionEnvelope } from "@/lib/extraction-pipeline"
 import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality"
 import { LOW_OCR_MEAN_CONFIDENCE, MAX_OCR_PAGES, MIN_OCR_MEAN_CONFIDENCE } from "@/lib/ocr/constants"
@@ -52,6 +53,7 @@ const failedOcr = (warnings: string[], ocrUsed: boolean): ExtractionEnvelope => 
 export interface OcrRunOptions {
   onProgress?: (page: number, total: number) => void
   maxPages?: number
+  signal?: AbortSignal
 }
 
 /**
@@ -70,12 +72,13 @@ interface PageImage {
 const collectPageImages = async (
   file: File,
   maxPages: number,
+  signal?: AbortSignal,
 ): Promise<{ images: PageImage[]; warnings: string[] }> => {
   const warnings: string[] = []
   let rasterCount = 0
 
   try {
-    const raster = await rasterizePdfPages(file, maxPages)
+    const raster = await rasterizePdfPages(file, { maxPages, signal })
     rasterCount = raster.length
     if (raster.length > 0) {
       if (raster.length >= maxPages) {
@@ -89,6 +92,7 @@ const collectPageImages = async (
       }
     }
   } catch (e) {
+    if (isAbortError(e)) throw e
     const name = e && typeof e === "object" && "name" in e ? String((e as { name: string }).name) : ""
     if (name !== "InvalidPDFException") {
       console.error("PDF rasterization for OCR failed:", e)
@@ -122,8 +126,9 @@ const toRecognizeInput = (bytes: Uint8Array): Buffer | Blob => {
 }
 
 export const runOcr = async (file: File, options?: OcrRunOptions): Promise<ExtractionEnvelope> => {
+  throwIfAborted(options?.signal)
   const maxPages = options?.maxPages ?? MAX_OCR_PAGES
-  const { images, warnings: collectWarnings } = await collectPageImages(file, maxPages)
+  const { images, warnings: collectWarnings } = await collectPageImages(file, maxPages, options?.signal)
   if (images.length === 0) {
     return unavailable([
       ...collectWarnings,
@@ -136,10 +141,11 @@ export const runOcr = async (file: File, options?: OcrRunOptions): Promise<Extra
   const warnings = [...collectWarnings]
 
   for (let i = 0; i < images.length; i++) {
+    throwIfAborted(options?.signal)
     const image = images[i]
     options?.onProgress?.(image.pageNumber, images.length)
     try {
-      const result = await recognizeImage(toRecognizeInput(image.bytes))
+      const result = await recognizeImage(toRecognizeInput(image.bytes), options?.signal)
       const cleaned = postprocessOcrText(result.text)
       pageTexts.push({
         pageNumber: image.pageNumber,
@@ -148,6 +154,7 @@ export const runOcr = async (file: File, options?: OcrRunOptions): Promise<Extra
       })
       confidences.push(result.confidence)
     } catch (e) {
+      if (isAbortError(e)) throw e
       console.error(`OCR failed on page ${image.pageNumber}:`, e)
       warnings.push(`Text recognition failed on page ${image.pageNumber}.`)
     }
