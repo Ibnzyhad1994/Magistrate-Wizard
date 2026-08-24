@@ -1,31 +1,52 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 const DOCUMENTS_BUCKET = "documents";
 
 /**
- * Batch-mint short-lived signed URLs for private documents-bucket objects.
- * Storage SELECT still requires a matching `public.documents` row, so a
- * path the caller cannot already read will simply be omitted.
+ * Load private-bucket images as blob: object URLs.
+ * Blobs are cached; object URLs are created per subscriber so unmount
+ * cannot revoke a URL still shown by another component.
  */
 export function useSignedUrls(paths: (string | null | undefined)[]) {
   const unique = [...new Set(paths.filter((p): p is string => Boolean(p)))].sort();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["signed-urls", unique],
     queryFn: async () => {
-      const map: Record<string, string> = {};
-      if (unique.length === 0) return map;
-      const { data, error } = await supabase.storage
-        .from(DOCUMENTS_BUCKET)
-        .createSignedUrls(unique, 300);
-      if (error) throw error;
-      for (const row of data ?? []) {
-        if (row.path && row.signedUrl) map[row.path] = row.signedUrl;
-      }
-      return map;
+      const blobs: Record<string, Blob> = {};
+      if (unique.length === 0) return blobs;
+      await Promise.all(
+        unique.map(async (path) => {
+          const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(path);
+          if (error || !data) return;
+          blobs[path] = data;
+        }),
+      );
+      return blobs;
     },
     enabled: unique.length > 0,
     staleTime: 60_000,
   });
+
+  const [urls, setUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const blobs = query.data;
+    if (!blobs) {
+      setUrls({});
+      return;
+    }
+    const next: Record<string, string> = {};
+    for (const [path, blob] of Object.entries(blobs)) {
+      next[path] = URL.createObjectURL(blob);
+    }
+    setUrls(next);
+    return () => {
+      for (const url of Object.values(next)) URL.revokeObjectURL(url);
+    };
+  }, [query.data]);
+
+  return { ...query, data: urls };
 }

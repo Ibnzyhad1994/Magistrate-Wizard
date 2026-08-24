@@ -31,6 +31,7 @@
     "test:propose-tags-compare": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/compare-propose-tags-before-after.mjs",
     "test:legal-extraction": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-legal-extraction.mjs",
     "test:protected-route": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-protected-route.mjs",
+    "test:pentest": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/pentest-security-audit.mjs",
     "test:seed-heuristics": "node scripts/tests/test-seed-heuristics.mjs",
     "test:docket-procedure": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-procedure.mjs",
     "test:ingest-harvest-quality": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-harvest-quality.mjs",

@@ -21,7 +21,7 @@ import { postprocessOcrText } from "@/lib/ocr/postprocess"
 import { sanitizeExtractedText } from "@/lib/text-sanitize"
 import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality"
 
-export { classifyIngestSource, ingestKindLabel, inferStoredMimeType, INGEST_FILE_ACCEPT } from "@/lib/ingest-source"
+export { classifyIngestSource, ingestKindLabel, inferStoredMimeType, resolveStoredMimeType, assertFileContentMatchesKind, INGEST_FILE_ACCEPT } from "@/lib/ingest-source"
 export type { IngestKind } from "@/lib/ingest-source"
 
 const unsupportedEnvelope = (warning: string): ExtractionEnvelope => ({

@@ -45,27 +45,103 @@ export const escapeHtml = (text: string): string => {
     .replace(/'/g, "&#39;")
 }
 
-const isSafeHref = (href: string): boolean => {
-  const trimmed = href.trim()
-  return /^(https?:|mailto:|#)/i.test(trimmed) && !/^\s*javascript:/i.test(trimmed)
+const decodeHtmlEntitiesOnce = (value: string): string => {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const code = parseInt(hex, 16)
+      return Number.isFinite(code) ? String.fromCodePoint(code) : ""
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = Number(dec)
+      return Number.isFinite(code) ? String.fromCodePoint(code) : ""
+    })
 }
 
-export const sanitizePreviewHtml = (html: string): string => {
+const decodeHtmlEntities = (value: string): string => {
+  let current = value
+  for (let i = 0; i < 3; i += 1) {
+    const next = decodeHtmlEntitiesOnce(current)
+    if (next === current) break
+    current = next
+  }
+  return current
+}
+
+/** True only for http(s), mailto, and in-page fragments. */
+export const isSafeHref = (href: string): boolean => {
+  const trimmed = decodeHtmlEntities(href)
+    .trim()
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+  if (!trimmed) return false
+  if (trimmed.startsWith("#") && !trimmed.includes(":")) return true
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return false
+  }
+  return parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "mailto:"
+}
+
+const dropDangerousBlocks = (html: string): string => {
   return html
+    .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<script[\s\S]*$/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<\/?([a-zA-Z0-9]+)(\s[^>]*)?>/g, (full, tag: string, attrs: string | undefined) => {
-      const closing = full.startsWith("</")
-      const name = tag.toLowerCase()
-      if (!ALLOWED_TAGS.has(name)) return ""
-      if (closing) return `</${name}>`
-      if (name === "br" || name === "hr") return `<${name} />`
-      if (name === "a") {
-        const hrefMatch = (attrs ?? "").match(/\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i)
-        const href = hrefMatch?.[2] ?? hrefMatch?.[3] ?? hrefMatch?.[4] ?? ""
-        if (!href || !isSafeHref(href)) return "<a>"
-        return `<a href="${escapeHtml(href)}" rel="noopener noreferrer" target="_blank">`
-      }
-      return `<${name}>`
-    })
+    .replace(/<style[\s\S]*$/gi, "")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
+    .replace(/<textarea[\s\S]*?<\/textarea>/gi, "")
+    .replace(/<xmp[\s\S]*?<\/xmp>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object[\s\S]*?<\/object>/gi, "")
+}
+
+const rewriteTag = (full: string, tag: string, attrs: string): string => {
+  const closing = full.startsWith("</")
+  const name = tag.toLowerCase()
+  if (!ALLOWED_TAGS.has(name)) return ""
+  if (closing) return `</${name}>`
+  if (name === "br" || name === "hr") return `<${name} />`
+  if (name === "a") {
+    const hrefMatch = attrs.match(/\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>/]+))/i)
+    const href = hrefMatch?.[2] ?? hrefMatch?.[3] ?? hrefMatch?.[4] ?? ""
+    if (!href || !isSafeHref(href)) return "<a>"
+    return `<a href="${escapeHtml(decodeHtmlEntities(href).trim())}" rel="noopener noreferrer" target="_blank">`
+  }
+  return `<${name}>`
+}
+
+/**
+ * Allowlist tags. Attributes are stripped except a safe `href` on `<a>`.
+ * Matches `<tag …>`, `<tag/>`, and shorthand `<tag/attr=…>` so SVG/JS
+ * bypasses that skip a whitespace-required attribute group cannot pass.
+ */
+export const sanitizePreviewHtml = (html: string): string => {
+  return dropDangerousBlocks(html).replace(
+    /<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g,
+    (full, tag: string, attrs: string) => rewriteTag(full, tag, attrs ?? ""),
+  )
+}
+
+const PREVIEW_SRCDOC_STYLES = [
+  "html{color-scheme:dark;background:transparent}",
+  "body{margin:0;padding:1.5rem;font:14px/1.6 system-ui,sans-serif;color:CanvasText;background:transparent}",
+  "a{color:#93c5fd}",
+  "blockquote{border-left:2px solid #444;padding-left:0.75rem;font-style:italic}",
+  "code{background:#222;padding:0.1em 0.3em;border-radius:3px}",
+  "pre{overflow:auto;background:#222;padding:0.75rem;border-radius:6px}",
+  "table{width:100%;border-collapse:collapse}",
+  "th,td{border:1px solid #444;padding:0.4rem;text-align:left}",
+].join("")
+
+/** Sandboxed iframe document for HTML previews — scripts cannot run. */
+export const wrapSanitizedPreviewSrcDoc = (sanitizedHtml: string): string => {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PREVIEW_SRCDOC_STYLES}</style></head><body>${sanitizedHtml}</body></html>`
 }

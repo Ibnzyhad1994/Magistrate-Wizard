@@ -10,13 +10,13 @@ import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/common/loading-spinner"
 import { InlineError } from "@/components/common/inline-error"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getDocumentViewUrl } from "@/hooks/use-documents"
+import { downloadDocumentBlob, getDocumentViewUrl } from "@/hooks/use-documents"
 import {
   getDocumentPreviewKind,
   isLegacyWordDocument,
 } from "@/lib/document-preview"
 import { convertDocxToHtml } from "@/lib/docx-text-extraction"
-import { sanitizePreviewHtml } from "@/lib/html-sanitize"
+import { sanitizePreviewHtml, wrapSanitizedPreviewSrcDoc } from "@/lib/html-sanitize"
 import { markdownToSafeHtml } from "@/lib/markdown-preview"
 import type { Document } from "@/types/database.types"
 
@@ -47,25 +47,24 @@ export const DocumentViewerDialog = ({
   const isLegacyWord = doc ? isLegacyWordDocument(doc.mime_type, doc.file_name) : false
 
   const loadPreview = async (filePath: string, fileKind: typeof kind) => {
-    const signedUrl = await getDocumentViewUrl(filePath)
     if (fileKind === "pdf" || fileKind === "image") {
-      return { signedUrl, content: { mode: "url" as const } }
+      const objectUrl = await getDocumentViewUrl(filePath)
+      return { objectUrl, content: { mode: "url" as const } }
     }
-    const response = await fetch(signedUrl)
-    if (!response.ok) throw new Error("Could not load this document for preview.")
-    const buffer = await response.arrayBuffer()
+    const blob = await downloadDocumentBlob(filePath)
+    const buffer = await blob.arrayBuffer()
     if (fileKind === "docx") {
       const rawHtml = await convertDocxToHtml(buffer)
-      return { signedUrl, content: { mode: "html" as const, html: sanitizePreviewHtml(rawHtml) } }
+      return { objectUrl: null, content: { mode: "html" as const, html: sanitizePreviewHtml(rawHtml) } }
     }
     const text = new TextDecoder("utf-8").decode(buffer)
     if (fileKind === "markdown") {
       return {
-        signedUrl,
+        objectUrl: null,
         content: { mode: "html" as const, html: sanitizePreviewHtml(markdownToSafeHtml(text)) },
       }
     }
-    return { signedUrl, content: { mode: "text" as const, text } }
+    return { objectUrl: null, content: { mode: "text" as const, text } }
   }
 
   useEffect(() => {
@@ -76,12 +75,17 @@ export const DocumentViewerDialog = ({
       return
     }
     let cancelled = false
+    let objectUrl: string | null = null
     setLoading(true)
     setLoadError(null)
     loadPreview(doc.file_path, kind)
       .then((result) => {
-        if (cancelled) return
-        setUrl(result.signedUrl)
+        if (cancelled) {
+          if (result.objectUrl) URL.revokeObjectURL(result.objectUrl)
+          return
+        }
+        objectUrl = result.objectUrl
+        setUrl(result.objectUrl)
         setPreview(result.content)
       })
       .catch((err) => {
@@ -92,6 +96,7 @@ export const DocumentViewerDialog = ({
       })
     return () => {
       cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
     // Re-fetch whenever a different document is opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +108,10 @@ export const DocumentViewerDialog = ({
     setLoadError(null)
     loadPreview(doc.file_path, kind)
       .then((result) => {
-        setUrl(result.signedUrl)
+        setUrl((previous) => {
+          if (previous) URL.revokeObjectURL(previous)
+          return result.objectUrl
+        })
         setPreview(result.content)
       })
       .catch(setLoadError)
@@ -153,13 +161,12 @@ export const DocumentViewerDialog = ({
               <img src={url} alt={doc.file_name} className="max-h-full max-w-full object-contain" />
             </div>
           ) : preview?.mode === "html" ? (
-            <ScrollArea className="h-full">
-              <article
-                aria-label={`Preview of ${doc.file_name}`}
-                className="space-y-3 p-6 text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:italic [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-1.5 [&_th]:border [&_th]:border-border [&_th]:p-1.5 [&_th]:text-left"
-                dangerouslySetInnerHTML={{ __html: preview.html }}
-              />
-            </ScrollArea>
+            <iframe
+              title={`Preview of ${doc.file_name}`}
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              srcDoc={wrapSanitizedPreviewSrcDoc(preview.html)}
+              className="h-full w-full border-0 bg-transparent"
+            />
           ) : preview?.mode === "text" ? (
             <ScrollArea className="h-full">
               <pre

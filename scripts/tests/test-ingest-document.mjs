@@ -6,7 +6,7 @@
 
 import JSZip from "jszip"
 import { ingestDocument, ingestPastedText } from "@/lib/ingest-document"
-import { classifyIngestSource, inferStoredMimeType } from "@/lib/ingest-source"
+import { classifyIngestSource, inferStoredMimeType, assertFileContentMatchesKind } from "@/lib/ingest-source"
 import { getDocumentPreviewKind, isLegacyWordDocument } from "@/lib/document-preview"
 import { markdownToSafeHtml } from "@/lib/markdown-preview"
 import { sanitizePreviewHtml } from "@/lib/html-sanitize"
@@ -204,6 +204,39 @@ const main = async () => {
     checkTrue("sanitize drops javascript href", !/javascript:/i.test(html))
     checkTrue("sanitize strips img", !/<img/i.test(html))
     checkTrue("sanitize keeps https anchor", html.includes("https://courts.gov"))
+    const svg = sanitizePreviewHtml('<svg/onload=alert(1)>')
+    checkTrue("sanitize strips svg shorthand onload", !/<svg/i.test(svg) && !/onload/i.test(svg))
+    const aSlash = sanitizePreviewHtml('<a/href="javascript:alert(1)">x</a>')
+    checkTrue("sanitize strips a/href javascript shorthand", !/javascript:/i.test(aSlash))
+    const entityHref = sanitizePreviewHtml('<a href="j&#97;vascript:alert(1)">x</a>')
+    checkTrue("sanitize drops entity-encoded javascript href", !/href\s*=/i.test(entityHref))
+  }
+
+  // --- magic-byte upload guard ---
+  {
+    await assertFileContentMatchesKind(makeFile("ok.pdf", "%PDF-1.4\n%%EOF", "application/pdf"))
+    checkTrue("magic accepts %PDF header", true)
+    let peRejected = false
+    try {
+      await assertFileContentMatchesKind(makeFile("evil.pdf", new Uint8Array([0x4d, 0x5a, 0x90, 0x00]), "application/pdf"))
+    } catch {
+      peRejected = true
+    }
+    checkTrue("magic rejects PE bytes labeled as pdf", peRejected)
+    let htmlAsPdfRejected = false
+    try {
+      await assertFileContentMatchesKind(makeFile("page.pdf", "<script>alert(1)</script>", "application/pdf"))
+    } catch {
+      htmlAsPdfRejected = true
+    }
+    checkTrue("magic rejects HTML labeled as pdf", htmlAsPdfRejected)
+    const docxBytes = await makeMinimalDocx("The State v Dhannie Ramsingh")
+    await assertFileContentMatchesKind(
+      makeFile("Ramsingh.docx", docxBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    )
+    checkTrue("magic accepts zip/docx", true)
+    await assertFileContentMatchesKind(makeFile("notes.md", PROSE, "text/markdown"))
+    checkTrue("magic accepts markdown prose", true)
   }
 
   // --- upload validator ---

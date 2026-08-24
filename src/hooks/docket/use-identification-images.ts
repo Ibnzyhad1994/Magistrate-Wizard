@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { uploadDocumentToEntity } from "@/hooks/use-documents";
+import { assertFileContentMatchesKind } from "@/lib/ingest-source";
 import { docketMattersKeys } from "@/hooks/docket/use-docket-matters";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -10,13 +11,14 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 export const IDENTIFICATION_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
 
-export function assertIdentificationImage(file: File) {
-  if (!IMAGE_TYPES.has(file.type)) {
+export async function assertIdentificationImage(file: File) {
+  if (!IMAGE_TYPES.has(file.type) && !/\.(png|jpe?g|webp)$/i.test(file.name)) {
     throw new Error("Use a JPEG, PNG, or WebP image.");
   }
   if (file.size > MAX_BYTES) {
     throw new Error("Images must be 5 MB or smaller.");
   }
+  await assertFileContentMatchesKind(file);
 }
 
 const partiesKey = (matterId: string) => ["docket-parties", matterId] as const;

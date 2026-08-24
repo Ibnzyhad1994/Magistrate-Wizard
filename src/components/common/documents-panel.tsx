@@ -74,7 +74,12 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
     setDownloadingId(doc.id);
     try {
       const url = await getDocumentDownloadUrl(doc.file_path);
-      window.open(url, "_blank", "noopener,noreferrer");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = doc.file_name || "document";
+      link.rel = "noopener";
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
