@@ -1,6 +1,14 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+
+const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf8")) as {
+  version: string;
+};
+const native = JSON.parse(
+  readFileSync(path.resolve(__dirname, "native/version.json"), "utf8"),
+) as { versionCode: number };
 
 const buildCsp = (supabaseUrl: string): string =>
   [
@@ -11,7 +19,7 @@ const buildCsp = (supabaseUrl: string): string =>
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' blob: data:",
     "media-src 'self' blob:",
-    `connect-src 'self' ${supabaseUrl} ws: wss:`,
+    `connect-src 'self' ${supabaseUrl} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com`,
     "frame-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
@@ -39,6 +47,10 @@ export default defineConfig(({ mode }) => {
         },
       },
     ],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+      __APP_BUILD__: JSON.stringify(String(native.versionCode)),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

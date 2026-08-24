@@ -84,7 +84,7 @@ export function TopNav() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 flex h-[68px] items-center gap-6 transition-colors duration-300",
+        "fixed inset-x-0 top-0 z-50 flex h-[calc(68px+env(safe-area-inset-top))] items-center gap-6 pt-[env(safe-area-inset-top)] transition-colors duration-300",
         "browse-gutter",
         scrolled
           ? "bg-[#141414]"

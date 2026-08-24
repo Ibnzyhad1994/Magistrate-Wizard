@@ -7,6 +7,25 @@ dist-ssr
 *.local
 *.tsbuildinfo
 
+# Native / Electron build artifacts (project sources under android/ and ios/ are committed)
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+ios/App/App/public/
+release/
+*.apk
+*.aab
+*.ipa
+dist-electron/
+
+
 # Env
 .env
 .env.local

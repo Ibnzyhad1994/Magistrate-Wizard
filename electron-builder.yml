@@ -1,0 +1,15 @@
+appId: gy.magistrate.wizard
+productName: Magistrate Wizard
+copyright: Copyright Magistrate Wizard
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/**/*
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Magistrate-Wizard-Setup-${version}.exe

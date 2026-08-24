@@ -16,6 +16,8 @@ import {
   isTileSize,
 } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
+import { APP_BUILD, APP_VERSION } from "@/lib/app-version";
+import { GoogleCalendarCard } from "@/pages/settings/google-calendar-card";
 
 export default function SettingsPage() {
   const browseView = useUiStore((s) => s.browseView);
@@ -94,6 +96,24 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="mt-6 space-y-6">
+      <GoogleCalendarCard />
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle className="text-base">About</CardTitle>
+          <CardDescription>
+            Native shells (Android, iOS, Windows) share this version.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          <p>
+            Version {APP_VERSION} (build {APP_BUILD})
+          </p>
+        </CardContent>
+      </Card>
+      </div>
     </BrowsePage>
   );
 }

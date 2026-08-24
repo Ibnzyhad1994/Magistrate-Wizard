@@ -10,6 +10,7 @@ import {
   Search,
   Landmark,
   LibraryBig,
+  CalendarDays,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
@@ -51,6 +52,12 @@ export const NAV_ITEMS: AppNavItem[] = [
     label: "Docket",
     href: ROUTES.docket,
     icon: Gavel,
+    group: "court",
+  },
+  {
+    label: "Calendar",
+    href: ROUTES.calendar,
+    icon: CalendarDays,
     group: "court",
   },
   {

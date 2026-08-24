@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,9 +27,23 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   archived: "outline",
 };
 
+const MATTER_TABS = [
+  "overview",
+  "events",
+  "parties",
+  "tags",
+  "judgments",
+  "case-law",
+  "documents",
+  "sharing",
+] as const;
+
 export default function DocketMatterDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") ?? "overview";
+  const tab = (MATTER_TABS as readonly string[]).includes(tabParam) ? tabParam : "overview";
   const back = useBackNav(ROUTES.docket, "Back to Docket");
   const { data: matter, isPending, isError, error, refetch } = useDocketMatter(id);
   const { data: access } = useDocketMatterAccess(id);
@@ -86,8 +100,17 @@ export default function DocketMatterDetailPage() {
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
         </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="sticky top-[68px] z-20 bg-[#141414] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          const next = new URLSearchParams(searchParams);
+          if (value === "overview") next.delete("tab");
+          else next.set("tab", value);
+          setSearchParams(next, { replace: true });
+        }}
+        className="w-full"
+      >
+        <TabsList className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-[#141414] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="parties">Parties</TabsTrigger>
