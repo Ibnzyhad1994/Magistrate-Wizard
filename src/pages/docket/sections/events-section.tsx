@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { useDocketEvents } from "@/hooks/docket/use-docket-events";
+import { usePendingHearings } from "@/hooks/offline/use-pending-hearings";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { useDocketMatterCategories, useDocketCapacitySnapshot } from "@/hooks/docket/use-docket-capacity";
@@ -56,6 +57,7 @@ export function EventsSection({ matterId }: EventsSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketEvents(matterId);
   const { data: access } = useDocketMatterAccess(matterId);
   const { data: categories } = useDocketMatterCategories();
+  const { eventIds: pendingIds } = usePendingHearings();
   const canEdit = access?.canEdit ?? false;
   const [dialogEvent, setDialogEvent] = useState<DocketEvent | "new" | null>(null);
   const categoryName = (id: string | null) =>
@@ -96,7 +98,9 @@ export function EventsSection({ matterId }: EventsSectionProps) {
         />
       ) : (
         <div className="space-y-3">
-          {data.map((event) => (
+          {data.map((event) => {
+            const pending = pendingIds.has(event.id);
+            return (
             <Card
               key={event.id}
               className={
@@ -142,12 +146,18 @@ export function EventsSection({ matterId }: EventsSectionProps) {
                     </p>
                   )}
                 </div>
-                <Badge variant={STATUS_VARIANT[event.event_status] ?? "outline"}>
-                  {toTitleCase(event.event_status)}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {pending ? (
+                    <Badge variant="outline">On this device</Badge>
+                  ) : null}
+                  <Badge variant={STATUS_VARIANT[event.event_status] ?? "outline"}>
+                    {toTitleCase(event.event_status)}
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

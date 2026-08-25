@@ -46,7 +46,7 @@ async function main() {
     const page3 = ["The Court considered each ground in turn before dismissing the appeal entirely."];
     const file = makeMultiPagePdf([page1, page2, page3]);
     const envelope = await runPdfExtractionPipeline(file);
-    checkTrue("1. multi-page PDF is usable (extracted or low_quality)", envelope.status === "extracted" || envelope.status === "low_quality");
+    checkTrue("1. multi-page PDF is extracted", envelope.status === "extracted");
     check("1. pageCount is 3", envelope.pageCount, 3);
     check("1. pages array has 3 entries", envelope.pages.length, 3);
     if (envelope.pages.length === 3) {
@@ -85,7 +85,7 @@ async function main() {
     ];
     const file = makeMultiPagePdf([page1, page2]);
     const envelope = await runPdfExtractionPipeline(file);
-    checkTrue("2. two-page PDF is usable", envelope.status === "extracted" || envelope.status === "low_quality");
+    checkTrue("2. two-page PDF is extracted", envelope.status === "extracted" || envelope.status === "low_quality");
     const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(
       envelope.text,
       envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text })),

@@ -39,23 +39,25 @@ export async function runBoundedConcurrent<T>(
   items: T[],
   worker: (item: T, index: number) => Promise<void>,
   concurrency: number = DEFAULT_BULK_CONCURRENCY,
+  options?: { signal?: AbortSignal },
 ): Promise<void> {
-  if (items.length === 0) return;
-  let nextIndex = 0;
+  if (items.length === 0) return
+  let nextIndex = 0
 
   async function runSlot(): Promise<void> {
     while (nextIndex < items.length) {
-      const i = nextIndex++;
+      if (options?.signal?.aborted) return
+      const i = nextIndex++
       try {
-        await worker(items[i], i);
+        await worker(items[i], i)
       } catch {
-        // Safety net only -- see doc comment above. Never propagate.
+        if (options?.signal?.aborted) return
       }
     }
   }
 
-  const slotCount = Math.max(1, Math.min(concurrency, items.length));
-  await Promise.all(Array.from({ length: slotCount }, () => runSlot()));
+  const slotCount = Math.max(1, Math.min(concurrency, items.length))
+  await Promise.all(Array.from({ length: slotCount }, () => runSlot()))
 }
 
 // ---------------------------------------------------------------------------
@@ -78,7 +80,8 @@ export type BulkItemStatus =
   | "ready"
   | "failed"
   | "completed"
-  | "rejected";
+  | "rejected"
+  | "cancelled";
 
 export const BULK_STATUS_LABEL: Record<BulkItemStatus, string> = {
   queued: "Queued",
@@ -90,6 +93,7 @@ export const BULK_STATUS_LABEL: Record<BulkItemStatus, string> = {
   failed: "Failed",
   completed: "Draft created",
   rejected: "Rejected before processing",
+  cancelled: "Cancelled",
 };
 
 export interface BulkQueueItem {
@@ -105,6 +109,9 @@ export interface BulkQueueItem {
   statuteId: string | null;
   /** Live OCR/extract note (e.g. "Recognizing page 2 of 31") — not a status. */
   progressNote: string | null;
+  /** Persisted import_jobs.id, set once the queued row is inserted. */
+  jobId: string | null;
+  retryCount: number;
 }
 
 export function createBulkQueueItem(file: File): BulkQueueItem {
@@ -118,6 +125,8 @@ export function createBulkQueueItem(file: File): BulkQueueItem {
     caseLawId: null,
     statuteId: null,
     progressNote: null,
+    jobId: null,
+    retryCount: 0,
   };
 }
 
@@ -133,6 +142,7 @@ export function summarizeBulkQueue(items: BulkQueueItem[]): Record<BulkItemStatu
     failed: 0,
     completed: 0,
     rejected: 0,
+    cancelled: 0,
   };
   for (const item of items) counts[item.status] += 1;
   return counts;

@@ -13,7 +13,8 @@
  */
 
 import * as TesseractNS from "tesseract.js"
-import { DEFAULT_OCR_PSM } from "@/lib/ocr/constants"
+import { isAbortError, throwIfAborted, withTimeout } from "@/lib/async-timeout"
+import { DEFAULT_OCR_PSM, OCR_RECOGNIZE_TIMEOUT_MS } from "@/lib/ocr/constants"
 
 type OcrWorker = {
   setParameters: (params: Record<string, string>) => Promise<unknown>
@@ -93,13 +94,20 @@ export const terminateOcrWorker = async (): Promise<void> => {
   }
 }
 
-export const recognizeImage = (image: RecognizeInput): Promise<OcrPageResult> => {
+export const recognizeImage = (image: RecognizeInput, signal?: AbortSignal): Promise<OcrPageResult> => {
   const run = async (): Promise<OcrPageResult> => {
+    throwIfAborted(signal)
     const worker = await getWorker()
     try {
-      const { data } = await worker.recognize(image)
+      const { data } = await withTimeout(
+        worker.recognize(image),
+        OCR_RECOGNIZE_TIMEOUT_MS,
+        "Timed out recognizing text on this page.",
+      )
+      throwIfAborted(signal)
       return { text: data.text ?? "", confidence: data.confidence ?? 0 }
     } catch (err) {
+      if (isAbortError(err)) throw err
       await terminateOcrWorker()
       throw err
     }

@@ -22,6 +22,7 @@ import BenchNotesListPage from "@/pages/bench-notes/bench-notes-list-page";
 import BenchNoteDetailPage from "@/pages/bench-notes/bench-note-detail-page";
 import BookmarksPage from "@/pages/bookmarks/bookmarks-page";
 import SearchPage from "@/pages/search/search-page";
+import CalendarPage from "@/pages/calendar/calendar-page";
 import SettingsPage from "@/pages/settings/settings-page";
 import CourtAssignmentsPage from "@/pages/admin/court-assignments-page";
 import LegalLibraryAdminPage from "@/pages/admin/legal-library-admin-page";
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
           { path: "/bench-notes/:id", element: <BenchNoteDetailPage /> },
           { path: ROUTES.bookmarks, element: <BookmarksPage /> },
           { path: ROUTES.search, element: <SearchPage /> },
+          { path: ROUTES.calendar, element: <CalendarPage /> },
           { path: ROUTES.settings, element: <SettingsPage /> },
         ],
       },

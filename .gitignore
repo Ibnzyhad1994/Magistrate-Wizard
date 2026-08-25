@@ -7,6 +7,25 @@ dist-ssr
 *.local
 *.tsbuildinfo
 
+# Native / Electron build artifacts (project sources under android/ and ios/ are committed)
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+ios/App/App/public/
+release/
+*.apk
+*.aab
+*.ipa
+dist-electron/
+
+
 # Env
 .env
 .env.local
@@ -51,6 +70,8 @@ scripts/tests/ingest-ocr-robustness-results.json
 scripts/tests/ocr-slow-system-results.json
 scripts/tests/persona-workflow-results.json
 scripts/tests/propose-tags-before-after.json
+scripts/tests/pentest-results.json
+scripts/tests/pentest-*-results.json
 
 # Official-law harvest scratch (HTML/PDF dumps, unfiltered JSON)
 scripts/seed-legal-library/_tmp_mola/

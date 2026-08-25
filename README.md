@@ -32,6 +32,11 @@ Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`,
 `npm run format`, `npm run supabase:types` (regenerates
 `src/types/database.types.ts` from your live schema).
 
+Native Android/iOS (Capacitor) and Windows (Electron) wrap the same
+`dist/` build. Google Calendar two-way logistics sync, versioning,
+emulator URLs, and the **next-steps checklist** are in
+**`docs/native-and-calendar.md`**.
+
 ## Architecture
 
 ```

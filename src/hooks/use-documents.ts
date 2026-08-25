@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
-import { inferStoredMimeType } from "@/lib/ingest-source";
+import { resolveStoredMimeType } from "@/lib/ingest-source";
 
 const key = (entityType: string, entityId: string) =>
   ["documents", entityType, entityId] as const;
@@ -64,7 +64,7 @@ export async function uploadDocumentToEntity(
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${user.id}/${entityType}/${entityId}/${Date.now()}-${safeName}`;
 
-  const mimeType = inferStoredMimeType(file)
+  const mimeType = await resolveStoredMimeType(file)
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .upload(path, file, { upsert: false, contentType: mimeType });
@@ -120,13 +120,24 @@ export function useUploadDocument(entityType: string, entityId: string) {
   });
 }
 
-/** Signed URL for downloading a document (private bucket). Unchanged. */
-export async function getDocumentDownloadUrl(filePath: string): Promise<string> {
+/**
+ * Download through the authenticated Storage API so RLS is re-checked on
+ * every request. Callers that need a URL should create a blob: object URL
+ * and revoke it when finished — signed URLs stay valid after access is
+ * revoked, which this path avoids.
+ */
+export async function downloadDocumentBlob(filePath: string): Promise<Blob> {
   const { data, error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
-    .createSignedUrl(filePath, 60);
-  if (error) throw error;
-  return data.signedUrl;
+    .download(filePath);
+  if (error || !data) throw error ?? new Error("Could not download this file.");
+  return data;
+}
+
+/** Object URL for a one-shot download. Caller must revoke the URL. */
+export async function getDocumentDownloadUrl(filePath: string): Promise<string> {
+  const blob = await downloadDocumentBlob(filePath);
+  return URL.createObjectURL(blob);
 }
 
 /** Download the stored original as a File (Review Queue reprocess). */
@@ -148,24 +159,12 @@ export async function downloadDocumentAsFile(documentId: string): Promise<File> 
 }
 
 /**
- * Signed URL for in-app viewing (private bucket) — a longer expiry than
- * the download URL (5 minutes vs. 60 seconds) since a viewer may stay
- * open while the reader scrolls a multi-page PDF, but still short-lived,
- * never public. Same `storage.objects` "Users can read documents they
- * have access to" SELECT policy as `getDocumentDownloadUrl` — that
- * policy nests an `EXISTS` against the document's parent record
- * (docket_matters/judgments/case_law/quick_codes/bench_notes/cases),
- * which itself runs under the caller's own RLS, so a signed URL can only
- * ever be minted for a document the caller could already lawfully see.
- * This function changes no authorization — it only asks Storage for a
- * URL with a different, still-short lifetime.
+ * In-app view URL. Uses an authenticated download + blob: URL so the
+ * bytes are not handed out as a shareable signed URL that outlives RLS.
+ * Caller must revoke the object URL when the viewer closes.
  */
 export async function getDocumentViewUrl(filePath: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from(DOCUMENTS_BUCKET)
-    .createSignedUrl(filePath, 300);
-  if (error) throw error;
-  return data.signedUrl;
+  return getDocumentDownloadUrl(filePath);
 }
 
 export function useDeleteDocument(entityType: string, entityId: string) {

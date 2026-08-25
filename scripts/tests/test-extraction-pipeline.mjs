@@ -11,6 +11,7 @@
 //   node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-extraction-pipeline.mjs
 
 import { runPdfExtractionPipeline, shouldPreferPdfjsText } from "@/lib/extraction-pipeline";
+import { classifyPdfjsOpenError, extractPdfjsTextContent } from "@/lib/ocr/rasterize-pdf";
 import {
   makeTextPdf,
   makeConcatenatedTextPdf,
@@ -21,9 +22,13 @@ import {
   makeCompositeFontHexPdf,
   makeEncryptedPdf,
   makeHomemadeShortPdfjsLongPdf,
+  makeWellFormedMultiPagePdf,
+  makeWellFormedCidToUnicodePdf,
 } from "../test-support/pdf-fixtures.mjs";
 import { extractPdfTextLayer } from "@/lib/pdf-text-extraction";
 import { shouldUseEmbeddedJpegsForOcr } from "@/lib/ocr/run-ocr";
+import { interpretDuplicateQuery, DuplicateCheckError } from "@/lib/duplicate-check";
+import { isCanonicalCitationUniqueViolation } from "@/lib/utils";
 
 const NUL_CHAR = String.fromCharCode(0);
 
@@ -66,11 +71,7 @@ async function main() {
       "the summing up to the jury was inadequate on the question of provocation raised at trial.";
     const file = makeConcatenatedTextPdf(text);
     const envelope = await runPdfExtractionPipeline(file);
-    await check(
-      "2. concatenated-but-readable PDF is usable (extracted or low_quality)",
-      envelope.status === "extracted" || envelope.status === "low_quality",
-      true,
-    );
+    await check("2. concatenated-but-readable PDF is extracted", envelope.status, "extracted");
     await check("2. concatenated PDF text is non-empty", envelope.text.length > 0, true);
   }
 
@@ -129,11 +130,7 @@ async function main() {
     ];
     const file = makeHexTextPdf(lines);
     const envelope = await runPdfExtractionPipeline(file);
-    await check(
-      "6. hex-string simple-font PDF is usable (extracted or low_quality)",
-      envelope.status === "extracted" || envelope.status === "low_quality",
-      true,
-    );
+    await check("6. hex-string simple-font PDF is extracted", envelope.status, "extracted");
     await check("6. hex-string simple-font PDF text is non-empty", envelope.text.length > 0, true);
     await check("6. hex-string simple-font PDF text contains the decoded case name", envelope.text.includes("Test Appellant"), true);
     await check("6. hex-string simple-font PDF unreadableReason is null", envelope.unreadableReason, null);
@@ -188,12 +185,107 @@ async function main() {
       envelope.text.includes("Later page paragraph 12"),
       true,
     );
+    await check("9. multi-stream status is extracted", envelope.status, "extracted");
+  }
+
+  {
+    const pages = [];
+    const nonce = (n) => {
+      const letters = "abcdefghijkmnopqrstuvwxyz"
+      let s = "zx"
+      let x = n + 11
+      while (x > 0) {
+        s += letters[x % letters.length]
+        x = Math.floor(x / letters.length)
+      }
+      return s
+    }
+    for (let i = 1; i <= 45; i++) {
+      pages.push([
+        `In the matter of ${nonce(i)} the appellant ${nonce(i + 17)} challenged a conviction recorded against ${nonce(i + 23)}.`,
+        `Submissions for ${nonce(i + 50)} addressed hearsay involving ${nonce(i + 61)} and whether ${nonce(i + 73)} fairly put the defence of ${nonce(i + 81)}.`,
+        i === 45
+          ? "PAGE_FORTYFIVE_UNIQUE_MARKER the Court dismissed the appeal after considering the summing up."
+          : `The court in ${nonce(i + 90)} recorded that identification by ${nonce(i + 101)} cannot rest on ${nonce(i + 113)} alone.`,
+      ]);
+    }
+    const file = makeWellFormedMultiPagePdf(pages, "forty-five-pages.pdf");
+    const envelope = await runPdfExtractionPipeline(file);
+    await check("10. 45-page born-digital status is extracted", envelope.status, "extracted");
+    await check("10. 45-page envelope includes page 45", envelope.pages.some((p) => p.pageNumber === 45), true);
+    await check("10. 45-page text includes last-page marker", envelope.text.includes("PAGE_FORTYFIVE_UNIQUE_MARKER"), true);
+    await check("10. 45-page has no truncation warning", envelope.warnings.some((w) => /only the first/i.test(w)), false);
+  }
+
+  {
+    const recovered = await extractPdfjsTextContent(makeWellFormedMultiPagePdf([["Cap page one."], ["Cap page two."]]), {
+      maxPages: 1,
+    });
+    await check("10b. optional text cap reports truncated", recovered.ok && recovered.truncated, true);
+    await check("10b. optional text cap warns", recovered.ok && recovered.warnings.some((w) => /only the first 1 of 2 pages/i.test(w)), true);
+  }
+
+  {
+    const lines = [
+      "The State v Dhannie Ramsingh",
+      "(1973) 20 WIR 138",
+      "COURT OF APPEAL OF GUYANA",
+      "The appellant was convicted of manslaughter following a trial in the High Court.",
+      "Counsel for the appellant submitted that certain admissions were wrongly admitted",
+      "as hearsay evidence and that the trial judge misdirected the jury on this point.",
+      "The Court considered the relevant authorities at length before dismissing the appeal.",
+    ];
+    const file = makeWellFormedCidToUnicodePdf(lines);
+    const homemade = await extractPdfTextLayer(file);
+    const envelope = await runPdfExtractionPipeline(file);
+    await check("11. CID homemade does not decode Type0 hex as success", homemade.hasTextLayer, false);
+    await check("11. CID pdf.js-primary status is extracted", envelope.status, "extracted");
+    await check("11. CID pdf.js-primary contains case name", envelope.text.includes("Dhannie Ramsingh"), true);
+  }
+
+  await check(
+    "12. PasswordException is need_password",
+    classifyPdfjsOpenError({ name: "PasswordException", code: 1 }),
+    "need_password",
+  );
+  await check("12. TimeoutError is timeout", classifyPdfjsOpenError({ name: "TimeoutError" }), "timeout");
+  await check("12. AbortError is aborted", classifyPdfjsOpenError({ name: "AbortError" }), "aborted");
+
+  {
+    let threw = false;
+    try {
+      interpretDuplicateQuery({ data: null, error: { message: "fetch failed" } }, (row) => row);
+    } catch (e) {
+      threw = e instanceof DuplicateCheckError;
+    }
+    await check("13. duplicate query error throws DuplicateCheckError", threw, true);
+    const hit = interpretDuplicateQuery(
+      { data: [{ id: "a", case_name: "X", citation: "1" }], error: null },
+      (row) => ({ id: row.id, label: `${row.case_name} (${row.citation})` }),
+    );
+    await check("13. duplicate query hit maps the row", hit?.id, "a");
     await check(
-      "9. multi-stream status is usable",
-      envelope.status === "extracted" || envelope.status === "low_quality",
-      true,
+      "13. duplicate query miss is null",
+      interpretDuplicateQuery({ data: [], error: null }, (row) => ({ id: row.id, label: "x" })),
+      null,
     );
   }
+
+  await check(
+    "13. citation unique violation uses code+constraint",
+    isCanonicalCitationUniqueViolation({
+      code: "23505",
+      message: 'duplicate key value violates unique constraint "case_law_citation_canonical_unique_idx"',
+    }),
+    true,
+  );
+  await check(
+    "13. mapped English message is not enough without 23505",
+    isCanonicalCitationUniqueViolation({
+      message: "A canonical case with this citation already exists.",
+    }),
+    false,
+  );
 
   console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
   process.exit(failures === 0 ? 0 : 1);

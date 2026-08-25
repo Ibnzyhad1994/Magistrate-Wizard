@@ -14,6 +14,7 @@ import {
   type ExtractionEnvelope,
   type ExtractionPipelineOptions,
 } from "@/lib/extraction-pipeline"
+import { isAbortError } from "@/lib/async-timeout"
 import { extractDocxText } from "@/lib/docx-text-extraction"
 import { classifyIngestSource, ingestKindLabel } from "@/lib/ingest-source"
 import { readFileAsText } from "@/lib/legal-extraction"
@@ -21,7 +22,7 @@ import { postprocessOcrText } from "@/lib/ocr/postprocess"
 import { sanitizeExtractedText } from "@/lib/text-sanitize"
 import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality"
 
-export { classifyIngestSource, ingestKindLabel, inferStoredMimeType, INGEST_FILE_ACCEPT } from "@/lib/ingest-source"
+export { classifyIngestSource, ingestKindLabel, inferStoredMimeType, resolveStoredMimeType, assertFileContentMatchesKind, INGEST_FILE_ACCEPT } from "@/lib/ingest-source"
 export type { IngestKind } from "@/lib/ingest-source"
 
 const unsupportedEnvelope = (warning: string): ExtractionEnvelope => ({
@@ -29,14 +30,14 @@ const unsupportedEnvelope = (warning: string): ExtractionEnvelope => ({
   warnings: [warning],
 })
 
-const ingestImageFile = async (file: File): Promise<ExtractionEnvelope> => {
+const ingestImageFile = async (file: File, options?: ExtractionPipelineOptions): Promise<ExtractionEnvelope> => {
   const { recognizeImage } = await import("@/lib/ocr/engine")
   const bytes = new Uint8Array(await file.arrayBuffer())
   const copy = new Uint8Array(bytes.byteLength)
   copy.set(bytes)
   const input = typeof window === "undefined" ? Buffer.from(copy) : new Blob([copy], { type: file.type || "image/png" })
   try {
-    const result = await recognizeImage(input)
+    const result = await recognizeImage(input, options?.signal)
     const cleaned = postprocessOcrText(result.text)
     const sanitized = sanitizeExtractedText(cleaned)
     const quality = assessExtractionQuality(sanitized.text)
@@ -77,8 +78,23 @@ const ingestImageFile = async (file: File): Promise<ExtractionEnvelope> => {
       unreadableReason: null,
     }
   } catch (e) {
+    if (isAbortError(e)) throw e
     console.error("Image OCR failed:", e)
-    return unsupportedEnvelope("Could not recognize text in this image. Paste the text to continue.")
+    return {
+      status: "requires_ocr",
+      method: "ocr",
+      text: "",
+      charCount: 0,
+      qualityScore: null,
+      characterQuality: null,
+      structuralQuality: null,
+      warnings: ["Could not recognize text in this image. Paste the text to continue."],
+      ocrUsed: true,
+      requiresReview: true,
+      pages: [],
+      pageCount: 0,
+      unreadableReason: "no_text_found",
+    }
   }
 }
 
@@ -129,7 +145,7 @@ export const ingestDocument = async (
   }
 
   if (kind === "image") {
-    return ingestImageFile(file)
+    return ingestImageFile(file, options)
   }
 
   return unsupportedEnvelope(

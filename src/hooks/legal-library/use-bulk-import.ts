@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage, formatDateTime } from "@/lib/utils";
+import { getErrorMessage, formatDateTime, isCanonicalCitationUniqueViolation } from "@/lib/utils";
+import { isAbortError } from "@/lib/async-timeout";
 import {
   runBoundedConcurrent,
   createBulkQueueItem,
@@ -25,6 +26,8 @@ import {
   checkCanonicalCitationConflict,
   recordBulkNonDraftJob,
   recordBulkRejectedJobs,
+  insertQueuedBulkJobs,
+  markBulkJobExtracting,
 } from "@/hooks/legal-library/use-import-jobs";
 import { sha256File } from "@/lib/legal-extraction";
 
@@ -59,14 +62,9 @@ export function useBulkImportCaseLaw() {
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const ingestCaseLaw = useIngestCaseLaw();
   const createBatch = useCreateImportBatch();
-  // Section 17 (Retry): a retry re-runs `processOneItem` for ONE item
-  // still held in memory from this same session — the original File
-  // object cannot survive a page reload/later session (browsers give no
-  // way to reopen a File later), so these refs only need to track the
-  // MOST RECENT run's batch/opts, not a full history. A retry always
-  // rejoins the batch the item originally came from.
   const lastBatchIdRef = useRef<string | null>(null);
   const lastOptsRef = useRef<BulkOpts | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   function patchItem(id: string, patch: Partial<BulkQueueItem>) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -95,33 +93,51 @@ export function useBulkImportCaseLaw() {
     batchId: string | null,
     opts: BulkOpts,
     persistenceFailureCounter: { count: number },
+    signal?: AbortSignal,
   ) {
+    const persistNonDraft = async (
+      status: "duplicate" | "failed",
+      reason: string,
+      extra?: { duplicateOfId?: string | null; outcomeFlag?: "rejected" | "cancelled" | null },
+    ) => {
+      try {
+        await recordBulkNonDraftJob({
+          batch_id: batchId,
+          content_type: "case_law",
+          status,
+          reason,
+          source_id: opts.sourceId,
+          originalFilename: item.file.name,
+          duplicateOfId: extra?.duplicateOfId ?? null,
+          jobId: item.jobId,
+          retryCount: item.retryCount,
+          outcomeFlag: extra?.outcomeFlag ?? null,
+        });
+      } catch {
+        persistenceFailureCounter.count += 1;
+      }
+    };
+
     try {
+      if (signal?.aborted) {
+        patchItem(item.id, { status: "cancelled", error: "Cancelled before this file finished processing." });
+        await persistNonDraft("failed", "Cancelled before this file finished processing.", { outcomeFlag: "cancelled" });
+        return;
+      }
+      if (item.jobId) {
+        try {
+          await markBulkJobExtracting(item.jobId, item.retryCount);
+        } catch {
+          persistenceFailureCounter.count += 1;
+        }
+      }
       patchItem(item.id, { status: "hashing" });
       const hash = await sha256File(item.file);
       const duplicate = await checkExactDuplicateByHash("case_law", hash);
       if (duplicate) {
         const reason = `Identical to an existing record: ${duplicate.label}`;
         patchItem(item.id, { status: "duplicate", isDuplicate: true, duplicateReason: reason });
-        // Own try/catch (not the outer per-item one below) — a
-        // transient failure PERSISTING this outcome must never flip
-        // the local UI status to "failed" for a file that genuinely
-        // IS a duplicate; that would be exactly the "duplicate shown
-        // as failed" bug this pass exists to eliminate, just from a
-        // different cause. Counted toward the invariant instead.
-        try {
-          await recordBulkNonDraftJob({
-            batch_id: batchId,
-            content_type: "case_law",
-            status: "duplicate",
-            reason,
-            source_id: opts.sourceId,
-            originalFilename: item.file.name,
-            duplicateOfId: duplicate.id,
-          });
-        } catch {
-          persistenceFailureCounter.count += 1;
-        }
+        await persistNonDraft("duplicate", reason, { duplicateOfId: duplicate.id });
         return;
       }
 
@@ -130,6 +146,7 @@ export function useBulkImportCaseLaw() {
         onOcrProgress: ({ page, total }) => {
           patchItem(item.id, { progressNote: `Recognizing page ${page} of ${total}` });
         },
+        signal,
       });
 
       let caseName: string | undefined;
@@ -232,22 +249,7 @@ export function useBulkImportCaseLaw() {
             ? `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported as a new record — this file was attached to the existing authority as an alternate source for curator review.`
             : `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported — review the existing record if this is a different source for the same case.`;
           patchItem(item.id, { status: "duplicate", isDuplicate: true, duplicateReason: reason });
-          // Same reasoning as the hash-duplicate branch above — a
-          // persistence hiccup here must not relabel a genuine
-          // duplicate as "failed" via the outer catch.
-          try {
-            await recordBulkNonDraftJob({
-              batch_id: batchId,
-              content_type: "case_law",
-              status: "duplicate",
-              reason,
-              source_id: opts.sourceId,
-              originalFilename: item.file.name,
-              duplicateOfId: citationConflict.id,
-            });
-          } catch {
-            persistenceFailureCounter.count += 1;
-          }
+          await persistNonDraft("duplicate", reason, { duplicateOfId: citationConflict.id });
           return;
         }
       }
@@ -278,6 +280,7 @@ export function useBulkImportCaseLaw() {
           jurisdiction_id: jurisdictionId,
           decided_date: decidedDate ?? null,
         },
+        existingJobId: item.jobId,
       });
 
       const needsReview =
@@ -292,37 +295,20 @@ export function useBulkImportCaseLaw() {
         caseLawId: result.caseLawId,
       });
     } catch (e) {
-      // Defense-in-depth for the citation-conflict pre-check above:
-      // two items in the SAME batch sharing a citation could both
-      // pass the pre-check concurrently (bounded concurrency runs up
-      // to DEFAULT_BULK_CONCURRENCY items at once, and neither exists
-      // in the DB yet when both check). Whichever inserts second still
-      // hits the real Postgres constraint — but getErrorMessage now
-      // recognizes it (see utils.ts), so this is reclassified as a
-      // duplicate rather than left as a generic, misleading failure.
+      if (isAbortError(e) || signal?.aborted) {
+        patchItem(item.id, { status: "cancelled", error: "Cancelled before this file finished processing." });
+        await persistNonDraft("failed", "Cancelled before this file finished processing.", { outcomeFlag: "cancelled" });
+        return;
+      }
+      const isCitationConflict = isCanonicalCitationUniqueViolation(e);
       const message = getErrorMessage(e);
-      const isCitationConflict = message.includes("A canonical case with this citation already exists");
       patchItem(item.id, {
         status: isCitationConflict ? "duplicate" : "failed",
         isDuplicate: isCitationConflict,
         duplicateReason: isCitationConflict ? message : null,
         error: isCitationConflict ? null : message,
       });
-      try {
-        await recordBulkNonDraftJob({
-          batch_id: batchId,
-          content_type: "case_law",
-          status: isCitationConflict ? "duplicate" : "failed",
-          reason: message,
-          source_id: opts.sourceId,
-          originalFilename: item.file.name,
-          duplicateOfId: null,
-        });
-      } catch {
-        persistenceFailureCounter.count += 1;
-        // Best-effort — the outcome is still shown live in this
-        // session's queue UI even if persisting it failed too.
-      }
+      await persistNonDraft(isCitationConflict ? "duplicate" : "failed", message);
     }
   }
 
@@ -412,12 +398,63 @@ export function useBulkImportCaseLaw() {
     lastBatchIdRef.current = batchId;
     lastOptsRef.current = opts;
 
+    if (processable.length > 0) {
+      try {
+        const idMap = await insertQueuedBulkJobs({
+          items: processable.map((it) => ({ queueId: it.id, originalFilename: it.file.name })),
+          batch_id: batchId,
+          content_type: "case_law",
+          source_id: opts.sourceId,
+        });
+        for (const it of processable) {
+          const jobId = idMap[it.id] ?? null;
+          it.jobId = jobId;
+          patchItem(it.id, { jobId });
+        }
+      } catch {
+        persistenceFailureCounter.count += processable.length;
+      }
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     await runBoundedConcurrent(
       processable,
-      (item) => processOneItem(item, batchId, opts, persistenceFailureCounter),
+      (item) => processOneItem(item, batchId, opts, persistenceFailureCounter, controller.signal),
       DEFAULT_BULK_CONCURRENCY,
+      { signal: controller.signal },
     );
 
+    if (controller.signal.aborted) {
+      setItems((prev) => {
+        const leftover = prev.filter(
+          (it) => it.status === "queued" || it.status === "hashing" || it.status === "extracting",
+        );
+        for (const it of leftover) {
+          void recordBulkNonDraftJob({
+            batch_id: batchId,
+            content_type: "case_law",
+            status: "failed",
+            reason: "Cancelled before this file finished processing.",
+            source_id: opts.sourceId,
+            originalFilename: it.file.name,
+            jobId: it.jobId,
+            retryCount: it.retryCount,
+            outcomeFlag: "cancelled",
+          }).catch(() => {
+            persistenceFailureCounter.count += 1;
+          });
+        }
+        return prev.map((it) =>
+          it.status === "queued" || it.status === "hashing" || it.status === "extracting"
+            ? { ...it, status: "cancelled" as const, error: "Cancelled before this file finished processing." }
+            : it,
+        );
+      });
+    }
+
+    abortRef.current = null;
     setIsRunning(false);
     const persistenceFailures = persistenceFailureCounter.count;
     if (persistenceFailures > 0) {
@@ -432,7 +469,13 @@ export function useBulkImportCaseLaw() {
     }
   }
 
+  function cancelBulkImport() {
+    abortRef.current?.abort();
+  }
+
   function reset() {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setItems([]);
     setLastBatchId(null);
   }
@@ -458,7 +501,9 @@ export function useBulkImportCaseLaw() {
     if (!item || item.status !== "failed") return;
     const opts = lastOptsRef.current;
     if (!opts) return;
-    patchItem(itemId, { status: "queued", error: null });
+    const nextRetry = item.retryCount + 1;
+    item.retryCount = nextRetry;
+    patchItem(itemId, { status: "queued", error: null, retryCount: nextRetry });
     const persistenceFailureCounter = { count: 0 };
     await processOneItem(item, lastBatchIdRef.current, opts, persistenceFailureCounter);
     if (persistenceFailureCounter.count > 0) {
@@ -466,5 +511,5 @@ export function useBulkImportCaseLaw() {
     }
   }
 
-  return { items, isRunning, startBulkImport, reset, lastBatchId, retryItem };
+  return { items, isRunning, startBulkImport, cancelBulkImport, reset, lastBatchId, retryItem };
 }

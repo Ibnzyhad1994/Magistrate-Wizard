@@ -20,6 +20,7 @@ import {
   makeTjJudgmentPdf,
   makeMultiPagePdf,
   makeEncryptedPdf,
+  makeWellFormedMultiPagePdf,
   makeCompositeFontHexPdf,
   makeCmapPollutedPdf,
   makeFontBoilerplatePdf,
@@ -228,7 +229,57 @@ const assertExactLayer = ({ stage, label, envelope, truth, maxCer = 0.02 }) => {
   })
 }
 
-/** Measure OCR or degraded extract — never fail on high CER. Fail only poison/false invent. */
+/** Hard-gated subset: clean scans must actually extract. High CER is FAIL, not a measured limit. */
+const assertGated = ({ stage, label, envelope, truth, maxCer = 0.05 }) => {
+  const poison = hasPoison(envelope.text)
+  if (poison && usable(envelope)) {
+    record({
+      stage,
+      family: "gated",
+      label,
+      pass: false,
+      verdict: "false_success",
+      expect: "gated",
+      status: envelope.status,
+      method: envelope.method,
+      ocrUsed: envelope.ocrUsed,
+      detail: "poison text sold as extracted",
+    })
+    return
+  }
+  if (!usable(envelope) || !envelope.text.trim()) {
+    record({
+      stage,
+      family: "gated",
+      label,
+      pass: false,
+      verdict: "gated_fail",
+      expect: "gated",
+      status: envelope.status,
+      method: envelope.method,
+      ocrUsed: envelope.ocrUsed,
+      detail: "clean scan must produce quality-gated text",
+    })
+    return
+  }
+  const s = score(envelope.text, truth)
+  const pass = s.cer <= maxCer
+  record({
+    stage,
+    family: "gated",
+    label,
+    pass,
+    verdict: pass ? "gated_pass" : "gated_fail",
+    expect: "gated",
+    status: envelope.status,
+    method: envelope.method,
+    ocrUsed: envelope.ocrUsed,
+    cer: s.cer,
+    wer: s.wer,
+    cerBand: cerBand(s.cer),
+    detail: pass ? null : `CER ${s.cer.toFixed(4)} exceeded ${maxCer}`,
+  })
+}
 const assertMeasure = ({ stage, label, envelope, truth, expect }) => {
   const poison = hasPoison(envelope.text)
   if (poison && usable(envelope)) {
@@ -741,6 +792,16 @@ const main = async () => {
       expectOcr: false,
     })
     {
+      const envelope = await ingestDocument(makeDegradedScanPdf({ dpi: 300, jpegQuality: 92, name: "gated-clean.pdf" }))
+      assertGated({
+        stage: 3,
+        label: "clean 300dpi scan (gated CER ≤ 0.05)",
+        envelope,
+        truth: GOLDEN,
+        maxCer: 0.05,
+      })
+    }
+    {
       const env = await ingestDocument(makeFontBoilerplatePdf())
       record({
         stage: 3,
@@ -854,6 +915,16 @@ const main = async () => {
     for (const row of ladder) {
       const file = makeDegradedScanPdf({ ...row.opts, name: `${row.name}.pdf` })
       const envelope = await ingestDocument(file)
+      if (row.name === "dpi-300") {
+        assertGated({
+          stage: 4,
+          label: `OCR ladder ${row.name} (gated CER ≤ 0.05)`,
+          envelope,
+          truth: GOLDEN,
+          maxCer: 0.05,
+        })
+        continue
+      }
       assertMeasure({
         stage: 4,
         label: `OCR ladder ${row.name}`,
@@ -999,24 +1070,36 @@ const main = async () => {
       })
     }
     {
-      const pages = Array.from({ length: MAX_OCR_PAGES + 1 }, (_, i) => [
-        `Page ${i + 1} of the judgment appendix.`,
-        GOLDEN_LINES[i % GOLDEN_LINES.length],
-        "The Court considered the relevant authorities at length before dismissing the appeal in this matter.",
-      ])
-      const envelope = await ingestDocument(makeMultiPagePdf(pages, "text-41p.pdf"))
-      // Text layer has no 40-page OCR cap — should still extract if parser works
+      const nonce = (n) => {
+        const letters = "abcdefghijkmnopqrstuvwxyz"
+        let s = "zx"
+        let x = n + 11
+        while (x > 0) {
+          s += letters[x % letters.length]
+          x = Math.floor(x / letters.length)
+        }
+        return s
+      }
+      const pages = Array.from({ length: MAX_OCR_PAGES + 1 }, (_, i) => {
+        const n = i + 1
+        return [
+          `In the matter of ${nonce(n)} the appellant ${nonce(n + 17)} challenged a conviction recorded against ${nonce(n + 23)}.`,
+          n === MAX_OCR_PAGES + 1
+            ? "PAGE_FORTYONE_UNIQUE_MARKER the Court dismissed the appeal after considering the summing up."
+            : `The court in ${nonce(n + 90)} recorded that identification by ${nonce(n + 101)} cannot rest on ${nonce(n + 113)} alone.`,
+        ]
+      })
+      const envelope = await ingestDocument(makeWellFormedMultiPagePdf(pages, "text-41p.pdf"))
       record({
         stage: 6,
         family: "caps",
         label: "41-page text-layer PDF (no OCR cap)",
-        pass: !hasPoison(envelope.text),
+        pass: usable(envelope) && envelope.text.includes("PAGE_FORTYONE_UNIQUE_MARKER") && envelope.pages.some((p) => p.pageNumber === MAX_OCR_PAGES + 1),
         verdict: usable(envelope) ? "usable" : "limit",
         status: envelope.status,
         method: envelope.method,
         ocrUsed: envelope.ocrUsed,
         pageCount: envelope.pageCount,
-        charCount: envelope.charCount,
       })
     }
     {

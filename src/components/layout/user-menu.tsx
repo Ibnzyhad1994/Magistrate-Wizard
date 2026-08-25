@@ -33,7 +33,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
           variant="ghost"
           className={
             compact
-              ? "h-8 w-8 rounded-sm p-0 hover:bg-transparent"
+              ? "h-11 w-11 shrink-0 rounded-sm p-0 hover:bg-transparent"
               : "h-9 w-full justify-start gap-2 px-2"
           }
         >

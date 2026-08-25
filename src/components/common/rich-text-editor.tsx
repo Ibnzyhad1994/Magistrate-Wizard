@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { isSafeHref } from "@/lib/html-sanitize";
 import { Button } from "@/components/ui/button";
 
 interface RichTextEditorProps {
@@ -43,7 +44,12 @@ export function RichTextEditor({
     extensions: [
       StarterKit,
       Underline,
-      Link.configure({ openOnClick: false }),
+      Link.configure({
+        openOnClick: false,
+        protocols: ["http", "https", "mailto"],
+        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+        isAllowedUri: (url) => isSafeHref(url ?? ""),
+      }),
       Placeholder.configure({ placeholder }),
     ],
     content: content ?? "",
@@ -116,7 +122,7 @@ export function RichTextEditor({
             active={editor.isActive("link")}
             onClick={() => {
               const url = window.prompt("Link URL");
-              if (url) editor.chain().focus().setLink({ href: url }).run();
+              if (url && isSafeHref(url)) editor.chain().focus().setLink({ href: url }).run();
             }}
             label="Link"
           >

@@ -4,6 +4,8 @@ import { useAuthStore } from "@/store/auth-store";
 import { PageLoader } from "@/components/common/page-loader";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/constants";
+import { isQueueableError } from "@/lib/offline/is-queueable-error";
+import { getCachedProfile, hydrateOfflineStore, setCachedProfile } from "@/lib/offline/store";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -25,25 +27,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let isMounted = true;
 
     async function loadProfile(userId: string) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
 
-      if (!isMounted) return;
+        if (!isMounted) return;
 
-      if (error) {
+        if (error) throw error;
+        setProfile(data);
+        await setCachedProfile(userId, data);
+      } catch (error) {
+        if (!isMounted) return;
+        const cached = getCachedProfile(userId);
+        if (cached && isQueueableError(error)) {
+          setProfile(cached);
+          return;
+        }
         toast.error("Couldn't load your profile. Some features may be limited.");
         setProfile(null);
-        return;
       }
-
-      setProfile(data);
     }
 
     async function init() {
       setStatus("loading");
+      await hydrateOfflineStore();
       const {
         data: { session },
         error,

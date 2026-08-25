@@ -13,8 +13,8 @@ export function BrowsePage({ children, className, flushTop }: BrowsePageProps) {
   return (
     <div
       className={cn(
-        "browse-gutter pb-20",
-        flushTop ? "pt-0" : "pt-24",
+        "browse-gutter pb-[calc(5rem+env(safe-area-inset-bottom))]",
+        flushTop ? "pt-0" : "pt-[calc(6rem+env(safe-area-inset-top))]",
         className,
       )}
     >

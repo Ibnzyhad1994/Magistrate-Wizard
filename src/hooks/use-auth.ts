@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
 import { toast } from "sonner";
+import { clearOfflineForProfile } from "@/lib/offline/store";
 
 interface SignInParams {
   email: string;
@@ -74,7 +75,9 @@ export function useAuth() {
       if (error) throw error;
     },
     onSuccess: () => {
+      const profileId = user?.id;
       queryClient.clear();
+      if (profileId) void clearOfflineForProfile(profileId);
       navigate(ROUTES.login);
     },
   });

@@ -459,3 +459,99 @@ export function makeHomemadeShortPdfjsLongPdf(name = "homemade-short-pdfjs-long.
   parts.push("trailer\n<< /Root 1 0 R /Size 8 >>\n%%EOF");
   return toFile(Buffer.from(parts.join(""), "latin1"), name);
 }
+
+/**
+ * Catalog + Pages tree + Helvetica, one content stream per page — the
+ * structure pdf.js requires. Homemade assemblePdf() has no page tree, so
+ * pdf.js cannot open those fixtures; this one is for pdf.js-primary tests.
+ */
+export function makeWellFormedMultiPagePdf(pagesLines, name = "well-formed-multi.pdf") {
+  const n = pagesLines.length;
+  const fontObj = 3 + n * 2;
+  const parts = ["%PDF-1.4\n"];
+  const kids = [];
+  for (let i = 0; i < n; i++) kids.push(`${3 + i * 2} 0 R`);
+  parts.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  parts.push(`2 0 obj\n<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${n} >>\nendobj\n`);
+  for (let i = 0; i < n; i++) {
+    const pageObj = 3 + i * 2;
+    const contentObj = 4 + i * 2;
+    const lines = pagesLines[i];
+    const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+    const content = `BT /F1 12 Tf ${ops} ET`;
+    const compressed = deflate(content);
+    parts.push(
+      `${pageObj} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${contentObj} 0 R /Resources << /Font << /F1 ${fontObj} 0 R >> >> >>\nendobj\n`,
+    );
+    parts.push(`${contentObj} 0 obj\n<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`);
+    parts.push(compressed.toString("latin1"));
+    parts.push("\nendstream\nendobj\n");
+  }
+  parts.push(`${fontObj} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`);
+  parts.push(`trailer\n<< /Root 1 0 R /Size ${fontObj + 1} >>\n%%EOF`);
+  return toFile(Buffer.from(parts.join(""), "latin1"), name);
+}
+
+const utf16Hex = (str) => {
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    out += str.charCodeAt(i).toString(16).padStart(4, "0");
+  }
+  return out;
+};
+
+/**
+ * Well-formed Type0/CID font with a ToUnicode CMap. The homemade parser
+ * withholds CID hex; pdf.js walks ToUnicode and extracts the real text.
+ */
+export function makeWellFormedCidToUnicodePdf(lines, name = "cid-tounicode.pdf") {
+  const ops = lines.map((line) => `<${utf16Hex(line)}> Tj T*`).join("\n");
+  const content = `BT /F1 12 Tf ${ops} ET`;
+  const compressed = deflate(content);
+  const unique = [...new Set(lines.join("").split(""))];
+  const bfchar = unique
+    .map((ch) => {
+      const h = ch.charCodeAt(0).toString(16).padStart(4, "0");
+      return `<${h}> <${h}>`;
+    })
+    .join("\n");
+  const cmap = [
+    "/CIDInit /ProcSet findresource begin",
+    "12 dict begin",
+    "begincmap",
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def",
+    "/CMapName /Adobe-Identity-UCS def",
+    "/CMapType 2 def",
+    "1 begincodespacerange",
+    "<0000> <FFFF>",
+    "endcodespacerange",
+    `${unique.length} beginbfchar`,
+    bfchar,
+    "endbfchar",
+    "endcmap",
+    "CMapName currentdict /CMap defineresource pop",
+    "end",
+    "end",
+  ].join("\n");
+  const cmapBytes = Buffer.from(cmap, "latin1");
+  const parts = ["%PDF-1.4\n"];
+  parts.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  parts.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  parts.push(
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n",
+  );
+  parts.push(`4 0 obj\n<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`);
+  parts.push(compressed.toString("latin1"));
+  parts.push("\nendstream\nendobj\n");
+  parts.push(
+    "5 0 obj\n<< /Type /Font /Subtype /Type0 /BaseFont /TestCID /Encoding /Identity-H /DescendantFonts [6 0 R] /ToUnicode 7 0 R >>\nendobj\n",
+  );
+  parts.push(
+    "6 0 obj\n<< /Type /Font /Subtype /CIDFontType2 /BaseFont /TestCID /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 500 >>\nendobj\n",
+  );
+  parts.push(`7 0 obj\n<< /Length ${cmapBytes.length} >>\nstream\n`);
+  parts.push(cmap);
+  parts.push("\nendstream\nendobj\n");
+  parts.push("trailer\n<< /Root 1 0 R /Size 8 >>\n%%EOF");
+  return toFile(Buffer.from(parts.join(""), "latin1"), name);
+}

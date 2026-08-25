@@ -748,6 +748,57 @@ export type Database = {
           },
         ]
       }
+      docket_event_calendar_links: {
+        Row: {
+          created_at: string
+          docket_event_id: string
+          etag: string | null
+          external_calendar_id: string
+          external_event_id: string
+          id: string
+          profile_id: string
+          provider: string
+          synced_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          docket_event_id: string
+          etag?: string | null
+          external_calendar_id: string
+          external_event_id: string
+          id?: string
+          profile_id?: string
+          provider: string
+          synced_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          docket_event_id?: string
+          etag?: string | null
+          external_calendar_id?: string
+          external_event_id?: string
+          id?: string
+          profile_id?: string
+          provider?: string
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_event_calendar_links_docket_event_id_fkey"
+            columns: ["docket_event_id"]
+            isOneToOne: false
+            referencedRelation: "docket_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_event_calendar_links_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       docket_events: {
         Row: {
           category_id: string | null
@@ -3026,6 +3077,7 @@ export type SearchResult = CompositeTypes<"search_result">;
 
 export type DocketMatter = Tables<"docket_matters">;
 export type DocketEvent = Tables<"docket_events">;
+export type DocketEventCalendarLink = Tables<"docket_event_calendar_links">;
 export type DocketMatterParty = Tables<"docket_matter_parties">;
 export type DocketMatterTag = Tables<"docket_matter_tags">;
 export type DocketMatterAssignment = Tables<"docket_matter_assignments">;
@@ -3038,7 +3090,6 @@ export type QuickCodeDocketMatter = Tables<"quick_code_docket_matters">;
 export type QuickCodeJudgment = Tables<"quick_code_judgments">;
 export type QuickCodeCaseLaw = Tables<"quick_code_case_law">;
 export type Share = Tables<"shares">;
-
 
 export type DocketMatterCategory = Tables<"docket_matter_categories">;
 export type DocketCapacitySetting = Tables<"docket_capacity_settings">;
