@@ -31,7 +31,10 @@ export default function JudgmentListPage() {
   );
 
   const { drafts, finals, discoverable } = useMemo(() => {
-    const all = data ?? [];
+    const all = (data ?? []).map((j) => ({
+      ...j,
+      category_name: (j.legal_case_categories as { name: string } | null)?.name ?? null,
+    }));
     const q = query.trim();
     const matches = (row: (typeof all)[number]) => !q || (matchingIds?.has(row.id) ?? false);
     return {
@@ -126,6 +129,7 @@ interface JudgmentRow {
   citation: string | null;
   status: string;
   updated_at: string;
+  category_name: string | null;
 }
 
 function JudgmentTable({
@@ -168,7 +172,7 @@ function JudgmentTable({
           tone="judgment"
           eyebrow={row.case_number ?? undefined}
           title={row.title}
-          subtitle={row.citation ?? undefined}
+          subtitle={[row.citation, row.category_name].filter(Boolean).join(" · ") || undefined}
           meta={[toTitleCase(row.status), formatDate(row.updated_at)]}
           badge={toTitleCase(row.status)}
           href={ROUTES.judgmentDetail(row.id)}

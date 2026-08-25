@@ -342,3 +342,83 @@ export const AMBIGUOUS_BARE_HIT_FLOOR = 3;
 
 /** @deprecated Prefer AMBIGUOUS_SHORT_TAXONOMY_TOPICS — kept as alias for callers. */
 export const SHORT_TAXONOMY_TOPICS = AMBIGUOUS_SHORT_TAXONOMY_TOPICS;
+
+/**
+ * Best-effort map from a proposed tag TOPIC (this file's vocabulary, used
+ * for judgment_tags/docket_matter_tags suggestions) to the closest
+ * `legal_case_categories` NAME (the separate, admin-curated Case Law/
+ * Legislation/Judgment classification catalogue, 0073/0075). Deliberately
+ * partial — only topics with a confident, unambiguous correspondence are
+ * listed; a topic absent here (e.g. "Landlord and Tenant", which could
+ * reasonably be either a Contract or Tort dispute) is left for the
+ * magistrate to classify by hand rather than guessed. Never authoritative
+ * on its own — see `suggestCategoryFromTopics` below, which only ever
+ * proposes a category for confirmation, exactly like tag proposals
+ * themselves are never silently applied.
+ */
+export const TOPIC_TO_CASE_CATEGORY: Readonly<Record<string, string>> = {
+  Bail: "Bail & Remand",
+  Sentencing: "Sentencing",
+  Mitigation: "Sentencing",
+  "Aggravating Factors": "Sentencing",
+  "Guilty Plea": "Sentencing",
+  "Time Served": "Sentencing",
+  Rehabilitation: "Sentencing",
+  Deterrence: "Sentencing",
+  Proportionality: "Sentencing",
+  Possession: "Narcotics",
+  Trafficking: "Narcotics",
+  "Joint Possession": "Narcotics",
+  "Dangerous Driving": "Traffic / Road Traffic Offences",
+  "Causing Death": "Traffic / Road Traffic Offences",
+  "Careless Driving": "Traffic / Road Traffic Offences",
+  "Alcohol and Impairment": "Traffic / Road Traffic Offences",
+  Licensing: "Traffic / Road Traffic Offences",
+  "Domestic Violence": "Domestic Violence",
+  Maintenance: "Family Law",
+  Paternity: "Family Law",
+  Custody: "Family Law",
+  "Juvenile Justice": "Family Law",
+  "Best Interests of the Child": "Family Law",
+  Hearsay: "Evidence & Procedure",
+  Admissions: "Evidence & Procedure",
+  Confessions: "Evidence & Procedure",
+  "Oral Admissions": "Evidence & Procedure",
+  Identification: "Evidence & Procedure",
+  "Visual Identification": "Evidence & Procedure",
+  "Documentary Evidence": "Evidence & Procedure",
+  "Expert Evidence": "Evidence & Procedure",
+  "Similar Fact Evidence": "Evidence & Procedure",
+  "Character Evidence": "Evidence & Procedure",
+  "Burden and Standard of Proof": "Evidence & Procedure",
+  Corroboration: "Evidence & Procedure",
+  "Competence and Compellability": "Evidence & Procedure",
+  "Electronic and Digital Evidence": "Evidence & Procedure",
+  "No-Case Submission": "Evidence & Procedure",
+  "Voir Dire": "Evidence & Procedure",
+  "Preliminary Inquiry": "Evidence & Procedure",
+  Committal: "Evidence & Procedure",
+  Disclosure: "Evidence & Procedure",
+  "Abuse of Process": "Evidence & Procedure",
+  Admissibility: "Evidence & Procedure",
+  "Search and Seizure": "Evidence & Procedure",
+  "Confession and Voluntariness": "Evidence & Procedure",
+};
+
+/**
+ * Picks the best `legal_case_categories` NAME to suggest from a set of
+ * scored tag proposals (highest score first, per `proposeTagsScored`'s own
+ * sort) — the first proposal with a confident mapping wins; `null` when
+ * nothing maps or the caller passed nothing. A suggestion only, same as
+ * the tags themselves — callers must never overwrite an already-set
+ * category with this.
+ */
+export function suggestCategoryFromTopics(
+  proposals: ReadonlyArray<{ name: string }>,
+): string | null {
+  for (const p of proposals) {
+    const category = TOPIC_TO_CASE_CATEGORY[p.name];
+    if (category) return category;
+  }
+  return null;
+}

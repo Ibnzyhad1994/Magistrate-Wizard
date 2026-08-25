@@ -638,8 +638,119 @@ export type Database = {
           },
         ]
       }
+      docket_capacity_overrides: {
+        Row: {
+          category_id: string | null
+          configured_capacity: number
+          created_at: string
+          docket_event_id: string | null
+          docket_matter_id: string
+          id: string
+          magistrate_profile_id: string
+          reason: string | null
+          scheduled_count_at_override: number
+          scheduled_date: string
+        }
+        Insert: {
+          category_id?: string | null
+          configured_capacity: number
+          created_at?: string
+          docket_event_id?: string | null
+          docket_matter_id: string
+          id?: string
+          magistrate_profile_id: string
+          reason?: string | null
+          scheduled_count_at_override: number
+          scheduled_date: string
+        }
+        Update: {
+          category_id?: string | null
+          configured_capacity?: number
+          created_at?: string
+          docket_event_id?: string | null
+          docket_matter_id?: string
+          id?: string
+          magistrate_profile_id?: string
+          reason?: string | null
+          scheduled_count_at_override?: number
+          scheduled_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_capacity_overrides_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matter_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_docket_event_id_fkey"
+            columns: ["docket_event_id"]
+            isOneToOne: false
+            referencedRelation: "docket_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_magistrate_profile_id_fkey"
+            columns: ["magistrate_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docket_capacity_settings: {
+        Row: {
+          category_id: string
+          created_at: string
+          daily_capacity: number
+          id: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          daily_capacity: number
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          daily_capacity?: number
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_capacity_settings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matter_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_settings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       docket_events: {
         Row: {
+          category_id: string | null
           created_at: string
           created_by: string
           docket_matter_id: string
@@ -659,8 +770,13 @@ export type Database = {
           scheduled_time: string | null
           stage_at_event: string | null
           updated_at: string
+          witnesses_called: number | null
+          witnesses_completed: number | null
+          witnesses_partly_heard: number | null
+          witnesses_remaining: number | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           created_by?: string
           docket_matter_id: string
@@ -680,8 +796,13 @@ export type Database = {
           scheduled_time?: string | null
           stage_at_event?: string | null
           updated_at?: string
+          witnesses_called?: number | null
+          witnesses_completed?: number | null
+          witnesses_partly_heard?: number | null
+          witnesses_remaining?: number | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           created_by?: string
           docket_matter_id?: string
@@ -701,8 +822,19 @@ export type Database = {
           scheduled_time?: string | null
           stage_at_event?: string | null
           updated_at?: string
+          witnesses_called?: number | null
+          witnesses_completed?: number | null
+          witnesses_partly_heard?: number | null
+          witnesses_remaining?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "docket_events_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matter_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "docket_events_created_by_fkey"
             columns: ["created_by"]
@@ -839,6 +971,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      docket_matter_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       docket_matter_judgments: {
         Row: {
@@ -1341,6 +1494,7 @@ export type Database = {
       judgments: {
         Row: {
           case_number: string | null
+          category_id: string | null
           citation: string | null
           content: Json | null
           content_text: string | null
@@ -1359,6 +1513,7 @@ export type Database = {
         }
         Insert: {
           case_number?: string | null
+          category_id?: string | null
           citation?: string | null
           content?: Json | null
           content_text?: string | null
@@ -1377,6 +1532,7 @@ export type Database = {
         }
         Update: {
           case_number?: string | null
+          category_id?: string | null
           citation?: string | null
           content?: Json | null
           content_text?: string | null
@@ -1394,6 +1550,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "judgments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "legal_case_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "judgments_finalized_by_fkey"
             columns: ["finalized_by"]
@@ -2322,6 +2485,52 @@ export type Database = {
           statute_id: string
         }[]
       }
+      find_next_available_docket_date: {
+        Args: {
+          p_category_id: string
+          p_max_days_ahead?: number
+          p_start_date: string
+        }
+        Returns: string
+      }
+      get_daily_docket_report_data: {
+        Args: { p_date: string }
+        Returns: {
+          appearance_stage: string
+          appearance_status: string
+          case_number: string
+          category_id: string
+          category_name: string
+          charge_or_issue: string
+          court_name: string
+          custody_status: string
+          district_name: string
+          matter_id: string
+          matter_title: string
+          next_appearance: string
+          notes: string
+          orders_summary: string
+          outcome: string
+          outcome_at_event: string
+          parties: Json
+          procedure_stage: string
+          status: Database["public"]["Enums"]["docket_matter_status"]
+          witnesses_called: number
+          witnesses_completed: number
+          witnesses_partly_heard: number
+          witnesses_remaining: number
+        }[]
+      }
+      get_docket_capacity_snapshot: {
+        Args: { p_category_id?: string; p_scheduled_date: string }
+        Returns: {
+          category_id: string
+          category_name: string
+          daily_capacity: number
+          scheduled_count: number
+          status: string
+        }[]
+      }
       global_search: {
         Args: { p_limit?: number; p_query: string }
         Returns: Database["public"]["CompositeTypes"]["search_result"][]
@@ -2349,6 +2558,7 @@ export type Database = {
         Args: {
           p_custody?: string[]
           p_disclosure?: string[]
+          p_exact_date?: string
           p_limit?: number
           p_next_date?: string[]
           p_procedure_stages?: string[]
@@ -2357,6 +2567,8 @@ export type Database = {
         }
         Returns: {
           appeal_status: string
+          appearance_stage: string
+          appearance_status: string
           arraignment_status: string
           can_edit: boolean
           case_number: string
@@ -2383,6 +2595,10 @@ export type Database = {
           trial_status: string
           updated_at: string
         }[]
+      }
+      matter_current_stage_label: {
+        Args: { p_docket_matter_id: string }
+        Returns: string
       }
       my_court_id: { Args: never; Returns: string }
       publish_case_law_import: {
@@ -2422,6 +2638,33 @@ export type Database = {
         Returns: {
           display_name: string
           profile_id: string
+        }[]
+      }
+      schedule_docket_event_with_capacity: {
+        Args: {
+          p_acknowledge_override?: boolean
+          p_category_id?: string
+          p_docket_matter_id: string
+          p_event_id?: string
+          p_event_status?: string
+          p_event_type?: string
+          p_location?: string
+          p_notes?: string
+          p_orders_made_at_event?: string
+          p_outcome_at_event?: string
+          p_override_reason?: string
+          p_scheduled_date: string
+          p_scheduled_time?: string
+          p_stage_at_event?: string
+        }
+        Returns: {
+          category_id: string
+          category_name: string
+          configured_capacity: number
+          event_id: string
+          is_over_capacity: boolean
+          scheduled_count: number
+          status: string
         }[]
       }
       search_bench_notes: {
@@ -2538,6 +2781,24 @@ export type Database = {
       set_case_law_review_status: {
         Args: { p_case_law_id: string; p_status: string }
         Returns: undefined
+      }
+      set_docket_matter_next_date: {
+        Args: {
+          p_acknowledge_override?: boolean
+          p_category_id?: string
+          p_docket_matter_id: string
+          p_override_reason?: string
+          p_scheduled_date: string
+        }
+        Returns: {
+          category_id: string
+          category_name: string
+          configured_capacity: number
+          event_id: string
+          is_over_capacity: boolean
+          scheduled_count: number
+          status: string
+        }[]
       }
       set_legislation_review_status: {
         Args: { p_status: string; p_statute_id: string }
@@ -2778,3 +3039,7 @@ export type QuickCodeJudgment = Tables<"quick_code_judgments">;
 export type QuickCodeCaseLaw = Tables<"quick_code_case_law">;
 export type Share = Tables<"shares">;
 
+
+export type DocketMatterCategory = Tables<"docket_matter_categories">;
+export type DocketCapacitySetting = Tables<"docket_capacity_settings">;
+export type DocketCapacityOverride = Tables<"docket_capacity_overrides">;

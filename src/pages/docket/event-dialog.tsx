@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,9 +24,13 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { ControlledVocabSelect } from "@/components/common/controlled-vocab-select";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import {
-  useCreateDocketEvent,
-  useUpdateDocketEvent,
-} from "@/hooks/docket/use-docket-events";
+  useDocketMatterCategories,
+  useDocketCapacitySnapshot,
+  useScheduleDocketEventWithCapacity,
+  type ScheduleWithCapacityResult,
+} from "@/hooks/docket/use-docket-capacity";
+import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
+import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog";
 import {
   DOCKET_EVENT_STATUSES,
   EVENT_STAGES,
@@ -47,9 +52,18 @@ export function DocketEventDialog({
   onClose: () => void;
   defaults?: Partial<DocketEventFormValues>;
 }) {
-  const createEvent = useCreateDocketEvent(matterId);
-  const updateEvent = useUpdateDocketEvent(matterId);
-  const isPending = createEvent.isPending || updateEvent.isPending;
+  const schedule = useScheduleDocketEventWithCapacity(matterId);
+  const { data: categories } = useDocketMatterCategories();
+  const isPending = schedule.isPending;
+
+  // The last capacity_reached result from a submit attempt, plus the
+  // exact form values that produced it — kept so "Add Anyway" can
+  // re-submit the identical booking with acknowledgeOverride: true
+  // rather than re-reading a possibly-changed form.
+  const [pendingOverride, setPendingOverride] = useState<{
+    result: ScheduleWithCapacityResult;
+    values: DocketEventFormValues;
+  } | null>(null);
 
   const form = useForm<DocketEventFormValues>({
     resolver: zodResolver(docketEventSchema),
@@ -66,28 +80,52 @@ export function DocketEventDialog({
         (event?.event_status as DocketEventFormValues["event_status"]) ??
         defaults?.event_status ??
         "scheduled",
+      category_id: event?.category_id ?? defaults?.category_id ?? "",
     },
   });
 
-  async function onSubmit(values: DocketEventFormValues) {
-    const payload = {
-      scheduled_date: values.scheduled_date,
-      scheduled_time: values.scheduled_time || null,
-      event_type: values.event_type || null,
+  const watchedDate = form.watch("scheduled_date");
+  const watchedCategoryId = form.watch("category_id");
+  const { data: snapshot } = useDocketCapacitySnapshot(watchedDate || undefined);
+  const activeSnapshot = (snapshot ?? []).find((s) => s.category_id === watchedCategoryId);
+
+  async function submit(values: DocketEventFormValues, acknowledgeOverride: boolean, overrideReason: string | null) {
+    const result = await schedule.mutateAsync({
+      eventId: event?.id ?? null,
+      docketMatterId: matterId,
+      scheduledDate: values.scheduled_date,
+      scheduledTime: values.scheduled_time || null,
+      eventType: values.event_type || null,
       location: values.location || null,
-      stage_at_event: values.stage_at_event || null,
-      outcome_at_event: values.outcome_at_event || null,
-      orders_made_at_event: values.orders_made_at_event || null,
+      stageAtEvent: values.stage_at_event || null,
+      outcomeAtEvent: values.outcome_at_event || null,
+      ordersMadeAtEvent: values.orders_made_at_event || null,
       notes: values.notes || null,
-      event_status: values.event_status,
-    };
+      eventStatus: values.event_status,
+      categoryId: values.category_id || null,
+      acknowledgeOverride,
+      overrideReason,
+    });
+    if (result.status === "capacity_reached") {
+      setPendingOverride({ result, values });
+      return;
+    }
+    setPendingOverride(null);
+    onClose();
+  }
+
+  async function onSubmit(values: DocketEventFormValues) {
     try {
-      if (event) {
-        await updateEvent.mutateAsync({ id: event.id, values: payload });
-      } else {
-        await createEvent.mutateAsync(payload);
-      }
-      onClose();
+      await submit(values, false, null);
+    } catch {
+      // Surfaced globally via the mutation cache toast subscriber.
+    }
+  }
+
+  async function onConfirmOverride(reason: string | null) {
+    if (!pendingOverride) return;
+    try {
+      await submit(pendingOverride.values, true, reason);
     } catch {
       // Surfaced globally via the mutation cache toast subscriber.
     }
@@ -177,6 +215,35 @@ export function DocketEventDialog({
 
             <FormField
               control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Matter category (optional)</FormLabel>
+                  <FormControl>
+                    <Select {...field}>
+                      <option value="">No category — not capacity-checked</option>
+                      {(categories ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {activeSnapshot && (
+                    <CapacityIndicator
+                      categoryName="On this date"
+                      scheduledCount={activeSnapshot.scheduled_count}
+                      dailyCapacity={activeSnapshot.daily_capacity}
+                      variant="bar"
+                    />
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="location"
               render={({ field }) => (
                 <FormItem>
@@ -262,6 +329,17 @@ export function DocketEventDialog({
           </form>
         </Form>
       </DialogContent>
+
+      {pendingOverride && (
+        <CapacityOverrideDialog
+          info={pendingOverride.result}
+          scheduledDate={pendingOverride.values.scheduled_date}
+          isPending={isPending}
+          onCancel={() => setPendingOverride(null)}
+          onConfirm={(reason) => void onConfirmOverride(reason)}
+          onDateSuggested={(date) => form.setValue("scheduled_date", date)}
+        />
+      )}
     </Dialog>
   );
 }

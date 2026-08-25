@@ -45,6 +45,8 @@ interface DocumentsPanelProps {
    * the Upload control is hidden rather than shown-then-denied by RLS.
    */
   canUpload?: boolean;
+  /** Fires after a successful upload with the original File and the created `documents` row — lets a caller run entity-specific follow-up (e.g. the Judgment detail page's automatic tag/category proposal) without teaching this shared component about any one entity type. */
+  onUploaded?: (file: File, doc: Document) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -71,7 +73,7 @@ const PURPOSE_BADGE_LABEL: Partial<Record<DocumentPurpose, string>> = {
   judgment: "Judgment",
 };
 
-export function DocumentsPanel({ entityType, entityId, canUpload = true }: DocumentsPanelProps) {
+export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploaded }: DocumentsPanelProps) {
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useDocuments(entityType, entityId);
   const upload = useUploadDocument(entityType, entityId);
@@ -126,7 +128,11 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true }: Docum
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) upload.mutate(isDocketMatter ? { file, purpose: uploadPurpose } : file);
+              if (file) {
+                upload.mutate(isDocketMatter ? { file, purpose: uploadPurpose } : file, {
+                  onSuccess: (doc) => onUploaded?.(file, doc),
+                });
+              }
               e.target.value = "";
               setUploadPurpose("attachment");
             }}

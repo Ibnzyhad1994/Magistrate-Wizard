@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DocketStageCell } from "@/pages/docket/docket-stage-cell";
+import { NextDateCell } from "@/pages/docket/next-date-cell";
 import {
   appearanceHintForColumn,
   currentStage,
@@ -16,7 +17,6 @@ import {
   type ProcedureColumnKey,
   type ProcedureSnapshot,
 } from "@/lib/docket-procedure";
-import { formatDate } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
@@ -93,6 +93,27 @@ function DocketStageRow({
           {row.charge_or_issue && (
             <p className="hidden truncate text-xs text-white/45 sm:block">{row.charge_or_issue}</p>
           )}
+          {/* Only populated when a date filter is active (0080) — this
+              date's own appearance status, e.g. this matter was heard and
+              adjourned FROM this date, not necessarily its current
+              overall status. */}
+          {row.appearance_status && (
+            <span
+              className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                row.appearance_status === "scheduled"
+                  ? "bg-primary/20 text-primary"
+                  : row.appearance_status === "completed"
+                    ? "bg-white/10 text-white/60"
+                    : "bg-white/5 text-white/40"
+              }`}
+            >
+              {row.appearance_status === "scheduled"
+                ? "Scheduled"
+                : row.appearance_status === "completed"
+                  ? "Heard / Adjourned"
+                  : "Rescheduled"}
+            </span>
+          )}
         </Link>
       </TableCell>
       {PROCEDURE_COLUMNS.map((column) => {
@@ -119,8 +140,8 @@ function DocketStageRow({
           </TableCell>
         );
       })}
-      <TableCell className="whitespace-nowrap text-xs text-white/70">
-        {row.next_appearance ? formatDate(row.next_appearance) : "—"}
+      <TableCell className="whitespace-nowrap">
+        <NextDateCell matterId={row.id} nextDate={row.next_appearance} canEdit={row.can_edit} />
       </TableCell>
     </TableRow>
   );

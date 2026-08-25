@@ -70,10 +70,18 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
 
   const activeParties = data?.filter((p) => p.party_status === "active") ?? [];
   const correctedParties = data?.filter((p) => p.party_status !== "active") ?? [];
+  // Parties are ordinarily settled once the matter is created (the
+  // prosecution/defendant are already named in the matter title). Once at
+  // least one party is on record, a big "Add party" button next to it
+  // reads as though more parties are routinely expected — so it's demoted
+  // to a small, still-fully-functional text link rather than removed
+  // outright, since civil/family/landlord-tenant matters on this same
+  // table can genuinely need to add another party later.
+  const partiesAlreadyEstablished = activeParties.length > 0;
 
   return (
     <div className="mt-4 space-y-4">
-      {canEdit && (
+      {canEdit && !partiesAlreadyEstablished && (
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setDialogParty("new")}>
             <Plus className="h-4 w-4" />
@@ -145,6 +153,13 @@ export function PartiesSection({ matterId }: PartiesSectionProps) {
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {canEdit && partiesAlreadyEstablished && (
+        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setDialogParty("new")}>
+          <Plus className="h-4 w-4" />
+          Add another party
+        </Button>
       )}
 
       {dialogParty && (

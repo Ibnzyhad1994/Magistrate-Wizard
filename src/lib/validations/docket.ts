@@ -115,6 +115,8 @@ export const docketEventSchema = z.object({
   orders_made_at_event: z.string().max(2000).optional().or(z.literal("")),
   notes: z.string().max(4000).optional().or(z.literal("")),
   event_status: z.enum(DOCKET_EVENT_STATUSES).default("scheduled"),
+  /** Matter category for daily capacity purposes (0076) — optional, independent of event_type. */
+  category_id: z.string().optional().or(z.literal("")),
 });
 export type DocketEventFormValues = z.infer<typeof docketEventSchema>;
 

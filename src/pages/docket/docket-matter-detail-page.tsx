@@ -6,7 +6,6 @@ import { InlineError } from "@/components/common/inline-error";
 import { useDocketMatter } from "@/hooks/docket/use-docket-matters";
 import { toTitleCase } from "@/lib/utils";
 import { OverviewSection } from "@/pages/docket/sections/overview-section";
-import { EventsSection } from "@/pages/docket/sections/events-section";
 import { PartiesSection } from "@/pages/docket/sections/parties-section";
 import { TagsSection } from "@/pages/docket/sections/tags-section";
 import { JudgmentsSection } from "@/pages/docket/sections/judgments-section";
@@ -67,9 +66,12 @@ export default function DocketMatterDetailPage() {
         eyebrow={matter.case_number}
         title={matter.matter_title}
         description={
-          [matter.charge_or_issue, matter.courts?.name, matter.magisterial_districts?.name]
-            .filter(Boolean)
-            .join(" · ") || undefined
+          // Charge/issue has its own dedicated, fully-readable card on the
+          // Overview tab immediately below — repeating it here as a
+          // truncated subtitle would be the exact "same information right
+          // beside itself" duplication this pass exists to remove.
+          [matter.courts?.name, matter.magisterial_districts?.name].filter(Boolean).join(" · ") ||
+          undefined
         }
         badges={[toTitleCase(matter.status)]}
         tone="docket"
@@ -89,7 +91,6 @@ export default function DocketMatterDetailPage() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="sticky top-[68px] z-20 bg-[#141414] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="parties">Parties</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="judgments">Judgments</TabsTrigger>
@@ -100,9 +101,6 @@ export default function DocketMatterDetailPage() {
 
         <TabsContent value="overview">
           <OverviewSection matter={matter} />
-        </TabsContent>
-        <TabsContent value="events">
-          <EventsSection matterId={matter.id} />
         </TabsContent>
         <TabsContent value="parties">
           <PartiesSection matterId={matter.id} />

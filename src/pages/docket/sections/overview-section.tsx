@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Pencil, Bookmark } from "lucide-react";
@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,9 +28,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Skeleton } from "@/components/ui/skeleton";
-import { InlineError } from "@/components/common/inline-error";
-import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -39,20 +37,18 @@ import {
   useDocketAssignments,
   useEndRetainedAssignment,
 } from "@/hooks/docket/use-docket-assignments";
+import { useDocketEvents } from "@/hooks/docket/use-docket-events";
 import {
   DOCKET_MATTER_STATUSES,
   docketMatterOutcomeSchema,
   type DocketMatterOutcomeFormValues,
 } from "@/lib/validations/docket";
-import { formatDateTime, toTitleCase } from "@/lib/utils";
+import { matterCurrentStage, PROCEDURE_STAGE_LABELS, PROCEDURE_VALUE_LABELS } from "@/lib/docket-procedure";
+import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import type { DocketMatter } from "@/types/database.types";
-import { IdentificationImageControl } from "@/components/common/identification-image-control";
-import {
-  useClearMatterCover,
-  useSetMatterCover,
-} from "@/hooks/docket/use-identification-images";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { DocketStageStrip, type OverviewLogAppearance } from "@/pages/docket/docket-stage-strip";
+import { HearingProgressSection } from "@/pages/docket/sections/hearing-progress-section";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 
 interface OverviewSectionProps {
@@ -74,20 +70,24 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const canManage = access?.canManage ?? false;
   const updateMatter = useUpdateDocketMatter(matter.id);
   const patchProcedure = usePatchDocketProcedure();
-  const setCover = useSetMatterCover(matter.id);
-  const clearCover = useClearMatterCover(matter.id);
   const createRetained = useCreateRetainedAssignment(matter.id);
   const endRetained = useEndRetainedAssignment(matter.id);
-  const {
-    data: assignments,
-    isPending: assignmentsPending,
-    isError: assignmentsError,
-    error: assignmentsErr,
-  } = useDocketAssignments(matter.id);
+  const { data: assignments } = useDocketAssignments(matter.id);
 
   const myActiveRetained = assignments?.find(
     (a) => a.profile_id === user?.id && !a.ended_at,
   );
+  const anyActiveRetained = assignments?.find((a) => !a.ended_at);
+
+  const { data: events } = useDocketEvents(matter.id);
+  const nextDate = useMemo(() => {
+    const today = getLocalDateOnly();
+    const upcoming = (events ?? [])
+      .filter((e) => e.event_status === "scheduled" && e.scheduled_date >= today)
+      .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+    return upcoming[0]?.scheduled_date ?? null;
+  }, [events]);
+  const stage = matterCurrentStage(matter);
 
   const form = useForm<DocketMatterOutcomeFormValues>({
     resolver: zodResolver(docketMatterOutcomeSchema),
@@ -110,14 +110,79 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   }
 
   return (
-    <div className="mt-4 grid gap-4 lg:grid-cols-3">
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">Charge / issue</CardTitle>
+    <div className="mt-4 space-y-4">
+      {/* Compact status row — replaces the previous large single-value
+          Status and Retained-assignments cards. Custody is shown
+          read-only here (it's already editable on the Procedure board
+          just below, so it isn't given a second editing surface). */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {canEdit ? (
+          <Select
+            value={matter.status}
+            onChange={(e) =>
+              updateMatter.mutate({
+                status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number],
+              })
+            }
+            disabled={updateMatter.isPending}
+            aria-label="Matter status"
+            className="h-8 w-auto py-0 text-xs"
+          >
+            {DOCKET_MATTER_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {toTitleCase(s)}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <Badge>{toTitleCase(matter.status)}</Badge>
+        )}
+        <Badge variant="outline">{PROCEDURE_STAGE_LABELS[stage]}</Badge>
+        {matter.custody_status !== "unset" && (
+          <Badge variant="outline">
+            {PROCEDURE_VALUE_LABELS[matter.custody_status] ?? toTitleCase(matter.custody_status)}
+          </Badge>
+        )}
+        <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
+
+        <span className="mx-1 h-4 w-px bg-border" />
+
+        {anyActiveRetained ? (
+          <>
+            <span className="text-muted-foreground">
+              Retained: <span className="font-medium text-foreground">Yes — {anyActiveRetained.display_name ?? "Unknown magistrate"}</span>
+            </span>
+            {myActiveRetained && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-destructive hover:text-destructive"
+                onClick={() => setPendingEnd(myActiveRetained.id)}
+              >
+                End my retention
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="text-muted-foreground">Retained: No</span>
+            {canManage && (
+              <Button size="sm" variant="ghost" className="h-7" onClick={() => setRetainOpen(true)}>
+                <Bookmark className="h-3.5 w-3.5" />
+                Retain as part-heard
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+
+      <Card>
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm text-muted-foreground">Charge / issue</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+        <CardContent className="pt-0 text-sm text-foreground">
           {matter.charge_or_issue || (
-            <span className="italic">No charge or issue recorded.</span>
+            <span className="italic text-muted-foreground">No charge or issue recorded.</span>
           )}
         </CardContent>
       </Card>
@@ -129,55 +194,11 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         onLogAppearance={setLogAppearance}
       />
 
-      <Card className="lg:col-span-3">
-        <CardHeader>
-          <CardTitle className="text-base">Cover / identification</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <IdentificationImageControl
-            path={matter.cover_image_path}
-            alt={`Cover for ${matter.matter_title}`}
-            label="Matter cover"
-            description="Shown on the Docket browse tile and title billboard. JPEG, PNG, or WebP, up to 5 MB."
-            isPending={setCover.isPending || clearCover.isPending}
-            onUpload={(file) => setCover.mutate(file)}
-            onClear={() => clearCover.mutate()}
-            readOnly={!canEdit}
-          />
-        </CardContent>
-      </Card>
+      <HearingProgressSection matter={matter} />
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {canEdit ? (
-            <Select
-              value={matter.status}
-              onChange={(e) =>
-                updateMatter.mutate({
-                  status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number],
-                })
-              }
-              disabled={updateMatter.isPending}
-              aria-label="Matter status"
-            >
-              {DOCKET_MATTER_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {toTitleCase(s)}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <p className="text-sm text-foreground">{toTitleCase(matter.status)}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Orders & outcome</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between py-3">
+          <CardTitle className="text-sm text-muted-foreground">Orders & outcome</CardTitle>
           {canEdit && !editingOutcome && (
             <Button
               size="sm"
@@ -189,7 +210,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             </Button>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {editingOutcome ? (
             <Form {...form}>
               <form
@@ -258,66 +279,6 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                 </p>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Retained assignments</CardTitle>
-          {myActiveRetained ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setPendingEnd(myActiveRetained.id)}
-            >
-              End my retention
-            </Button>
-          ) : canManage ? (
-            <Button size="sm" variant="outline" onClick={() => setRetainOpen(true)}>
-              <Bookmark className="h-3.5 w-3.5" />
-              Retain as part-heard
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {assignmentsPending ? (
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : assignmentsError ? (
-            <InlineError error={assignmentsErr} className="border-0 p-0" />
-          ) : !assignments || assignments.length === 0 ? (
-            <EmptyState
-              className="border-0 py-6"
-              title="No retained assignments"
-              description="A magistrate whose ordinary Court access ends can retain this specific matter as part-heard."
-            />
-          ) : (
-            <ul className="space-y-3 text-sm">
-              {assignments.map((a) => (
-                <li key={a.id} className="border-b border-border pb-2 last:border-0">
-                  <p className="font-medium text-foreground">
-                    {a.display_name ?? "Unknown magistrate"}
-                    {!a.ended_at && (
-                      <span className="ml-2 text-xs font-normal text-primary">
-                        Active
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {toTitleCase(a.reason)} · started{" "}
-                    {formatDateTime(a.started_at)}
-                    {a.ended_at ? ` · ended ${formatDateTime(a.ended_at)}` : ""}
-                  </p>
-                  {a.notes && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">{a.notes}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
           )}
         </CardContent>
       </Card>

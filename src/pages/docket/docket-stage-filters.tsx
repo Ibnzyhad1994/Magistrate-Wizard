@@ -86,7 +86,7 @@ export function DocketStageFilters({
 
   return (
     <div className="mb-4 space-y-2">
-      <div className="flex items-center justify-between gap-2 sm:hidden">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-white/80"
@@ -103,7 +103,7 @@ export function DocketStageFilters({
         </button>
         {clearButton}
       </div>
-      <div className={cn("space-y-2", !expanded && "hidden sm:block")}>
+      <div className={cn("space-y-2", !expanded && "hidden")}>
         <ChipGroup label="Stage">
           {PROCEDURE_STAGES.map((stage) => (
             <Chip
@@ -181,7 +181,6 @@ export function DocketStageFilters({
               </Chip>
             ))}
           </ChipGroup>
-          <span className="hidden sm:inline">{clearButton}</span>
         </div>
       </div>
     </div>

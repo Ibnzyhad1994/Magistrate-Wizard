@@ -12,8 +12,8 @@ import {
 export const docketMattersKeys = {
   all: ["docket-matters"] as const,
   list: (search: string) => ["docket-matters", "list", search] as const,
-  board: (search: string, filters: ProcedureFilters) =>
-    ["docket-matters", "board", search, filters] as const,
+  board: (search: string, filters: ProcedureFilters, exactDate: string | null) =>
+    ["docket-matters", "board", search, filters, exactDate] as const,
   detail: (id: string) => ["docket-matters", "detail", id] as const,
 };
 
@@ -116,16 +116,25 @@ export type DocketMatterBoardRow =
 /**
  * Spreadsheet / filtered Docket list. Uses list_docket_matters so stage
  * filters apply server-side (the 100-row cap still shows the right files).
+ * `exactDate` (0079) is the calendar's currently-selected date — when set,
+ * this is the SAME next_appearance value the capacity calendar counts
+ * against, so the list and the calendar can never disagree about which
+ * matters belong to a given date. `null` means unfiltered ("All Matters").
  */
-export function useDocketMatterBoard(search: string, filters: ProcedureFilters) {
+export function useDocketMatterBoard(
+  search: string,
+  filters: ProcedureFilters,
+  exactDate: string | null,
+) {
   const trimmed = search.trim();
   return useQuery({
-    queryKey: docketMattersKeys.board(trimmed, filters),
+    queryKey: docketMattersKeys.board(trimmed, filters, exactDate),
     queryFn: async () => {
       const args = filtersToRpcArgs(filters);
       const { data, error } = await supabase.rpc("list_docket_matters", {
         p_query: trimmed,
         p_limit: 100,
+        p_exact_date: exactDate ?? undefined,
         ...args,
       });
       if (error) throw error;

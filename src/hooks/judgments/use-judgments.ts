@@ -21,7 +21,7 @@ export function useJudgments() {
       const { data, error } = await supabase
         .from("judgments")
         .select(
-          "id, title, case_number, citation, court_name, judgment_date, status, is_discoverable, owner_id, updated_at",
+          "id, title, case_number, citation, court_name, judgment_date, status, is_discoverable, owner_id, updated_at, category_id, legal_case_categories(name)",
         )
         .order("updated_at", { ascending: false })
         .limit(200);
@@ -114,6 +114,21 @@ export function useUpdateJudgmentContent(id: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
+    },
+  });
+}
+
+/** Quiet PATCH for category_id — caller owns the toast (the automatic tag/category proposal flow summarizes tags + category in one message rather than firing a second "Judgment saved."). Not locked by protect_judgment_lifecycle() (0075) — works regardless of draft/final status, like useSetJudgmentDiscoverable. */
+export function useSetJudgmentCategory(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (category_id: string | null) => {
+      const { error } = await supabase.from("judgments").update({ category_id }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: judgmentsKeys.all });
     },
   });
 }

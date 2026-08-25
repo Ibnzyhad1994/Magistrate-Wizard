@@ -185,6 +185,35 @@ export function currentStage(row: ProcedureSnapshot): ProcedureStage {
   return "appeal";
 }
 
+/**
+ * `currentStage()` for a raw `docket_matters` row — the procedure-status
+ * columns are plain `text` in the database (not enums, see 0070), so
+ * every caller needs the same cast-to-ProcedureSnapshot adapter. Shared
+ * here rather than re-written per call site (docket-stage-strip.tsx,
+ * overview-section.tsx, hearing-progress-section.tsx).
+ */
+export function matterCurrentStage(matter: {
+  arraignment_status: string;
+  custody_status: string;
+  disclosure_status: string;
+  trial_status: string;
+  ruling_status: string;
+  judgment_status: string;
+  sentence_status: string;
+  appeal_status: string;
+}): ProcedureStage {
+  return currentStage({
+    arraignment_status: matter.arraignment_status as ArraignmentStatus,
+    custody_status: matter.custody_status as CustodyStatus,
+    disclosure_status: matter.disclosure_status as DisclosureStatus,
+    trial_status: matter.trial_status as TrialStatus,
+    ruling_status: matter.ruling_status as RulingStatus,
+    judgment_status: matter.judgment_status as JudgmentStatus,
+    sentence_status: matter.sentence_status as SentenceStatus,
+    appeal_status: matter.appeal_status as AppealStatus,
+  });
+}
+
 export function activeProcedureFilterCount(filters: ProcedureFilters): number {
   return (
     filters.stages.length +

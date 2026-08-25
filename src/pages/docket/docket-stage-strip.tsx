@@ -3,10 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocketStageCell, type StageCellAttachments } from "@/pages/docket/docket-stage-cell";
 import {
   appearanceHintForColumn,
-  currentStage,
+  matterCurrentStage,
   PROCEDURE_COLUMNS,
   type ProcedureColumnKey,
-  type ProcedureSnapshot,
 } from "@/lib/docket-procedure";
 import { getDocumentDownloadUrl, useDocuments, useUploadDocument } from "@/hooks/use-documents";
 import { getErrorMessage } from "@/lib/utils";
@@ -23,19 +22,6 @@ export type OverviewLogAppearance = {
   notes: string;
 };
 
-function snapshotOf(matter: DocketMatter): ProcedureSnapshot {
-  return {
-    arraignment_status: matter.arraignment_status as ProcedureSnapshot["arraignment_status"],
-    custody_status: matter.custody_status as ProcedureSnapshot["custody_status"],
-    disclosure_status: matter.disclosure_status as ProcedureSnapshot["disclosure_status"],
-    trial_status: matter.trial_status as ProcedureSnapshot["trial_status"],
-    ruling_status: matter.ruling_status as ProcedureSnapshot["ruling_status"],
-    judgment_status: matter.judgment_status as ProcedureSnapshot["judgment_status"],
-    sentence_status: matter.sentence_status as ProcedureSnapshot["sentence_status"],
-    appeal_status: matter.appeal_status as ProcedureSnapshot["appeal_status"],
-  };
-}
-
 export function DocketStageStrip({
   matter,
   canEdit,
@@ -47,7 +33,7 @@ export function DocketStageStrip({
   onPatch: (values: Partial<Record<ProcedureColumnKey, string>>) => Promise<unknown>;
   onLogAppearance: (hint: OverviewLogAppearance) => void;
 }) {
-  const stage = currentStage(snapshotOf(matter));
+  const stage = matterCurrentStage(matter);
   const { data: documents } = useDocuments("docket_matter", matter.id);
   const uploadRuling = useUploadDocument("docket_matter", matter.id);
   const uploadJudgment = useUploadDocument("docket_matter", matter.id);

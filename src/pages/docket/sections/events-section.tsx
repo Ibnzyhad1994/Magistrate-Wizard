@@ -9,8 +9,37 @@ import { InlineError } from "@/components/common/inline-error";
 import { useDocketEvents } from "@/hooks/docket/use-docket-events";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
+import { useDocketMatterCategories, useDocketCapacitySnapshot } from "@/hooks/docket/use-docket-capacity";
+import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 import type { DocketEvent } from "@/types/database.types";
+
+/**
+ * One event's own category/date utilisation, rendered as a colored chip
+ * — react-query dedupes the snapshot query across events sharing the
+ * same date, so several appearances on one day cost a single request.
+ */
+function EventCategoryChip({
+  scheduledDate,
+  categoryId,
+  categoryName,
+}: {
+  scheduledDate: string;
+  categoryId: string;
+  categoryName: string;
+}) {
+  const { data: snapshot } = useDocketCapacitySnapshot(scheduledDate);
+  const row = (snapshot ?? []).find((s) => s.category_id === categoryId);
+  if (!row) return null;
+  return (
+    <CapacityIndicator
+      categoryName={categoryName}
+      scheduledCount={row.scheduled_count}
+      dailyCapacity={row.daily_capacity}
+      variant="chip"
+    />
+  );
+}
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   scheduled: "default",
@@ -26,8 +55,11 @@ interface EventsSectionProps {
 export function EventsSection({ matterId }: EventsSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketEvents(matterId);
   const { data: access } = useDocketMatterAccess(matterId);
+  const { data: categories } = useDocketMatterCategories();
   const canEdit = access?.canEdit ?? false;
   const [dialogEvent, setDialogEvent] = useState<DocketEvent | "new" | null>(null);
+  const categoryName = (id: string | null) =>
+    (categories ?? []).find((c) => c.id === id)?.name;
 
   return (
     <div className="mt-4 space-y-4">
@@ -85,6 +117,13 @@ export function EventsSection({ matterId }: EventsSectionProps) {
                     <p className="text-sm text-muted-foreground">
                       Stage: {event.stage_at_event}
                     </p>
+                  )}
+                  {event.category_id && categoryName(event.category_id) && (
+                    <EventCategoryChip
+                      scheduledDate={event.scheduled_date}
+                      categoryId={event.category_id}
+                      categoryName={categoryName(event.category_id) as string}
+                    />
                   )}
                   {event.location && (
                     <p className="flex items-center gap-1 text-sm text-muted-foreground">
