@@ -48,23 +48,26 @@ export const DocumentViewerDialog = ({
 
   const loadPreview = async (filePath: string, fileKind: typeof kind) => {
     if (fileKind === "pdf" || fileKind === "image") {
-      const objectUrl = await getDocumentViewUrl(filePath)
-      return { objectUrl, content: { mode: "url" as const } }
+      // A short-lived (60s) signed URL, not a blob: object URL — see
+      // getDocumentViewUrl's own comment for why. Nothing to revoke; it
+      // just expires on its own.
+      const previewUrl = await getDocumentViewUrl(filePath)
+      return { previewUrl, content: { mode: "url" as const } }
     }
     const blob = await downloadDocumentBlob(filePath)
     const buffer = await blob.arrayBuffer()
     if (fileKind === "docx") {
       const rawHtml = await convertDocxToHtml(buffer)
-      return { objectUrl: null, content: { mode: "html" as const, html: sanitizePreviewHtml(rawHtml) } }
+      return { previewUrl: null, content: { mode: "html" as const, html: sanitizePreviewHtml(rawHtml) } }
     }
     const text = new TextDecoder("utf-8").decode(buffer)
     if (fileKind === "markdown") {
       return {
-        objectUrl: null,
+        previewUrl: null,
         content: { mode: "html" as const, html: sanitizePreviewHtml(markdownToSafeHtml(text)) },
       }
     }
-    return { objectUrl: null, content: { mode: "text" as const, text } }
+    return { previewUrl: null, content: { mode: "text" as const, text } }
   }
 
   useEffect(() => {
@@ -75,17 +78,12 @@ export const DocumentViewerDialog = ({
       return
     }
     let cancelled = false
-    let objectUrl: string | null = null
     setLoading(true)
     setLoadError(null)
     loadPreview(doc.file_path, kind)
       .then((result) => {
-        if (cancelled) {
-          if (result.objectUrl) URL.revokeObjectURL(result.objectUrl)
-          return
-        }
-        objectUrl = result.objectUrl
-        setUrl(result.objectUrl)
+        if (cancelled) return
+        setUrl(result.previewUrl)
         setPreview(result.content)
       })
       .catch((err) => {
@@ -96,7 +94,6 @@ export const DocumentViewerDialog = ({
       })
     return () => {
       cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
     // Re-fetch whenever a different document is opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,10 +105,7 @@ export const DocumentViewerDialog = ({
     setLoadError(null)
     loadPreview(doc.file_path, kind)
       .then((result) => {
-        setUrl((previous) => {
-          if (previous) URL.revokeObjectURL(previous)
-          return result.objectUrl
-        })
+        setUrl(result.previewUrl)
         setPreview(result.content)
       })
       .catch(setLoadError)

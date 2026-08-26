@@ -609,9 +609,10 @@ function OriginalDocumentLink({ documentId }: { documentId: string | null }) {
             .eq("id", documentId)
             .single();
           if (error || !data) throw error ?? new Error("Document not found.");
+          // A short-lived signed URL, not a blob: URL -- nothing to revoke,
+          // it just expires on its own (see getDocumentViewUrl).
           const url = await getDocumentViewUrl(data.file_path);
           window.open(url, "_blank", "noopener,noreferrer");
-          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
         } catch (e) {
           // Deliberately does not surface e.message -- that's raw
           // Supabase/Storage internals, not a safe user-facing string

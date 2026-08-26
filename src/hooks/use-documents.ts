@@ -159,12 +159,26 @@ export async function downloadDocumentAsFile(documentId: string): Promise<File> 
 }
 
 /**
- * In-app view URL. Uses an authenticated download + blob: URL so the
- * bytes are not handed out as a shareable signed URL that outlives RLS.
- * Caller must revoke the object URL when the viewer closes.
+ * In-app view URL. A `blob:` object URL (the previous approach here) is
+ * what a shared signed URL should have been replaced with, but Chromium
+ * does not reliably render a PDF navigated into an `<iframe>` via a
+ * `blob:` URL — the built-in PDF viewer's activation path expects a real
+ * network response, and the frame's navigation to the blob silently
+ * aborts (confirmed: the blob itself is valid and correctly typed —
+ * `fetch()` on it from the same page succeeds — only the iframe
+ * navigation fails). A short-lived signed URL (60s) keeps the original
+ * security intent — RLS is re-checked at signing time and the URL is
+ * worthless well before a magistrate could usefully share it — while
+ * still being a normal HTTP(S) response Chromium's PDF viewer renders
+ * the same way it always has. Caller does not need to revoke anything;
+ * the URL simply expires.
  */
 export async function getDocumentViewUrl(filePath: string): Promise<string> {
-  return getDocumentDownloadUrl(filePath);
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(filePath, 60);
+  if (error || !data) throw error ?? new Error("Could not load this document for preview.");
+  return data.signedUrl;
 }
 
 export function useDeleteDocument(entityType: string, entityId: string) {
