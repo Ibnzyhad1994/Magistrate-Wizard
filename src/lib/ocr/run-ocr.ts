@@ -10,6 +10,7 @@
 import { isAbortError, throwIfAborted } from "@/lib/async-timeout"
 import type { ExtractionEnvelope } from "@/lib/extraction-pipeline"
 import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality"
+import { assessExtractionLanguage, LANGUAGE_HONESTY_MESSAGE } from "@/lib/extraction-language"
 import { LOW_OCR_MEAN_CONFIDENCE, MAX_OCR_PAGES, MIN_OCR_MEAN_CONFIDENCE } from "@/lib/ocr/constants"
 import { extractEmbeddedJpegImages } from "@/lib/ocr/embedded-images"
 import { recognizeImage, yieldForUi } from "@/lib/ocr/engine"
@@ -196,6 +197,11 @@ export const runOcr = async (file: File, options?: OcrRunOptions): Promise<Extra
       ],
       true,
     )
+  }
+
+  const lang = assessExtractionLanguage(sanitized.text)
+  if (!lang.ok && lang.reason) {
+    return failedOcr([...warnings, LANGUAGE_HONESTY_MESSAGE[lang.reason]], true)
   }
 
   const status = quality.score >= CLEAN_SCORE_THRESHOLD && meanConfidence >= LOW_OCR_MEAN_CONFIDENCE ? "extracted" : "low_quality"

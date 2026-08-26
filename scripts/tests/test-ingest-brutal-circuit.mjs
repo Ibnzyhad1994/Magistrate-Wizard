@@ -6,6 +6,7 @@
 //   npm run test:ingest-brutal
 //   npm run test:ingest-brutal:fast
 //   BRUTAL_STAGES=0,3,7 npm run test:ingest-brutal
+//   npm run test:ingest-brutal:public   // MoLA / Parliament / CCJ PDFs + Caribbean scans
 
 import { writeFileSync, existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -32,6 +33,7 @@ import {
   SCAN_MUST_CONTAIN,
   renderLegalScanJpeg,
   renderLegalScanPng,
+  makeRenderedScanPdf,
 } from "../test-support/scanned-pdf-fixtures.mjs"
 import {
   makeAsciiHexStreamPdf,
@@ -96,7 +98,8 @@ const MUST = SCAN_MUST_CONTAIN
 const POISON = ["AdobeUCS2", "begincmap", "All Rights Reserved", "This font software", "LOREM IPSUM FONT LICENSE"]
 
 const parseStages = () => {
-  const raw = process.env.BRUTAL_STAGES
+  const stagesArg = process.argv.find((a) => a.startsWith("--stages="))
+  const raw = stagesArg ? stagesArg.slice("--stages=".length) : process.env.BRUTAL_STAGES
   if (raw && raw.trim()) {
     return new Set(
       raw
@@ -109,6 +112,38 @@ const parseStages = () => {
     return new Set([0, 1, 2, 3, 6, 7])
   }
   return new Set([0, 1, 2, 3, 4, 5, 6, 7, 8])
+}
+
+/** CID/CMap or latin1-mojibake "switched language" — Latin legal prose is expected. */
+const analyzeExtractedLanguage = (text) => {
+  const sample = String(text ?? "")
+  let letters = 0
+  let latin = 0
+  let han = 0
+  let cyrillic = 0
+  let arabic = 0
+  for (const ch of sample) {
+    if (!/\p{L}/u.test(ch)) continue
+    letters += 1
+    if (/\p{Script=Latin}/u.test(ch)) latin += 1
+    else if (/\p{Script=Han}/u.test(ch)) han += 1
+    else if (/\p{Script=Cyrillic}/u.test(ch)) cyrillic += 1
+    else if (/\p{Script=Arabic}/u.test(ch)) arabic += 1
+  }
+  const nonLatinRatio = letters === 0 ? 0 : (letters - latin) / letters
+  const mojibakeHits = (sample.match(/Ã.|Â.|â€[™œ“”]|þÿ/g) ?? []).length
+  const switched =
+    han >= 20 || cyrillic >= 20 || arabic >= 20 || nonLatinRatio >= 0.08 || mojibakeHits >= 8
+  return {
+    letters,
+    latin,
+    han,
+    cyrillic,
+    arabic,
+    nonLatinRatio: Number(nonLatinRatio.toFixed(4)),
+    mojibakeHits,
+    switched,
+  }
 }
 
 const STAGES = parseStages()
@@ -149,6 +184,33 @@ const record = (row) => {
     .join("  ")
   console.log(`${mark}  [stage${row.stage}] ${row.label}${extra ? `  (${extra})` : ""}`)
   if (!row.pass && row.detail) console.log("       ", row.detail)
+}
+
+const recordPublicExtract = ({ label, envelope, mustContain = [], family = "public", extra = {} }) => {
+  const hits = mustContain.filter((p) => containsNormalized(envelope.text, p))
+  const poison = hasPoison(envelope.text)
+  const lang = analyzeExtractedLanguage(envelope.text)
+  const ok = usable(envelope)
+  const switched = ok && lang.switched
+  record({
+    stage: 8,
+    family,
+    label,
+    pass: !poison && !switched,
+    verdict: poison || switched ? "false_success" : ok && hits.length > 0 ? "usable" : ok ? "limit" : "honest_withhold",
+    status: envelope.status,
+    method: envelope.method,
+    ocrUsed: envelope.ocrUsed,
+    pageCount: envelope.pageCount,
+    mustHits: hits,
+    charCount: envelope.charCount,
+    language: lang,
+    preview: envelope.text.slice(0, 220).replace(/\s+/g, " "),
+    detail: switched
+      ? `language/script switch han=${lang.han} cyr=${lang.cyrillic} arab=${lang.arabic} nonLatin=${lang.nonLatinRatio} mojibake=${lang.mojibakeHits}`
+      : extra.detail ?? null,
+    ...extra,
+  })
 }
 
 /** FAIL only on throw (caught upstream) or false success. */
@@ -1361,23 +1423,52 @@ const main = async () => {
   }
 
   // ------------------------------------------------------------------
-  // Stage 8 — Public court PDFs (optional)
+  // Stage 8 — Public court / MoLA / Parliament PDFs + Caribbean scans
   // ------------------------------------------------------------------
   if (stageEnabled(8)) {
+    {
+      const env = await ingestDocument(makeRenderedScanPdf({ jpegQuality: 92, name: "guyana-coa-scan.pdf" }))
+      recordPublicExtract({
+        label: "Caribbean scan: Guyana Court of Appeal (300dpi)",
+        envelope: env,
+        mustContain: SCAN_MUST_CONTAIN,
+        family: "caribbean-scan",
+      })
+    }
+    {
+      const env = await ingestDocument(makeDegradedScanPdf({ dpi: 150, jpegQuality: 55, name: "caribbean-degraded-scan.pdf" }))
+      recordPublicExtract({
+        label: "Caribbean scan: degraded 150dpi JPEG",
+        envelope: env,
+        mustContain: ["COURT OF APPEAL OF GUYANA", "RAMSINGH"],
+        family: "caribbean-scan",
+      })
+    }
+    {
+      const env = await ingestDocument(
+        makeDegradedScanPdf({
+          dpi: 300,
+          jpegQuality: 92,
+          name: "caribbean-accent-scan.pdf",
+          text: SYMBOLS_GOLDEN,
+        }),
+      )
+      recordPublicExtract({
+        label: "Caribbean scan: accented names stay Latin (José/café must not count as language switch)",
+        envelope: env,
+        mustContain: ["RAMSINGH"],
+        family: "caribbean-scan",
+      })
+    }
+
     if (existsSync(IN_REPO_PDF)) {
       const bytes = readFileSync(IN_REPO_PDF)
       const env = await ingestDocument(makeFile("00-how-to-read-these-guides.pdf", bytes, "application/pdf"))
-      const hits = IN_REPO_MUST_CONTAIN.filter((p) => containsNormalized(env.text, p))
-      record({
-        stage: 8,
-        family: "public",
+      recordPublicExtract({
         label: "in-repo workflow PDF",
-        pass: !hasPoison(env.text),
-        verdict: usable(env) && hits.length > 0 ? "usable" : usable(env) ? "limit" : "honest_withhold",
-        status: env.status,
-        method: env.method,
-        ocrUsed: env.ocrUsed,
-        mustHits: hits,
+        envelope: env,
+        mustContain: IN_REPO_MUST_CONTAIN,
+        family: "public",
       })
     } else {
       record({
@@ -1392,11 +1483,11 @@ const main = async () => {
 
     for (const fix of PUBLIC_FIXTURES) {
       if (fix.kind === "pdf") {
-        const got = await fetchCached(fix.id, fix.url, "pdf")
+        const got = await fetchCached(fix.id, fix.url, "pdf", 120000)
         if (!got.ok) {
           record({
             stage: 8,
-            family: "public",
+            family: fix.family ?? "public",
             label: `${fix.id} skipped: ${got.reason}`,
             pass: true,
             verdict: "limit",
@@ -1405,21 +1496,15 @@ const main = async () => {
           })
           continue
         }
-        const env = await ingestDocument(makeFile(`${fix.id}.pdf`, got.bytes, "application/pdf"))
-        const hits = fix.mustContain.filter((p) => containsNormalized(env.text, p))
-        const poison = hasPoison(env.text)
-        record({
-          stage: 8,
-          family: "public",
+        const env = await ingestDocument(makeFile(`${fix.id}.pdf`, got.bytes, "application/pdf"), {
+          maxOcrPages: 5,
+        })
+        recordPublicExtract({
           label: `${fix.id} must-contain`,
-          pass: !poison,
-          verdict: poison ? "false_success" : usable(env) && hits.length > 0 ? "usable" : usable(env) ? "limit" : "honest_withhold",
-          status: env.status,
-          method: env.method,
-          ocrUsed: env.ocrUsed,
-          mustHits: hits,
-          fromCache: got.fromCache,
-          charCount: env.charCount,
+          envelope: env,
+          mustContain: fix.mustContain,
+          family: fix.family ?? "public",
+          extra: { fromCache: got.fromCache, bytes: got.bytes.length },
         })
       } else if (fix.kind === "pdf+html") {
         const pdfGot = await fetchCached(`${fix.id}-pdf`, fix.pdfUrl, "pdf")
