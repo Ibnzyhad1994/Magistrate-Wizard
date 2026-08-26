@@ -12,8 +12,8 @@
  * text that is safe to propose metadata from or store as searchable text.
  *
  * OCR is attempted only for no_text_found / unsupported_font_encoding /
- * too_short. User-password PDFs and quality-failed (wrong-stream)
- * extractions are not sent to OCR. Owner-password-only PDFs are opened
+ * too_short, wrong-script/mojibake text layers, header-only gazette
+ * layers, and low printable ratio. User-password PDFs are not sent to OCR.
  * by pdf.js with an empty password and extracted. Successful OCR always
  * sets requiresReview: true.
  */
@@ -26,6 +26,10 @@ import {
   type PdfUnreadableReason,
 } from "@/lib/pdf-text-extraction"
 import { sanitizeExtractedText } from "@/lib/text-sanitize"
+import {
+  assessExtractionLanguage,
+  LANGUAGE_HONESTY_MESSAGE,
+} from "@/lib/extraction-language"
 import {
   assessExtractionQuality,
   CLEAN_SCORE_THRESHOLD,
@@ -118,6 +122,11 @@ const envelopeFromSanitizedText = (
   extraWarnings: string[],
 ): ExtractionEnvelope | null => {
   const sanitized = sanitizeExtractedText(rawText)
+  const lang = assessExtractionLanguage(sanitized.text)
+  if (!lang.ok && lang.reason) {
+    extraWarnings = [...extraWarnings, LANGUAGE_HONESTY_MESSAGE[lang.reason]]
+    return null
+  }
   const quality = assessExtractionQuality(sanitized.text)
   const warnings = [...extraWarnings, ...quality.warnings]
   if (!quality.passed) return null
@@ -141,6 +150,24 @@ const envelopeFromSanitizedText = (
     pageCount: sanitizedPages.length,
     unreadableReason: null,
   }
+}
+
+const shouldOcrUnusableLayer = (rawText: string): boolean => {
+  const sanitized = sanitizeExtractedText(rawText)
+  const lang = assessExtractionLanguage(sanitized.text)
+  if (!lang.ok && lang.reason === "wrong_script") return true
+  if (!lang.ok) return false
+  const quality = assessExtractionQuality(sanitized.text)
+  return (
+    quality.hardFailReason === "too_short" ||
+    quality.hardFailReason === "repeated_running_header" ||
+    quality.hardFailReason === "printable_ratio"
+  )
+}
+
+const languageWarningsFor = (rawText: string): string[] => {
+  const lang = assessExtractionLanguage(sanitizeExtractedText(rawText).text)
+  return lang.ok || !lang.reason ? [] : [LANGUAGE_HONESTY_MESSAGE[lang.reason]]
 }
 
 const encryptedEnvelope = (warnings: string[]): ExtractionEnvelope => ({
@@ -179,6 +206,19 @@ const tryOcrFallback = async (
       signal: options?.signal,
     })
     if (ocr.status === "extracted" || ocr.status === "low_quality") {
+      const lang = assessExtractionLanguage(ocr.text)
+      if (!lang.ok && lang.reason) {
+        return {
+          ...ocr,
+          status: "requires_ocr",
+          text: "",
+          charCount: 0,
+          pages: [],
+          pageCount: 0,
+          warnings: [...priorWarnings, ...ocr.warnings, LANGUAGE_HONESTY_MESSAGE[lang.reason]],
+          requiresReview: true,
+        }
+      }
       return ocr
     }
     return {
@@ -232,6 +272,8 @@ const homemadeEnvelopeFromRaw = (
   extraWarnings: string[],
 ): ExtractionEnvelope | null => {
   const sanitized = sanitizeExtractedText(raw.text)
+  const lang = assessExtractionLanguage(sanitized.text)
+  if (!lang.ok) return null
   const quality = assessExtractionQuality(sanitized.text)
   const warnings = [...extraWarnings, ...quality.warnings]
   if (sanitized.removedCount > 0) {
@@ -308,24 +350,30 @@ export async function runPdfExtractionPipeline(
     }
     const envelope = envelopeFromSanitizedText(pdfjsResult.text, pdfjsResult.pages, "pdf_text_layer", extra)
     if (envelope) return envelope
+    if (shouldOcrUnusableLayer(pdfjsResult.text)) {
+      return tryOcrFallback(
+        file,
+        "no_text_found",
+        [...extra, ...languageWarningsFor(pdfjsResult.text)],
+        options,
+      )
+    }
     const quality = assessExtractionQuality(sanitizeExtractedText(pdfjsResult.text).text)
-    if (quality.hardFailReason !== "too_short") {
-      return {
-        status: "failed",
-        method: "pdf_text_layer",
-        text: "",
-        charCount: 0,
-        qualityScore: quality.score,
-        characterQuality: quality.characterQuality,
-        structuralQuality: quality.structuralQuality,
-        warnings: [...extra, ...quality.warnings],
-        ocrUsed: false,
-        requiresReview: true,
-        pages: [],
-        pageCount: 0,
-        unreadableReason: null,
-        hardFailReason: quality.hardFailReason,
-      }
+    return {
+      status: "failed",
+      method: "pdf_text_layer",
+      text: "",
+      charCount: 0,
+      qualityScore: quality.score,
+      characterQuality: quality.characterQuality,
+      structuralQuality: quality.structuralQuality,
+      warnings: [...extra, ...languageWarningsFor(pdfjsResult.text), ...quality.warnings],
+      ocrUsed: false,
+      requiresReview: true,
+      pages: [],
+      pageCount: 0,
+      unreadableReason: null,
+      hardFailReason: quality.hardFailReason,
     }
   }
 
@@ -334,24 +382,30 @@ export async function runPdfExtractionPipeline(
       "Used the lightweight parser because the PDF renderer did not return quality-gated text.",
     ])
     if (fallback) return fallback
+    if (shouldOcrUnusableLayer(homemade.text)) {
+      return tryOcrFallback(
+        file,
+        "no_text_found",
+        [...languageWarningsFor(homemade.text)],
+        options,
+      )
+    }
     const quality = assessExtractionQuality(sanitizeExtractedText(homemade.text).text)
-    if (quality.hardFailReason !== "too_short") {
-      return {
-        status: "failed",
-        method: "pdf_text_layer",
-        text: "",
-        charCount: 0,
-        qualityScore: quality.score,
-        characterQuality: quality.characterQuality,
-        structuralQuality: quality.structuralQuality,
-        warnings: [...quality.warnings],
-        ocrUsed: false,
-        requiresReview: true,
-        pages: [],
-        pageCount: 0,
-        unreadableReason: null,
-        hardFailReason: quality.hardFailReason,
-      }
+    return {
+      status: "failed",
+      method: "pdf_text_layer",
+      text: "",
+      charCount: 0,
+      qualityScore: quality.score,
+      characterQuality: quality.characterQuality,
+      structuralQuality: quality.structuralQuality,
+      warnings: [...quality.warnings],
+      ocrUsed: false,
+      requiresReview: true,
+      pages: [],
+      pageCount: 0,
+      unreadableReason: null,
+      hardFailReason: quality.hardFailReason,
     }
   }
 
