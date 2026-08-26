@@ -145,3 +145,26 @@ const PREVIEW_SRCDOC_STYLES = [
 export const wrapSanitizedPreviewSrcDoc = (sanitizedHtml: string): string => {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PREVIEW_SRCDOC_STYLES}</style></head><body>${sanitizedHtml}</body></html>`
 }
+
+/**
+ * Neutral paper-page backdrop for the docx page-based preview — a fixed
+ * light tone regardless of app theme (this is a facsimile of a printed
+ * page, not themed UI chrome) with a subtle card shadow behind whatever
+ * page/section elements docx-preview's own generated CSS produces.
+ */
+const DOCX_PAGE_SRCDOC_STYLES = [
+  "html{background:#e2e2e2}",
+  "body{margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;font:14px/1.5 system-ui,sans-serif;color:#111}",
+  ".docx-page-snapshot{display:flex;flex-direction:column;align-items:center;gap:24px}",
+  ".docx-page-snapshot section{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.12)}",
+].join("")
+
+/**
+ * Sandboxed iframe document for the docx page-based preview (docx-preview
+ * output, pre-sanitized by docx-page-preview.ts — this wrapper adds no
+ * further sanitization of its own, it only supplies presentational chrome
+ * around already-safe content).
+ */
+export const wrapDocxPagePreviewSrcDoc = (sanitizedFragment: string): string => {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${DOCX_PAGE_SRCDOC_STYLES}</style></head><body>${sanitizedFragment}</body></html>`
+}

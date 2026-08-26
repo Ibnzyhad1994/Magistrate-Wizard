@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, BookOpen, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   useCaseLawCountsByJurisdiction,
   useCaseLawCountsByCategory,
 } from "@/hooks/legal-library/use-legal-taxonomy";
+import { facetOptionLabel, isFacetSelectionValid, visibleFacetOptions } from "@/lib/case-law-facets";
 import { CreateCaseLawDialog } from "@/pages/case-law/create-case-law-dialog";
 import { ROUTES } from "@/routes/paths";
 
@@ -33,9 +34,29 @@ export default function CaseLawListPage() {
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const { data: categories } = useLegalCaseCategories();
-  const { data: courtCounts } = useCaseLawCountsByCourt();
-  const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction();
-  const { data: categoryCounts } = useCaseLawCountsByCategory();
+  // Dependent facets (0084): each count is computed with the search text
+  // plus the OTHER two filters applied, but never this facet's own
+  // selection -- so a facet's own valid alternatives are never wrongly
+  // excluded by itself, while its options still shrink to what the other
+  // active filters actually leave matching.
+  const { data: courtCounts } = useCaseLawCountsByCourt({ query, jurisdictionId, categoryId });
+  const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction({ query, courtId, categoryId });
+  const { data: categoryCounts } = useCaseLawCountsByCategory({ query, courtId, jurisdictionId });
+
+  // If a previously-active filter's own value no longer has any accessible
+  // matching records once the OTHER filters/search text changed, clear it
+  // immediately rather than leaving a hidden/stale selection in place
+  // (results would otherwise stay scoped by a filter the UI no longer
+  // shows as selectable).
+  useEffect(() => {
+    if (!isFacetSelectionValid(courtId, courtCounts)) setCourtId(null);
+  }, [courtId, courtCounts]);
+  useEffect(() => {
+    if (!isFacetSelectionValid(jurisdictionId, jurisdictionCounts)) setJurisdictionId(null);
+  }, [jurisdictionId, jurisdictionCounts]);
+  useEffect(() => {
+    if (!isFacetSelectionValid(categoryId, categoryCounts)) setCategoryId(null);
+  }, [categoryId, categoryCounts]);
 
   // Real full-text search over Case Law's own search_vector — used for the
   // My Research / Discoverable tabs (personal rows have no Court/
@@ -131,10 +152,9 @@ export default function CaseLawListPage() {
           aria-label="Filter by Jurisdiction"
         >
           <option value="">All Jurisdictions</option>
-          {(jurisdictions ?? []).map((j) => (
+          {visibleFacetOptions(jurisdictions, jurisdictionCounts).map((j) => (
             <option key={j.id} value={j.id}>
-              {j.name}
-              {jurisdictionCounts?.get(j.id) ? ` (${jurisdictionCounts.get(j.id)})` : ""}
+              {facetOptionLabel(j.name, jurisdictionCounts?.get(j.id))}
             </option>
           ))}
         </Select>
@@ -145,10 +165,9 @@ export default function CaseLawListPage() {
           aria-label="Filter by Court"
         >
           <option value="">All Courts</option>
-          {(courts ?? []).map((c) => (
+          {visibleFacetOptions(courts, courtCounts).map((c) => (
             <option key={c.id} value={c.id}>
-              {c.canonical_name}
-              {courtCounts?.get(c.id) ? ` (${courtCounts.get(c.id)})` : ""}
+              {facetOptionLabel(c.canonical_name, courtCounts?.get(c.id))}
             </option>
           ))}
         </Select>
@@ -159,10 +178,9 @@ export default function CaseLawListPage() {
           aria-label="Filter by Category"
         >
           <option value="">All Categories</option>
-          {(categories ?? []).map((c) => (
+          {visibleFacetOptions(categories, categoryCounts).map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
-              {categoryCounts?.get(c.id) ? ` (${categoryCounts.get(c.id)})` : ""}
+              {facetOptionLabel(c.name, categoryCounts?.get(c.id))}
             </option>
           ))}
         </Select>

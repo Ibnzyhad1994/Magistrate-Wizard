@@ -1320,6 +1320,7 @@ export type Database = {
           id: string
           mime_type: string
           purpose: string
+          source_document_id: string | null
           uploaded_by: string
         }
         Insert: {
@@ -1332,6 +1333,7 @@ export type Database = {
           id?: string
           mime_type: string
           purpose?: string
+          source_document_id?: string | null
           uploaded_by: string
         }
         Update: {
@@ -1344,9 +1346,17 @@ export type Database = {
           id?: string
           mime_type?: string
           purpose?: string
+          source_document_id?: string | null
           uploaded_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_uploaded_by_fkey"
             columns: ["uploaded_by"]
@@ -2458,21 +2468,36 @@ export type Database = {
       can_view_judgment: { Args: { p_judgment_id: string }; Returns: boolean }
       can_view_statute: { Args: { p_statute_id: string }; Returns: boolean }
       case_law_counts_by_category: {
-        Args: never
+        Args: {
+          p_court_id?: string
+          p_jurisdiction_id?: string
+          p_query?: string
+          p_tag_id?: string
+        }
         Returns: {
           category_id: string
           result_count: number
         }[]
       }
       case_law_counts_by_court: {
-        Args: never
+        Args: {
+          p_category_id?: string
+          p_jurisdiction_id?: string
+          p_query?: string
+          p_tag_id?: string
+        }
         Returns: {
           court_id: string
           result_count: number
         }[]
       }
       case_law_counts_by_jurisdiction: {
-        Args: never
+        Args: {
+          p_category_id?: string
+          p_court_id?: string
+          p_query?: string
+          p_tag_id?: string
+        }
         Returns: {
           jurisdiction_id: string
           result_count: number
@@ -3094,3 +3119,4 @@ export type Share = Tables<"shares">;
 export type DocketMatterCategory = Tables<"docket_matter_categories">;
 export type DocketCapacitySetting = Tables<"docket_capacity_settings">;
 export type DocketCapacityOverride = Tables<"docket_capacity_overrides">;
+

@@ -78,12 +78,29 @@ export function useLegalAuthorityCourts() {
   });
 }
 
-/** RLS-respecting published-result counts per court/jurisdiction, for Browse UI badges (0058 `case_law_counts_by_court`/`case_law_counts_by_jurisdiction`). */
-export function useCaseLawCountsByCourt() {
+/**
+ * RLS-respecting, CROSS-FILTERED result counts per court (0084) -- an
+ * absent court_id here means zero accessible matching Case Law records
+ * under the search text + other active facets, and the Browse page uses
+ * that absence to remove the option from the dropdown entirely (not just
+ * to withhold its count badge, which is all this used to be for). Never
+ * pass this facet's own courtId back into itself -- see the migration's
+ * header comment for why (a facet must not suppress its own alternatives).
+ */
+export function useCaseLawCountsByCourt(params: {
+  query: string;
+  jurisdictionId: string | null;
+  categoryId: string | null;
+}) {
+  const q = params.query.trim();
   return useQuery({
-    queryKey: ["legal-taxonomy", "case-law-counts-by-court"],
+    queryKey: ["legal-taxonomy", "case-law-counts-by-court", q, params.jurisdictionId, params.categoryId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("case_law_counts_by_court");
+      const { data, error } = await supabase.rpc("case_law_counts_by_court", {
+        p_query: q || undefined,
+        p_jurisdiction_id: params.jurisdictionId ?? undefined,
+        p_category_id: params.categoryId ?? undefined,
+      });
       if (error) throw error;
       return new Map((data ?? []).map((r) => [r.court_id, r.result_count]));
     },
@@ -136,11 +153,21 @@ export function useCreateLegalAuthorityCourt() {
   });
 }
 
-export function useCaseLawCountsByJurisdiction() {
+/** Same shape/semantics as useCaseLawCountsByCourt above, keyed on jurisdiction_id (0084). */
+export function useCaseLawCountsByJurisdiction(params: {
+  query: string;
+  courtId: string | null;
+  categoryId: string | null;
+}) {
+  const q = params.query.trim();
   return useQuery({
-    queryKey: ["legal-taxonomy", "case-law-counts-by-jurisdiction"],
+    queryKey: ["legal-taxonomy", "case-law-counts-by-jurisdiction", q, params.courtId, params.categoryId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("case_law_counts_by_jurisdiction");
+      const { data, error } = await supabase.rpc("case_law_counts_by_jurisdiction", {
+        p_query: q || undefined,
+        p_court_id: params.courtId ?? undefined,
+        p_category_id: params.categoryId ?? undefined,
+      });
       if (error) throw error;
       return new Map((data ?? []).map((r) => [r.jurisdiction_id, r.result_count]));
     },
@@ -186,12 +213,21 @@ export function useCreateLegalCaseCategory() {
   });
 }
 
-/** RLS-respecting published-result counts per category, for Browse UI badges (0073 `case_law_counts_by_category`). */
-export function useCaseLawCountsByCategory() {
+/** Same shape/semantics as useCaseLawCountsByCourt above, keyed on category_id -- spans every RLS-visible row (canonical + own + discoverable), not just canonical (0084). */
+export function useCaseLawCountsByCategory(params: {
+  query: string;
+  courtId: string | null;
+  jurisdictionId: string | null;
+}) {
+  const q = params.query.trim();
   return useQuery({
-    queryKey: ["legal-taxonomy", "case-law-counts-by-category"],
+    queryKey: ["legal-taxonomy", "case-law-counts-by-category", q, params.courtId, params.jurisdictionId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("case_law_counts_by_category");
+      const { data, error } = await supabase.rpc("case_law_counts_by_category", {
+        p_query: q || undefined,
+        p_court_id: params.courtId ?? undefined,
+        p_jurisdiction_id: params.jurisdictionId ?? undefined,
+      });
       if (error) throw error;
       return new Map((data ?? []).map((r) => [r.category_id, r.result_count]));
     },

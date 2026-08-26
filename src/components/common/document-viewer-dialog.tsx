@@ -10,13 +10,17 @@ import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/common/loading-spinner"
 import { InlineError } from "@/components/common/inline-error"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { downloadDocumentBlob, getDocumentViewUrl } from "@/hooks/use-documents"
+import {
+  downloadDocumentBlob,
+  findDocxPreviewDerivative,
+  generateAndCacheDocxPreview,
+  getDocumentViewUrl,
+} from "@/hooks/use-documents"
 import {
   getDocumentPreviewKind,
   isLegacyWordDocument,
 } from "@/lib/document-preview"
-import { convertDocxToHtml } from "@/lib/docx-text-extraction"
-import { sanitizePreviewHtml, wrapSanitizedPreviewSrcDoc } from "@/lib/html-sanitize"
+import { sanitizePreviewHtml, wrapDocxPagePreviewSrcDoc, wrapSanitizedPreviewSrcDoc } from "@/lib/html-sanitize"
 import { markdownToSafeHtml } from "@/lib/markdown-preview"
 import type { Document } from "@/types/database.types"
 
@@ -30,6 +34,7 @@ interface DocumentViewerDialogProps {
 type PreviewContent =
   | { mode: "url" }
   | { mode: "html"; html: string }
+  | { mode: "docx-pages"; html: string }
   | { mode: "text"; text: string }
 
 export const DocumentViewerDialog = ({
@@ -41,25 +46,50 @@ export const DocumentViewerDialog = ({
   const [url, setUrl] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewContent | null>(null)
   const [loading, setLoading] = useState(false)
+  // Distinct from `loading` -- true only while an actual DOCX->page-preview
+  // conversion is running (no cached derivative existed yet), so the UI can
+  // say "Preparing document preview…" instead of a bare spinner. A cached
+  // derivative is just a normal fetch and uses the ordinary loading state.
+  const [preparing, setPreparing] = useState(false)
   const [loadError, setLoadError] = useState<unknown>(null)
 
   const kind = doc ? getDocumentPreviewKind(doc.mime_type, doc.file_name) : "unsupported"
   const isLegacyWord = doc ? isLegacyWordDocument(doc.mime_type, doc.file_name) : false
 
-  const loadPreview = async (filePath: string, fileKind: typeof kind) => {
+  const loadPreview = async (source: Document, fileKind: typeof kind) => {
     if (fileKind === "pdf" || fileKind === "image") {
       // A short-lived (60s) signed URL, not a blob: object URL — see
       // getDocumentViewUrl's own comment for why. Nothing to revoke; it
       // just expires on its own.
-      const previewUrl = await getDocumentViewUrl(filePath)
+      const previewUrl = await getDocumentViewUrl(source.file_path)
       return { previewUrl, content: { mode: "url" as const } }
     }
-    const blob = await downloadDocumentBlob(filePath)
-    const buffer = await blob.arrayBuffer()
     if (fileKind === "docx") {
-      const rawHtml = await convertDocxToHtml(buffer)
-      return { previewUrl: null, content: { mode: "html" as const, html: sanitizePreviewHtml(rawHtml) } }
+      // Faithful, page-based preview (docx-preview), not mammoth's
+      // semantic-HTML text extraction — see docx-page-preview.ts. Reuse a
+      // cached derivative if one already exists; only pay the (client-
+      // side, in-browser) conversion cost the first time anyone opens
+      // this specific document.
+      const derivative = await findDocxPreviewDerivative(source.id)
+      if (derivative) {
+        const blob = await downloadDocumentBlob(derivative.file_path)
+        return { previewUrl: null, content: { mode: "docx-pages" as const, html: await blob.text() } }
+      }
+      setPreparing(true)
+      try {
+        const html = await generateAndCacheDocxPreview(source)
+        return { previewUrl: null, content: { mode: "docx-pages" as const, html } }
+      } catch (err) {
+        console.error("DOCX preview generation failed:", err)
+        throw new Error(
+          "Could not generate a faithful preview of this document. The original file is unaffected — download it to view it in Word.",
+        )
+      } finally {
+        setPreparing(false)
+      }
     }
+    const blob = await downloadDocumentBlob(source.file_path)
+    const buffer = await blob.arrayBuffer()
     const text = new TextDecoder("utf-8").decode(buffer)
     if (fileKind === "markdown") {
       return {
@@ -80,7 +110,7 @@ export const DocumentViewerDialog = ({
     let cancelled = false
     setLoading(true)
     setLoadError(null)
-    loadPreview(doc.file_path, kind)
+    loadPreview(doc, kind)
       .then((result) => {
         if (cancelled) return
         setUrl(result.previewUrl)
@@ -103,7 +133,7 @@ export const DocumentViewerDialog = ({
     if (!doc || kind === "unsupported") return
     setLoading(true)
     setLoadError(null)
-    loadPreview(doc.file_path, kind)
+    loadPreview(doc, kind)
       .then((result) => {
         setUrl(result.previewUrl)
         setPreview(result.content)
@@ -140,6 +170,11 @@ export const DocumentViewerDialog = ({
                 Download original
               </Button>
             </div>
+          ) : loading && preparing ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3">
+              <LoadingSpinner size={24} />
+              <p className="text-sm text-muted-foreground">Preparing document preview…</p>
+            </div>
           ) : loading ? (
             <div className="flex h-full items-center justify-center">
               <LoadingSpinner size={24} />
@@ -154,6 +189,13 @@ export const DocumentViewerDialog = ({
             <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
               <img src={url} alt={doc.file_name} className="max-h-full max-w-full object-contain" />
             </div>
+          ) : preview?.mode === "docx-pages" ? (
+            <iframe
+              title={`Preview of ${doc.file_name}`}
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              srcDoc={wrapDocxPagePreviewSrcDoc(preview.html)}
+              className="h-full w-full border-0 bg-transparent"
+            />
           ) : preview?.mode === "html" ? (
             <iframe
               title={`Preview of ${doc.file_name}`}

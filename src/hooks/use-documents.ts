@@ -28,6 +28,13 @@ export function useDocuments(entityType: string, entityId: string | undefined) {
       const { data, error } = await supabase
         .from("documents")
         .select("*")
+        // preview_derivative rows (0083) are a generated caching artifact
+        // of another document, never a real attachment -- excluded here,
+        // at the one shared query every consumer of this hook goes
+        // through, rather than trusting each consumer to filter it out
+        // (unlike cover/identification_photo, which ARE real, purpose-
+        // specific attachments some views deliberately query for).
+        .neq("purpose", "preview_derivative")
         .eq("entity_type", entityType)
         .eq("entity_id", entityId as string)
         .order("created_at", { ascending: false });
@@ -181,10 +188,118 @@ export async function getDocumentViewUrl(filePath: string): Promise<string> {
   return data.signedUrl;
 }
 
+/**
+ * Looks up an already-generated, cached preview derivative for a source
+ * document (0083's `source_document_id`/`purpose='preview_derivative'`).
+ * RLS on `documents` covers this with no extra check needed here -- a
+ * derivative always carries the exact same entity_type/entity_id as its
+ * source, so "can the caller see this derivative row" is identical to
+ * "can the caller see the source document's parent," the same visibility
+ * boundary as everything else this file returns.
+ */
+export async function findDocxPreviewDerivative(
+  sourceDocumentId: string,
+): Promise<{ id: string; file_path: string } | null> {
+  const { data, error } = await supabase
+    .from("documents")
+    .select("id, file_path")
+    .eq("source_document_id", sourceDocumentId)
+    .eq("purpose", "preview_derivative")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Generates and caches a faithful, page-based DOCX preview for `doc`
+ * (docx-page-preview.ts), uploading the sanitized HTML snapshot as a new
+ * `documents` row pointing back at `doc.id` (purpose='preview_derivative').
+ * Stored under the CALLING user's own Storage folder regardless of who
+ * owns/uploaded the source -- required by storage.objects' own-folder
+ * INSERT policy, harmless because read access is governed entirely by the
+ * `documents` metadata row (0083's insert policy), not by folder
+ * ownership, exactly like every other document in this bucket.
+ *
+ * A race between two viewers generating the same derivative concurrently
+ * is resolved by the partial unique index on source_document_id (0083):
+ * the losing insert fails with 23505, at which point this cleans up its
+ * own now-orphaned blob and returns the winner's row instead of erroring.
+ */
+export async function generateAndCacheDocxPreview(doc: {
+  id: string;
+  file_path: string;
+  entity_type: string | null;
+  entity_id: string | null;
+}): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+
+  const { renderDocxToPageSnapshot } = await import("@/lib/docx-page-preview");
+  const sourceBlob = await downloadDocumentBlob(doc.file_path);
+  const snapshot = await renderDocxToPageSnapshot(await sourceBlob.arrayBuffer());
+
+  const derivativePath = `${user.id}/preview-derivatives/${doc.id}.html`;
+  const { error: uploadError } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(derivativePath, new Blob([snapshot], { type: "text/html" }), {
+      upsert: false,
+      contentType: "text/html",
+    });
+  if (uploadError) throw uploadError;
+
+  const { error: insertError } = await supabase.from("documents").insert({
+    uploaded_by: user.id,
+    file_name: `${doc.file_path.split("/").pop() ?? "preview"}.preview.html`,
+    file_path: derivativePath,
+    file_size: snapshot.length,
+    mime_type: "text/html",
+    entity_type: doc.entity_type,
+    entity_id: doc.entity_id,
+    purpose: "preview_derivative",
+    source_document_id: doc.id,
+  });
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      // Another viewer's generation won the race -- their row is now the
+      // canonical derivative. Clean up this blob and use theirs.
+      await supabase.storage.from(DOCUMENTS_BUCKET).remove([derivativePath]);
+      const existing = await findDocxPreviewDerivative(doc.id);
+      if (existing) {
+        const winningBlob = await downloadDocumentBlob(existing.file_path);
+        return winningBlob.text();
+      }
+    }
+    await supabase.storage.from(DOCUMENTS_BUCKET).remove([derivativePath]);
+    throw insertError;
+  }
+
+  return snapshot;
+}
+
 export function useDeleteDocument(entityType: string, entityId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (doc: { id: string; file_path: string }) => {
+      // Best-effort: remove any cached preview derivative's Storage blob
+      // before the source row goes away. The `documents` METADATA row for
+      // the derivative cascades automatically (source_document_id ...
+      // on delete cascade, 0083) once the source document row below is
+      // deleted -- this step only prevents that derivative's Storage blob
+      // from being orphaned, matching this project's existing "remove the
+      // blob client-side before/alongside the metadata row" pattern.
+      // Never blocks the actual deletion if it fails.
+      try {
+        const derivative = await findDocxPreviewDerivative(doc.id);
+        if (derivative) {
+          await supabase.storage.from(DOCUMENTS_BUCKET).remove([derivative.file_path]);
+        }
+      } catch (err) {
+        console.error("Could not clean up cached preview derivative:", err);
+      }
+
       const { error: storageError } = await supabase.storage
         .from(DOCUMENTS_BUCKET)
         .remove([doc.file_path]);

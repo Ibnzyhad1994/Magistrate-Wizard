@@ -10,7 +10,7 @@ import { classifyIngestSource, inferStoredMimeType, assertFileContentMatchesKind
 import { getDocumentPreviewKind, isLegacyWordDocument } from "@/lib/document-preview"
 import { markdownToSafeHtml } from "@/lib/markdown-preview"
 import { sanitizePreviewHtml } from "@/lib/html-sanitize"
-import { extractDocxText, convertDocxToHtml } from "@/lib/docx-text-extraction"
+import { extractDocxText } from "@/lib/docx-text-extraction"
 import { validateFileForUpload } from "@/lib/bulk-ingestion-queue"
 
 const PROSE = [
@@ -162,9 +162,14 @@ const main = async () => {
     check("docx status is extracted", envelope.status, "extracted")
     check("docx method", envelope.method, "docx")
     checkTrue("docx envelope has the prose", envelope.text.includes("manslaughter"))
-    const html = sanitizePreviewHtml(await convertDocxToHtml(buffer))
-    checkTrue("docx html preview contains the prose", html.includes("Dhannie"))
-    checkTrue("docx html preview has no script tags", !/<script/i.test(html))
+    // The in-app DOCX preview no longer goes through mammoth's
+    // convertToHtml (removed) -- it's a faithful, page-based render via
+    // docx-preview (docx-page-preview.ts, browser-only: needs a real DOM,
+    // not exercised from this Node script) sanitized by
+    // sanitizeDocxPageBody/sanitizeDocxPageStyle, covered by
+    // test-docx-page-preview-sanitize.mjs. extractDocxText above (still
+    // mammoth, unchanged) remains the full-text extraction used for
+    // search indexing on ingestion, which is what this test covers.
   }
 
   // --- .doc is honest pending, never fabricated ---
