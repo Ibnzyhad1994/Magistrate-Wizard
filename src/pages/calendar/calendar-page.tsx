@@ -201,7 +201,8 @@ export default function CalendarPage() {
                             isInactiveEventStatus(event.event_status) && "text-white/40 line-through",
                             event.pending && "text-amber-200/90",
                           )}
-                          aria-label={`${event.case_number} ${event.matter_title}${event.pending ? " (on this device)" : ""}`}
+                          title={event.court_name ?? undefined}
+                          aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` — ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
                         >
                           {event.scheduled_time
                             ? `${formatTimeOnly(event.scheduled_time)} · `
@@ -238,6 +239,11 @@ export default function CalendarPage() {
                   <p className="text-sm font-semibold text-white">
                     {event.case_number} — {event.matter_title}
                   </p>
+                  {event.court_name && (
+                    <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+                      {event.court_name}
+                    </span>
+                  )}
                   <p className="text-xs text-white/60">
                     {toTitleCase(event.event_type || "Hearing")}
                     {event.location ? ` · ${event.location}` : ""}

@@ -7,7 +7,8 @@ export const quickCodesKeys = {
 };
 
 /** Owner-only per RLS — this always returns exactly the caller's own Quick Codes, never another user's. */
-export function useQuickCodes() {
+/** `enabled` defaults to true -- pass `{ enabled: false }` to skip fetching (e.g. dashboard-page.tsx never queries Quick Codes for a clerk). */
+export function useQuickCodes(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: quickCodesKeys.all,
     queryFn: async () => {
@@ -18,6 +19,7 @@ export function useQuickCodes() {
       if (error) throw error;
       return data;
     },
+    enabled: options?.enabled,
   });
 }
 

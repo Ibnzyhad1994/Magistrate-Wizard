@@ -12,12 +12,13 @@ import { isQueueableError, MATTER_UNAVAILABLE_OFFLINE } from "@/lib/offline/is-q
 import { currentProfileId } from "@/lib/offline/runtime";
 import { getProfileCache } from "@/lib/offline/store";
 import { seedMatterDetail } from "@/lib/offline/seed";
+import { ConcurrentEditError } from "@/lib/concurrency";
 
 export const docketMattersKeys = {
   all: ["docket-matters"] as const,
   list: (search: string) => ["docket-matters", "list", search] as const,
-  board: (search: string, filters: ProcedureFilters, exactDate: string | null) =>
-    ["docket-matters", "board", search, filters, exactDate] as const,
+  board: (search: string, filters: ProcedureFilters, exactDate: string | null, courtId: string | null) =>
+    ["docket-matters", "board", search, filters, exactDate, courtId] as const,
   detail: (id: string) => ["docket-matters", "detail", id] as const,
 };
 
@@ -116,17 +117,36 @@ export function useCreateDocketMatter() {
   });
 }
 
+/**
+ * `expectedUpdatedAt`, when supplied, adds `.eq("updated_at", ...)`
+ * alongside `.eq("id", id)` — the existing `updated_at` column doubles as
+ * an optimistic-concurrency version marker, no schema change needed. If
+ * another authorized user (magistrate or clerk) changed this matter since
+ * the caller last read it, zero rows match and this throws
+ * ConcurrentEditError instead of silently overwriting their change.
+ * Callers that don't pass it (existing quick actions with no stale-data
+ * risk worth gating) keep today's unconditional-update behavior exactly.
+ */
 export function useUpdateDocketMatter(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (values: TablesUpdate<"docket_matters">) => {
-      const { data, error } = await supabase
-        .from("docket_matters")
-        .update(values)
-        .eq("id", id)
-        .select()
-        .single();
+    mutationFn: async ({
+      values,
+      expectedUpdatedAt,
+    }: {
+      values: TablesUpdate<"docket_matters">;
+      expectedUpdatedAt?: string | null;
+    }) => {
+      let query = supabase.from("docket_matters").update(values).eq("id", id);
+      if (expectedUpdatedAt) {
+        query = query.eq("updated_at", expectedUpdatedAt);
+      }
+      const { data, error } = await query.select().maybeSingle();
       if (error) throw error;
+      if (!data) {
+        if (expectedUpdatedAt) throw new ConcurrentEditError();
+        throw new Error("This matter could not be found, or you no longer have access to it.");
+      }
       return data;
     },
     onSuccess: () => {
@@ -135,6 +155,13 @@ export function useUpdateDocketMatter(id: string) {
         queryKey: docketMattersKeys.detail(id),
       });
       void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
+    },
+    onError: (error) => {
+      if (error instanceof ConcurrentEditError) {
+        // Surfaced by the caller's own conflict UI, not the generic toast
+        // subscriber -- refetch so the review shows the true latest state.
+        void queryClient.invalidateQueries({ queryKey: docketMattersKeys.detail(id) });
+      }
     },
   });
 }
@@ -149,21 +176,30 @@ export type DocketMatterBoardRow =
  * this is the SAME next_appearance value the capacity calendar counts
  * against, so the list and the calendar can never disagree about which
  * matters belong to a given date. `null` means unfiltered ("All Matters").
+ * `courtId` (0097) is the two-level Docket scope -- `null` means "All My
+ * Courts" (every court the caller is currently authorized to access, via
+ * RLS -- never every court in the database); a specific id restricts to
+ * that exact court. Included in the query key so switching scope is a
+ * genuinely separate cache entry, never a stale cross-court flash.
  */
 export function useDocketMatterBoard(
   search: string,
   filters: ProcedureFilters,
   exactDate: string | null,
+  courtId: string | null,
+  options?: { enabled?: boolean },
 ) {
   const trimmed = search.trim();
   return useQuery({
-    queryKey: docketMattersKeys.board(trimmed, filters, exactDate),
+    queryKey: docketMattersKeys.board(trimmed, filters, exactDate, courtId),
+    enabled: options?.enabled,
     queryFn: async () => {
       const args = filtersToRpcArgs(filters);
       const { data, error } = await supabase.rpc("list_docket_matters", {
         p_query: trimmed,
         p_limit: 100,
         p_exact_date: exactDate ?? undefined,
+        p_court_id: courtId ?? undefined,
         ...args,
       });
       if (error) throw error;
@@ -172,24 +208,35 @@ export function useDocketMatterBoard(
   });
 }
 
-/** Quiet PATCH for procedure cells — caller owns the toast. */
+/**
+ * Quiet PATCH for procedure cells — caller owns the toast. Same
+ * `expectedUpdatedAt` optimistic-concurrency check as
+ * useUpdateDocketMatter (see its comment) — a clerk and magistrate
+ * tapping the same stage cell in quick succession must not silently
+ * overwrite one another.
+ */
 export function usePatchDocketProcedure() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       id,
       values,
+      expectedUpdatedAt,
     }: {
       id: string;
       values: TablesUpdate<"docket_matters">;
+      expectedUpdatedAt?: string | null;
     }) => {
-      const { data, error } = await supabase
-        .from("docket_matters")
-        .update(values)
-        .eq("id", id)
-        .select()
-        .single();
+      let query = supabase.from("docket_matters").update(values).eq("id", id);
+      if (expectedUpdatedAt) {
+        query = query.eq("updated_at", expectedUpdatedAt);
+      }
+      const { data, error } = await query.select().maybeSingle();
       if (error) throw error;
+      if (!data) {
+        if (expectedUpdatedAt) throw new ConcurrentEditError();
+        throw new Error("This matter could not be found, or you no longer have access to it.");
+      }
       return data;
     },
     onMutate: async ({ id, values }) => {

@@ -545,6 +545,153 @@ export type Database = {
           },
         ]
       }
+      clerk_access_requests: {
+        Row: {
+          cancelled_at: string | null
+          court_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          note: string | null
+          notified_clerk_at: string | null
+          notified_magistrate_at: string | null
+          profile_id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string | null
+          status: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          court_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          note?: string | null
+          notified_clerk_at?: string | null
+          notified_magistrate_at?: string | null
+          profile_id: string
+          rejection_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_id?: string | null
+          status?: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          court_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          note?: string | null
+          notified_clerk_at?: string | null
+          notified_magistrate_at?: string | null
+          profile_id?: string
+          rejection_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_id?: string | null
+          status?: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clerk_access_requests_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clerk_access_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clerk_access_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clerk_courts: {
+        Row: {
+          approved_by: string
+          court_id: string
+          created_at: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          profile_id: string
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by: string
+          court_id: string
+          created_at?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          profile_id: string
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string
+          court_id?: string
+          created_at?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          profile_id?: string
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clerk_courts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clerk_courts_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clerk_courts_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clerk_courts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_id: string
@@ -1851,6 +1998,7 @@ export type Database = {
       magistrate_courts: {
         Row: {
           assignment_type: string
+          can_manage_clerks: boolean
           court_id: string
           created_at: string
           ended_at: string | null
@@ -1861,6 +2009,7 @@ export type Database = {
         }
         Insert: {
           assignment_type?: string
+          can_manage_clerks?: boolean
           court_id: string
           created_at?: string
           ended_at?: string | null
@@ -1871,6 +2020,7 @@ export type Database = {
         }
         Update: {
           assignment_type?: string
+          can_manage_clerks?: boolean
           court_id?: string
           created_at?: string
           ended_at?: string | null
@@ -2454,12 +2604,24 @@ export type Database = {
         Returns: undefined
       }
       can_access_court: { Args: { p_court_id: string }; Returns: boolean }
+      can_attach_preview_derivative: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_source_document_id: string
+        }
+        Returns: boolean
+      }
       can_edit_case_law: { Args: { p_case_law_id: string }; Returns: boolean }
       can_edit_docket_matter: {
         Args: { p_docket_matter_id: string }
         Returns: boolean
       }
       can_edit_judgment: { Args: { p_judgment_id: string }; Returns: boolean }
+      can_manage_clerk_access: {
+        Args: { p_court_id: string }
+        Returns: boolean
+      }
       can_view_case_law: { Args: { p_case_law_id: string }; Returns: boolean }
       can_view_docket_matter: {
         Args: { p_docket_matter_id: string }
@@ -2467,6 +2629,33 @@ export type Database = {
       }
       can_view_judgment: { Args: { p_judgment_id: string }; Returns: boolean }
       can_view_statute: { Args: { p_statute_id: string }; Returns: boolean }
+      cancel_clerk_access_request: {
+        Args: { p_request_id: string }
+        Returns: {
+          cancelled_at: string | null
+          court_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          note: string | null
+          notified_clerk_at: string | null
+          notified_magistrate_at: string | null
+          profile_id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string | null
+          status: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clerk_access_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       case_law_counts_by_category: {
         Args: {
           p_court_id?: string
@@ -2502,6 +2691,22 @@ export type Database = {
           jurisdiction_id: string
           result_count: number
         }[]
+      }
+      clerk_access_request_email_confirmed: {
+        Args: { p_request_id: string }
+        Returns: boolean
+      }
+      clerk_profiles_for_review: {
+        Args: { p_profile_ids: string[] }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
+      court_has_no_clerk_approver: {
+        Args: { p_court_id: string }
+        Returns: boolean
       }
       create_case_law_import: {
         Args: {
@@ -2561,6 +2766,37 @@ export type Database = {
           statute_id: string
         }[]
       }
+      decide_clerk_access_request: {
+        Args: {
+          p_decision: Database["public"]["Enums"]["clerk_access_decision"]
+          p_rejection_reason?: string
+          p_request_id: string
+        }
+        Returns: {
+          cancelled_at: string | null
+          court_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          note: string | null
+          notified_clerk_at: string | null
+          notified_magistrate_at: string | null
+          profile_id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string | null
+          status: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clerk_access_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       find_next_available_docket_date: {
         Args: {
           p_category_id: string
@@ -2570,7 +2806,7 @@ export type Database = {
         Returns: string
       }
       get_daily_docket_report_data: {
-        Args: { p_date: string }
+        Args: { p_court_id?: string; p_date: string }
         Returns: {
           appearance_stage: string
           appearance_status: string
@@ -2617,6 +2853,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      has_active_clerk_assignment: {
+        Args: { p_court_id: string }
+        Returns: boolean
+      }
       has_docket_matter_authority: {
         Args: { p_docket_matter_id: string }
         Returns: boolean
@@ -2630,8 +2870,53 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_clerk: { Args: never; Returns: boolean }
+      is_magistrate: { Args: never; Returns: boolean }
+      list_active_courts_for_signup: {
+        Args: never
+        Returns: {
+          district_id: string
+          id: string
+          name: string
+        }[]
+      }
+      list_active_magisterial_districts_for_signup: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
+      list_clerk_access_requests_needing_admin_attention: {
+        Args: never
+        Returns: {
+          cancelled_at: string | null
+          court_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          note: string | null
+          notified_clerk_at: string | null
+          notified_magistrate_at: string | null
+          profile_id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string | null
+          status: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "clerk_access_requests"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_docket_matters: {
         Args: {
+          p_court_id?: string
           p_custody?: string[]
           p_disclosure?: string[]
           p_exact_date?: string
@@ -2715,6 +3000,27 @@ export type Database = {
           display_name: string
           profile_id: string
         }[]
+      }
+      revoke_clerk_court_access: {
+        Args: { p_assignment_id: string; p_reason?: string }
+        Returns: {
+          approved_by: string
+          court_id: string
+          created_at: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          profile_id: string
+          started_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clerk_courts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       schedule_docket_event_with_capacity: {
         Args: {
@@ -2880,6 +3186,33 @@ export type Database = {
         Args: { p_status: string; p_statute_id: string }
         Returns: undefined
       }
+      submit_clerk_access_request: {
+        Args: { p_court_id: string; p_note?: string; p_staff_id?: string }
+        Returns: {
+          cancelled_at: string | null
+          court_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          note: string | null
+          notified_clerk_at: string | null
+          notified_magistrate_at: string | null
+          profile_id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string | null
+          status: Database["public"]["Enums"]["clerk_access_request_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clerk_access_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       user_can_access_bench_note: {
         Args: { p_note_id: string }
         Returns: boolean
@@ -2898,6 +3231,13 @@ export type Database = {
         | "quick_code"
         | "statute_provision"
       case_status: "open" | "pending" | "closed" | "archived"
+      clerk_access_decision: "approved" | "rejected"
+      clerk_access_request_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "cancelled"
+        | "expired"
       docket_matter_status: "active" | "stayed" | "completed" | "archived"
       note_status: "draft" | "published"
       party_role:
@@ -3056,6 +3396,14 @@ export const Constants = {
         "statute_provision",
       ],
       case_status: ["open", "pending", "closed", "archived"],
+      clerk_access_decision: ["approved", "rejected"],
+      clerk_access_request_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "cancelled",
+        "expired",
+      ],
       docket_matter_status: ["active", "stayed", "completed", "archived"],
       note_status: ["draft", "published"],
       party_role: [
@@ -3119,4 +3467,7 @@ export type Share = Tables<"shares">;
 export type DocketMatterCategory = Tables<"docket_matter_categories">;
 export type DocketCapacitySetting = Tables<"docket_capacity_settings">;
 export type DocketCapacityOverride = Tables<"docket_capacity_overrides">;
+
+export type ClerkCourt = Tables<"clerk_courts">;
+export type ClerkAccessRequest = Tables<"clerk_access_requests">;
 

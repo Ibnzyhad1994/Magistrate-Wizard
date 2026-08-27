@@ -30,7 +30,10 @@ export function DocketStageStrip({
 }: {
   matter: DocketMatter;
   canEdit: boolean;
-  onPatch: (values: Partial<Record<ProcedureColumnKey, string>>) => Promise<unknown>;
+  onPatch: (
+    values: Partial<Record<ProcedureColumnKey, string>>,
+    expectedUpdatedAt: string | null,
+  ) => Promise<unknown>;
   onLogAppearance: (hint: OverviewLogAppearance) => void;
 }) {
   const stage = matterCurrentStage(matter);
@@ -40,7 +43,7 @@ export function DocketStageStrip({
 
   async function handleChange(column: ProcedureColumnKey, next: string) {
     try {
-      await onPatch({ [column]: next });
+      await onPatch({ [column]: next }, matter.updated_at);
       const hint = appearanceHintForColumn(column, next);
       toast.success("Logged on the board.", {
         action: {

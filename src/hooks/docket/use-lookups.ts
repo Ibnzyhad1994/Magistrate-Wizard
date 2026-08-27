@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
  * Reference-data lookups shared across the Docket workspace (Court /
@@ -7,13 +8,46 @@ import { supabase } from "@/lib/supabase";
  * tables, so a longer staleTime is fine.
  */
 
+/**
+ * Anon-safe: for the PUBLIC registration page, rendered before the
+ * visitor has any session at all. Calls the two narrow SECURITY DEFINER
+ * RPCs (0095) instead of the real `magisterial_districts`/`courts`
+ * tables, whose own SELECT RLS is deliberately authenticated-only and is
+ * NOT weakened for this — see 0095's migration header. Never use these
+ * for an already-authenticated context; use useMagisterialDistricts()/
+ * useCourts() there instead.
+ */
+export function useSignupMagisterialDistricts() {
+  return useQuery({
+    queryKey: ["signup", "magisterial-districts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_active_magisterial_districts_for_signup");
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSignupCourts() {
+  return useQuery({
+    queryKey: ["signup", "courts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_active_courts_for_signup");
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useCourts() {
   return useQuery({
     queryKey: ["courts"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("courts")
-        .select("id, name, jurisdiction, is_active")
+        .select("id, name, jurisdiction, is_active, district_id")
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
@@ -48,34 +82,36 @@ export interface MyCurrentCourt {
 }
 
 /**
- * The signed-in magistrate's CURRENT Court assignments
- * (`magistrate_courts` rows with `ended_at is null`), joined to the
- * corresponding `courts` row and its Magisterial District. This — NOT
- * `useCourts()` above — is the only lawful source for the Docket "New
- * matter" Court selector: ended assignments, Courts the caller isn't
+ * The signed-in user's CURRENT Court assignments -- `magistrate_courts`
+ * for a magistrate, `clerk_courts` for an approved clerk (0087) -- joined
+ * to the corresponding `courts` row and its Magisterial District. This —
+ * NOT `useCourts()` above — is the only lawful source for the Docket
+ * "New matter" Court selector: ended assignments, Courts the caller isn't
  * assigned to, and inactive Courts must never appear as choices there.
  * (`useCourts()` remains correct for its one legitimate use, the Admin
  * Court Assignment screen, which needs the full active-Court reference
- * list.) `magistrate_courts` SELECT RLS (self-or-admin, unchanged by
- * `0052_harden_magistrate_court_assignment_authority.sql`) is what
- * actually scopes this to the caller's own rows; this hook adds only
- * the join/shape convenience on top, and additionally drops any row
- * whose Court has since gone inactive.
+ * list.) The underlying table's own SELECT RLS (self-or-admin for
+ * magistrate_courts, self-or-manager-or-admin for clerk_courts) is what
+ * actually scopes this to the caller's own rows; this hook adds only the
+ * role dispatch, join, and shape convenience on top, and additionally
+ * drops any row whose Court has since gone inactive. A clerk with zero
+ * approved courts correctly gets an empty array here, not an error --
+ * the pending-approval experience is handled by the dashboard/clerk
+ * access pages, not by this hook.
  */
 export function useMyCurrentCourts() {
+  const { profile } = useAuth();
+  const table = profile?.role === "clerk" ? "clerk_courts" : "magistrate_courts";
   return useQuery({
-    queryKey: ["docket", "my-current-courts"],
+    queryKey: ["docket", "my-current-courts", profile?.id, table],
     queryFn: async (): Promise<MyCurrentCourt[]> => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!profile) return [];
       const { data, error } = await supabase
-        .from("magistrate_courts")
+        .from(table)
         .select(
           "court_id, courts(id, name, jurisdiction, is_active, district_id, magisterial_districts(id, name))",
         )
-        .eq("profile_id", user.id)
+        .eq("profile_id", profile.id)
         .is("ended_at", null)
         .order("started_at", { ascending: false });
       if (error) throw error;
@@ -89,6 +125,7 @@ export function useMyCurrentCourts() {
           district_name: row.courts?.magisterial_districts?.name ?? null,
         }));
     },
+    enabled: !!profile,
     staleTime: 30_000,
   });
 }

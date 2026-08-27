@@ -16,6 +16,16 @@ interface SignUpParams {
   email: string;
   password: string;
   fullName: string;
+  /**
+   * The only signal that can ever change the provisioned role away from
+   * the safe "magistrate" default -- and only to "clerk" (handle_new_user(),
+   * 0086, hardcodes this as the sole recognized literal; anything else,
+   * including an attempt to request "admin", is ignored server-side).
+   */
+  requestedRole?: "clerk";
+  requestedCourtIds?: string[];
+  staffId?: string;
+  note?: string;
 }
 
 /**
@@ -49,11 +59,29 @@ export function useAuth() {
   });
 
   const signUpMutation = useMutation({
-    mutationFn: async ({ email, password, fullName }: SignUpParams) => {
+    mutationFn: async ({
+      email,
+      password,
+      fullName,
+      requestedRole,
+      requestedCourtIds,
+      staffId,
+      note,
+    }: SignUpParams) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName } },
+        options: {
+          data: {
+            full_name: fullName,
+            ...(requestedRole ? { requested_role: requestedRole } : {}),
+            ...(requestedCourtIds && requestedCourtIds.length > 0
+              ? { requested_court_ids: requestedCourtIds }
+              : {}),
+            ...(staffId ? { staff_id: staffId } : {}),
+            ...(note ? { note } : {}),
+          },
+        },
       });
       if (error) throw error;
       return data;

@@ -10,7 +10,8 @@ export const benchNotesKeys = {
 };
 
 /** Author-only per RLS — always exactly the caller's own notes, regardless of `is_private`. */
-export function useBenchNotes() {
+/** `enabled` defaults to true -- pass `{ enabled: false }` to skip fetching (e.g. dashboard-page.tsx never queries Bench Notes for a clerk). */
+export function useBenchNotes(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: benchNotesKeys.all,
     queryFn: async () => {
@@ -22,6 +23,7 @@ export function useBenchNotes() {
       if (error) throw error;
       return data;
     },
+    enabled: options?.enabled,
   });
 }
 

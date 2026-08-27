@@ -26,6 +26,9 @@ import CalendarPage from "@/pages/calendar/calendar-page";
 import SettingsPage from "@/pages/settings/settings-page";
 import CourtAssignmentsPage from "@/pages/admin/court-assignments-page";
 import LegalLibraryAdminPage from "@/pages/admin/legal-library-admin-page";
+import ClerkAccessAdminPage from "@/pages/admin/clerk-access-admin-page";
+import ClerkAccessPage from "@/pages/clerk/clerk-access-page";
+import ClerkAccessRequestsPage from "@/pages/clerk/clerk-access-requests-page";
 import NotFoundPage from "@/pages/not-found-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 
@@ -45,6 +48,9 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    // Available to any signed-in role, any clerk approval status — a
+    // pending clerk must still be able to reach their home screen,
+    // account settings, and their own access-request page.
     element: <ProtectedRoute />,
     errorElement: <RouteErrorBoundary />,
     children: [
@@ -53,8 +59,54 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTES.home, element: <Navigate to={ROUTES.dashboard} replace /> },
           { path: ROUTES.dashboard, element: <DashboardPage /> },
+          { path: ROUTES.settings, element: <SettingsPage /> },
+          { path: ROUTES.clerkAccess, element: <ClerkAccessPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    // Docket: deliberately NOT role-restricted. Whole-court access is
+    // governed by court ASSIGNMENT (magistrate_courts / approved
+    // clerk_courts), not by platform role — an admin who also holds an
+    // active magistrate_courts row must reach this route exactly like a
+    // magistrate does, and matter-specific retained/shared access must
+    // keep working regardless of role too. An `allowedRoles` allowlist
+    // here previously excluded 'admin', which silently blocked an
+    // admin-who-is-also-a-magistrate from the Docket even though their
+    // magistrate_courts assignments were fully intact — see 0097-era
+    // regression notes. RLS (can_access_court, has_retained_assignment,
+    // has_docket_share, has_active_clerk_assignment) remains the actual
+    // authorization boundary underneath; the Docket page itself already
+    // shows an accurate "no current Court assignment" message rather
+    // than pretending access when a signed-in user has none of the four
+    // pathways below. A clerk additionally needs at least one
+    // currently-active clerk_courts assignment — enforced here (not by
+    // role restriction) so a pending clerk is redirected to the
+    // pending-access experience rather than briefly rendering (or
+    // fetching) any docket content; a no-op for every other role.
+    element: <ProtectedRoute requireApprovedClerkCourt />,
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
           { path: ROUTES.docket, element: <DocketListPage /> },
           { path: "/docket/:id", element: <DocketMatterDetailPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    // Case Law, Judgments, Legislation, and the other research/workbench
+    // areas are magistrate-only content — a clerk role never satisfies
+    // allowedRoles here, regardless of any docket court assignment.
+    element: <ProtectedRoute allowedRoles={["magistrate", "admin"]} />,
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
           { path: ROUTES.judgments, element: <JudgmentListPage /> },
           { path: "/judgments/:id", element: <JudgmentDetailPage /> },
           { path: ROUTES.caseLaw, element: <CaseLawListPage /> },
@@ -68,7 +120,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.bookmarks, element: <BookmarksPage /> },
           { path: ROUTES.search, element: <SearchPage /> },
           { path: ROUTES.calendar, element: <CalendarPage /> },
-          { path: ROUTES.settings, element: <SettingsPage /> },
+          { path: ROUTES.clerkAccessRequests, element: <ClerkAccessRequestsPage /> },
         ],
       },
     ],
@@ -82,6 +134,7 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTES.adminCourtAssignments, element: <CourtAssignmentsPage /> },
           { path: ROUTES.adminLegalLibrary, element: <LegalLibraryAdminPage /> },
+          { path: ROUTES.adminClerkAccess, element: <ClerkAccessAdminPage /> },
         ],
       },
     ],

@@ -4,6 +4,7 @@ import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
 import { PageLoader } from "@/components/common/page-loader";
 import { resolveProtectedRouteGate } from "@/lib/protected-route-gate";
+import { useHasApprovedClerkCourt } from "@/hooks/clerk/use-clerk-access";
 
 interface ProtectedRouteProps {
   /**
@@ -11,6 +12,14 @@ interface ProtectedRouteProps {
    * to render the route. Otherwise they're redirected to /unauthorized.
    */
   allowedRoles?: UserRole[];
+  /**
+   * Docket routes only: a clerk must additionally have at least one
+   * currently-active clerk_courts assignment. A pending clerk (verified,
+   * zero approved courts yet) is redirected to /clerk-access instead of
+   * /unauthorized — they aren't forbidden, they're just not ready yet.
+   * No-op for every other role.
+   */
+  requireApprovedClerkCourt?: boolean;
 }
 
 /**
@@ -19,11 +28,18 @@ interface ProtectedRouteProps {
  * redirects to /login, preserving the attempted location for post-login
  * redirect.
  */
-export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ allowedRoles, requireApprovedClerkCourt }: ProtectedRouteProps) {
   const status = useAuthStore((state) => state.status);
   const profile = useAuthStore((state) => state.profile);
   const location = useLocation();
-  const gate = resolveProtectedRouteGate({ status, profile, allowedRoles });
+  const { data: hasApprovedClerkCourt } = useHasApprovedClerkCourt();
+  const gate = resolveProtectedRouteGate({
+    status,
+    profile,
+    allowedRoles,
+    requireApprovedClerkCourt,
+    hasApprovedClerkCourt,
+  });
 
   if (gate === "loading") {
     return <PageLoader />;
@@ -37,6 +53,10 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
 
   if (gate === "unauthorized") {
     return <Navigate to={ROUTES.unauthorized} replace />;
+  }
+
+  if (gate === "pending-clerk") {
+    return <Navigate to={ROUTES.clerkAccess} replace />;
   }
 
   return <Outlet />;

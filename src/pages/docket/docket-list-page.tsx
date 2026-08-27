@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { Search, Plus, Gavel, Gauge } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Search, Plus, Gavel, Gauge, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
@@ -23,6 +25,8 @@ import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import { EMPTY_PROCEDURE_FILTERS, hasActiveProcedureFilters, type ProcedureFilters } from "@/lib/docket-procedure";
 import { useUiStore } from "@/store/ui-store";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ALL_COURTS_PARAM, docketScopeTitle, resolveDocketScope } from "@/lib/docket-scope";
+
 
 function docketCover(matter: {
   case_number: string;
@@ -49,6 +53,43 @@ function docketCover(matter: {
 }
 
 export default function DocketListPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
+  const lastDocketScope = useUiStore((s) => s.lastDocketScope);
+  const setLastDocketScope = useUiStore((s) => s.setLastDocketScope);
+
+  // --- Two-level Docket scope: All My Courts (courtId === null) or one
+  // exact court. The URL `?court=` param is the source of truth (so a
+  // refresh, a bookmark, and back/forward all behave correctly); a
+  // remembered same-device scope only ever supplies a DEFAULT when the
+  // param is absent, and is always re-validated against the signed-in
+  // user's CURRENT authorized courts before ever being applied — a
+  // revoked or unauthorized court is never silently restored. ---
+  const requestedCourtId = searchParams.get("court");
+  const myCourtIds = myCourts?.map((c) => c.court_id);
+  const scope = resolveDocketScope({
+    requestedCourtId,
+    myCourtIds,
+    rememberedCourtId: lastDocketScope,
+  });
+
+  useEffect(() => {
+    if (scope.status !== "redirect") return;
+    const next = new URLSearchParams(searchParams);
+    next.set("court", scope.courtId ?? ALL_COURTS_PARAM);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope.status, scope.status === "redirect" ? scope.courtId : undefined]);
+
+  useEffect(() => {
+    if (scope.status === "resolved") setLastDocketScope(scope.courtId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope.status === "resolved" ? scope.courtId : undefined]);
+
+  const courtId = scope.status === "resolved" ? scope.courtId : null;
+  const selectedCourt = courtId ? myCourts?.find((c) => c.court_id === courtId) : undefined;
+  const scopeReady = scope.status === "resolved";
+
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<ProcedureFilters>(EMPTY_PROCEDURE_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
@@ -61,14 +102,34 @@ export default function DocketListPage() {
   // default; null means "All Matters" (unfiltered), reachable via the
   // toggle next to the search bar.
   const [selectedDate, setSelectedDate] = useState<string | null>(getLocalDateOnly());
+
+  // Switching Docket scope must never leave a stale search/filter/date
+  // combination — or its results — visible from the previously-selected
+  // court. React Query already gives each courtId its own cache entry
+  // (queryKey includes it), so there's no cross-court data leakage; this
+  // just resets the CONTROLS themselves back to a clean slate on switch.
+  const previousCourtId = useRef(courtId);
+  useEffect(() => {
+    if (previousCourtId.current === courtId) return;
+    previousCourtId.current = courtId;
+    setSearch("");
+    setFilters(EMPTY_PROCEDURE_FILTERS);
+    setSelectedDate(getLocalDateOnly());
+  }, [courtId]);
+
   const docketBrowseView = useUiStore((s) => s.docketBrowseView);
   const setDocketBrowseView = useUiStore((s) => s.setDocketBrowseView);
-  const { data, isPending, isError, error, refetch } = useDocketMatterBoard(search, filters, selectedDate);
+  const { data, isPending, isError, error, refetch } = useDocketMatterBoard(
+    search,
+    filters,
+    selectedDate,
+    courtId,
+    { enabled: scopeReady },
+  );
   const patch = usePatchDocketProcedure();
   const { data: coverUrls } = useSignedUrls(
     (data ?? []).map((m) => m.cover_image_path),
   );
-  const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
   const filtersOn = hasActiveProcedureFilters(filters);
   const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (search || filtersOn);
@@ -77,7 +138,7 @@ export default function DocketListPage() {
   return (
     <BrowsePage>
       <BrowseHeader
-        title="Docket"
+        title={docketScopeTitle(selectedCourt?.court_name ?? null)}
         description="List is the working sheet — swipe for stages on a phone. Tiles stay for cover-photo browse. Events still hold the dates."
         showViewSelect
         viewSelectValue={docketBrowseView}
@@ -101,12 +162,35 @@ export default function DocketListPage() {
         }
       />
 
-      {noCourts && (
+      {noCourts ? (
         <p className="mb-6 text-sm text-muted-foreground">
           You have no current Court assignment, so you can&apos;t create a new
           matter. You can still view and act on matters retained or shared
           with you below. Contact an administrator for a Court assignment.
         </p>
+      ) : (
+        scopeReady && (myCourts?.length ?? 0) > 1 && (
+          <div className="mb-6 flex items-center gap-2">
+            <Landmark className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <Select
+              className="max-w-xs"
+              aria-label="Docket scope — choose a court"
+              value={courtId ?? ALL_COURTS_PARAM}
+              onChange={(e) => {
+                const next = new URLSearchParams(searchParams);
+                next.set("court", e.target.value);
+                setSearchParams(next);
+              }}
+            >
+              <option value={ALL_COURTS_PARAM}>All My Courts</option>
+              {myCourts?.map((c) => (
+                <option key={c.court_id} value={c.court_id}>
+                  {c.court_name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )
       )}
 
       <DocketCapacityStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
@@ -119,7 +203,7 @@ export default function DocketListPage() {
         </h2>
         {selectedDate && (
           <div className="flex flex-wrap items-center gap-2">
-            <DailyProgressReportButton date={selectedDate} />
+            <DailyProgressReportButton date={selectedDate} courtId={courtId} />
             <Button size="sm" variant="ghost" onClick={() => setSelectedDate(null)}>
               All Matters
             </Button>
@@ -192,7 +276,8 @@ export default function DocketListPage() {
       ) : docketBrowseView === "list" ? (
         <DocketStageSheet
           rows={data}
-          onPatch={(id, values) => patch.mutateAsync({ id, values })}
+          showCourt={courtId === null}
+          onPatch={(id, values, expectedUpdatedAt) => patch.mutateAsync({ id, values, expectedUpdatedAt })}
           onLogAppearance={setLogAppearance}
         />
       ) : (
@@ -212,7 +297,7 @@ export default function DocketListPage() {
         </div>
       )}
 
-      <CreateDocketMatterDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateDocketMatterDialog open={createOpen} onOpenChange={setCreateOpen} defaultCourtId={courtId} />
       <DocketCapacitySettingsDialog open={capacityOpen} onOpenChange={setCapacityOpen} />
       {logAppearance && (
         <DocketEventDialog

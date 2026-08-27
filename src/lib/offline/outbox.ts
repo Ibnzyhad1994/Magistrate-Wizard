@@ -53,6 +53,10 @@ export type CalendarMergeRow = {
   event_status: string
   case_number: string
   matter_title: string
+  /** Combined-scope court identifier (0097) — undefined/null for locally
+   * queued hearings not yet synced (the outbox job payload doesn't carry
+   * it); "Pending" already marks those visually as distinct. */
+  court_name?: string | null
   pending?: boolean
 }
 
@@ -143,6 +147,7 @@ export const mergeCalendarRows = (
         event_status: job.payload.event_status,
         case_number: job.caseNumber,
         matter_title: job.matterTitle,
+        court_name: null,
         pending: true,
       })
       continue
@@ -158,6 +163,7 @@ export const mergeCalendarRows = (
       event_status: job.payload.event_status,
       case_number: job.caseNumber || existing?.case_number || "Matter",
       matter_title: job.matterTitle || existing?.matter_title || "Hearing",
+      court_name: existing?.court_name ?? null,
       pending: true,
     })
   }

@@ -15,8 +15,18 @@ export type DailyDocketReportRow =
  */
 export function useDailyDocketReportData() {
   return useMutation({
-    mutationFn: async (date: string): Promise<DailyDocketReportRow[]> => {
-      const { data, error } = await supabase.rpc("get_daily_docket_report_data", { p_date: date });
+    mutationFn: async ({
+      date,
+      courtId,
+    }: {
+      date: string;
+      /** Two-level Docket scope (0097): null = All My Courts (every authorized court), a specific id restricts the export to that exact court. */
+      courtId: string | null;
+    }): Promise<DailyDocketReportRow[]> => {
+      const { data, error } = await supabase.rpc("get_daily_docket_report_data", {
+        p_date: date,
+        p_court_id: courtId ?? undefined,
+      });
       if (error) throw error;
       return data ?? [];
     },

@@ -1,6 +1,9 @@
+import { Link } from "react-router-dom";
+import { ArrowRight, Landmark } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,8 +19,12 @@ import {
   isTileSize,
 } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
+import { useAuth } from "@/hooks/use-auth";
+import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
+import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { APP_BUILD, APP_VERSION } from "@/lib/app-version";
 import { GoogleCalendarCard } from "@/pages/settings/google-calendar-card";
+import { ROUTES } from "@/routes/paths";
 
 export default function SettingsPage() {
   const browseView = useUiStore((s) => s.browseView);
@@ -25,6 +32,8 @@ export default function SettingsPage() {
   const tileSize = useUiStore((s) => s.tileSize);
   const setTileSize = useUiStore((s) => s.setTileSize);
   const { theme, setTheme } = useTheme();
+  const { profile } = useAuth();
+  const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
 
   return (
     <BrowsePage>
@@ -96,6 +105,55 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {profile && profile.role !== "clerk" && (
+        <Card className="mt-6 max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">Court Assignments</CardTitle>
+            <CardDescription>
+              Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>. Docket
+              access is separate from your platform role — it follows the
+              active court assignments below, which an administrator
+              manages under Court Assignments.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {courtsPending ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : myCourts && myCourts.length > 0 ? (
+              <ul className="space-y-1.5 text-sm">
+                {myCourts.map((c) => (
+                  <li key={c.court_id} className="flex items-center gap-2">
+                    <Landmark className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    {c.court_name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You do not currently have an active court assignment.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {profile?.role === "clerk" && (
+        <Card className="mt-6 max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">Court Access</CardTitle>
+            <CardDescription>View your access requests, or request another court.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" size="sm">
+              <Link to={ROUTES.clerkAccess}>
+                Manage court access
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-6 space-y-6">
       <GoogleCalendarCard />

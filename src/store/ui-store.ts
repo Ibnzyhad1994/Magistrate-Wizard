@@ -19,6 +19,16 @@ interface UiState {
   browseView: BrowseView;
   docketBrowseView: BrowseView;
   tileSize: TileSize;
+  /**
+   * Remembered Docket scope: a court_id, or `null` for "All My Courts".
+   * Purely a same-device convenience for a bare `/docket` visit with no
+   * `?court=` param — never trusted on its own. docket-scope.ts always
+   * re-validates it against the CURRENT signed-in user's actual current
+   * court assignments before use, so a stale value (a different court,
+   * or left over from a different account on a shared device) safely
+   * falls back to All My Courts rather than ever being applied blindly.
+   */
+  lastDocketScope: string | null;
 }
 
 interface UiActions {
@@ -29,6 +39,7 @@ interface UiActions {
   setBrowseView: (view: BrowseView) => void;
   setDocketBrowseView: (view: BrowseView) => void;
   setTileSize: (size: TileSize) => void;
+  setLastDocketScope: (courtId: string | null) => void;
 }
 
 /**
@@ -45,6 +56,7 @@ export const useUiStore = create<UiState & UiActions>()(
       browseView: DEFAULT_BROWSE_VIEW,
       docketBrowseView: DEFAULT_DOCKET_BROWSE_VIEW,
       tileSize: DEFAULT_TILE_SIZE,
+      lastDocketScope: null,
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) =>
@@ -54,6 +66,7 @@ export const useUiStore = create<UiState & UiActions>()(
       setBrowseView: (view) => set({ browseView: view }),
       setDocketBrowseView: (view) => set({ docketBrowseView: view }),
       setTileSize: (size) => set({ tileSize: size }),
+      setLastDocketScope: (courtId) => set({ lastDocketScope: courtId }),
     }),
     {
       name: LOCAL_STORAGE_KEYS.sidebarCollapsed,
@@ -62,6 +75,7 @@ export const useUiStore = create<UiState & UiActions>()(
         browseView: state.browseView,
         docketBrowseView: state.docketBrowseView,
         tileSize: state.tileSize,
+        lastDocketScope: state.lastDocketScope,
       }),
       merge: (persisted, current) => {
         const stored = (persisted ?? {}) as Partial<UiState>;
@@ -73,6 +87,7 @@ export const useUiStore = create<UiState & UiActions>()(
             ? stored.docketBrowseView
             : current.docketBrowseView,
           tileSize: isTileSize(stored.tileSize) ? stored.tileSize : current.tileSize,
+          lastDocketScope: typeof stored.lastDocketScope === "string" ? stored.lastDocketScope : null,
         };
       },
     },

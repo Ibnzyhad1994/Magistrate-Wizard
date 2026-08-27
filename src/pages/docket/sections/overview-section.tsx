@@ -45,6 +45,7 @@ import {
 } from "@/lib/validations/docket";
 import { matterCurrentStage, PROCEDURE_STAGE_LABELS, PROCEDURE_VALUE_LABELS } from "@/lib/docket-procedure";
 import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
+import { isConcurrentEditError } from "@/lib/concurrency";
 import type { DocketMatter } from "@/types/database.types";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { DocketStageStrip, type OverviewLogAppearance } from "@/pages/docket/docket-stage-strip";
@@ -100,12 +101,24 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   async function onSubmit(values: DocketMatterOutcomeFormValues) {
     try {
       await updateMatter.mutateAsync({
-        orders_summary: values.orders_summary || null,
-        outcome: values.outcome || null,
+        values: {
+          orders_summary: values.orders_summary || null,
+          outcome: values.outcome || null,
+        },
+        expectedUpdatedAt: matter.updated_at,
       });
       setEditingOutcome(false);
-    } catch {
-      // Surfaced globally via the mutation cache toast subscriber.
+    } catch (err) {
+      // The conflict message itself is surfaced globally via the mutation
+      // cache toast subscriber (concurrency.ts's message). Closing the
+      // form here (instead of leaving the user's stale edits on screen)
+      // is what actually satisfies "review the latest information before
+      // saving" -- the matter prop refetches in the background (see
+      // useUpdateDocketMatter's onError) and the read-only view below
+      // will show the current, correct data the moment it lands.
+      if (isConcurrentEditError(err)) {
+        setEditingOutcome(false);
+      }
     }
   }
 
@@ -121,7 +134,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             value={matter.status}
             onChange={(e) =>
               updateMatter.mutate({
-                status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number],
+                values: { status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number] },
+                expectedUpdatedAt: matter.updated_at,
               })
             }
             disabled={updateMatter.isPending}
@@ -190,7 +204,9 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       <DocketStageStrip
         matter={matter}
         canEdit={canEdit}
-        onPatch={(values) => patchProcedure.mutateAsync({ id: matter.id, values })}
+        onPatch={(values, expectedUpdatedAt) =>
+          patchProcedure.mutateAsync({ id: matter.id, values, expectedUpdatedAt })
+        }
         onLogAppearance={setLogAppearance}
       />
 

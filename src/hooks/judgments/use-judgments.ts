@@ -14,7 +14,8 @@ export const judgmentsKeys = {
  * client-side into the three list sections. No admin bypass, no
  * separate "all judgments" query.
  */
-export function useJudgments() {
+/** `enabled` defaults to true -- pass `{ enabled: false }` to skip fetching (e.g. dashboard-page.tsx never queries Judgments for a clerk, who has no access to them). */
+export function useJudgments(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: judgmentsKeys.all,
     queryFn: async () => {
@@ -28,6 +29,7 @@ export function useJudgments() {
       if (error) throw error;
       return data;
     },
+    enabled: options?.enabled,
   });
 }
 

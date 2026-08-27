@@ -49,5 +49,85 @@ check(
   "ok",
 );
 
+// --- Docket route regression: an admin who also holds an active
+// magistrate_courts assignment must reach Docket exactly like a
+// magistrate does. router.tsx deliberately passes NO allowedRoles for
+// the Docket route group (whole-court access is governed by court
+// ASSIGNMENT, not platform role) -- these cases pin that down so an
+// allowedRoles allowlist can never quietly creep back onto that route
+// and exclude 'admin' again. ---
+check(
+  "Docket route config (no allowedRoles): admin reaches the route",
+  resolveProtectedRouteGate({ status: "authenticated", profile: { role: "admin" } }),
+  "ok",
+);
+check(
+  "Docket route config (no allowedRoles): magistrate reaches the route",
+  resolveProtectedRouteGate({ status: "authenticated", profile: { role: "magistrate" } }),
+  "ok",
+);
+check(
+  "the regression this guards against: an admin WOULD be wrongly blocked if the Docket route ever added allowedRoles=['magistrate','clerk'] again",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "admin" },
+    allowedRoles: ["magistrate", "clerk"],
+  }),
+  "unauthorized",
+);
+
+// --- requireApprovedClerkCourt: only meaningful for role='clerk', a
+// no-op for every other role (magistrate/admin pass regardless). ---
+check(
+  "clerk with requireApprovedClerkCourt and no approved court yet -> pending-clerk experience, not /unauthorized",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "clerk" },
+    requireApprovedClerkCourt: true,
+    hasApprovedClerkCourt: false,
+  }),
+  "pending-clerk",
+);
+check(
+  "clerk with requireApprovedClerkCourt still loading the approval check -> loading, never a flash of Docket content",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "clerk" },
+    requireApprovedClerkCourt: true,
+    hasApprovedClerkCourt: undefined,
+  }),
+  "loading",
+);
+check(
+  "approved clerk with requireApprovedClerkCourt -> ok",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "clerk" },
+    requireApprovedClerkCourt: true,
+    hasApprovedClerkCourt: true,
+  }),
+  "ok",
+);
+check(
+  "requireApprovedClerkCourt is a no-op for admin (Docket route) -- never gated on clerk-court approval",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "admin" },
+    requireApprovedClerkCourt: true,
+    hasApprovedClerkCourt: false,
+  }),
+  "ok",
+);
+check(
+  "requireApprovedClerkCourt is a no-op for magistrate (Docket route) -- never gated on clerk-court approval",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "magistrate" },
+    requireApprovedClerkCourt: true,
+    hasApprovedClerkCourt: false,
+  }),
+  "ok",
+);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

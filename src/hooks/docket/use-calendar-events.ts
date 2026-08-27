@@ -11,13 +11,24 @@ import { useOutboxJobs } from "@/hooks/offline/use-pending-hearings"
 
 export type CalendarEventRow = CalendarMergeRow
 
-const asMatter = (value: unknown): { case_number: string; matter_title: string } | null => {
+const asMatter = (
+  value: unknown,
+): { case_number: string; matter_title: string; court_name: string | null } | null => {
   if (!value || typeof value !== "object") return null
   const row = Array.isArray(value) ? value[0] : value
   if (!row || typeof row !== "object") return null
-  const rec = row as { case_number?: string; matter_title?: string }
+  const rec = row as {
+    case_number?: string
+    matter_title?: string
+    courts?: { name?: string } | { name?: string }[] | null
+  }
   if (!rec.case_number || !rec.matter_title) return null
-  return { case_number: rec.case_number, matter_title: rec.matter_title }
+  const courtRec = Array.isArray(rec.courts) ? rec.courts[0] : rec.courts
+  return {
+    case_number: rec.case_number,
+    matter_title: rec.matter_title,
+    court_name: courtRec?.name ?? null,
+  }
 }
 
 export const calendarEventsKey = (from: string, to: string) =>
@@ -36,7 +47,7 @@ export function useCalendarEvents(from: string, to: string) {
         const { data, error } = await supabase
           .from("docket_events")
           .select(
-            "id, docket_matter_id, scheduled_date, scheduled_time, location, event_type, event_status, docket_matters(case_number, matter_title)",
+            "id, docket_matter_id, scheduled_date, scheduled_time, location, event_type, event_status, docket_matters(case_number, matter_title, courts(name))",
           )
           .gte("scheduled_date", from)
           .lte("scheduled_date", to)
@@ -55,6 +66,7 @@ export function useCalendarEvents(from: string, to: string) {
             event_status: row.event_status,
             case_number: matter?.case_number ?? "Matter",
             matter_title: matter?.matter_title ?? "Hearing",
+            court_name: matter?.court_name ?? null,
           }
         })
         if (profileId) await seedCalendarRows(profileId, rows)

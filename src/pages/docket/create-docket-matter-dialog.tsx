@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -32,28 +33,44 @@ import { ROUTES } from "@/routes/paths";
 interface CreateDocketMatterDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * The two-level Docket's current scope (0097). When set (the dialog was
+   * opened from a specific court's Docket view), the Court field is
+   * pre-filled AND locked to that exact court — "Automatically assign
+   * [that court] as the matter's court_id... do not silently use another
+   * court." When absent (opened from All My Courts), the full picker
+   * below (still scoped to the caller's own authorized courts only)
+   * applies, and the user must choose one before saving.
+   */
+  defaultCourtId?: string | null;
 }
 
 /**
  * The Court selector here is deliberately scoped to the caller's own
- * CURRENT `magistrate_courts` assignments (`useMyCurrentCourts()`) rather
- * than the full active-Court reference list — offering a Court the
- * caller has no authority over would let the UI imply a choice that
- * `docket_matters` INSERT RLS (current Court assignment OR retained
- * assignment) will always reject. Magisterial District is derived
- * read-only display, not an independent field: `docket_matters` already
- * derives/enforces `district_id` from `court_id -> courts.district_id`
- * via a backend trigger, so presenting it as a second free choice would
- * be misleading and, if it disagreed with the selected Court, simply
- * overwritten or rejected server-side anyway.
+ * CURRENT court assignments (`useMyCurrentCourts()` — magistrate_courts
+ * or clerk_courts, role-aware) rather than the full active-Court
+ * reference list — offering a Court the caller has no authority over
+ * would let the UI imply a choice that `docket_matters` INSERT RLS
+ * (current Court assignment OR active clerk assignment) will always
+ * reject. The database re-validates the selected court independently
+ * regardless of what this form shows or locks (docket_matters_guard(),
+ * 0020/0097) — this UI convenience is never the actual security
+ * boundary. Magisterial District is derived read-only display, not an
+ * independent field: `docket_matters` already derives/enforces
+ * `district_id` from `court_id -> courts.district_id` via a backend
+ * trigger, so presenting it as a second free choice would be misleading
+ * and, if it disagreed with the selected Court, simply overwritten or
+ * rejected server-side anyway.
  */
 export function CreateDocketMatterDialog({
   open,
   onOpenChange,
+  defaultCourtId,
 }: CreateDocketMatterDialogProps) {
   const navigate = useNavigate();
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const createMatter = useCreateDocketMatter();
+  const lockedCourt = defaultCourtId ? myCourts?.find((c) => c.court_id === defaultCourtId) : undefined;
 
   const form = useForm<DocketMatterFormValues>({
     resolver: zodResolver(docketMatterSchema),
@@ -66,6 +83,20 @@ export function CreateDocketMatterDialog({
       status: "active",
     },
   });
+
+  // Pre-fill (and, via the disabled picker below, lock) the Court field
+  // once the caller's authorized-courts list has loaded and confirms the
+  // requested scope is genuinely one of them. If defaultCourtId is somehow
+  // not in myCourts (e.g. access was revoked between opening the Docket
+  // page and opening this dialog), lockedCourt stays undefined and the
+  // form correctly falls back to the ordinary open picker instead of
+  // silently submitting an unauthorized court.
+  useEffect(() => {
+    if (open && lockedCourt) {
+      form.setValue("court_id", lockedCourt.court_id, { shouldValidate: true });
+      form.setValue("district_id", lockedCourt.district_id ?? "", { shouldValidate: true });
+    }
+  }, [open, lockedCourt, form]);
 
   const selectedCourtId = form.watch("court_id");
   const selectedCourt = myCourts?.find((c) => c.court_id === selectedCourtId);
@@ -119,19 +150,30 @@ export function CreateDocketMatterDialog({
                   <FormItem>
                     <FormLabel>Court</FormLabel>
                     <FormControl>
-                      <Select
-                        {...field}
-                        onChange={(e) => handleCourtChange(e.target.value)}
-                        aria-label="Court"
-                      >
-                        <option value="">Select a court…</option>
-                        {myCourts?.map((c) => (
-                          <option key={c.court_id} value={c.court_id}>
-                            {c.court_name}
-                          </option>
-                        ))}
-                      </Select>
+                      {lockedCourt ? (
+                        <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-foreground">
+                          {lockedCourt.court_name}
+                        </div>
+                      ) : (
+                        <Select
+                          {...field}
+                          onChange={(e) => handleCourtChange(e.target.value)}
+                          aria-label="Court"
+                        >
+                          <option value="">Select a court…</option>
+                          {myCourts?.map((c) => (
+                            <option key={c.court_id} value={c.court_id}>
+                              {c.court_name}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
                     </FormControl>
+                    {lockedCourt && (
+                      <p className="text-xs text-muted-foreground">
+                        This matter will be created on the docket you currently have open.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

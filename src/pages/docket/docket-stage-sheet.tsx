@@ -52,12 +52,15 @@ const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgmen
 function DocketStageRow({
   row,
   stage,
+  showCourt,
   onPatch,
   onLogAppearance,
 }: {
   row: DocketMatterBoardRow;
   stage: ReturnType<typeof currentStage>;
-  onPatch: (id: string, values: TablesUpdate<"docket_matters">) => Promise<unknown>;
+  /** True in the All My Courts combined view — every matter needs a visible, readable court identifier there, never colour alone (0097). False when already scoped to one court, where repeating it on every row would be redundant noise. */
+  showCourt: boolean;
+  onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
   const uploadRuling = useUploadDocument("docket_matter", row.id);
@@ -67,7 +70,7 @@ function DocketStageRow({
 
   async function handleChange(column: ProcedureColumnKey, next: string) {
     try {
-      await onPatch(row.id, { [column]: next });
+      await onPatch(row.id, { [column]: next }, row.updated_at);
       const hint = appearanceHintForColumn(column, next);
       toast.success("Logged on the board.", {
         action: {
@@ -92,6 +95,11 @@ function DocketStageRow({
           <p className="truncate text-sm text-white">{row.matter_title}</p>
           {row.charge_or_issue && (
             <p className="hidden truncate text-xs text-white/45 sm:block">{row.charge_or_issue}</p>
+          )}
+          {showCourt && row.court_name && (
+            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+              {row.court_name}
+            </span>
           )}
           {/* Only populated when a date filter is active (0080) — this
               date's own appearance status, e.g. this matter was heard and
@@ -149,11 +157,14 @@ function DocketStageRow({
 
 export function DocketStageSheet({
   rows,
+  showCourt = false,
   onPatch,
   onLogAppearance,
 }: {
   rows: DocketMatterBoardRow[];
-  onPatch: (id: string, values: TablesUpdate<"docket_matters">) => Promise<unknown>;
+  /** True in the All My Courts combined view (see DocketStageRow). */
+  showCourt?: boolean;
+  onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
   const caseColBase =
@@ -188,6 +199,7 @@ export function DocketStageSheet({
                 key={row.id}
                 row={row}
                 stage={currentStage(snapshotOf(row))}
+                showCourt={showCourt}
                 onPatch={onPatch}
                 onLogAppearance={onLogAppearance}
               />

@@ -12,6 +12,7 @@ import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
+import { useMyClerkAccessRequests } from "@/hooks/clerk/use-clerk-access";
 import { APP_NAME } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
@@ -21,9 +22,17 @@ import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
  * see — the same underlying queries used by each workspace's own list
  * page, just capped and summarized. No global/administrative counts, and
  * nothing here leaks the existence of rows the caller can't otherwise see.
+ *
+ * Role-branched: a clerk (pending or approved) never sees the
+ * magistrate's Judgments/Bench Notes/Quick Codes/Retained rows or the
+ * Judgments shortcut — those queries aren't even fetched for a clerk, not
+ * merely hidden once empty. A pending clerk (zero currently-active court
+ * assignments) sees the pending-approval welcome instead of any
+ * operational content at all.
  */
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isClerk = profile?.role === "clerk";
   const {
     data: matters,
     isPending: mattersPending,
@@ -34,9 +43,10 @@ export default function DashboardPage() {
   const { data: courts, isPending: courtsPending } = useCurrentCourts();
   const { data: appearances, isPending: appearancesPending } = useUpcomingAppearances();
   const { data: retained } = useMyRetainedMatters();
-  const { data: judgments, isPending: judgmentsPending } = useJudgments();
-  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes();
-  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes();
+  const { data: judgments, isPending: judgmentsPending } = useJudgments({ enabled: !isClerk });
+  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes({ enabled: !isClerk });
+  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes({ enabled: !isClerk });
+  const { data: clerkRequests, isPending: clerkRequestsPending } = useMyClerkAccessRequests();
 
   const activeMatters = useMemo(
     () => (matters ?? []).filter((m) => m.status === "active"),
@@ -81,57 +91,51 @@ export default function DashboardPage() {
   }
 
   const noCourts = !courtsPending && (courts?.length ?? 0) === 0;
-  const firstAppearance = appearances?.[0];
-  const appearanceMatter = rel(firstAppearance?.docket_matters);
-  const firstMatter = matters?.[0];
 
-  const billboard = firstAppearance
+  // Personalized welcome hero, not a specific case/matter — the home
+  // screen is the entry point into the app, not a particular docket item.
+  // Real matter/appearance data still populates the rows below unchanged.
+  const name = profile?.full_name?.trim() || null;
+
+  const approvedClerkRequests = (clerkRequests ?? []).filter((r) => r.status === "approved");
+  const pendingClerkRequests = (clerkRequests ?? []).filter((r) => r.status === "pending");
+  // A clerk with at least one approved court gets the ordinary clerk
+  // welcome + Docket rows below, even while other requests remain
+  // pending elsewhere — only a clerk with ZERO approved courts sees the
+  // pending-approval experience in place of any operational content.
+  const isPendingClerk = isClerk && !clerkRequestsPending && approvedClerkRequests.length === 0;
+
+  const billboard = !isClerk
     ? {
-        tone: "docket" as const,
-        eyebrow: appearanceMatter?.case_number ?? "Upcoming appearance",
-        title: appearanceMatter?.matter_title ?? "Upcoming appearance",
-        description: [
-          appearanceMatter?.charge_or_issue,
-          eventLabel(firstAppearance.event_type),
-          formatDate(firstAppearance.scheduled_date),
-          firstAppearance.scheduled_time
-            ? formatTimeOnly(firstAppearance.scheduled_time)
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        badges: [toTitleCase(firstAppearance.event_status)],
-        imageUrl: coverUrl(appearanceMatter?.cover_image_path),
-        primaryAction: {
-          label: "Open matter",
-          href: ROUTES.docketMatter(firstAppearance.docket_matter_id),
-        },
-        secondaryAction: { label: "Docket", href: ROUTES.docket },
+        tone: "judgment" as const,
+        eyebrow: APP_NAME,
+        title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
+        description: noCourts
+          ? "Your account is active, but you have not yet been assigned to a Court. Contact an administrator. Judgments, Case Law, Quick Codes, and Bench Notes remain available — Docket access requires a Court assignment."
+          : `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
+        badges: noCourts ? ["No court assignment"] : undefined,
+        primaryAction: { label: "Browse docket", href: ROUTES.docket },
+        secondaryAction: { label: "Judgments", href: ROUTES.judgments },
       }
-    : firstMatter
+    : isPendingClerk
       ? {
-          tone: "docket" as const,
-          eyebrow: firstMatter.case_number,
-          title: firstMatter.matter_title,
-          description: issueOf(firstMatter),
-          badges: [toTitleCase(firstMatter.status)],
-          imageUrl: coverUrl("cover_image_path" in firstMatter ? firstMatter.cover_image_path : null),
-          primaryAction: {
-            label: "Open matter",
-            href: ROUTES.docketMatter(firstMatter.id),
-          },
-          secondaryAction: { label: "More info", href: ROUTES.docket },
+          tone: "judgment" as const,
+          eyebrow: APP_NAME,
+          title: name ? `Welcome, ${name}` : "Welcome",
+          description:
+            pendingClerkRequests.length === 1
+              ? `Your request to access the docket for ${pendingClerkRequests[0].courts?.name ?? "your requested court"} is awaiting approval from the assigned magistrate.`
+              : pendingClerkRequests.length > 1
+                ? "Your court access requests are awaiting approval from each court's assigned magistrate."
+                : "Request access to a court to get started — the court's assigned magistrate will review your request.",
+          primaryAction: { label: "View my requests", href: ROUTES.clerkAccess },
         }
       : {
-          tone: "docket" as const,
+          tone: "judgment" as const,
           eyebrow: APP_NAME,
-          title: "Your bench, in session",
-          description: noCourts
-            ? "Your account is active, but you have not yet been assigned to a Court. Contact an administrator. Judgments, Case Law, Quick Codes, and Bench Notes remain available — Docket access requires a Court assignment."
-            : "Your docket, judgments, and research — in one bench.",
-          badges: noCourts ? ["No court assignment"] : undefined,
-          primaryAction: { label: "Browse docket", href: ROUTES.docket },
-          secondaryAction: { label: "Judgments", href: ROUTES.judgments },
+          title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
+          description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${approvedClerkRequests.length > 1 ? "s" : ""}.`,
+          primaryAction: { label: "Open docket", href: ROUTES.docket },
         };
 
   return (
@@ -139,6 +143,8 @@ export default function DashboardPage() {
       <Billboard {...billboard} />
 
       <div className="relative z-10 -mt-16 space-y-9 pb-20">
+        {isPendingClerk ? null : (
+          <>
         {mattersError && (
           <div className="browse-gutter">
             <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
@@ -195,7 +201,7 @@ export default function DashboardPage() {
           </ContentRow>
         )}
 
-        {(judgmentsPending || myDrafts.length > 0) && (
+        {!isClerk && (judgmentsPending || myDrafts.length > 0) && (
           <ContentRow title="Draft Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
             {myDrafts.map((j) => (
               <TitleCard
@@ -212,7 +218,7 @@ export default function DashboardPage() {
           </ContentRow>
         )}
 
-        {(judgmentsPending || myFinal.length > 0) && (
+        {!isClerk && (judgmentsPending || myFinal.length > 0) && (
           <ContentRow title="Final Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
             {myFinal.map((j) => (
               <TitleCard
@@ -229,7 +235,7 @@ export default function DashboardPage() {
           </ContentRow>
         )}
 
-        {(retained?.length ?? 0) > 0 && (
+        {!isClerk && (retained?.length ?? 0) > 0 && (
           <ContentRow title="Retained / Part-Heard" href={ROUTES.docket}>
             {(retained ?? []).map((row) => {
               const matter = rel(row.docket_matters);
@@ -250,7 +256,7 @@ export default function DashboardPage() {
           </ContentRow>
         )}
 
-        {(benchNotesPending || (benchNotes?.length ?? 0) > 0) && (
+        {!isClerk && (benchNotesPending || (benchNotes?.length ?? 0) > 0) && (
           <ContentRow title="Bench Notes" href={ROUTES.benchNotes} isLoading={benchNotesPending}>
             {(benchNotes ?? []).map((note) => (
               <TitleCard
@@ -266,7 +272,7 @@ export default function DashboardPage() {
           </ContentRow>
         )}
 
-        {(quickCodesPending || (quickCodes?.length ?? 0) > 0) && (
+        {!isClerk && (quickCodesPending || (quickCodes?.length ?? 0) > 0) && (
           <ContentRow title="Quick Codes" href={ROUTES.quickCodes} isLoading={quickCodesPending}>
             {(quickCodes ?? []).map((code) => (
               <TitleCard
@@ -280,6 +286,8 @@ export default function DashboardPage() {
               />
             ))}
           </ContentRow>
+        )}
+          </>
         )}
       </div>
     </div>

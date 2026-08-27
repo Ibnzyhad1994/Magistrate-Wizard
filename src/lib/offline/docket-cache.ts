@@ -11,6 +11,10 @@ export type CachedHearing = HearingFields & {
   docket_matter_id: string
   case_number: string
   matter_title: string
+  /** Combined-calendar court identifier (0097) — not set by
+   * cachedHearingFromDocketEvent's single-matter caller, since a page
+   * already scoped to one matter has no need to repeat its court. */
+  court_name?: string | null
   created_at: string
   created_by: string
   updated_at: string
@@ -97,6 +101,7 @@ export const cachedHearingFromCalendarRow = (row: CalendarMergeRow): CachedHeari
   notes: null,
   case_number: row.case_number,
   matter_title: row.matter_title,
+  court_name: row.court_name ?? null,
   created_at: "",
   created_by: "",
   updated_at: "",
@@ -147,6 +152,7 @@ export const calendarRowFromCached = (row: CachedHearing): CalendarMergeRow => (
   event_status: row.event_status,
   case_number: row.case_number,
   matter_title: row.matter_title,
+  court_name: row.court_name ?? null,
 })
 
 export const upsertMatterShell = (

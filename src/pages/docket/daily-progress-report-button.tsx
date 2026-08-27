@@ -14,14 +14,20 @@ import { getErrorMessage } from "@/lib/utils";
  * comment) and downloads a PDF. Only shown once a date is selected — the
  * report is inherently date-specific (Part I/section 33), never "current
  * Next Date across all matters".
+ *
+ * `courtId` (0097) carries the two-level Docket's current scope into the
+ * export: generated from a specific court's Docket view, the report is
+ * limited to that exact court_id; generated from All My Courts, it
+ * spans every authorized court for that date (each row still carries its
+ * own court_name, exactly like the on-screen combined view).
  */
-export function DailyProgressReportButton({ date }: { date: string }) {
+export function DailyProgressReportButton({ date, courtId }: { date: string; courtId: string | null }) {
   const { profile } = useAuth();
   const fetchReport = useDailyDocketReportData();
 
   async function onGenerate() {
     try {
-      const rows = await fetchReport.mutateAsync(date);
+      const rows = await fetchReport.mutateAsync({ date, courtId });
       if (rows.length === 0) {
         toast.error("No matters scheduled for this date — nothing to report.");
         return;

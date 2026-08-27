@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -14,29 +16,55 @@ import {
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignupCourts, useSignupMagisterialDistricts } from "@/hooks/docket/use-lookups";
 import { registerSchema, type RegisterFormValues } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
 import { APP_NAME } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 const fieldClassName =
   "h-12 rounded-sm border border-white/15 bg-[#333] text-white placeholder:text-white/50 focus-visible:border-white/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function RegisterPage() {
   const { signUp, isSigningUp } = useAuth();
+  const { data: districts } = useSignupMagisterialDistricts();
+  const { data: courts } = useSignupCourts();
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      accountType: "magistrate",
       fullName: "",
       email: "",
       password: "",
       confirmPassword: "",
+      staffId: "",
+      districtId: "",
+      courtIds: [],
+      note: "",
     },
   });
 
+  const accountType = form.watch("accountType");
+  const districtId = form.watch("districtId");
+  const courtIds = form.watch("courtIds") ?? [];
+  const courtsInDistrict = (courts ?? []).filter((c) => c.district_id === districtId);
+
   async function onSubmit(values: RegisterFormValues) {
     try {
-      await signUp(values);
+      await signUp({
+        email: values.email,
+        password: values.password,
+        fullName: values.fullName,
+        ...(values.accountType === "clerk"
+          ? {
+              requestedRole: "clerk" as const,
+              requestedCourtIds: values.courtIds,
+              staffId: values.staffId,
+              note: values.note,
+            }
+          : {}),
+      });
     } catch {
       // Errors surface globally via the mutation cache toast subscriber.
     }
@@ -56,6 +84,43 @@ export default function RegisterPage() {
       <CardContent className="px-8 pb-10 sm:px-16 sm:pb-12">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="accountType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white/80">Account type</FormLabel>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["magistrate", "clerk"] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => field.onChange(type)}
+                        className={cn(
+                          "rounded-sm border px-4 py-3 text-left text-sm font-medium transition-colors",
+                          field.value === type
+                            ? "border-primary bg-primary/10 text-white"
+                            : "border-white/15 bg-[#333] text-white/70 hover:border-white/30",
+                        )}
+                        aria-pressed={field.value === type}
+                      >
+                        {type === "magistrate" ? "Magistrate" : "Court Clerk"}
+                      </button>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {accountType === "clerk" && (
+              <p className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">
+                Court access must be approved by the magistrate assigned to each
+                court you request. You'll be able to sign in and check your
+                request status once your email is verified, even before approval.
+              </p>
+            )}
+
             <FormField
               control={form.control}
               name="fullName"
@@ -132,6 +197,105 @@ export default function RegisterPage() {
                 </FormItem>
               )}
             />
+
+            {accountType === "clerk" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="staffId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/80">Staff / employee ID (optional)</FormLabel>
+                      <FormControl>
+                        <Input className={fieldClassName} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="districtId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/80">Magisterial District</FormLabel>
+                      <FormControl>
+                        <select
+                          className={cn(fieldClassName, "w-full px-3")}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                            form.setValue("courtIds", []);
+                          }}
+                        >
+                          <option value="">Select a district…</option>
+                          {(districts ?? []).map((d) => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="courtIds"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel className="text-white/80">
+                        Court(s) you need access to
+                      </FormLabel>
+                      <div className="space-y-2 rounded-sm border border-white/15 bg-[#333] p-3">
+                        {!districtId ? (
+                          <p className="text-sm text-white/50">Select a district first.</p>
+                        ) : courtsInDistrict.length === 0 ? (
+                          <p className="text-sm text-white/50">No courts found in this district.</p>
+                        ) : (
+                          courtsInDistrict.map((court) => (
+                            <label key={court.id} className="flex items-center gap-2 text-sm text-white/80">
+                              <Checkbox
+                                checked={courtIds.includes(court.id)}
+                                onCheckedChange={(checked) => {
+                                  const next = checked
+                                    ? [...courtIds, court.id]
+                                    : courtIds.filter((id) => id !== court.id);
+                                  form.setValue("courtIds", next, { shouldValidate: true });
+                                }}
+                              />
+                              {court.name}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="note"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/80">
+                        Note for the magistrate (optional)
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="e.g. your clerk's office, or the magistrate you work with"
+                          className="border border-white/15 bg-[#333] text-white placeholder:text-white/50"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
 
             <Button
               type="submit"
