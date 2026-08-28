@@ -2440,6 +2440,7 @@ export type Database = {
           effective_date: string | null
           enactment_year: number | null
           full_text: string | null
+          has_text_layer: boolean | null
           id: string
           import_job_id: string | null
           instrument_type: string | null
@@ -2447,6 +2448,8 @@ export type Database = {
           jurisdiction: string
           jurisdiction_id: string | null
           original_filename: string | null
+          page_count: number | null
+          primary_document_id: string | null
           retrieved_at: string | null
           review_status: string
           search_vector: unknown
@@ -2471,6 +2474,7 @@ export type Database = {
           effective_date?: string | null
           enactment_year?: number | null
           full_text?: string | null
+          has_text_layer?: boolean | null
           id?: string
           import_job_id?: string | null
           instrument_type?: string | null
@@ -2478,6 +2482,8 @@ export type Database = {
           jurisdiction: string
           jurisdiction_id?: string | null
           original_filename?: string | null
+          page_count?: number | null
+          primary_document_id?: string | null
           retrieved_at?: string | null
           review_status?: string
           search_vector?: unknown
@@ -2502,6 +2508,7 @@ export type Database = {
           effective_date?: string | null
           enactment_year?: number | null
           full_text?: string | null
+          has_text_layer?: boolean | null
           id?: string
           import_job_id?: string | null
           instrument_type?: string | null
@@ -2509,6 +2516,8 @@ export type Database = {
           jurisdiction?: string
           jurisdiction_id?: string | null
           original_filename?: string | null
+          page_count?: number | null
+          primary_document_id?: string | null
           retrieved_at?: string | null
           review_status?: string
           search_vector?: unknown
@@ -2540,6 +2549,13 @@ export type Database = {
             columns: ["jurisdiction_id"]
             isOneToOne: false
             referencedRelation: "legal_jurisdictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statutes_primary_document_id_fkey"
+            columns: ["primary_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
           {
@@ -2796,6 +2812,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      finalize_legislation_document: {
+        Args: {
+          p_document_id: string
+          p_has_text_layer?: boolean
+          p_page_count?: number
+          p_statute_id: string
+        }
+        Returns: undefined
       }
       find_next_available_docket_date: {
         Args: {

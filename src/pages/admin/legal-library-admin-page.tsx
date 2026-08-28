@@ -10,7 +10,6 @@ import {
   Landmark,
   Plus,
   RefreshCw,
-  ScrollText,
   Sparkles,
   Trash2,
   Upload,
@@ -49,7 +48,6 @@ import {
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useIngestCaseLaw,
-  useIngestLegislation,
   useImportBatches,
   useImportBatchDetail,
   useReprocessCaseLawExtraction,
@@ -83,6 +81,7 @@ import {
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
 import { Field, JurisdictionField, CourtField, CategoryField } from "@/components/legal-library/taxonomy-fields";
+import { LegislationPdfUploadPanel } from "@/pages/admin/legislation-pdf-upload-panel";
 import { OCR_METADATA_PAGES } from "@/lib/ocr/constants";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, normalizeWhitespace, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
@@ -960,7 +959,6 @@ function SourcesTab() {
 // ---------------------------------------------------------------------------
 
 const EMPTY_CASE_FIELDS = { case_name: "", citation: "", decided_date: "" };
-const EMPTY_STATUTE_FIELDS = { code: "", title: "", short_title: "" };
 
 function ImportTab() {
   // Single-document import (the original flow) vs. Bulk import (Section
@@ -1013,12 +1011,9 @@ function SingleImportPanel() {
   // free-text pair (§2/§25: "should not have to catalog the same legal
   // authority twice").
   const [caseFields, setCaseFields] = useState(EMPTY_CASE_FIELDS);
-  const [statuteFields, setStatuteFields] = useState(EMPTY_STATUTE_FIELDS);
 
   const ingestCaseLaw = useIngestCaseLaw();
-  const ingestLegislation = useIngestLegislation();
   const publishCaseLaw = useSetCaseLawReviewStatus();
-  const publishStatute = useSetStatuteReviewStatus();
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const { data: categories } = useLegalCaseCategories();
@@ -1038,16 +1033,16 @@ function SingleImportPanel() {
    * stays a draft in the Review Queue for the curator to fix, same as
    * today. Bulk Import is deliberately untouched — those items are
    * machine-proposed per file and still need individual review.
+   *
+   * Case Law only -- Legislation's file-first upload (0098) auto-publishes
+   * as part of `useCreateLegislationDocument`'s own finalize step, via a
+   * different RPC (`finalize_legislation_document`), with no separate
+   * navigate-after-publish call needed here.
    */
-  function publishThenNavigate(
-    kind: "case_law" | "legislation",
-    id: string,
-  ) {
-    const mutation = kind === "case_law" ? publishCaseLaw : publishStatute;
-    const route = kind === "case_law" ? ROUTES.caseLawDetail(id) : ROUTES.legislationDetail(id);
-    mutation.mutate(
+  function publishCaseLawThenNavigate(id: string) {
+    publishCaseLaw.mutate(
       { id, review_status: "published" },
-      { onSettled: () => navigate(route) },
+      { onSettled: () => navigate(ROUTES.caseLawDetail(id)) },
     );
   }
 
@@ -1079,7 +1074,6 @@ function SingleImportPanel() {
     setJurisdictionId("");
     setCategoryId("");
     setCaseFields(EMPTY_CASE_FIELDS);
-    setStatuteFields(EMPTY_STATUTE_FIELDS);
     setExtractionEnvelope(emptyExtractionEnvelope());
     setCaseNameConfidence(null);
   }
@@ -1196,8 +1190,36 @@ function SingleImportPanel() {
   }
 
   const canSubmitCaseLaw = caseFields.citation.trim() && courtId && jurisdictionId;
-  const canSubmitStatute =
-    statuteFields.code.trim() && statuteFields.title.trim() && jurisdictionId;
+
+  if (contentType === "legislation") {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Legislation — file-first PDF library</CardTitle>
+            <CardDescription>
+              Legislation is stored as the original PDF, never re-extracted
+              into ordinary content — the PDF itself is the authoritative
+              document. Publishes immediately once uploaded.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Select
+              value={contentType}
+              onChange={(e) => setContentType(e.target.value as "case_law" | "legislation")}
+              className="max-w-xs"
+            >
+              <option value="case_law">Case Law</option>
+              <option value="legislation">Legislation</option>
+            </Select>
+            <LegislationPdfUploadPanel
+              onSuccess={(statuteId) => navigate(ROUTES.legislationDetail(statuteId))}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -1254,79 +1276,51 @@ function SingleImportPanel() {
           {file && extractionEnvelope.status !== "pending" && (
             <ExtractionStatusPanel
               envelope={extractionEnvelope}
-              caseNameConfidence={contentType === "case_law" ? caseNameConfidence : null}
+              caseNameConfidence={caseNameConfidence}
             />
           )}
 
-          {contentType === "case_law" ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Case name" hint="Proposed from extracted text if left blank.">
-                <Input
-                  value={caseFields.case_name}
-                  onChange={(e) => setCaseFields((f) => ({ ...f, case_name: e.target.value }))}
-                />
-              </Field>
-              <Field label="Citation" required>
-                <Input
-                  value={caseFields.citation}
-                  onChange={(e) => setCaseFields((f) => ({ ...f, citation: e.target.value }))}
-                />
-              </Field>
-              <Field label="Decision date">
-                <DateOnlyInput
-                  value={caseFields.decided_date}
-                  onChange={(v) => setCaseFields((f) => ({ ...f, decided_date: v }))}
-                />
-              </Field>
-              <JurisdictionField
-                value={jurisdictionId || null}
-                onChange={(id) => setJurisdictionId(id ?? "")}
-                jurisdictions={jurisdictions ?? []}
-                hint={
-                  selectedCourt?.jurisdiction_id
-                    ? "Auto-set from the selected Court."
-                    : "This court spans multiple jurisdictions — set explicitly."
-                }
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Case name" hint="Proposed from extracted text if left blank.">
+              <Input
+                value={caseFields.case_name}
+                onChange={(e) => setCaseFields((f) => ({ ...f, case_name: e.target.value }))}
               />
-              <CourtField
-                value={courtId || null}
-                onChange={handleCourtChange}
-                courts={courts ?? []}
-                hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both."
+            </Field>
+            <Field label="Citation" required>
+              <Input
+                value={caseFields.citation}
+                onChange={(e) => setCaseFields((f) => ({ ...f, citation: e.target.value }))}
               />
-              <CategoryField
-                value={categoryId || null}
-                onChange={(id) => setCategoryId(id ?? "")}
-                categories={categories ?? []}
+            </Field>
+            <Field label="Decision date">
+              <DateOnlyInput
+                value={caseFields.decided_date}
+                onChange={(v) => setCaseFields((f) => ({ ...f, decided_date: v }))}
               />
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Code" required hint="Short identifier, unique per jurisdiction.">
-                <Input
-                  value={statuteFields.code}
-                  onChange={(e) => setStatuteFields((f) => ({ ...f, code: e.target.value }))}
-                />
-              </Field>
-              <Field label="Title" required>
-                <Input
-                  value={statuteFields.title}
-                  onChange={(e) => setStatuteFields((f) => ({ ...f, title: e.target.value }))}
-                />
-              </Field>
-              <Field label="Short title">
-                <Input
-                  value={statuteFields.short_title}
-                  onChange={(e) => setStatuteFields((f) => ({ ...f, short_title: e.target.value }))}
-                />
-              </Field>
-              <JurisdictionField
-                value={jurisdictionId || null}
-                onChange={(id) => setJurisdictionId(id ?? "")}
-                jurisdictions={jurisdictions ?? []}
-              />
-            </div>
-          )}
+            </Field>
+            <JurisdictionField
+              value={jurisdictionId || null}
+              onChange={(id) => setJurisdictionId(id ?? "")}
+              jurisdictions={jurisdictions ?? []}
+              hint={
+                selectedCourt?.jurisdiction_id
+                  ? "Auto-set from the selected Court."
+                  : "This court spans multiple jurisdictions — set explicitly."
+              }
+            />
+            <CourtField
+              value={courtId || null}
+              onChange={handleCourtChange}
+              courts={courts ?? []}
+              hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both."
+            />
+            <CategoryField
+              value={categoryId || null}
+              onChange={(id) => setCategoryId(id ?? "")}
+              categories={categories ?? []}
+            />
+          </div>
 
           <Field label="Document text" hint="Read automatically from PDFs, Word (.docx), Markdown, text files, and images. Paste manually for Word 97–2003 (.doc) or when extraction needs a check.">
             <Textarea
@@ -1342,81 +1336,47 @@ function SingleImportPanel() {
           )}
 
           <div className="flex justify-end">
-            {contentType === "case_law" ? (
-              <Button
-                disabled={
-                  !canSubmitCaseLaw || (!text.trim() && !file) || ingestCaseLaw.isPending
-                }
-                onClick={() =>
-                  ingestCaseLaw.mutate(
-                    {
-                      text,
-                      file,
-                      extractionEnvelope,
-                      source_url: null,
-                      source_id: null,
-                      original_filename: file?.name ?? null,
-                      batch_id: null,
-                      known: {
-                        case_name: caseFields.case_name.trim() || undefined,
-                        citation: caseFields.citation.trim(),
-                        // Legacy free-text columns are NOT typed separately by
-                        // the curator — they're derived automatically from
-                        // the canonical selection above (§2/§3/§19: the
-                        // NOT NULL free-text columns stay populated for
-                        // backward compatibility without ever asking the
-                        // curator to catalog the same Court/Jurisdiction
-                        // twice).
-                        court: (courts ?? []).find((c) => c.id === courtId)?.canonical_name ?? "",
-                        jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
-                        court_id: courtId || null,
-                        jurisdiction_id: jurisdictionId || null,
-                        category_id: categoryId || null,
-                        decided_date: caseFields.decided_date || null,
-                      },
+            <Button
+              disabled={
+                !canSubmitCaseLaw || (!text.trim() && !file) || ingestCaseLaw.isPending
+              }
+              onClick={() =>
+                ingestCaseLaw.mutate(
+                  {
+                    text,
+                    file,
+                    extractionEnvelope,
+                    source_url: null,
+                    source_id: null,
+                    original_filename: file?.name ?? null,
+                    batch_id: null,
+                    known: {
+                      case_name: caseFields.case_name.trim() || undefined,
+                      citation: caseFields.citation.trim(),
+                      // Legacy free-text columns are NOT typed separately by
+                      // the curator — they're derived automatically from
+                      // the canonical selection above (§2/§3/§19: the
+                      // NOT NULL free-text columns stay populated for
+                      // backward compatibility without ever asking the
+                      // curator to catalog the same Court/Jurisdiction
+                      // twice).
+                      court: (courts ?? []).find((c) => c.id === courtId)?.canonical_name ?? "",
+                      jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
+                      court_id: courtId || null,
+                      jurisdiction_id: jurisdictionId || null,
+                      category_id: categoryId || null,
+                      decided_date: caseFields.decided_date || null,
                     },
-                    {
-                      onSuccess: (result) => publishThenNavigate("case_law", result.caseLawId),
-                    },
-                  )
-                }
-              >
-                <FileText className="h-4 w-4" />
-                Create &amp; publish Case Law record
-              </Button>
-            ) : (
-              <Button
-                disabled={
-                  !canSubmitStatute || (!text.trim() && !file) || ingestLegislation.isPending
-                }
-                onClick={() =>
-                  ingestLegislation.mutate(
-                    {
-                      text,
-                      file,
-                      extractionEnvelope,
-                      source_url: null,
-                      source_id: null,
-                      original_filename: file?.name ?? null,
-                      batch_id: null,
-                      known: {
-                        code: statuteFields.code.trim(),
-                        title: statuteFields.title.trim(),
-                        jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
-                        short_title: statuteFields.short_title.trim() || undefined,
-                        jurisdiction_id: jurisdictionId || null,
-                      },
-                    },
-                    {
-                      onSuccess: (result) => publishThenNavigate("legislation", result.statuteId),
-                    },
-                  )
-                }
-              >
-                <ScrollText className="h-4 w-4" />
-                Create &amp; publish Act
-              </Button>
-            )}
+                  },
+                  {
+                    onSuccess: (result) => publishCaseLawThenNavigate(result.caseLawId),
+                  },
+                )
+              }
+            >
+              <FileText className="h-4 w-4" />
+              Create &amp; publish Case Law record
+            </Button>
           </div>
         </CardContent>
       </Card>

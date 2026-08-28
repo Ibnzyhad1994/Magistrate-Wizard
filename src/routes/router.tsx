@@ -16,7 +16,8 @@ import JudgmentDetailPage from "@/pages/judgments/judgment-detail-page";
 import CaseLawListPage from "@/pages/case-law/case-law-list-page";
 import CaseLawDetailPage from "@/pages/case-law/case-law-detail-page";
 import LegislationListPage from "@/pages/legislation/legislation-list-page";
-import LegislationDetailPage from "@/pages/legislation/legislation-detail-page";
+import LegislationViewerPage from "@/pages/legislation/legislation-viewer-page";
+import LegislationEditPage from "@/pages/legislation/legislation-edit-page";
 import QuickCodesPage from "@/pages/quick-codes/quick-codes-page";
 import BenchNotesListPage from "@/pages/bench-notes/bench-notes-list-page";
 import BenchNoteDetailPage from "@/pages/bench-notes/bench-note-detail-page";
@@ -112,8 +113,10 @@ export const router = createBrowserRouter([
           { path: ROUTES.caseLaw, element: <CaseLawListPage /> },
           { path: "/case-law/:id", element: <CaseLawDetailPage /> },
           { path: ROUTES.legislation, element: <LegislationListPage /> },
-          { path: "/legislation/:id", element: <LegislationDetailPage /> },
-          { path: "/legislation/:id/section/:provisionId", element: <LegislationDetailPage /> },
+          // Read-only. Editing lives on a SEPARATE, admin-gated route below
+          // (ROUTES.legislationEdit) — never mounted here.
+          { path: "/legislation/:id", element: <LegislationViewerPage /> },
+          { path: "/legislation/:id/section/:provisionId", element: <LegislationViewerPage /> },
           { path: ROUTES.quickCodes, element: <QuickCodesPage /> },
           { path: ROUTES.benchNotes, element: <BenchNotesListPage /> },
           { path: "/bench-notes/:id", element: <BenchNoteDetailPage /> },
@@ -126,6 +129,15 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    // Admin-only. Legislation editing (ROUTES.legislationEdit) lives here
+    // rather than in the magistrate+admin Legislation block above —
+    // "editing must be a separate, deliberate, permission-controlled
+    // action," enforced at the route layer as the first line of defense.
+    // A magistrate or clerk directly navigating to /legislation/:id/edit
+    // is redirected to /unauthorized before LegislationEditPage ever
+    // mounts. RLS (statutes UPDATE/DELETE, documents INSERT for
+    // entity_type='statute', finalize_legislation_document) is the real,
+    // independent boundary underneath regardless of this route guard.
     element: <ProtectedRoute allowedRoles={["admin"]} />,
     errorElement: <RouteErrorBoundary />,
     children: [
@@ -135,6 +147,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.adminCourtAssignments, element: <CourtAssignmentsPage /> },
           { path: ROUTES.adminLegalLibrary, element: <LegalLibraryAdminPage /> },
           { path: ROUTES.adminClerkAccess, element: <ClerkAccessAdminPage /> },
+          { path: "/legislation/:id/edit", element: <LegislationEditPage /> },
         ],
       },
     ],

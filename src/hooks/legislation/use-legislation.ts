@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { uploadDocumentToEntity } from "@/hooks/use-documents";
 import type { TablesInsert, TablesUpdate } from "@/types/database.types";
 
 // Mirrors importJobKeys.all in use-import-jobs.ts (that module imports
@@ -42,12 +43,20 @@ export function useStatutes() {
       const { data, error } = await supabase
         .from("statutes")
         .select(
-          "id, code, title, short_title, jurisdiction, effective_date, chapter_number, act_number, review_status, updated_at",
+          "id, code, title, short_title, jurisdiction, effective_date, chapter_number, act_number, enactment_year, instrument_type, review_status, updated_at, primary_document_id, page_count, is_current_version",
         )
         .order("title", { ascending: true })
         .limit(500);
       if (error) throw error;
-      return (data ?? []).filter((row) => row.review_status === "published");
+      // A superseded row (is_current_version === false, 0098) stays fully
+      // reachable from the superseding record's detail page, but drops out
+      // of the ordinary library view -- only the current version of each
+      // Act belongs in the main list. Legacy rows predating 0055 have
+      // is_current_version defaulting true, so `!== false` (not `=== true`)
+      // correctly treats a missing/null value as current.
+      return (data ?? []).filter(
+        (row) => row.review_status === "published" && row.is_current_version !== false,
+      );
     },
   });
 }
@@ -138,6 +147,130 @@ export function useCreateCanonicalStatute() {
       toast.success("Draft Act created.");
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
     },
+  });
+}
+
+/**
+ * File-first Legislation upload (0098) -- the ONLY path new Legislation
+ * uploads take now. No text extraction, no chunking, no import_jobs row:
+ * the original PDF is stored unchanged and becomes the record's
+ * `primary_document_id`. Reuses the exact same draft-row-first primitives
+ * as the legacy ingestion path (`useCreateCanonicalStatute`,
+ * `uploadDocumentToEntity`) rather than inventing new plumbing --
+ * `finalize_legislation_document` (0098) is the only genuinely new
+ * server-side piece, and it exists solely to link+publish (and, for a
+ * replacement, flip the superseded row's is_current_version)
+ * atomically in one transaction.
+ *
+ * Cleanup on failure, mirroring `useRejectCanonicalStatute`'s existing
+ * storage-then-metadata order:
+ *   - The file upload/`documents` insert fails -> `uploadDocumentToEntity`
+ *     has already cleaned up any Storage orphan itself; this hook then
+ *     deletes the now file-less draft `statutes` row so nothing broken is
+ *     left in the library.
+ *   - The finalize RPC fails (uploaded fine, but couldn't be linked/
+ *     published) -> the uploaded document's Storage blob + `documents`
+ *     row are removed, then the draft `statutes` row is deleted.
+ * Either way, a failed upload never leaves a broken Legislation record,
+ * and a failed database step never leaves an orphaned Storage object.
+ */
+export function useCreateLegislationDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      values: Partial<StatuteInsert> & { code: string; title: string; jurisdiction: string };
+      file: File;
+      pageCount: number | null;
+      hasTextLayer: boolean | null;
+    }) => {
+      const { data: statute, error: createError } = await supabase
+        .from("statutes")
+        .insert({
+          ...input.values,
+          review_status: "draft",
+          // A replacement's draft row must NOT default to
+          // is_current_version=true (the column default): the row it
+          // supersedes is still true at this moment, and
+          // statutes_code_jurisdiction_current_idx (0098) would reject
+          // two "current" rows sharing the same code+jurisdiction right
+          // here at INSERT time, before finalize_legislation_document
+          // ever runs to demote the old one. finalize (0099) promotes
+          // this row to current only AFTER demoting the superseded row,
+          // both within its own transaction.
+          is_current_version: input.values.supersedes_statute_id ? false : true,
+        })
+        .select()
+        .single();
+      if (createError) throw createError;
+
+      let document: { id: string; file_path: string };
+      try {
+        document = await uploadDocumentToEntity("statute", statute.id, input.file);
+      } catch (uploadError) {
+        await supabase.from("statutes").delete().eq("id", statute.id);
+        throw uploadError;
+      }
+
+      const { error: finalizeError } = await supabase.rpc("finalize_legislation_document", {
+        p_statute_id: statute.id,
+        p_document_id: document.id,
+        p_page_count: input.pageCount ?? undefined,
+        p_has_text_layer: input.hasTextLayer ?? undefined,
+      });
+      if (finalizeError) {
+        const { error: removeError } = await supabase.storage.from("documents").remove([document.file_path]);
+        if (removeError) {
+          console.error("Storage cleanup failed after a failed Legislation finalize step:", removeError);
+        } else {
+          await supabase.from("documents").delete().eq("id", document.id);
+        }
+        await supabase.from("statutes").delete().eq("id", statute.id);
+        throw finalizeError;
+      }
+
+      return statute.id as string;
+    },
+    onSuccess: () => {
+      toast.success("Legislation uploaded and published.");
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.all });
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+}
+
+/** The `documents` row backing `statutes.primary_document_id` -- file_path/file_name the PDF viewer needs to load and label the document. RLS is identical to any other `documents` row (`can_view_statute`, 0091/0093) -- no extra check needed here. */
+export function usePrimaryLegislationDocument(documentId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["legislation", "primary-document", documentId ?? ""],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id, file_path, file_name, file_size")
+        .eq("id", documentId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!documentId,
+  });
+}
+
+/** The record (if any) that supersedes this one -- 0098 version chain. Used by the detail page's "a newer version exists" banner. */
+export function useSupersedingStatute(statuteId: string | undefined) {
+  return useQuery({
+    queryKey: ["legislation", "superseding-by", statuteId ?? ""],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("statutes")
+        .select("id, title")
+        .eq("supersedes_statute_id", statuteId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!statuteId,
   });
 }
 

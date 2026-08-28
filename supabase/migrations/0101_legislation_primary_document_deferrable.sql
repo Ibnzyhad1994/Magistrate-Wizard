@@ -1,0 +1,46 @@
+-- ============================================================================
+-- 0101_legislation_primary_document_deferrable.sql
+--
+-- Fixes a real bug caught by live testing of the new Legislation Delete
+-- action (LegislationEditPage, view/edit separation correction): deleting
+-- a file-first Legislation record threw
+--   "tuple to be deleted was already modified by an operation triggered
+--    by the current command"
+--
+-- Root cause -- a circular trigger conflict introduced by 0098:
+--   1. documents_cascade_delete_statutes (0058) is a BEFORE DELETE
+--      trigger on statutes that deletes the row's linked `documents`
+--      rows (entity_type='statute', entity_id=old.id).
+--   2. statutes.primary_document_id (0098) references
+--      public.documents(id) on delete set null -- a NOT DEFERRABLE (the
+--      Postgres default) foreign key.
+--   3. When step 1 deletes the primary document, Postgres immediately
+--      fires the FK's own ON DELETE SET NULL action to null out
+--      primary_document_id on whichever statutes row references it --
+--      which is the SAME row currently being deleted, in the SAME
+--      top-level command, before its own deletion has completed. Two
+--      operations trying to touch the same in-flight tuple within one
+--      command is exactly what this Postgres error reports.
+--
+-- Fix: make the FK DEFERRABLE INITIALLY DEFERRED, so its ON DELETE SET
+-- NULL action runs at transaction COMMIT instead of immediately. By
+-- commit time the statutes row itself has already been fully deleted,
+-- so the deferred action finds zero matching rows and is a genuine
+-- no-op -- exactly the outcome we want (there is nothing left to null
+-- out; the whole record is gone). This does not change ordinary,
+-- non-conflicting SET NULL behavior for any other case (e.g. if a
+-- `documents` row were ever deleted independently while its parent
+-- `statutes` row is NOT also being deleted in the same transaction, the
+-- deferred trigger still correctly nulls out primary_document_id by the
+-- time that transaction commits).
+--
+-- The shared documents_parent_cascade_delete() function (used by six
+-- OTHER polymorphic parent tables: docket_matters, judgments, case_law,
+-- quick_codes, bench_notes, cases) is untouched -- none of those tables
+-- has an analogous FK pointing back into documents, so none of them can
+-- hit this conflict; only statutes.primary_document_id introduced it.
+-- ============================================================================
+
+alter table public.statutes
+  alter constraint statutes_primary_document_id_fkey
+  deferrable initially deferred;
