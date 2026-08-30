@@ -1,0 +1,54 @@
+name: Build Check iOS
+
+# Validates the iOS app compiles against the Simulator SDK on a
+# GitHub-hosted macOS runner, on every `v*` tag push.
+#
+# IMPORTANT: this does NOT produce a distributable IPA. Apple requires
+# every distributable build (TestFlight, App Store, ad-hoc) to be signed
+# with credentials issued from an active Apple Developer Program
+# membership ($99/yr) — a Distribution certificate, a provisioning
+# profile, and (for CI) an App Store Connect API key. None of that exists
+# yet. Once it does, extend this workflow (or add a new one) with an
+# `xcodebuild archive` + `xcodebuild -exportArchive` step using Fastlane
+# match/gym, gated behind those secrets, and it can upload straight to
+# TestFlight the same way release-android.yml attaches an APK.
+#
+# Until then, this job only proves the app still builds — it's a compile
+# check, not a release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-check-ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Sync Capacitor iOS platform (includes pod install)
+        run: npx cap sync ios
+
+      - name: Compile against iOS Simulator SDK (unsigned)
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -sdk iphonesimulator -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
