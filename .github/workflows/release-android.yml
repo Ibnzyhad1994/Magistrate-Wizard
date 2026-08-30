@@ -14,6 +14,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-android:
     runs-on: ubuntu-latest
@@ -52,7 +55,11 @@ jobs:
       - name: Build release APK
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'keystore/alpha-release.keystore' || '' }}
+          # Absolute path: Gradle's file() in app/build.gradle resolves
+          # relative paths against the app/ module dir, not android/, so a
+          # relative path here silently misses the keystore (falls back to
+          # an unsigned build with no error — do not change back to relative).
+          ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && format('{0}/android/keystore/alpha-release.keystore', github.workspace) || '' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
