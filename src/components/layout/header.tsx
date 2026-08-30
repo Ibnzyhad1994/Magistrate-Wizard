@@ -1,7 +1,7 @@
 import { Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUiStore } from "@/store/ui-store";
-import { useTheme } from "@/providers/theme-provider";
+import { useTheme } from "@/providers/use-theme";
 
 interface HeaderProps {
   title?: string;

@@ -1,0 +1,109 @@
+name: Develop CI + Auto-merge to Main
+
+# On every push to `develop`: run the fast regression/functionality
+# suite, and if it's all green, fast-forward `main` to match and push —
+# which is what triggers the production Vercel deployment.
+#
+# Scope of the gate is deliberately the FAST suite only: lint, typecheck,
+# and every pure-logic test script under scripts/tests/ that needs no
+# live database (extraction/OCR pipeline correctness, tag proposals,
+# docket-procedure logic, calendar sync/mapping, offline outbox, XSS
+# sanitisation, and a handful of scripts with no npm alias yet, invoked
+# directly with the same runner the aliased ones use). Explicitly OUT of
+# scope: every script that opens a live Supabase connection — persona-
+# workflow simulation, the clerk access / admin-magistrate docket-scoping
+# / legislation-edit-permission integration tests, manual RLS probes, and
+# the slow/"brutal" stress-test variants. Those need a real project and
+# meaningfully longer runtime, and were left for manual or separately-
+# scheduled runs rather than gating every push.
+#
+# The merge is fast-forward-only. If `main` has commits `develop` doesn't
+# (i.e. someone pushed directly to main out of band), the merge step
+# fails loudly instead of guessing how to reconcile history — fix that
+# by rebasing develop onto main, don't change this workflow to force it.
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Ingestion / extraction / OCR correctness suite
+        run: npm run test:ingestion
+
+      - name: Calendar mapping
+        run: npm run test:calendar-map
+
+      - name: Calendar sync
+        run: npm run test:calendar-sync
+
+      - name: Offline outbox
+        run: npm run test:offline-outbox
+
+      - name: Tag proposal (hard cases)
+        run: npm run test:propose-tags-hard
+
+      - name: Tag proposal (before/after comparison)
+        run: npm run test:propose-tags-compare
+
+      - name: XSS sanitisation probes
+        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/pentest-xss-probes.mjs
+
+      - name: Case law facets
+        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-facets.mjs
+
+      - name: Docket scope resolution
+        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-scope.mjs
+
+      - name: DOCX page preview sanitisation
+        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docx-page-preview-sanitize.mjs
+
+      - name: Persistent batch lifecycle
+        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-persistent-batch-lifecycle.mjs
+
+      - name: Stale state and publication
+        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-stale-state-and-publication.mjs
+
+      - name: Build (catches anything the type checker alone would miss)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+  merge-to-main:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Fast-forward main to develop
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin develop
+          git merge --ff-only origin/develop
+          git push origin main

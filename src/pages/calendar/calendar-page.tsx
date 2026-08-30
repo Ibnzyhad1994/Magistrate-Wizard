@@ -64,7 +64,7 @@ export default function CalendarPage() {
   const from = monthStart(cursor.year, cursor.month);
   const to = monthEnd(cursor.year, cursor.month);
   const { data, isPending, isError, error, refetch } = useCalendarEvents(from, to);
-  const events = data ?? [];
+  const events = useMemo(() => data ?? [], [data]);
   const byDate = useMemo(() => groupByDate(events), [events]);
   const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor]);
   const monthLabel = new Intl.DateTimeFormat("en-GB", {

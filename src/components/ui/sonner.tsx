@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { Toaster as Sonner } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { useTheme } from "@/providers/theme-provider";
+import { useTheme } from "@/providers/use-theme";
 
 type ToasterProps = ComponentProps<typeof Sonner>;
 

@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useTheme, type Theme } from "@/providers/theme-provider";
+import { useTheme, type Theme } from "@/providers/use-theme";
 import {
   BROWSE_VIEW_LABELS,
   TILE_SIZE_LABELS,

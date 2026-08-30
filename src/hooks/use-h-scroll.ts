@@ -31,7 +31,7 @@ export const useHScroll = (
       node.removeEventListener("scroll", update);
       observer.disconnect();
     };
-  }, [update]);
+  }, [update, ref]);
 
   useEffect(() => {
     update();

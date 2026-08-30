@@ -75,8 +75,12 @@ const decodeHtmlEntities = (value: string): string => {
 
 /** True only for http(s), mailto, and in-page fragments. */
 export const isSafeHref = (href: string): boolean => {
+  // The control-char strip below is deliberate: ASCII control chars (e.g.
+  // embedded NUL) are a known href-sanitization bypass vector that some
+  // browsers/parsers ignore.
   const trimmed = decodeHtmlEntities(href)
     .trim()
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001F\u007F]/g, "")
   if (!trimmed) return false
   if (trimmed.startsWith("#") && !trimmed.includes(":")) return true

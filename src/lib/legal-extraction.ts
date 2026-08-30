@@ -507,7 +507,7 @@ function extractRunningTitleBeforeCourt(head: string): string | undefined {
   const m = COURT_RUNNING_HEADING_RE.exec(head);
   if (!m || m.index < 8) return undefined;
   const before = head.slice(0, m.index);
-  const vMatches = [...before.matchAll(/\b([A-Z][\w.''\-]*(?:\s+[A-Z][\w.''\-]*){0,8}\s+v(?:s)?\.?\s+[A-Z][\w.''\-]*(?:\s+[A-Z&][\w.''\-]*){0,10})\b/g)];
+  const vMatches = [...before.matchAll(/\b([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,8}\s+v(?:s)?\.?\s+[A-Z][\w.'-]*(?:\s+[A-Z&][\w.'-]*){0,10})\b/g)];
   const last = vMatches[vMatches.length - 1];
   if (!last?.[1]) return undefined;
   const cleaned = cleanCaseNameCandidate(last[1]);

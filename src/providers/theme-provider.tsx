@@ -1,28 +1,12 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-
-export type Theme = "light" | "dark" | "system";
+import { ThemeContext, type Theme } from "@/providers/use-theme";
 
 interface ThemeProviderProps {
   children: ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
 }
-
-interface ThemeContextValue {
-  theme: Theme;
-  resolvedTheme: "light" | "dark";
-  setTheme: (theme: Theme) => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function getSystemTheme(): "light" | "dark" {
   if (typeof window === "undefined") return "light";
@@ -74,25 +58,20 @@ export function ThemeProvider({
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
-  const setTheme = (next: Theme) => {
-    window.localStorage.setItem(storageKey, next);
-    setThemeState(next);
-  };
+  const setTheme = useCallback(
+    (next: Theme) => {
+      window.localStorage.setItem(storageKey, next);
+      setThemeState(next);
+    },
+    [storageKey],
+  );
 
   const value = useMemo(
     () => ({ theme, resolvedTheme, setTheme }),
-    [theme, resolvedTheme],
+    [theme, resolvedTheme, setTheme],
   );
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
-}
-
-export function useTheme(): ThemeContextValue {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
 }
