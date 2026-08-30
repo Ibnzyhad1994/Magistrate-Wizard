@@ -11,5 +11,5 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["vite.config.ts", "capacitor.config.ts"]
+  "include": ["vite.config.ts", "capacitor.config.ts", "scripts/content-security-policy.ts"]
 }
