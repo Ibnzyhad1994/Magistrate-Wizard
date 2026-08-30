@@ -2,6 +2,7 @@ import { Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUiStore } from "@/store/ui-store";
 import { useTheme } from "@/providers/use-theme";
+import { ReportIssueButton } from "@/components/feedback/report-issue-button";
 
 interface HeaderProps {
   title?: string;
@@ -31,6 +32,8 @@ export function Header({ title }: HeaderProps) {
       <h1 className="flex-1 truncate text-sm font-semibold text-foreground">
         {title}
       </h1>
+
+      <ReportIssueButton />
 
       <Button
         variant="ghost"

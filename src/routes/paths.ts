@@ -35,6 +35,7 @@ export const ROUTES = {
   settings: "/settings",
   adminCourtAssignments: "/admin/court-assignments",
   adminClerkAccess: "/admin/clerk-access",
+  adminIssueReports: "/admin/issue-reports",
   clerkAccess: "/clerk-access",
   clerkAccessRequests: "/clerk-access-requests",
   login: "/login",

@@ -1660,6 +1660,69 @@ export type Database = {
           },
         ]
       }
+      issue_reports: {
+        Row: {
+          admin_notes: string | null
+          app_version: string | null
+          created_at: string
+          description: string
+          id: string
+          page_path: string | null
+          reporter_id: string
+          reporter_role: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          title: string
+          type: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          app_version?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          page_path?: string | null
+          reporter_id: string
+          reporter_role?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          title: string
+          type: string
+        }
+        Update: {
+          admin_notes?: string | null
+          app_version?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          page_path?: string | null
+          reporter_id?: string
+          reporter_role?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issue_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       judgment_tags: {
         Row: {
           created_at: string

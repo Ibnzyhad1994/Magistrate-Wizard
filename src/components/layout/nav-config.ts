@@ -13,6 +13,7 @@ import {
   CalendarDays,
   UserCheck,
   ShieldAlert,
+  Bug,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
@@ -137,6 +138,13 @@ export const NAV_ITEMS: AppNavItem[] = [
     label: "Clerk Access — Unresolved",
     href: ROUTES.adminClerkAccess,
     icon: ShieldAlert,
+    roles: ["admin"],
+    group: "admin",
+  },
+  {
+    label: "Issue Reports",
+    href: ROUTES.adminIssueReports,
+    icon: Bug,
     roles: ["admin"],
     group: "admin",
   },
