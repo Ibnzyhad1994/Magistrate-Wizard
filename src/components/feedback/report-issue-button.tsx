@@ -65,10 +65,11 @@ export function ReportIssueButton() {
       <Button
         variant="ghost"
         size="icon"
+        className="min-h-11 min-w-11 shrink-0 touch-manipulation text-white hover:bg-white/10"
         onClick={() => setOpen(true)}
         aria-label="Report a bug or suggestion"
       >
-        <Bug className="h-4 w-4" />
+        <Bug className="h-5 w-5" />
       </Button>
       <DialogContent>
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-1 flex-col gap-4">

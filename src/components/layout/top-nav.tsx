@@ -6,6 +6,7 @@ import { ROUTES } from "@/routes/paths";
 import { NAV_ITEMS, groupNavItems, navItemLabel, visibleNavItems } from "@/components/layout/nav-config";
 import { AppLogo } from "@/components/brand/app-logo";
 import { UserMenu } from "@/components/layout/user-menu";
+import { ReportIssueButton } from "@/components/feedback/report-issue-button";
 import { MobileSearchDialog } from "@/components/layout/mobile-search-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +181,7 @@ export function TopNav() {
             <Search className="h-5 w-5" />
           </Button>
         )}
+        <ReportIssueButton />
         <UserMenu compact />
       </div>
       {!isDesktop ? (
