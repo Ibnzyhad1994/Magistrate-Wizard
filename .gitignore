@@ -80,3 +80,8 @@ scripts/seed-legal-library/raw/_fetch2/
 scripts/seed-legal-library/raw/_harvest/
 scripts/seed-legal-library/raw/_pdfs/
 scripts/seed-legal-library/raw/_tmp_gy/
+
+# Local DB dumps (may contain password hashes / PII — never commit)
+supabase/dumps/
+.vercel
+.env*

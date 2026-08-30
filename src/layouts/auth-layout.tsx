@@ -18,7 +18,7 @@ export function AuthLayout() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/80" />
       </div>
 
-      <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
+      <header className="relative z-10 px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-5 sm:px-12 sm:pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sm:pb-6">
         <AppLogo size="lg" />
       </header>
 
