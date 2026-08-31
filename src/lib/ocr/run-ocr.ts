@@ -84,7 +84,7 @@ const collectPageImages = async (
     if (raster.length > 0) {
       if (raster.length >= maxPages) {
         warnings.push(
-          `Only the first ${maxPages} pages were recognized — paste any remaining pages manually if needed.`,
+          `Only the first ${maxPages} pages were recognized. Paste any remaining pages manually if needed.`,
         )
       }
       return {
@@ -184,7 +184,7 @@ export const runOcr = async (file: File, options?: OcrRunOptions): Promise<Extra
   }
   warnings.push(...quality.warnings)
   if (meanConfidence > 0 && meanConfidence < LOW_OCR_MEAN_CONFIDENCE) {
-    warnings.push("Recognized text has modest engine confidence — please read it against the original scan.")
+    warnings.push("Recognized text has modest engine confidence. Please read it against the original scan.")
   }
 
   if (!quality.passed || meanConfidence < MIN_OCR_MEAN_CONFIDENCE) {

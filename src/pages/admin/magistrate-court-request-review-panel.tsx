@@ -76,7 +76,7 @@ export function MagistrateCourtRequestReviewPanel() {
         password: bootstrapPassword,
       });
       if (reauthError) {
-        throw new Error("Password incorrect — could not confirm your identity.");
+        throw new Error("Password incorrect. Could not confirm your identity.");
       }
       await bootstrapApprove.mutateAsync({ requestId: bootstrapTarget.id, reason: bootstrapReason });
       setBootstrapTarget(null);

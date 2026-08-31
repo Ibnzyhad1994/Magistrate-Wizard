@@ -123,7 +123,7 @@ export const ingestDocument = async (
       const text = await extractDocxText(await file.arrayBuffer())
       if (!text.trim()) {
         return unsupportedEnvelope(
-          "This Word document did not contain extractable text. Paste the text to continue — the original file will still be preserved.",
+          "This Word document did not contain extractable text. Paste the text to continue; the original file will still be preserved.",
         )
       }
       return buildDocxEnvelope(text)
@@ -139,7 +139,7 @@ export const ingestDocument = async (
     return {
       ...emptyExtractionEnvelope(),
       warnings: [
-        "Word 97–2003 (.doc) files cannot be read automatically. Save the file as .docx, or paste the text below — the original file will still be preserved.",
+        "Word 97–2003 (.doc) files cannot be read automatically. Save the file as .docx, or paste the text below; the original file will still be preserved.",
       ],
     }
   }
@@ -149,7 +149,7 @@ export const ingestDocument = async (
   }
 
   return unsupportedEnvelope(
-    `Automatic text extraction is not available for this ${ingestKindLabel(kind)}. Paste the text below — the original file will still be preserved.`,
+    `Automatic text extraction is not available for this ${ingestKindLabel(kind)}. Paste the text below; the original file will still be preserved.`,
   )
 }
 
@@ -167,7 +167,7 @@ export const ingestSuccessToast = (envelope: ExtractionEnvelope): string => {
     return "Text extracted from the Word document. Original file will be uploaded and preserved."
   }
   if (envelope.status === "extracted") {
-    return "Text extracted from the PDF. Citation, case name, and court were proposed below where confidently identified — review before creating the draft."
+    return "Text extracted from the PDF. Citation, case name, and court were proposed below where confidently identified. Review before creating the draft."
   }
-  return "Text extracted, but quality checks flagged it as low confidence — review it carefully before creating the draft."
+  return "Text extracted, but quality checks flagged it as low confidence. Review it carefully before creating the draft."
 }

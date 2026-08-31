@@ -246,8 +246,8 @@ export function useBulkImportCaseLaw() {
             // extra "we also kept your file" behavior is at risk here.
           }
           const reason = attachedAsAlternateSource
-            ? `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported as a new record — this file was attached to the existing authority as an alternate source for curator review.`
-            : `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported — review the existing record if this is a different source for the same case.`;
+            ? `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported as a new record; this file was attached to the existing authority as an alternate source for curator review.`
+            : `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported. Review the existing record if this is a different source for the same case.`;
           patchItem(item.id, { status: "duplicate", isDuplicate: true, duplicateReason: reason });
           await persistNonDraft("duplicate", reason, { duplicateOfId: citationConflict.id });
           return;
@@ -369,7 +369,7 @@ export function useBulkImportCaseLaw() {
       // single job (import_jobs.batch_id is nullable) — if creating it
       // fails for some reason, still process every file individually
       // rather than aborting the entire operation.
-      toast.warning(`Could not create a batch record (${getErrorMessage(e)}) — continuing without one.`);
+      toast.warning(`Could not create a batch record (${getErrorMessage(e)}). Continuing without one.`);
     }
 
     const processable = initial.filter((it) => it.status !== "rejected");
@@ -464,7 +464,7 @@ export function useBulkImportCaseLaw() {
       // above is still accurate for this session; only the PERSISTED
       // record is short by this many outcomes.
       toast.warning(
-        `${persistenceFailures} outcome${persistenceFailures === 1 ? "" : "s"} in this batch could not be saved to the persistent record — they're shown above, but won't appear in Import Batches. Try refreshing the batch later; if this recurs, check your connection.`,
+        `${persistenceFailures} outcome${persistenceFailures === 1 ? "" : "s"} in this batch could not be saved to the persistent record. They're shown above, but won't appear in Import Batches. Try refreshing the batch later; if this recurs, check your connection.`,
       );
     }
   }
@@ -507,7 +507,7 @@ export function useBulkImportCaseLaw() {
     const persistenceFailureCounter = { count: 0 };
     await processOneItem(item, lastBatchIdRef.current, opts, persistenceFailureCounter);
     if (persistenceFailureCounter.count > 0) {
-      toast.warning("This outcome could not be saved to the persistent batch record — it's shown above, but won't appear in Import Batches.");
+      toast.warning("This outcome could not be saved to the persistent batch record. It's shown above, but won't appear in Import Batches.");
     }
   }
 

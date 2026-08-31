@@ -139,7 +139,7 @@ export default function DocketListPage() {
     <BrowsePage>
       <BrowseHeader
         title={docketScopeTitle(selectedCourt?.court_name ?? null)}
-        description="List is the working sheet — swipe for stages on a phone. Tiles stay for cover-photo browse. Events still hold the dates."
+        description="List is the working sheet. Swipe for stages on a phone. Tiles stay for cover-photo browse. Events still hold the dates."
         showViewSelect
         viewSelectValue={docketBrowseView}
         onViewSelectChange={setDocketBrowseView}
@@ -174,7 +174,7 @@ export default function DocketListPage() {
             <Landmark className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Select
               className="max-w-xs"
-              aria-label="Docket scope — choose a court"
+              aria-label="Docket scope: choose a court"
               value={courtId ?? ALL_COURTS_PARAM}
               onChange={(e) => {
                 const next = new URLSearchParams(searchParams);

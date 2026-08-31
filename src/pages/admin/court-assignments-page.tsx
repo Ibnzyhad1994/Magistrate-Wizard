@@ -304,7 +304,7 @@ export default function CourtAssignmentsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">History</CardTitle>
-                <CardDescription>Ended Court assignments — preserved, never deleted.</CardDescription>
+                <CardDescription>Ended Court assignments: preserved, never deleted.</CardDescription>
               </CardHeader>
               <CardContent>
                 {assignmentsPending ? (

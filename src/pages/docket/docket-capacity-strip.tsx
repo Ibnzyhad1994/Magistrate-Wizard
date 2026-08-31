@@ -216,7 +216,7 @@ export function DocketCapacityStrip({
             </div>
           </>
         ) : (
-          <p className="text-xs text-muted-foreground">Showing all matters — select a date to filter the Docket below.</p>
+          <p className="text-xs text-muted-foreground">Showing all matters. Select a date to filter the Docket below.</p>
         )}
       </div>
     </div>

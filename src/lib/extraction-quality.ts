@@ -329,7 +329,7 @@ export function assessExtractionQuality(text: string): QualityAssessment {
 
   if (printableRatio < MIN_PRINTABLE_RATIO) {
     warnings.push(
-      `Only ${(printableRatio * 100).toFixed(0)}% of characters are printable/expected text — likely a garbled or binary-derived extraction.`,
+      `Only ${(printableRatio * 100).toFixed(0)}% of characters are printable/expected text, likely a garbled or binary-derived extraction.`,
     );
   }
   if (replacementRatio > MAX_REPLACEMENT_RATIO) {
@@ -352,10 +352,10 @@ export function assessExtractionQuality(text: string): QualityAssessment {
       "Extracted text is mostly a repeated block (e.g. a running page header/footer) with little or no distinct document content.",
     );
   } else if (repeatedBlock.coverageRatio > REPEATED_BLOCK_WARN_COVERAGE) {
-    warnings.push("A sizeable portion of the extracted text is a repeated block — verify the document body was fully captured.");
+    warnings.push("A sizeable portion of the extracted text is a repeated block. Verify the document body was fully captured.");
   }
   if (/(\S{1,20})(\s+\1){6,}/i.test(text)) {
-    warnings.push("Contains an excessively repeated token — a common artifact of scanning the wrong PDF stream.");
+    warnings.push("Contains an excessively repeated token, a common artifact of scanning the wrong PDF stream.");
   }
   const punctuationCount = (text.match(/[^\w\s]/gu) ?? []).length;
   if (punctuationCount / length > 0.35) {
@@ -363,7 +363,7 @@ export function assessExtractionQuality(text: string): QualityAssessment {
   }
   if (length >= STRUCTURAL_CHECK_MIN_LENGTH && avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH) {
     warnings.push(
-      `Average "word" length (${avgWordLength.toFixed(1)} characters) is far outside normal prose — text does not appear to be genuine word-broken content.`,
+      `Average "word" length (${avgWordLength.toFixed(1)} characters) is far outside normal prose. Text does not appear to be genuine word-broken content.`,
     );
   } else if (length >= STRUCTURAL_CHECK_MIN_LENGTH && sentenceBoundaryCount === 0 && whitespaceRatio > 0.05 && whitespaceRatio < 0.5) {
     // Softer signal, warning-only (not a hard fail): plenty of normal
@@ -371,7 +371,7 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     // several hundred+ characters. Legitimate for some legislative
     // fragments (a long list of undivided defined terms, for example),
     // so this only nudges the score down rather than hard-failing.
-    warnings.push("No ordinary sentence-ending punctuation found despite the text's length — reading order may be unreliable.");
+    warnings.push("No ordinary sentence-ending punctuation found despite the text's length. Reading order may be unreliable.");
   }
 
   const hardFailReason = classifyHardFailReason(

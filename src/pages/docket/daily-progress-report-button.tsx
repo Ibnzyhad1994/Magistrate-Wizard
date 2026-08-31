@@ -29,7 +29,7 @@ export function DailyProgressReportButton({ date, courtId }: { date: string; cou
     try {
       const rows = await fetchReport.mutateAsync({ date, courtId });
       if (rows.length === 0) {
-        toast.error("No matters scheduled for this date — nothing to report.");
+        toast.error("No matters scheduled for this date. Nothing to report.");
         return;
       }
       const courtNames = new Set(rows.map((r) => r.court_name).filter(Boolean));

@@ -204,7 +204,7 @@ export default function RegisterPage() {
 
             {accountType === "magistrate" && (
               <p className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">
-                Selecting a court submits a request, not an immediate assignment — a Court
+                Selecting a court submits a request, not an immediate assignment. A Court
                 Assignment Administrator reviews each requested court independently. You'll be
                 able to sign in and check your request status once your email is verified, even
                 before approval.

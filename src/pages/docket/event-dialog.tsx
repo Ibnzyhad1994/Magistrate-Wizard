@@ -221,7 +221,7 @@ export function DocketEventDialog({
                   <FormLabel>Matter category (optional)</FormLabel>
                   <FormControl>
                     <Select {...field}>
-                      <option value="">No category — not capacity-checked</option>
+                      <option value="">No category (not capacity-checked)</option>
                       {(categories ?? []).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}

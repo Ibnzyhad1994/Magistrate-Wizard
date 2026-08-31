@@ -58,7 +58,7 @@ export function SharingSection({ matterId }: SharingSectionProps) {
         <p className="max-w-lg text-sm text-muted-foreground">
           Sharing grants another magistrate or clerk access to this matter.
           Recipients cannot re-share it further. Permission is fixed when the
-          share is created — to change view into edit (or the reverse), revoke
+          share is created. To change view into edit (or the reverse), revoke
           it and share again.
         </p>
         {canManage && (
@@ -287,7 +287,7 @@ function CreateShareDialog({
           {notFound && (
             <p className="text-sm text-destructive">
               No eligible recipient found for that email. Double-check the
-              address — they must be an active user, and you must currently
+              address: they must be an active user, and you must currently
               have Court or retained authority on this matter to share it.
             </p>
           )}
@@ -302,8 +302,8 @@ function CreateShareDialog({
                 onChange={(e) => setPermission(e.target.value as "view" | "edit")}
                 aria-label="Share permission"
               >
-                <option value="view">View — can see the matter, not edit it</option>
-                <option value="edit">Edit — can also make changes</option>
+                <option value="view">View (can see the matter, not edit it)</option>
+                <option value="edit">Edit (can also make changes)</option>
               </Select>
             </div>
           )}

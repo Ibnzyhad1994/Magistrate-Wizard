@@ -260,7 +260,7 @@ export const extractPdfjsTextContent = async (
       const warnings: string[] = []
       if (truncated) {
         warnings.push(
-          `Only the first ${pageCount} of ${totalPages} pages were read for text — paste any remaining pages manually if needed.`,
+          `Only the first ${pageCount} of ${totalPages} pages were read for text. Paste any remaining pages manually if needed.`,
         )
       }
       const pages: PdfPageResult[] = []

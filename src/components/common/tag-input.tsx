@@ -29,7 +29,7 @@ export function TagInput({
   onChange,
   onSubmit,
   disabled,
-  placeholder = "Add a tag — pick a suggestion or type your own…",
+  placeholder = "Add a tag, pick a suggestion, or type your own…",
   className,
 }: TagInputProps) {
   const listId = useId();

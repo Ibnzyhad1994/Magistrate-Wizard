@@ -416,7 +416,7 @@ function QuickCodeFormDialog({
         <DialogHeader>
           <DialogTitle>{editing ? "Edit Quick Code" : "New Quick Code"}</DialogTitle>
           <DialogDescription>
-            Private to you — code word must be unique among your own Quick
+            Private to you. Code word must be unique among your own Quick
             Codes.
           </DialogDescription>
         </DialogHeader>

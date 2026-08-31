@@ -164,7 +164,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         {anyActiveRetained ? (
           <>
             <span className="text-muted-foreground">
-              Retained: <span className="font-medium text-foreground">Yes — {anyActiveRetained.display_name ?? "Unknown magistrate"}</span>
+              Retained: <span className="font-medium text-foreground">Yes ({anyActiveRetained.display_name ?? "Unknown magistrate"})</span>
             </span>
             {myActiveRetained && (
               <Button

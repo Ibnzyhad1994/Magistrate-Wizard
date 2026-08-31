@@ -91,7 +91,7 @@ function useAutoClassifyJudgment(judgmentId: string, currentCategoryId: string |
       const envelope = await ingestDocument(file);
       if (!envelope.text?.trim()) {
         toast.message(
-          "Couldn't extract text from this document to generate tags — paste the text into Content, or add tags manually.",
+          "Couldn't extract text from this document to generate tags. Paste the text into Content, or add tags manually.",
         );
         return;
       }
@@ -115,7 +115,7 @@ function useAutoClassifyJudgment(judgmentId: string, currentCategoryId: string |
       }
 
       if (newTags.length === 0 && !categoryName) {
-        toast.message("No confident tags or category found in this document — add them manually if needed.");
+        toast.message("No confident tags or category found in this document. Add them manually if needed.");
       } else {
         toast.success(
           [
@@ -154,7 +154,7 @@ export default function JudgmentDetailPage() {
   async function runFromLatestDocument() {
     const latest = (documents ?? [])[0];
     if (!latest) {
-      toast.message("No document attached yet — upload one first, on the Documents tab.");
+      toast.message("No document attached yet. Upload one first, on the Documents tab.");
       return;
     }
     try {
@@ -276,7 +276,7 @@ function LifecycleBar({
             size="sm"
             disabled={contentDirty}
             onClick={() => setConfirmFinalize(true)}
-            title={contentDirty ? "Save your content first — see the Content card below." : undefined}
+            title={contentDirty ? "Save your content first. See the Content card below." : undefined}
           >
             <Lock className="h-4 w-4" />
             Finalize
@@ -292,8 +292,8 @@ function LifecycleBar({
           </Button>
           <p className="text-xs text-muted-foreground">
             {contentDirty
-              ? "You have unsaved Content changes — click \"Save content\" below before finalizing, or they'll be lost."
-              : "Draft — all fields are editable. Finalizing locks the substantive fields until you Unlock the judgment to make corrections."}
+              ? "You have unsaved Content changes. Click \"Save content\" below before finalizing, or they'll be lost."
+              : "Draft: all fields are editable. Finalizing locks the substantive fields until you Unlock the judgment to make corrections."}
           </p>
         </>
       ) : (
@@ -308,7 +308,7 @@ function LifecycleBar({
             Unlock
           </Button>
           <p className="text-xs text-muted-foreground">
-            Final — substantive fields are locked. Unlock returns this
+            Final: substantive fields are locked. Unlock returns this
             judgment to an editable draft so you can make corrections, then
             finalize it again when ready.
           </p>

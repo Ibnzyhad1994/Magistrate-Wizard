@@ -188,7 +188,7 @@ export function CreateDocketMatterDialog({
                     </span>
                   ) : (
                     <span className="text-destructive">
-                      Not set — contact an administrator before creating a
+                      Not set. Contact an administrator before creating a
                       matter here.
                     </span>
                   )}

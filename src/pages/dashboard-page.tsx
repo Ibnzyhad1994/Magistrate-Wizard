@@ -111,7 +111,7 @@ export default function DashboardPage() {
         eyebrow: APP_NAME,
         title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
         description: noCourts
-          ? "Your account is active, but you have not yet been assigned to a Court. Contact an administrator. Judgments, Case Law, Quick Codes, and Bench Notes remain available — Docket access requires a Court assignment."
+          ? "Your account is active, but you have not yet been assigned to a Court. Contact an administrator. Judgments, Case Law, Quick Codes, and Bench Notes remain available; Docket access requires a Court assignment."
           : `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
         badges: noCourts ? ["No court assignment"] : undefined,
         primaryAction: { label: "Browse docket", href: ROUTES.docket },
@@ -127,7 +127,7 @@ export default function DashboardPage() {
               ? `Your request to access the docket for ${pendingClerkRequests[0].courts?.name ?? "your requested court"} is awaiting approval from the assigned magistrate.`
               : pendingClerkRequests.length > 1
                 ? "Your court access requests are awaiting approval from each court's assigned magistrate."
-                : "Request access to a court to get started — the court's assigned magistrate will review your request.",
+                : "Request access to a court to get started. The court's assigned magistrate will review your request.",
           primaryAction: { label: "View my requests", href: ROUTES.clerkAccess },
         }
       : {

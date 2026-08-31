@@ -240,7 +240,7 @@ export default function LegislationEditPage() {
           {replaceOpen && (
             <CardContent className="border-t border-border pt-4">
               <p className="mb-3 text-xs text-muted-foreground">
-                Uploading here publishes a new version. The current version is preserved and remains reachable — never deleted or overwritten.
+                Uploading here publishes a new version. The current version is preserved and remains reachable, never deleted or overwritten.
               </p>
               <LegislationPdfUploadPanel
                 supersede={{
@@ -289,7 +289,7 @@ export default function LegislationEditPage() {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="Delete this Legislation record?"
-        description="This permanently removes it from the shared library for every magistrate — including its provisions and any attached documents. This cannot be undone."
+        description="This permanently removes it from the shared library for every magistrate, including its provisions and any attached documents. This cannot be undone."
         confirmLabel="Delete"
         isConfirming={deleteStatute.isPending}
         onConfirm={() =>

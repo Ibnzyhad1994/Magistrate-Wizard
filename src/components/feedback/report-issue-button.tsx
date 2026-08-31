@@ -76,7 +76,7 @@ export function ReportIssueButton() {
           <DialogHeader>
             <DialogTitle>Report an issue</DialogTitle>
             <DialogDescription>
-              Found a bug, or have an idea? Tell us what happened — this goes straight to the
+              Found a bug, or have an idea? Tell us what happened. This goes straight to the
               team.
             </DialogDescription>
           </DialogHeader>

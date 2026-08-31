@@ -198,7 +198,7 @@ export function validateBulkBatchSize(fileCount: number): FileValidationResult {
   if (fileCount > MAX_BULK_FILES_PER_BATCH) {
     return {
       ok: false,
-      reason: `${fileCount} files selected — the maximum for a single bulk batch is ${MAX_BULK_FILES_PER_BATCH}. Split this into smaller batches.`,
+      reason: `${fileCount} files selected. The maximum for a single bulk batch is ${MAX_BULK_FILES_PER_BATCH}. Split this into smaller batches.`,
     };
   }
   return { ok: true };

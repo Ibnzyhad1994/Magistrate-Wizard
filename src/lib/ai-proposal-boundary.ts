@@ -66,7 +66,7 @@ export const noAiProposalProvider: AiProposalProvider = {
   isConfigured: () => false,
   propose: async () => {
     throw new Error(
-      "No AI provider is configured in this build. This is expected — AI-assisted proposal generation is architecture-only in this pass, not implemented.",
+      "No AI provider is configured in this build. This is expected: AI-assisted proposal generation is architecture-only in this pass, not implemented.",
     );
   },
 };

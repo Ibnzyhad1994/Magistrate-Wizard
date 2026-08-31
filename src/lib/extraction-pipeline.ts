@@ -84,7 +84,7 @@ export interface ExtractionEnvelope {
 
 const TEXT_LAYER_UNREADABLE_MESSAGE: Record<PdfUnreadableReason, string> = {
   encrypted:
-    "This PDF is protected with a password, so its text could not be read automatically. If you have an unprotected copy, try uploading that instead — otherwise paste the text manually.",
+    "This PDF is protected with a password, so its text could not be read automatically. If you have an unprotected copy, try uploading that instead; otherwise paste the text manually.",
   unsupported_font_encoding:
     "This PDF has a text layer, but uses an embedded font encoding the lightweight parser cannot decode. Trying the full PDF renderer, then text recognition if needed.",
   no_text_found:
@@ -282,7 +282,7 @@ const homemadeEnvelopeFromRaw = (
     if (sanitized.hadInvalidSurrogates) parts.push("invalid surrogate sequences")
     if (sanitized.hadOtherControlChars) parts.push("control characters")
     warnings.push(
-      `Removed ${sanitized.removedCount} character(s) that cannot be safely stored (${parts.join(", ")}) — likely a sign the source stream was not genuine document text.`,
+      `Removed ${sanitized.removedCount} character(s) that cannot be safely stored (${parts.join(", ")}), likely a sign the source stream was not genuine document text.`,
     )
   }
   if (!quality.passed) return null

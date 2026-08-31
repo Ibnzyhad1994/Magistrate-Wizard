@@ -29,7 +29,7 @@ const MIN_MOJIBAKE_HITS = 3
 
 export const LANGUAGE_HONESTY_MESSAGE: Record<ExtractionLanguageReason, string> = {
   wrong_script:
-    "Extracted characters are not Latin legal prose — likely a font or CMap decoding error, not a translation.",
+    "Extracted characters are not Latin legal prose, likely a font or CMap decoding error, not a translation.",
   mojibake:
     "Extracted text looks like a character-encoding failure (mojibake), not the original language of the document.",
 }

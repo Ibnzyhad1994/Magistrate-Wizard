@@ -112,7 +112,7 @@ export default function SettingsPage() {
             <CardTitle className="text-base">Court Assignments</CardTitle>
             <CardDescription>
               Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>. Docket
-              access is separate from your platform role — it follows the
+              access is separate from your platform role. It follows the
               active court assignments below, which an administrator
               manages under Court Assignments.
             </CardDescription>

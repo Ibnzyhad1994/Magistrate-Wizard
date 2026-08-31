@@ -197,7 +197,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                 icon={Gavel}
                 className="border-0 py-6"
                 title="No hearing history recorded yet"
-                description="Every date this matter is scheduled or heard builds a chronological hearing history here — witness numbers and sitting notes when entered, or just the date and status otherwise."
+                description="Every date this matter is scheduled or heard builds a chronological hearing history here: witness numbers and sitting notes when entered, or just the date and status otherwise."
                 action={
                   canEdit ? (
                     <Button size="sm" onClick={() => setDialogEntry("new")}>
@@ -491,7 +491,7 @@ function HearingProgressDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave any of the above blank if not known — a blank field is kept as "not recorded", never assumed to
+              Leave any of the above blank if not known. A blank field is kept as "not recorded", never assumed to
               be zero.
             </p>
 
@@ -526,7 +526,7 @@ function HearingProgressDialog({
             <div className="space-y-2 rounded-md border border-border p-3">
               <p className="text-xs font-medium text-foreground">Next date (optional)</p>
               <p className="text-xs text-muted-foreground">
-                If the matter was adjourned to a new date, set it here — same as setting it from the Docket board.
+                If the matter was adjourned to a new date, set it here, same as setting it from the Docket board.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <DateOnlyInput value={nextDateValue} onChange={setNextDateValue} aria-label="Next date" />
@@ -535,7 +535,7 @@ function HearingProgressDialog({
                   onChange={(e) => setNextDateCategoryId(e.target.value)}
                   disabled={!nextDateValue}
                 >
-                  <option value="">No category — not capacity-checked</option>
+                  <option value="">No category (not capacity-checked)</option>
                   {(categories ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}

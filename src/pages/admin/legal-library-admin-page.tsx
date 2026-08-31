@@ -171,18 +171,18 @@ type IngestionUiTone = "good" | "warn" | "bad" | "neutral";
 const OCR_REASON_LABEL: Record<string, string> = {
   encrypted: "Protected document",
   unsupported_font_encoding: "Could not read this document",
-  no_text_found: "Scanned document — text recognition needed",
+  no_text_found: "Scanned document: text recognition needed",
 };
 
-/** Plain-language label per QualityHardFailReason (extraction-quality.ts) — shown when a "failed" status has a specific, known cause, instead of one generic "Extraction failed" for every reason. */
+/** Plain-language label per QualityHardFailReason (extraction-quality.ts) -- shown when a "failed" status has a specific, known cause, instead of one generic "Extraction failed" for every reason. */
 const QUALITY_HARD_FAIL_LABEL: Record<QualityHardFailReason, string> = {
-  too_short: "Extraction failed — too little text to be a real document",
-  repeated_running_header: "Extraction failed — mostly a repeated page header/footer, not the document body",
-  printable_ratio: "Extraction failed — text looks garbled",
-  replacement_chars: "Extraction failed — unreadable characters from a font-decoding error",
-  boilerplate: "Extraction failed — looks like embedded file metadata, not document content",
-  control_chars: "Extraction failed — text contains unexpected control characters",
-  structural_incoherence: "Extraction failed — text doesn't read as genuine prose",
+  too_short: "Extraction failed: too little text to be a real document",
+  repeated_running_header: "Extraction failed: mostly a repeated page header/footer, not the document body",
+  printable_ratio: "Extraction failed: text looks garbled",
+  replacement_chars: "Extraction failed: unreadable characters from a font-decoding error",
+  boilerplate: "Extraction failed: looks like embedded file metadata, not document content",
+  control_chars: "Extraction failed: text contains unexpected control characters",
+  structural_incoherence: "Extraction failed: text doesn't read as genuine prose",
 };
 
 function deriveIngestionUiState(
@@ -199,15 +199,15 @@ function deriveIngestionUiState(
   }
   if (envelope.ocrUsed) {
     if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
-      return { label: "Scan recognized — please verify against the original", tone: "warn" };
+      return { label: "Scan recognized: please verify against the original", tone: "warn" };
     }
-    return { label: "Text recognized from scan — please verify", tone: "warn" };
+    return { label: "Text recognized from scan: please verify", tone: "warn" };
   }
-  // "extracted" or "low_quality" from here — genuinely usable text exists.
+  // "extracted" or "low_quality" from here -- genuinely usable text exists.
   if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
-    return { label: "Text extracted — formatting requires review", tone: "warn" };
+    return { label: "Text extracted: formatting requires review", tone: "warn" };
   }
-  if (caseNameConfidence === "low") return { label: "Metadata confidence low — review required", tone: "warn" };
+  if (caseNameConfidence === "low") return { label: "Metadata confidence low: review required", tone: "warn" };
   if (caseNameConfidence === "none") return { label: "Metadata partially identified", tone: "warn" };
   return { label: "Text extracted successfully", tone: "good" };
 }
@@ -252,7 +252,7 @@ function ExtractionStatusPanel({
     return (
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
-          No document text was extracted for this draft — Document text (if any) was entered manually.
+          No document text was extracted for this draft. Document text (if any) was entered manually.
         </p>
         {envelope?.warnings[0] && (
           <p className="text-xs text-muted-foreground">{envelope.warnings[0]}</p>
@@ -304,7 +304,7 @@ function ExtractionStatusPanel({
       {caseNameSource === "filename" && (
         <p className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-3 w-3 shrink-0" />
-          Case name proposed from the file name, not the document text — please verify against the original before
+          Case name proposed from the file name, not the document text. Please verify against the original before
           publishing.
         </p>
       )}
@@ -316,14 +316,14 @@ function ExtractionStatusPanel({
             {envelope.charCount > 0 && <p>{envelope.charCount.toLocaleString()} characters extracted</p>}
             {envelope.qualityScore !== null && envelope.qualityScore < CLEAN_SCORE_THRESHOLD && (
               <p className="text-amber-700 dark:text-amber-400">
-                Below the automated clean-extraction threshold — verify the text against the original before publishing.
+                Below the automated clean-extraction threshold. Verify the text against the original before publishing.
               </p>
             )}
             {caseNameConfidence && caseNameConfidence !== "high" && (
               <p className="text-amber-700 dark:text-amber-400">
                 {caseNameConfidence === "low"
-                  ? "Case name confidence: Low — the proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
-                  : "Case name confidence: None — no case name could be confidently identified. Please enter it manually."}
+                  ? "Case name confidence: Low. The proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
+                  : "Case name confidence: None. No case name could be confidently identified. Please enter it manually."}
               </p>
             )}
             {envelope.warnings.length > 0 && (
@@ -487,7 +487,7 @@ function TagReviewEditor({
         <p className="text-xs font-medium text-muted-foreground">
           Tags
           {proposedNames.length > 0
-            ? " — suggested from document keywords (confidence shown); review, then Save tags"
+            ? ": suggested from document keywords (confidence shown); review, then Save tags"
             : ""}
         </p>
         {proposedNames.length > 0 && (
@@ -589,7 +589,7 @@ function OriginalDocumentLink({ documentId }: { documentId: string | null }) {
   if (!documentId) {
     return (
       <p className="text-xs text-muted-foreground">
-        No original file attached — attach one from New Import, or paste text only.
+        No original file attached. Attach one from New Import, or paste text only.
       </p>
     );
   }
@@ -618,7 +618,7 @@ function OriginalDocumentLink({ documentId }: { documentId: string | null }) {
           // (Section 38). Log the detail for debugging instead.
           console.error("Could not open original document:", e);
           toast.error(
-            "Could not open the original file — it may have been removed from storage, or your session may have expired. Try again.",
+            "Could not open the original file. It may have been removed from storage, or your session may have expired. Try again.",
           );
         } finally {
           setLoading(false);
@@ -793,7 +793,7 @@ function SourcesTab() {
           <div>
             <CardTitle className="text-base">Source registry</CardTitle>
             <CardDescription>
-              A record that a source is intended to be used — not an active
+              A record that a source is intended to be used, not an active
               crawler. Adding a source here does not fetch anything; there is
               no automated connector wired up in this build (source/URL
               ingestion here is manual paste-and-submit only, see New
@@ -851,7 +851,7 @@ function SourcesTab() {
               </label>
             </div>
             <Textarea
-              placeholder="Notes — access terms, reliability, format quirks…"
+              placeholder="Notes: access terms, reliability, format quirks…"
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
@@ -1121,13 +1121,13 @@ function SingleImportPanel() {
         });
         if (proposed.case_name && proposeName && !highFill) {
           toast.message(
-            `A possible case name was found ("${proposed.case_name}") — please verify it against the original before publishing.`,
+            `A possible case name was found ("${proposed.case_name}"). Please verify it against the original before publishing.`,
           );
         } else if (proposed.case_name && !proposeName) {
           toast.message(
             envelope.ocrUsed
-              ? `A possible case name was recognized ("${proposed.case_name}") but was not auto-filled because this text came from a scan — please verify it against the original.`
-              : `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill — please review the extracted text and enter the case name manually.`,
+              ? `A possible case name was recognized ("${proposed.case_name}") but was not auto-filled because this text came from a scan. Please verify it against the original.`
+              : `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill. Please review the extracted text and enter the case name manually.`,
           );
         }
         // Only auto-select on "high"/"medium" confidence — a mention of
@@ -1142,7 +1142,7 @@ function SingleImportPanel() {
           if (matched.court.jurisdiction_id) setJurisdictionId(matched.court.jurisdiction_id);
           if (matched.confidence === "medium") {
             toast.message(
-              `Court proposed from extracted text: ${matched.court.canonical_name} — please confirm before publishing.`,
+              `Court proposed from extracted text: ${matched.court.canonical_name}. Please confirm before publishing.`,
             );
           }
         }
@@ -1159,14 +1159,14 @@ function SingleImportPanel() {
     if (envelope.status === "requires_ocr") {
       toast.message(
         envelope.warnings[0] ??
-          "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically — paste the text below to continue, or leave it for later.",
+          "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically. Paste the text below to continue, or leave it for later.",
       );
       if (contentType === "case_law" && filenameCitation) {
         setCaseFields((prev) => ({ ...prev, citation: filenameCitation }));
       }
     } else if (envelope.status === "failed") {
       toast.warning(
-        "Automatic extraction produced text that failed quality checks (it looks like embedded PDF/font data rather than document content) and was discarded. The original file has been preserved — paste the text below to continue.",
+        "Automatic extraction produced text that failed quality checks (it looks like embedded PDF/font data rather than document content) and was discarded. The original file has been preserved. Paste the text below to continue.",
       );
     } else if (envelope.status === "pending") {
       toast.message(
@@ -1196,10 +1196,10 @@ function SingleImportPanel() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Legislation — file-first PDF library</CardTitle>
+            <CardTitle className="text-base">Legislation: file-first PDF library</CardTitle>
             <CardDescription>
               Legislation is stored as the original PDF, never re-extracted
-              into ordinary content — the PDF itself is the authoritative
+              into ordinary content. The PDF itself is the authoritative
               document. Publishes immediately once uploaded.
             </CardDescription>
           </CardHeader>
@@ -1225,12 +1225,12 @@ function SingleImportPanel() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Deterministic ingestion — no AI</CardTitle>
+          <CardTitle className="text-base">Deterministic ingestion, no AI</CardTitle>
           <CardDescription>
             Hashing, citation/date/section-heading parsing, and canonical tag
             proposals run automatically over the text below. Since you're
             entering this record's fields yourself, it publishes immediately
-            once created — unless it fails the same quality checks the
+            once created, unless it fails the same quality checks the
             Review Queue's Publish button enforces (e.g. a missing field, or
             extracted text that failed automated quality checks), in which
             case it's left as a draft in the Review Queue for you to fix.
@@ -1262,7 +1262,7 @@ function SingleImportPanel() {
             {file && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <FileText className="h-3.5 w-3.5" />
-                {file.name} — will be uploaded and preserved
+                {file.name}: will be uploaded and preserved
               </span>
             )}
             {extractionEnvelope.status === "pending" && file && (
@@ -1306,14 +1306,14 @@ function SingleImportPanel() {
               hint={
                 selectedCourt?.jurisdiction_id
                   ? "Auto-set from the selected Court."
-                  : "This court spans multiple jurisdictions — set explicitly."
+                  : "This court spans multiple jurisdictions; set explicitly."
               }
             />
             <CourtField
               value={courtId || null}
               onChange={handleCourtChange}
               courts={courts ?? []}
-              hint="Selecting a Court automatically sets Jurisdiction where known — no need to enter both."
+              hint="Selecting a Court automatically sets Jurisdiction where known, no need to enter both."
             />
             <CategoryField
               value={categoryId || null}
@@ -1456,11 +1456,11 @@ function BulkImportPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Bulk import — Case Law</CardTitle>
+        <CardTitle className="text-base">Bulk import: Case Law</CardTitle>
         <CardDescription>
-          Select many judgments at once — individual files or an entire folder. Each file is preserved,
+          Select many judgments at once, individual files or an entire folder. Each file is preserved,
           hashed, and processed independently with bounded concurrency; one bad file never stops the batch.
-          Every file becomes its own draft in the Review Queue — nothing is published automatically.
+          Every file becomes its own draft in the Review Queue; nothing is published automatically.
           Legislation bulk import isn&apos;t available yet; use Single document for Acts.
         </CardDescription>
       </CardHeader>
@@ -1697,14 +1697,14 @@ function BatchCountSummary({
 }) {
   if (batch.isLegacyIncomplete) {
     return (
-      <span title="Created before per-file outcomes were persisted for every result — some files' fates were never recorded.">
-        {batch.total} document{batch.total === 1 ? "" : "s"} on record (legacy — incomplete history)
+      <span title="Created before per-file outcomes were persisted for every result. Some files' fates were never recorded.">
+        {batch.total} document{batch.total === 1 ? "" : "s"} on record (legacy, incomplete history)
       </span>
     );
   }
   if (!batch.isFullyAccounted) {
     return (
-      <span title="Still processing, or an outcome failed to save — refresh to check for updates.">
+      <span title="Still processing, or an outcome failed to save. Refresh to check for updates.">
         {batch.total} of {batch.expected_file_count} documents recorded
       </span>
     );
@@ -1746,7 +1746,7 @@ function ImportBatchesTab({ initialBatchId }: { initialBatchId?: string | null }
             <CardTitle className="text-base">Import batches</CardTitle>
             <CardDescription>
               Every bulk import you've run, with what happened to each file. Return to any batch after
-              navigating away or refreshing — nothing here is temporary.
+              navigating away or refreshing; nothing here is temporary.
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => void refetch()}>
@@ -1898,7 +1898,7 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
               )}
               {(data.interruptedCount ?? 0) > 0 && (
                 <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">
-                  {data.interruptedCount} file{data.interruptedCount === 1 ? "" : "s"} never completed — re-select
+                  {data.interruptedCount} file{data.interruptedCount === 1 ? "" : "s"} never completed. Re-select
                   files to resume.
                 </p>
               )}
@@ -2518,7 +2518,7 @@ function CaseLawReviewCard({
               selectedCourt?.jurisdiction_id
                 ? "Auto-set from the selected Court."
                 : selectedCourt
-                  ? "This court spans multiple jurisdictions — set explicitly."
+                  ? "This court spans multiple jurisdictions; set explicitly."
                   : undefined
             }
           />
@@ -2536,16 +2536,16 @@ function CaseLawReviewCard({
           <summary className="cursor-pointer select-none text-sm font-medium text-foreground">
             Summary and full text
             {!fields.summary && !fields.full_text && (
-              <span className="ml-2 text-xs font-normal text-muted-foreground">— none on record yet</span>
+              <span className="ml-2 text-xs font-normal text-muted-foreground">(none on record yet)</span>
             )}
             {needsPaste && (
               <span className="ml-2 text-xs font-normal text-amber-700 dark:text-amber-400">
-                — paste the judgment text here
+                (paste the judgment text here)
               </span>
             )}
           </summary>
           <div className="mt-3 space-y-3">
-            <Field label="Summary" hint="Optional — a short curator-written synopsis, distinct from the full text below.">
+            <Field label="Summary" hint="Optional: a short curator-written synopsis, distinct from the full text below.">
               <Textarea
                 value={fields.summary}
                 onChange={(e) => setFields((f) => ({ ...f, summary: e.target.value }))}
@@ -2554,7 +2554,7 @@ function CaseLawReviewCard({
             </Field>
             <Field
               label="Full text"
-              hint="What machine extraction captured, if any — paste or correct it here (e.g. after OCR required/low-quality extraction, or copying from the original file)."
+              hint="What machine extraction captured, if any. Paste or correct it here (e.g. after OCR required/low-quality extraction, or copying from the original file)."
             >
               <Textarea
                 ref={fullTextRef}
@@ -2571,7 +2571,7 @@ function CaseLawReviewCard({
           value={fields.category_id}
           onChange={(id) => setFields((f) => ({ ...f, category_id: id }))}
           categories={categories ?? []}
-          hint="The type of matter this case relates to — used for Browse/filter navigation."
+          hint="The type of matter this case relates to, used for Browse/filter navigation."
         />
         <TagReviewEditor
           proposed={row.proposed_tags}
@@ -2888,12 +2888,12 @@ function StatuteReviewCard({
               className="min-h-40 w-full rounded-md border border-border bg-background p-2 text-xs"
               value={fullTextDraft}
               onChange={(e) => setFullTextDraft(e.target.value)}
-              placeholder="Full text — paste the corrected/complete document text here, then Re-check extraction quality."
+              placeholder="Full text: paste the corrected/complete document text here, then Re-check extraction quality."
             />
           )}
           {fullTextDirty && (
             <p className="text-[11px] text-muted-foreground">
-              Full text changed — click "Re-check extraction quality" to assess and save it.
+              Full text changed. Click "Re-check extraction quality" to assess and save it.
             </p>
           )}
         </div>

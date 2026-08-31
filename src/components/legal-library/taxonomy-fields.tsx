@@ -102,8 +102,8 @@ function AddJurisdictionDialog({
         <DialogHeader>
           <DialogTitle>Add a new Jurisdiction</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue — every future Case Law/Legislation record can select it, not
-            just this one.
+            Added to the shared canonical catalogue, so every future Case Law/Legislation record can select
+            it too, not only this one.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -190,8 +190,8 @@ function AddCourtDialog({
         <DialogHeader>
           <DialogTitle>Add a new Court</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue — every future Case Law record can select it, not just this
-            one. Leave Jurisdiction unset for a regional/supranational court (e.g. CCJ, Privy Council).
+            Added to the shared canonical catalogue, so every future Case Law record can select it too, not
+            only this one. Leave Jurisdiction unset for a regional/supranational court (e.g. CCJ, Privy Council).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -275,8 +275,8 @@ function AddCategoryDialog({
         <DialogHeader>
           <DialogTitle>Add a new Category</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue — every future Case Law record can select it, not just this
-            one.
+            Added to the shared canonical catalogue, so every future Case Law record can select it too, not
+            only this one.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -329,7 +329,7 @@ export function JurisdictionField({
           onChange(e.target.value || null);
         }}
       >
-        <option value="">Select Jurisdiction — needs review</option>
+        <option value="">Select Jurisdiction (needs review)</option>
         {jurisdictions.map((j) => (
           <option key={j.id} value={j.id}>
             {j.name}
@@ -370,7 +370,7 @@ export function CourtField({
           onChange(next);
         }}
       >
-        <option value="">Select deciding Court — needs review</option>
+        <option value="">Select deciding Court (needs review)</option>
         {courts.map((c) => (
           <option key={c.id} value={c.id}>
             {c.canonical_name}

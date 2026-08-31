@@ -309,7 +309,7 @@ export function useDeleteDocument(entityType: string, entityId: string) {
         // see (Section 38: no raw internals in user-facing errors).
         console.error("Storage removal failed while deleting document:", storageError);
         throw new Error(
-          "Could not remove the file from storage. The document record was left in place — please retry.",
+          "Could not remove the file from storage. The document record was left in place. Please retry.",
         );
       }
       const { error } = await supabase
@@ -321,7 +321,7 @@ export function useDeleteDocument(entityType: string, entityId: string) {
         // the UI imply nothing happened. This is a genuine partial
         // failure, not a full success or a full no-op.
         throw new Error(
-          `The file was removed from storage, but its record couldn't be cleaned up (${getErrorMessage(error)}). Refresh — if it still appears, it's now a broken link and can be safely deleted again.`,
+          `The file was removed from storage, but its record couldn't be cleaned up (${getErrorMessage(error)}). Refresh the page; if it still appears, it's now a broken link and can be safely deleted again.`,
         );
       }
     },

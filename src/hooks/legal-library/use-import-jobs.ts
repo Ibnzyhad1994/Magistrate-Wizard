@@ -893,10 +893,10 @@ export function useIngestCaseLaw() {
         );
       } else if (result.duplicates.length > 0) {
         toast.warning(
-          `Draft created with ${result.duplicates.length} possible duplicate warning(s) — review before publishing.`,
+          `Draft created with ${result.duplicates.length} possible duplicate warning(s). Review before publishing.`,
         );
       } else {
-        toast.success("Draft created — sent to Review Queue.");
+        toast.success("Draft created and sent to Review Queue.");
       }
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
@@ -1014,10 +1014,10 @@ export function useIngestLegislation() {
         );
       } else if (result.duplicates.length > 0) {
         toast.warning(
-          `Draft created (${result.provisionCount} provisions) with ${result.duplicates.length} possible duplicate warning(s) — review before publishing.`,
+          `Draft created (${result.provisionCount} provisions) with ${result.duplicates.length} possible duplicate warning(s). Review before publishing.`,
         );
       } else {
-        toast.success(`Draft created with ${result.provisionCount} provisions — sent to Review Queue.`);
+        toast.success(`Draft created with ${result.provisionCount} provisions and sent to Review Queue.`);
       }
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });

@@ -74,7 +74,7 @@ export default function LegislationListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Legislation"
-        description="Acts, regulations, and other legal instruments — maintained centrally and available to every magistrate."
+        description="Acts, regulations, and other legal instruments, maintained centrally and available to every magistrate."
         showViewSelect
       />
 

@@ -179,7 +179,7 @@ export default function LegislationViewerPage() {
               className="font-medium underline underline-offset-2"
               onClick={() => navigate(ROUTES.legislationDetail(supersedingStatute.id))}
             >
-              View the current version — {supersedingStatute.title}
+              View the current version: {supersedingStatute.title}
             </button>
           </div>
         )}
@@ -233,7 +233,7 @@ export default function LegislationViewerPage() {
           <Card>
             <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
               <FileWarning className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm font-medium text-foreground">PDF unavailable — re-upload required</p>
+              <p className="text-sm font-medium text-foreground">PDF unavailable: re-upload required</p>
               <p className="max-w-sm text-sm text-muted-foreground">
                 {isAdmin
                   ? "This record has no PDF on file. Use Edit above to upload the original document."
@@ -244,7 +244,7 @@ export default function LegislationViewerPage() {
         ) : (
           <>
             <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-              Legacy extracted text from a previous import — not the
+              Legacy extracted text from a previous import, not the
               authoritative document. {isAdmin ? "Use Edit above to attach the original PDF." : ""}
             </div>
             {hasStructure ? (

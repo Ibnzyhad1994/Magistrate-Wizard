@@ -80,7 +80,7 @@ export function useDeleteDocketCapacitySetting() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Capacity limit removed — this category is unrestricted again.");
+      toast.success("Capacity limit removed. This category is unrestricted again.");
       void queryClient.invalidateQueries({ queryKey: docketCapacityKeys.settings });
       void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
     },

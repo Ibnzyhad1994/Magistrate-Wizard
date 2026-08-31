@@ -90,7 +90,7 @@ export function DocketStageStrip({
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">
           Where this file is. Click a cell to record the result. Dates still go on Events.
-          Ruling/Judgment cells can also attach the actual document — separate from the
+          Ruling/Judgment cells can also attach the actual document, separate from the
           Judgments tab, which is for a magistrate's own written judgments.
         </p>
         <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-2">

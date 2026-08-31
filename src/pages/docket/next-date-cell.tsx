@@ -118,7 +118,7 @@ function NextDateDialog({
 
         <div className="space-y-1.5">
           <label className="block text-xs font-medium text-muted-foreground">
-            Matter category (optional — only checked against capacity if set)
+            Matter category (optional, only checked against capacity if set)
           </label>
           <Select
             value={categoryId}
@@ -127,7 +127,7 @@ function NextDateDialog({
               setCategoryTouched(true);
             }}
           >
-            <option value="">No category — not capacity-checked</option>
+            <option value="">No category (not capacity-checked)</option>
             {(categories ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

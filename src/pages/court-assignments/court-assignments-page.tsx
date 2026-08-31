@@ -92,7 +92,7 @@ export default function CourtAssignmentsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Court Assignments"
-        description="Your active primary court assignments and requests. The Docket belongs to the court, not to you personally — relinquishing a court preserves its entire history for your successor."
+        description="Your active primary court assignments and requests. The Docket belongs to the court, not to you personally, so relinquishing a court preserves its entire history for your successor."
       />
 
       {profile?.role === "magistrate" && !isPending && (assignments ?? []).length === 0 && (
@@ -104,7 +104,7 @@ export default function CourtAssignmentsPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 {pendingRequests.length > 0
                   ? "Your request is awaiting review by a Court Assignment Administrator. Once approved, you'll get full access to that court's Docket and the rest of the application."
-                  : "Request a court below to get started. A Court Assignment Administrator will review your request — this page is all you can access until then."}
+                  : "Request a court below to get started. A Court Assignment Administrator will review your request. This page is all you can access until then."}
               </p>
             </div>
           </CardContent>

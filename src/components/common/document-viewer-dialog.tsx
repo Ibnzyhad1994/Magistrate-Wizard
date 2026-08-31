@@ -82,7 +82,7 @@ export const DocumentViewerDialog = ({
       } catch (err) {
         console.error("DOCX preview generation failed:", err)
         throw new Error(
-          "Could not generate a faithful preview of this document. The original file is unaffected — download it to view it in Word.",
+          "Could not generate a faithful preview of this document. The original file is unaffected. Download it to view it in Word.",
         )
       } finally {
         setPreparing(false)

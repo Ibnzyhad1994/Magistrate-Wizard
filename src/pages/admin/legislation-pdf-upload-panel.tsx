@@ -207,9 +207,9 @@ export function LegislationPdfUploadPanel({
             <FileText className="h-3.5 w-3.5" />
             {file.name}
             {analyzing
-              ? " — checking page count…"
+              ? ": checking page count…"
               : pageCount != null
-                ? ` — ${pageCount} page${pageCount === 1 ? "" : "s"}${hasTextLayer === false ? ", no searchable text detected (scanned)" : ""}`
+                ? `: ${pageCount} page${pageCount === 1 ? "" : "s"}${hasTextLayer === false ? ", no searchable text detected (scanned)" : ""}`
                 : ""}
           </p>
         )}

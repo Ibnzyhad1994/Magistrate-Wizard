@@ -160,7 +160,7 @@ export default function CaseLawDetailPage() {
             Delete
           </Button>
           <p className="text-xs text-muted-foreground">
-            Edit reopens this record for review — it moves to the Review
+            Edit reopens this record for review. It moves to the Review
             Queue, off the public library, until you publish it again.
             Delete permanently removes it for every magistrate, including
             any attached documents.
@@ -215,7 +215,7 @@ export default function CaseLawDetailPage() {
         open={confirmDeleteCanonical}
         onOpenChange={setConfirmDeleteCanonical}
         title="Delete this canonical Case Law record?"
-        description="This permanently removes it from the shared library for every magistrate — including its tags, links to Docket Matters, and any attached documents. This cannot be undone."
+        description="This permanently removes it from the shared library for every magistrate, including its tags, links to Docket Matters, and any attached documents. This cannot be undone."
         confirmLabel="Delete"
         isConfirming={deleteCanonicalCaseLaw.isPending}
         onConfirm={() =>
@@ -669,7 +669,7 @@ function AnnotationsPanel({ caseLawId }: { caseLawId: string }) {
   return (
     <div className="mt-4 space-y-4">
       <p className="text-xs text-muted-foreground">
-        Private to you — no other user can see these, even on canonical or
+        Private to you. No other user can see these, even on canonical or
         discoverable Case Law.
       </p>
       <Card>

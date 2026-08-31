@@ -50,8 +50,8 @@ export function DocketCapacitySettingsDialog({
         <DialogHeader>
           <DialogTitle>Docket Capacity Settings</DialogTitle>
           <DialogDescription>
-            Set your normal number of matters per day, per category. This is personal to you — it
-            never affects any other magistrate — and applies across every date. Leave a category
+            Set your normal number of matters per day, per category. This is personal to you: it
+            never affects any other magistrate, and applies across every date. Leave a category
             blank for no limit. You can still add extra matters to a full date using "Add Anyway";
             your normal setting here doesn't change.
           </DialogDescription>
