@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +79,7 @@ export function LegislationPdfUploadPanel({
         }
       : EMPTY_FIELDS,
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -189,19 +190,28 @@ export function LegislationPdfUploadPanel({
       </Field>
 
       <div className="space-y-2">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="sr-only"
+          accept="application/pdf,.pdf"
+          aria-label="Legislation PDF"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleFile(f);
+            e.target.value = "";
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          aria-label={file ? "Change PDF" : "Upload PDF"}
+        >
           <Upload className="h-4 w-4" />
           {file ? "Change PDF" : "Upload PDF"}
-          <input
-            type="file"
-            className="hidden"
-            accept="application/pdf"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handleFile(f);
-            }}
-          />
-        </label>
+        </Button>
         {file && (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <FileText className="h-3.5 w-3.5" />

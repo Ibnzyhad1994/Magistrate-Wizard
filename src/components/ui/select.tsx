@@ -104,7 +104,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="z-[60] max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-white/10 bg-[#181818] p-1 text-white"
+            className="pointer-events-auto z-[70] max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-white/10 bg-[#181818] p-1 text-white"
           >
             {options.map((opt, index) => (
               <DropdownMenuItem
