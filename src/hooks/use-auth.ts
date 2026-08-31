@@ -72,6 +72,16 @@ export function useAuth() {
         email,
         password,
         options: {
+          // Without this, Supabase falls back to the project's static
+          // Site URL for the confirmation link, regardless of which
+          // environment (dev preview vs. production) the signup actually
+          // came from -- this is the "always goes to localhost" bug.
+          // Explicit per-request redirectTo makes the confirmation link
+          // land back on whichever origin the user actually signed up
+          // from. Must also be present in that project's Auth redirect
+          // allow-list, or Supabase silently ignores it and falls back
+          // to Site URL anyway.
+          emailRedirectTo: `${window.location.origin}${ROUTES.login}`,
           data: {
             full_name: fullName,
             ...(requestedRole ? { requested_role: requestedRole } : {}),
