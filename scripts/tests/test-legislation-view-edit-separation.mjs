@@ -1,10 +1,7 @@
-// Live RLS test for the Legislation view/edit separation correction:
-// an ordinary magistrate now has legitimate READ access to published
-// Legislation (via the read-only viewer route) but must have NO write
-// capability whatsoever -- editing/replacing remains admin-only exactly
-// as before. This complements test-legislation-file-first.mjs (which
-// covers the file-first upload/version/clerk-isolation behavior) by
-// specifically proving the NEW view/edit boundary this task adds.
+// Live RLS test for the Legislation view/edit separation:
+// magistrates may READ published Legislation and may publish a NEW Act
+// (0114, Legislation page Add). They still cannot edit, replace, or
+// delete an already-published library record -- that remains admin-only.
 //
 // Run with:
 //   SUPABASE_SERVICE_ROLE_KEY=... node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-legislation-view-edit-separation.mjs
@@ -124,7 +121,7 @@ async function main() {
     check("1. An ordinary magistrate CAN read the published record (this is the new, intended read-only access)", !!data && data.primary_document_id === document.id);
   }
 
-  // --- 2-5: the magistrate has NO write capability whatsoever -------------
+  // --- 2-5: a magistrate cannot mutate an already-published library record ---
   {
     const { data, error } = await magistrateClient
       .from("statutes")
@@ -140,7 +137,7 @@ async function main() {
       p_statute_id: statute.id,
       p_document_id: document.id,
     });
-    checkErr("3. A magistrate cannot call finalize_legislation_document (replace/publish path)", error, true);
+    checkErr("3. A magistrate cannot finalize someone else's already-published Act (replace path)", error, true);
   }
   {
     const magFile = makeWellFormedMultiPagePdf([["Attempted replacement by a magistrate."]], "hack.pdf");
@@ -157,6 +154,54 @@ async function main() {
     check("5. A magistrate's DELETE affects zero rows", !error && (data ?? []).length === 0);
     const { data: stillThere } = await admin.from("statutes").select("id").eq("id", statute.id).maybeSingle();
     check("5b. The record still exists after the magistrate's delete attempt", !!stillThere);
+  }
+
+  // --- 5c-5f: a magistrate MAY publish a brand-new Act (Legislation page Add) ---
+  {
+    const magPdf = makeWellFormedMultiPagePdf([["Magistrate-uploaded Act."]], "mag-act.pdf");
+    const magUserId = (await magistrateClient.auth.getUser()).data.user.id;
+    const { data: magDraft, error: magCreateErr } = await magistrateClient
+      .from("statutes")
+      .insert({
+        code: `MAG-${stamp}`,
+        title: `Magistrate uploaded Act ${stamp}`,
+        jurisdiction: jurisdiction.name,
+        jurisdiction_id: jurisdiction.id,
+        review_status: "draft",
+      })
+      .select()
+      .single();
+    check("5c. A magistrate can insert a draft Act", !magCreateErr && !!magDraft);
+    if (magDraft) {
+      created.statutes.push(magDraft.id);
+      const magPath = `${magUserId}/statute/${magDraft.id}/${Date.now()}-mag-act.pdf`;
+      await magistrateClient.storage.from("documents").upload(magPath, magPdf, { contentType: "application/pdf" });
+      created.storagePaths.push(magPath);
+      const { data: magDoc, error: magDocErr } = await magistrateClient
+        .from("documents")
+        .insert({
+          uploaded_by: magUserId,
+          file_name: "mag-act.pdf",
+          file_path: magPath,
+          file_size: magPdf.size,
+          mime_type: "application/pdf",
+          entity_type: "statute",
+          entity_id: magDraft.id,
+          purpose: "attachment",
+        })
+        .select()
+        .single();
+      check("5d. A magistrate can attach a PDF to their own draft Act", !magDocErr && !!magDoc);
+      const { error: magFinalizeErr } = await magistrateClient.rpc("finalize_legislation_document", {
+        p_statute_id: magDraft.id,
+        p_document_id: magDoc.id,
+        p_page_count: 1,
+        p_has_text_layer: true,
+      });
+      checkErr("5e. A magistrate can finalize their own draft Act", magFinalizeErr, false);
+      const { data: published } = await admin.from("statutes").select("review_status, created_by").eq("id", magDraft.id).single();
+      check("5f. The magistrate-created Act is published and stamped as theirs", published.review_status === "published" && published.created_by === magUserId);
+    }
   }
 
   // --- 6: admin CAN edit directly (matches the new edit page's plain update) ---

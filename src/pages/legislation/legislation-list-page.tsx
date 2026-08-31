@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { ScrollText, Search } from "lucide-react";
+import { Plus, ScrollText, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
@@ -8,6 +9,7 @@ import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGal
 import { useStatutes } from "@/hooks/legislation/use-legislation";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { useAuth } from "@/hooks/use-auth";
+import { CreateLegislationDialog } from "@/pages/legislation/create-legislation-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
 
@@ -15,10 +17,9 @@ const ALL = "__all__";
 type SortKey = "title" | "year" | "recent";
 
 /**
- * Legislation is institutional/canonical reference content, maintained
- * centrally (admin-only write, per `statutes`' own RLS) — unlike Case
- * Law or Judgments, there is no "My Legislation" tab and no per-user
- * creation here. See use-legislation.ts for what this reuses vs defers.
+ * Shared Legislation library. Magistrates and admins can publish a new
+ * Act from this page (file-first PDF + required metadata). Editing or
+ * replacing an existing Act stays on the admin-only edit route.
  *
  * Filters/sort (0098) are all client-side over the existing capped
  * 500-row query, matching this page's existing "no server-side
@@ -28,6 +29,7 @@ type SortKey = "title" | "year" | "recent";
  * already-open document, not this list.
  */
 export default function LegislationListPage() {
+  const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [jurisdiction, setJurisdiction] = useState(ALL);
   const [documentType, setDocumentType] = useState(ALL);
@@ -36,6 +38,11 @@ export default function LegislationListPage() {
   const { data, isPending, isError, error, refetch } = useStatutes();
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
+  const canCreate = hasRole("admin", "magistrate");
+
+  const handleOpenCreate = () => {
+    setCreateOpen(true);
+  };
   const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
     "search_statutes",
     query,
@@ -76,6 +83,14 @@ export default function LegislationListPage() {
         title="Legislation"
         description="Acts, regulations, and other legal instruments, maintained centrally and available to every magistrate."
         showViewSelect
+        action={
+          canCreate ? (
+            <Button variant="play" onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4" />
+              Add legislation
+            </Button>
+          ) : null
+        }
       />
 
       <div className="mb-6 flex flex-wrap items-end gap-3">
@@ -162,6 +177,14 @@ export default function LegislationListPage() {
               ? "Try different filters or a different search term."
               : "Acts and regulations added to the shared library will appear here."
           }
+          action={
+            data && data.length === 0 && canCreate ? (
+              <Button size="sm" variant="play" onClick={handleOpenCreate}>
+                <Plus className="h-4 w-4" />
+                Add legislation
+              </Button>
+            ) : null
+          }
         />
       ) : (
         <TitleGallery>
@@ -188,6 +211,8 @@ export default function LegislationListPage() {
           ))}
         </TitleGallery>
       )}
+
+      <CreateLegislationDialog open={createOpen} onOpenChange={setCreateOpen} />
     </BrowsePage>
   );
 }

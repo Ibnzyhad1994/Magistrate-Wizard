@@ -152,15 +152,11 @@ export function useCreateCanonicalStatute() {
 
 /**
  * File-first Legislation upload (0098) -- the ONLY path new Legislation
- * uploads take now. No text extraction, no chunking, no import_jobs row:
- * the original PDF is stored unchanged and becomes the record's
- * `primary_document_id`. Reuses the exact same draft-row-first primitives
- * as the legacy ingestion path (`useCreateCanonicalStatute`,
- * `uploadDocumentToEntity`) rather than inventing new plumbing --
- * `finalize_legislation_document` (0098) is the only genuinely new
- * server-side piece, and it exists solely to link+publish (and, for a
- * replacement, flip the superseded row's is_current_version)
- * atomically in one transaction.
+ * uploads take now. Admins and magistrates may create; only admins may
+ * replace an existing Act. No text extraction, no chunking, no
+ * import_jobs row: the original PDF is stored unchanged and becomes the
+ * record's `primary_document_id`. `finalize_legislation_document`
+ * (0098/0114) links+publishes atomically.
  *
  * Cleanup on failure, mirroring `useRejectCanonicalStatute`'s existing
  * storage-then-metadata order:
@@ -183,10 +179,16 @@ export function useCreateLegislationDocument() {
       pageCount: number | null;
       hasTextLayer: boolean | null;
     }) => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
+      if (sessionError) throw sessionError;
+      const createdBy = sessionData.user?.id;
+      if (!createdBy) throw new Error("You must be signed in to upload legislation.");
+
       const { data: statute, error: createError } = await supabase
         .from("statutes")
         .insert({
           ...input.values,
+          created_by: createdBy,
           review_status: "draft",
           // A replacement's draft row must NOT default to
           // is_current_version=true (the column default): the row it
