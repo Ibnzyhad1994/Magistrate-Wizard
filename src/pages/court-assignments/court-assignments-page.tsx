@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Landmark, X } from "lucide-react";
+import { Landmark, ShieldAlert, X } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { useMagisterialDistricts } from "@/hooks/docket/use-lookups";
 import {
   useCancelMagistrateCourtRequest,
@@ -59,6 +60,7 @@ const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
  * never touches it (see relinquish_magistrate_court(), 0108).
  */
 export default function CourtAssignmentsPage() {
+  const { profile } = useAuth();
   const { data: assignments, isPending, isError, error, refetch } = useMyMagistrateCourtAssignments();
   const { data: requests } = useMyMagistrateCourtRequests();
   const { data: districts } = useMagisterialDistricts();
@@ -92,6 +94,22 @@ export default function CourtAssignmentsPage() {
         title="Court Assignments"
         description="Your active primary court assignments and requests. The Docket belongs to the court, not to you personally — relinquishing a court preserves its entire history for your successor."
       />
+
+      {profile?.role === "magistrate" && !isPending && (assignments ?? []).length === 0 && (
+        <Card className="max-w-2xl border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex items-start gap-4 pt-6">
+            <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-amber-300" aria-hidden="true" />
+            <div>
+              <p className="font-medium text-foreground">Access is limited until a court is approved.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pendingRequests.length > 0
+                  ? "Your request is awaiting review by a Court Assignment Administrator. Once approved, you'll get full access to that court's Docket and the rest of the application."
+                  : "Request a court below to get started. A Court Assignment Administrator will review your request — this page is all you can access until then."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isPending ? (
         <Skeleton className="h-40 w-full max-w-2xl" />

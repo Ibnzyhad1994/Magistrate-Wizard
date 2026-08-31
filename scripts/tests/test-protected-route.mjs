@@ -129,5 +129,72 @@ check(
   "ok",
 );
 
+// --- requireApprovedMagistrateCourt: only meaningful for role='magistrate',
+// a no-op for every other role (clerk/admin pass regardless -- in
+// particular an admin who is also a sitting magistrate is never gated on
+// this, since their platform access is role-based, not court-based). ---
+check(
+  "magistrate with requireApprovedMagistrateCourt and no approved court yet -> pending-magistrate experience, not /unauthorized",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "magistrate" },
+    requireApprovedMagistrateCourt: true,
+    hasApprovedMagistrateCourt: false,
+  }),
+  "pending-magistrate",
+);
+check(
+  "magistrate with requireApprovedMagistrateCourt still loading the approval check -> loading, never a flash of full content",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "magistrate" },
+    requireApprovedMagistrateCourt: true,
+    hasApprovedMagistrateCourt: undefined,
+  }),
+  "loading",
+);
+check(
+  "approved magistrate with requireApprovedMagistrateCourt -> ok",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "magistrate" },
+    requireApprovedMagistrateCourt: true,
+    hasApprovedMagistrateCourt: true,
+  }),
+  "ok",
+);
+check(
+  "requireApprovedMagistrateCourt is a no-op for admin -- never gated on magistrate-court approval, even if they hold none",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "admin" },
+    requireApprovedMagistrateCourt: true,
+    hasApprovedMagistrateCourt: false,
+  }),
+  "ok",
+);
+check(
+  "requireApprovedMagistrateCourt is a no-op for clerk -- never gated on magistrate-court approval",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "clerk" },
+    requireApprovedMagistrateCourt: true,
+    hasApprovedMagistrateCourt: false,
+  }),
+  "ok",
+);
+check(
+  "both requireApprovedClerkCourt and requireApprovedMagistrateCourt on the same route (Docket): pending magistrate -> pending-magistrate, not blocked by the unrelated clerk check",
+  resolveProtectedRouteGate({
+    status: "authenticated",
+    profile: { role: "magistrate" },
+    requireApprovedClerkCourt: true,
+    hasApprovedClerkCourt: false,
+    requireApprovedMagistrateCourt: true,
+    hasApprovedMagistrateCourt: false,
+  }),
+  "pending-magistrate",
+);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

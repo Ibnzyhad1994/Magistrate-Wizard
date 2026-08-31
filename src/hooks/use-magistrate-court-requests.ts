@@ -66,6 +66,32 @@ export function useMyMagistrateCourtRequests() {
 }
 
 /**
+ * Lightweight existence check for route-gating (ProtectedRoute): does the
+ * signed-in magistrate have AT LEAST ONE currently-active magistrate_courts
+ * assignment? Mirrors useHasApprovedClerkCourt() exactly. Only ever
+ * queries for a magistrate profile -- inert (query disabled) for any
+ * other role, so this costs nothing for a clerk or admin, and an admin
+ * who is also a sitting magistrate is never affected by this check at
+ * all (their platform access is role-gated, not court-gated).
+ */
+export function useHasApprovedMagistrateCourt() {
+  const { profile } = useAuth();
+  return useQuery({
+    queryKey: ["magistrate-court-requests", "has-approved-court", profile?.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("magistrate_courts")
+        .select("id", { count: "exact", head: true })
+        .is("ended_at", null);
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+    enabled: profile?.role === "magistrate",
+    staleTime: 15_000,
+  });
+}
+
+/**
  * The signed-in caller's own current magistrate_courts rows, WITH the
  * row id/assignment_type/started_at that useMyCurrentCourts() (docket/
  * use-lookups.ts) deliberately omits -- needed here for the relinquish
@@ -114,6 +140,7 @@ function invalidateAfterAssignmentChange(queryClient: ReturnType<typeof useQuery
   void queryClient.invalidateQueries({ queryKey: magistrateCourtRequestKeys.myRequests });
   void queryClient.invalidateQueries({ queryKey: magistrateCourtRequestKeys.courtsForRequest });
   void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "my-assignments"] });
+  void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "has-approved-court"] });
   void queryClient.invalidateQueries({ queryKey: ["docket", "my-current-courts"] });
   void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
 }

@@ -51,10 +51,34 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    // Available to any signed-in role, any clerk approval status — a
-    // pending clerk must still be able to reach their home screen,
-    // account settings, and their own access-request page.
+    // Available to any signed-in role, any clerk/magistrate approval
+    // status — a pending clerk or magistrate must still be able to reach
+    // their own access/assignment-request page. A pending MAGISTRATE is
+    // deliberately NOT given Dashboard/Settings here (unlike a pending
+    // clerk) — see the requireApprovedMagistrateCourt block below for
+    // why: "only able to access a part of the application that tells
+    // them the status of their application request" is intentionally
+    // stricter than the existing pending-clerk experience.
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: ROUTES.clerkAccess, element: <ClerkAccessPage /> },
+          { path: ROUTES.courtAssignments, element: <CourtAssignmentsPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    // Dashboard/Settings: any signed-in role, but a pending magistrate
+    // (zero currently-active magistrate_courts assignments — brand new
+    // signup, awaiting review, or rejected) is redirected to
+    // /court-assignments instead — the full application is contingent on
+    // an approved court, not merely on having an account. No-op for
+    // clerk/admin.
+    element: <ProtectedRoute requireApprovedMagistrateCourt />,
     errorElement: <RouteErrorBoundary />,
     children: [
       {
@@ -63,7 +87,6 @@ export const router = createBrowserRouter([
           { path: ROUTES.home, element: <Navigate to={ROUTES.dashboard} replace /> },
           { path: ROUTES.dashboard, element: <DashboardPage /> },
           { path: ROUTES.settings, element: <SettingsPage /> },
-          { path: ROUTES.clerkAccess, element: <ClerkAccessPage /> },
         ],
       },
     ],
@@ -84,11 +107,13 @@ export const router = createBrowserRouter([
     // shows an accurate "no current Court assignment" message rather
     // than pretending access when a signed-in user has none of the four
     // pathways below. A clerk additionally needs at least one
-    // currently-active clerk_courts assignment — enforced here (not by
-    // role restriction) so a pending clerk is redirected to the
-    // pending-access experience rather than briefly rendering (or
-    // fetching) any docket content; a no-op for every other role.
-    element: <ProtectedRoute requireApprovedClerkCourt />,
+    // currently-active clerk_courts assignment, and a magistrate at
+    // least one currently-active magistrate_courts assignment — both
+    // enforced here (not by role restriction) so a pending clerk or
+    // magistrate is redirected to their own pending-access experience
+    // rather than briefly rendering (or fetching) any docket content;
+    // a no-op for admin.
+    element: <ProtectedRoute requireApprovedClerkCourt requireApprovedMagistrateCourt />,
     errorElement: <RouteErrorBoundary />,
     children: [
       {
@@ -103,8 +128,11 @@ export const router = createBrowserRouter([
   {
     // Case Law, Judgments, Legislation, and the other research/workbench
     // areas are magistrate-only content — a clerk role never satisfies
-    // allowedRoles here, regardless of any docket court assignment.
-    element: <ProtectedRoute allowedRoles={["magistrate", "admin"]} />,
+    // allowedRoles here, regardless of any docket court assignment. A
+    // pending magistrate (zero currently-active magistrate_courts
+    // assignments) is additionally redirected to /court-assignments —
+    // this is the "full suite" the user's own approved court unlocks.
+    element: <ProtectedRoute allowedRoles={["magistrate", "admin"]} requireApprovedMagistrateCourt />,
     errorElement: <RouteErrorBoundary />,
     children: [
       {
@@ -126,7 +154,6 @@ export const router = createBrowserRouter([
           { path: ROUTES.search, element: <SearchPage /> },
           { path: ROUTES.calendar, element: <CalendarPage /> },
           { path: ROUTES.clerkAccessRequests, element: <ClerkAccessRequestsPage /> },
-          { path: ROUTES.courtAssignments, element: <CourtAssignmentsPage /> },
         ],
       },
     ],
