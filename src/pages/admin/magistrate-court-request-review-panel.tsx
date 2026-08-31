@@ -23,6 +23,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
+import { recordAuthEvent } from "@/lib/record-auth-event";
 import {
   useAdminBootstrapSelfApprove,
   useDecideMagistrateCourtRequest,
@@ -76,8 +77,10 @@ export function MagistrateCourtRequestReviewPanel() {
         password: bootstrapPassword,
       });
       if (reauthError) {
+        void recordAuthEvent("login_failed", profile.email);
         throw new Error("Password incorrect. Could not confirm your identity.");
       }
+      void recordAuthEvent("login_success", profile.email);
       await bootstrapApprove.mutateAsync({ requestId: bootstrapTarget.id, reason: bootstrapReason });
       setBootstrapTarget(null);
       setBootstrapReason("");

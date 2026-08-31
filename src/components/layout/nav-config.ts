@@ -14,6 +14,7 @@ import {
   UserCheck,
   ShieldAlert,
   Bug,
+  History,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
@@ -163,6 +164,13 @@ export const NAV_ITEMS: AppNavItem[] = [
     label: "Issue Reports",
     href: ROUTES.adminIssueReports,
     icon: Bug,
+    roles: ["admin"],
+    group: "admin",
+  },
+  {
+    label: "Activity",
+    href: ROUTES.adminActivity,
+    icon: History,
     roles: ["admin"],
     group: "admin",
   },

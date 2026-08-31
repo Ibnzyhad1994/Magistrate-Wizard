@@ -73,6 +73,9 @@ jobs:
       - name: XSS sanitisation probes
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/pentest-xss-probes.mjs
 
+      - name: Audit activity summaries
+        run: npm run test:audit-activity
+
       - name: Case law facets
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-facets.mjs
 

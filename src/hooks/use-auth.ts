@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
 import { toast } from "sonner";
 import { clearOfflineForProfile } from "@/lib/offline/store";
+import { recordAuthEvent } from "@/lib/record-auth-event";
 
 interface SignInParams {
   email: string;
@@ -49,7 +50,11 @@ export function useAuth() {
         email,
         password,
       });
-      if (error) throw error;
+      if (error) {
+        void recordAuthEvent("login_failed", email);
+        throw error;
+      }
+      void recordAuthEvent("login_success", email);
       return data;
     },
     onSuccess: () => {
@@ -109,6 +114,7 @@ export function useAuth() {
 
   const signOutMutation = useMutation({
     mutationFn: async () => {
+      await recordAuthEvent("logout");
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     },
@@ -126,6 +132,7 @@ export function useAuth() {
         redirectTo: `${window.location.origin}${ROUTES.login}`,
       });
       if (error) throw error;
+      void recordAuthEvent("password_reset_requested", email);
     },
     onSuccess: () => {
       toast.success("Password reset email sent.");

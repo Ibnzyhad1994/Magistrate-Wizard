@@ -50,6 +50,41 @@ export type Database = {
           },
         ]
       }
+      auth_event_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          email: string | null
+          event_type: Database["public"]["Enums"]["auth_event_type"]
+          id: number
+          user_agent: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          email?: string | null
+          event_type: Database["public"]["Enums"]["auth_event_type"]
+          id?: never
+          user_agent?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          email?: string | null
+          event_type?: Database["public"]["Enums"]["auth_event_type"]
+          id?: never
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_event_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bench_note_tags: {
         Row: {
           bench_note_id: string
@@ -3296,6 +3331,10 @@ export type Database = {
         Args: { p_statute_id: string }
         Returns: undefined
       }
+      record_auth_event: {
+        Args: { p_email: string | null; p_event: string; p_user_agent: string | null }
+        Returns: undefined
+      }
       reject_case_law_import: {
         Args: { p_case_law_id: string; p_reason?: string }
         Returns: undefined
@@ -3598,6 +3637,11 @@ export type Database = {
     }
     Enums: {
       audit_action: "insert" | "update" | "delete"
+      auth_event_type:
+        | "login_success"
+        | "login_failed"
+        | "logout"
+        | "password_reset_requested"
       bookmark_entity_type:
         | "case"
         | "bench_note"
@@ -3769,6 +3813,12 @@ export const Constants = {
   public: {
     Enums: {
       audit_action: ["insert", "update", "delete"],
+      auth_event_type: [
+        "login_success",
+        "login_failed",
+        "logout",
+        "password_reset_requested",
+      ],
       bookmark_entity_type: [
         "case",
         "bench_note",
@@ -3830,6 +3880,7 @@ export type Document = Tables<"documents">;
 export type Comment = Tables<"comments">;
 export type Bookmark = Tables<"bookmarks">;
 export type AuditLogEntry = Tables<"audit_log">;
+export type AuthEventLogEntry = Tables<"auth_event_log">;
 export type SearchResult = CompositeTypes<"search_result">;
 
 export type DocketMatter = Tables<"docket_matters">;

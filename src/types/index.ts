@@ -18,6 +18,7 @@ export type {
   Comment,
   Bookmark,
   AuditLogEntry,
+  AuthEventLogEntry,
   SearchResult,
 } from "./database.types";
 
