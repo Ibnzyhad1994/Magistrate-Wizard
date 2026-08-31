@@ -25,8 +25,11 @@ import {
   useProfileCourtAssignments,
   useCreateCourtAssignment,
   useEndCourtAssignment,
+  useUnassignedMagistrates,
+  type ProfileSearchResult,
 } from "@/hooks/admin/use-court-assignments";
 import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-court-request-review-panel";
+import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate-court-requests";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
@@ -56,6 +59,15 @@ export default function CourtAssignmentsPage() {
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
 
   const { data: results, isPending: searchPending } = useProfileSearch(query);
+  const {
+    data: waiting,
+    isPending: waitingPending,
+    isError: waitingError,
+    error: waitingErr,
+    refetch: refetchWaiting,
+  } = useUnassignedMagistrates();
+  const { data: reviewRequests } = useMagistrateCourtRequestsToReview();
+  const pendingRequestCount = (reviewRequests ?? []).filter((r) => r.status === "pending").length;
   const { data: selectedProfile, isPending: profilePending } = useProfile(
     selectedProfileId ?? undefined,
   );
@@ -76,8 +88,8 @@ export default function CourtAssignmentsPage() {
     (c) => !current.some((a) => a.court_id === c.id),
   );
 
-  const handleSelectProfile = (id: string) => {
-    const found = results?.find((p) => p.id === id);
+  const handleSelectProfile = (id: string, known?: ProfileSearchResult) => {
+    const found = known ?? results?.find((p) => p.id === id) ?? waiting?.find((p) => p.id === id);
     if (found) {
       queryClient.setQueryData(courtAssignmentKeys.profile(id), found);
     }
@@ -97,13 +109,13 @@ export default function CourtAssignmentsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Court Assignments"
-        description="A Court assignment originates ordinary Docket authority, so it's admin-managed only. Find a profile, then assign or end a Court assignment. Ending never deletes history."
+        description="Review court-assignment requests, or find a profile to assign or end a Court. Ending never deletes history."
       />
 
-      <Tabs defaultValue="roster">
+      <Tabs defaultValue="requests">
         <TabsList>
+          <TabsTrigger value="requests">Pending Requests ({pendingRequestCount})</TabsTrigger>
           <TabsTrigger value="roster">Roster</TabsTrigger>
-          <TabsTrigger value="requests">Pending Requests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="roster">
@@ -142,7 +154,7 @@ export default function CourtAssignmentsPage() {
                     <li key={p.id}>
                       <button
                         type="button"
-                        onClick={() => handleSelectProfile(p.id)}
+                        onClick={() => handleSelectProfile(p.id, p)}
                         className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/40"
                       >
                         <span className="min-w-0">
@@ -163,6 +175,49 @@ export default function CourtAssignmentsPage() {
                   ))}
                 </ul>
               ))}
+
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-sm font-medium text-foreground">Waiting for assignment</p>
+              <p className="text-xs text-muted-foreground">
+                Magistrates with no active court. Select one to assign a court.
+              </p>
+              {waitingPending ? (
+                <Skeleton className="h-16 w-full" />
+              ) : waitingError ? (
+                <InlineError error={waitingErr} onRetry={() => void refetchWaiting()} />
+              ) : !waiting || waiting.length === 0 ? (
+                <p className="px-1 py-2 text-sm text-muted-foreground">
+                  No magistrates are waiting for a court.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {waiting.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectProfile(p.id, p)}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/40"
+                        aria-current={selectedProfileId === p.id ? "true" : undefined}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-foreground">
+                            {p.full_name ?? "(no name)"}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {p.email}
+                          </span>
+                        </span>
+                        {!p.is_active && (
+                          <Badge variant="outline" className="shrink-0">
+                            Inactive
+                          </Badge>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -172,7 +227,7 @@ export default function CourtAssignmentsPage() {
               <EmptyState
                 icon={ShieldCheck}
                 title="No profile selected"
-                description="Search for a profile by name or email to view or manage its Court assignments."
+                description="Select someone waiting for assignment, or search by name or email to view or manage Court assignments."
               />
             </CardContent>
           </Card>

@@ -15,6 +15,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { InlineError } from "@/components/common/inline-error";
+import { Select } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useSignupCourts,
@@ -31,9 +33,12 @@ const fieldClassName =
 
 export default function RegisterPage() {
   const { signUp, isSigningUp } = useAuth();
-  const { data: districts } = useSignupMagisterialDistricts();
-  const { data: clerkCourts } = useSignupCourts();
-  const { data: magistrateCourts } = useSignupCourtsForMagistrate();
+  const districtsQuery = useSignupMagisterialDistricts();
+  const clerkCourtsQuery = useSignupCourts();
+  const magistrateCourtsQuery = useSignupCourtsForMagistrate();
+  const districts = districtsQuery.data;
+  const clerkCourts = clerkCourtsQuery.data;
+  const magistrateCourts = magistrateCourtsQuery.data;
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -53,10 +58,20 @@ export default function RegisterPage() {
   const accountType = form.watch("accountType");
   const districtId = form.watch("districtId");
   const courtIds = form.watch("courtIds") ?? [];
+  const courtsQuery = accountType === "clerk" ? clerkCourtsQuery : magistrateCourtsQuery;
   const courtsInDistrict =
     accountType === "clerk"
       ? (clerkCourts ?? []).filter((c) => c.district_id === districtId)
       : (magistrateCourts ?? []).filter((c) => c.district_id === districtId);
+  const assignedInDistrict = courtsInDistrict.filter((court) =>
+    Boolean((court as { is_assigned?: boolean }).is_assigned),
+  );
+  const allCourtsAssigned =
+    accountType === "magistrate" &&
+    courtsInDistrict.length > 0 &&
+    assignedInDistrict.length === courtsInDistrict.length;
+  const lookupsPending = districtsQuery.isPending || courtsQuery.isPending;
+  const lookupsError = districtsQuery.isError || courtsQuery.isError;
 
   async function onSubmit(values: RegisterFormValues) {
     try {
@@ -225,27 +240,46 @@ export default function RegisterPage() {
               )}
             />
 
+            {lookupsError && (
+              <InlineError
+                error={districtsQuery.error ?? courtsQuery.error}
+                onRetry={() => {
+                  void districtsQuery.refetch();
+                  void courtsQuery.refetch();
+                }}
+                className="border-white/15 bg-white/5 py-4"
+              />
+            )}
+
             <FormField
               control={form.control}
               name="districtId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white/80">Magisterial District</FormLabel>
-                  <FormControl>
-                    <select
-                      className={cn(fieldClassName, "w-full px-3")}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        field.onChange(e.target.value);
-                        form.setValue("courtIds", []);
-                      }}
-                    >
-                      <option value="">Select a district…</option>
-                      {(districts ?? []).map((d) => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
-                  </FormControl>
+                  <Select
+                    className={cn(fieldClassName, "w-full px-3")}
+                    value={field.value ?? ""}
+                    disabled={districtsQuery.isPending || districtsQuery.isError}
+                    aria-label="Magisterial District"
+                    onChange={(e) => {
+                      field.onChange(e.target.value);
+                      form.setValue("courtIds", []);
+                    }}
+                  >
+                    <option value="">
+                      {districtsQuery.isPending
+                        ? "Loading districts…"
+                        : districtsQuery.isError
+                          ? "Districts unavailable"
+                          : (districts ?? []).length === 0
+                            ? "No districts available"
+                            : "Select a district…"}
+                    </option>
+                    {(districts ?? []).map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -260,44 +294,58 @@ export default function RegisterPage() {
                     {accountType === "clerk" ? "Court(s) you need access to" : "Court(s) you are requesting"}
                   </FormLabel>
                   <div className="space-y-2 rounded-sm border border-white/15 bg-[#333] p-3">
-                    {!districtId ? (
+                    {courtsQuery.isPending ? (
+                      <p className="text-sm text-white/50">Loading courts…</p>
+                    ) : courtsQuery.isError ? (
+                      <p className="text-sm text-white/50">Courts could not be loaded.</p>
+                    ) : !districtId ? (
                       <p className="text-sm text-white/50">Select a district first.</p>
                     ) : courtsInDistrict.length === 0 ? (
                       <p className="text-sm text-white/50">No courts found in this district.</p>
                     ) : (
-                      courtsInDistrict.map((court) => {
-                        const isAssigned =
-                          accountType === "magistrate" &&
-                          Boolean((court as { is_assigned?: boolean }).is_assigned);
-                        return (
-                          <label
-                            key={court.id}
-                            className={cn(
-                              "flex items-center justify-between gap-2 text-sm",
-                              isAssigned ? "text-white/35" : "text-white/80",
-                            )}
-                          >
-                            <span className="flex items-center gap-2">
-                              <Checkbox
-                                checked={courtIds.includes(court.id)}
-                                disabled={isAssigned}
-                                onCheckedChange={(checked) => {
-                                  const next = checked
-                                    ? [...courtIds, court.id]
-                                    : courtIds.filter((id) => id !== court.id);
-                                  form.setValue("courtIds", next, { shouldValidate: true });
-                                }}
-                              />
-                              {court.name}
-                            </span>
-                            {isAssigned && (
-                              <span className="text-[11px] uppercase tracking-wide text-white/40">
-                                Assigned
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })
+                      <>
+                        {allCourtsAssigned && (
+                          <p className="text-sm text-amber-200/90">
+                            All courts in this district already have a primary magistrate.
+                            Choose another district or ask an administrator.
+                          </p>
+                        )}
+                        <div className="max-h-48 space-y-2 overflow-y-auto">
+                          {courtsInDistrict.map((court) => {
+                            const isAssigned =
+                              accountType === "magistrate" &&
+                              Boolean((court as { is_assigned?: boolean }).is_assigned);
+                            return (
+                              <label
+                                key={court.id}
+                                className={cn(
+                                  "flex items-center justify-between gap-2 text-sm",
+                                  isAssigned ? "text-white/35" : "text-white/80",
+                                )}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <Checkbox
+                                    checked={courtIds.includes(court.id)}
+                                    disabled={isAssigned}
+                                    onCheckedChange={(checked) => {
+                                      const next = checked
+                                        ? [...courtIds, court.id]
+                                        : courtIds.filter((id) => id !== court.id);
+                                      form.setValue("courtIds", next, { shouldValidate: true });
+                                    }}
+                                  />
+                                  {court.name}
+                                </span>
+                                {isAssigned && (
+                                  <span className="text-[11px] uppercase tracking-wide text-white/40">
+                                    Assigned
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
                   <FormMessage />
@@ -334,7 +382,7 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="mt-2 h-12 w-full text-base font-semibold"
-              disabled={isSigningUp}
+              disabled={isSigningUp || lookupsPending || lookupsError}
             >
               {isSigningUp && <LoadingSpinner className="text-current" size={16} />}
               Create account

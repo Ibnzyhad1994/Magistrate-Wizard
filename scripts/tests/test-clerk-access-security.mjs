@@ -109,14 +109,14 @@ async function main() {
   await admin.auth.admin.updateUserById(m2.id, { email_confirm: true });
 
   // M1 -> Alpha, Epsilon, Delta. M2 -> Beta, Delta. Gamma has nobody.
-  for (const [profileId, courtId] of [
-    [m1.id, alpha.id],
-    [m1.id, epsilon.id],
-    [m1.id, delta.id],
-    [m2.id, beta.id],
-    [m2.id, delta.id],
+  for (const [profileId, courtId, assignmentType] of [
+    [m1.id, alpha.id, "regular"],
+    [m1.id, epsilon.id, "regular"],
+    [m1.id, delta.id, "regular"],
+    [m2.id, beta.id, "regular"],
+    [m2.id, delta.id, "acting"],
   ]) {
-    const { error } = await admin.from("magistrate_courts").insert({ profile_id: profileId, court_id: courtId });
+    const { error } = await admin.from("magistrate_courts").insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType });
     if (error) throw error;
   }
 

@@ -3275,6 +3275,13 @@ export type Database = {
           status: string
         }[]
       }
+      list_magistrate_court_request_email_confirmation: {
+        Args: never
+        Returns: {
+          email_confirmed: boolean
+          request_id: string
+        }[]
+      }
       list_docket_matters: {
         Args: {
           p_court_id?: string

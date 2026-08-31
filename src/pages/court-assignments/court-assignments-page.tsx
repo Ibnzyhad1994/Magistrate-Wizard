@@ -62,14 +62,14 @@ const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
 export default function CourtAssignmentsPage() {
   const { profile } = useAuth();
   const { data: assignments, isPending, isError, error, refetch } = useMyMagistrateCourtAssignments();
-  const { data: requests } = useMyMagistrateCourtRequests();
+  const { data: requests, isPending: requestsPending } = useMyMagistrateCourtRequests();
   const { data: districts } = useMagisterialDistricts();
   const { data: courts } = useCourtsForMagistrateRequest();
   const submit = useSubmitMagistrateCourtRequest();
   const cancel = useCancelMagistrateCourtRequest();
   const relinquish = useRelinquishMagistrateCourt();
 
-  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestOpen, setRequestOpen] = useState<boolean | null>(null);
   const [districtId, setDistrictId] = useState("");
   const [courtId, setCourtId] = useState("");
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
@@ -81,6 +81,10 @@ export default function CourtAssignmentsPage() {
   const courtsInDistrict = (courts ?? []).filter(
     (c) => c.district_id === districtId && c.status === "available",
   );
+  const hasAssignment = (assignments ?? []).length > 0;
+  const awaitingFirstRequest =
+    !isPending && !requestsPending && !hasAssignment && pendingRequests.length === 0;
+  const showRequestForm = requestOpen ?? awaitingFirstRequest;
 
   function resetRequestForm() {
     setDistrictId("");
@@ -197,10 +201,12 @@ export default function CourtAssignmentsPage() {
         </div>
       )}
 
-      {!requestOpen ? (
-        <Button variant="outline" onClick={() => setRequestOpen(true)}>
-          Request another court
-        </Button>
+      {!showRequestForm ? (
+        isPending || requestsPending ? null : (
+          <Button variant="outline" onClick={() => setRequestOpen(true)}>
+            {hasAssignment ? "Request another court" : "Request a court"}
+          </Button>
+        )
       ) : (
         <Card className="max-w-lg border-white/10 bg-white/5">
           <CardHeader>

@@ -123,6 +123,11 @@ export function MagistrateCourtRequestReviewPanel() {
                         {isOwnRequest && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                       </p>
                       <p className="text-sm text-muted-foreground">{r.profiles?.email}</p>
+                      {r.email_confirmed === false && (
+                        <Badge variant="outline" className="mt-1">
+                          Email not confirmed
+                        </Badge>
+                      )}
                       <p className="mt-1 text-sm text-foreground">{r.courts?.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Requested {formatDate(r.requested_at)}

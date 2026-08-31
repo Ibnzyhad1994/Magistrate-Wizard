@@ -25,6 +25,7 @@ export const courtAssignmentKeys = {
   search: (q: string) => ["admin", "profile-search", q] as const,
   profile: (id: string) => ["admin", "profile", id] as const,
   assignments: (profileId: string) => ["admin", "court-assignments", profileId] as const,
+  waiting: ["admin", "unassigned-magistrates"] as const,
 };
 
 /**
@@ -55,6 +56,35 @@ export function useProfileSearch(query: string) {
       return data;
     },
     enabled: trimmed.length >= 2,
+  });
+}
+
+/**
+ * Magistrates with no currently-active magistrate_courts row. Admin-only
+ * route; uses the existing "Admins can view all profiles" SELECT policy,
+ * not a new directory. Shown as a list so an administrator does not have
+ * to search for people waiting on a first court assignment.
+ */
+export function useUnassignedMagistrates() {
+  return useQuery({
+    queryKey: courtAssignmentKeys.waiting,
+    queryFn: async (): Promise<ProfileSearchResult[]> => {
+      const [profilesResult, assignmentsResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, email, is_active, role")
+          .eq("role", "magistrate")
+          .order("full_name"),
+        supabase
+          .from("magistrate_courts")
+          .select("profile_id")
+          .is("ended_at", null),
+      ]);
+      if (profilesResult.error) throw profilesResult.error;
+      if (assignmentsResult.error) throw assignmentsResult.error;
+      const assigned = new Set((assignmentsResult.data ?? []).map((row) => row.profile_id));
+      return (profilesResult.data ?? []).filter((profile) => !assigned.has(profile.id));
+    },
   });
 }
 
@@ -124,6 +154,7 @@ export function useCreateCourtAssignment(profileId: string) {
     onSuccess: () => {
       toast.success("Court assignment created.");
       void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
+      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.waiting });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -149,6 +180,7 @@ export function useEndCourtAssignment(profileId: string) {
     onSuccess: () => {
       toast.success("Court assignment ended.");
       void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
+      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.waiting });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
     },
     onError: (error) => toast.error(getErrorMessage(error)),

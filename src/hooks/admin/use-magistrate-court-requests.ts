@@ -5,11 +5,11 @@ import { getErrorMessage } from "@/lib/utils";
 
 /**
  * Court Assignment Administrator review surface. RLS on
- * magistrate_court_requests already scopes SELECT to an admin's full,
- * email-confirmed-only visibility (0106) -- this hook adds only the
- * join/shape convenience on top. Every write goes through the SECURITY
- * DEFINER RPCs (0107) -- decide_magistrate_court_request() unconditionally
- * blocks self-approval; admin_bootstrap_self_approve_magistrate_court_request()
+ * magistrate_court_requests scopes SELECT to the caller's own rows, or
+ * every row when is_admin() (0115) -- this hook adds only the join/shape
+ * convenience on top. Every write goes through the SECURITY DEFINER RPCs
+ * (0107) -- decide_magistrate_court_request() unconditionally blocks
+ * self-approval; admin_bootstrap_self_approve_magistrate_court_request()
  * is the separately-gated sole-administrator exception.
  */
 
@@ -24,6 +24,7 @@ export interface MagistrateRequestForReview {
   reviewed_at: string | null;
   rejection_reason: string | null;
   approval_kind: "ordinary" | "bootstrap_self_approval" | null;
+  email_confirmed: boolean | null;
   profiles: { full_name: string | null; email: string } | null;
   courts: { id: string; name: string; jurisdiction: string } | null;
 }
@@ -38,14 +39,26 @@ export function useMagistrateCourtRequestsToReview() {
   return useQuery({
     queryKey: magistrateCourtRequestAdminKeys.requests,
     queryFn: async (): Promise<MagistrateRequestForReview[]> => {
-      const { data, error } = await supabase
-        .from("magistrate_court_requests")
-        .select(
-          "id, profile_id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, approval_kind, profiles!magistrate_court_requests_profile_id_fkey(full_name, email), courts(id, name, jurisdiction)",
-        )
-        .order("requested_at", { ascending: false });
-      if (error) throw error;
-      return data as unknown as MagistrateRequestForReview[];
+      const [requestsResult, confirmationResult] = await Promise.all([
+        supabase
+          .from("magistrate_court_requests")
+          .select(
+            "id, profile_id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, approval_kind, profiles!magistrate_court_requests_profile_id_fkey(full_name, email), courts(id, name, jurisdiction)",
+          )
+          .order("requested_at", { ascending: false }),
+        supabase.rpc("list_magistrate_court_request_email_confirmation"),
+      ]);
+      if (requestsResult.error) throw requestsResult.error;
+      if (confirmationResult.error) throw confirmationResult.error;
+      const confirmedById = new Map(
+        (confirmationResult.data ?? []).map((row) => [row.request_id, row.email_confirmed]),
+      );
+      return (requestsResult.data as unknown as Omit<MagistrateRequestForReview, "email_confirmed">[]).map(
+        (row) => ({
+          ...row,
+          email_confirmed: confirmedById.has(row.id) ? Boolean(confirmedById.get(row.id)) : null,
+        }),
+      );
     },
   });
 }
@@ -72,6 +85,7 @@ export function useIsSoleAdminBootstrapAvailable() {
 function invalidateAfterDecision(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: magistrateCourtRequestAdminKeys.requests });
   void queryClient.invalidateQueries({ queryKey: ["admin", "court-assignments"] });
+  void queryClient.invalidateQueries({ queryKey: ["admin", "unassigned-magistrates"] });
 }
 
 /** Approve or reject a pending request. Never usable on the caller's own request. */
