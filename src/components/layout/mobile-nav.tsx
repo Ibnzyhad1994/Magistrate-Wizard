@@ -19,6 +19,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
+import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
 import { ROUTES } from "@/routes/paths";
 
 const MobileNavLink = ({
@@ -55,9 +56,11 @@ export function MobileNav() {
   const mobileNavOpen = useUiStore((state) => state.mobileNavOpen);
   const setMobileNavOpen = useUiStore((state) => state.setMobileNavOpen);
   const { profile } = useAuth();
+  const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
+  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
   const handleNavigate = () => setMobileNavOpen(false);
   const { ungrouped, groups } = groupNavItems(
-    visibleNavItems(NAV_ITEMS, profile?.role as UserRole | undefined),
+    visibleNavItems(NAV_ITEMS, profile?.role as UserRole | undefined, isPendingMagistrate),
   );
 
   return (

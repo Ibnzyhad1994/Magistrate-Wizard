@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
 import { useIsDesktop, useMediaQuery } from "@/hooks/use-media-query";
 
 const PRIMARY_HREFS = new Set<string>([
@@ -46,6 +47,12 @@ export function TopNav() {
   const isDesktop = useIsDesktop();
   const showWordmark = useMediaQuery("(min-width: 400px)");
   const { profile } = useAuth();
+  const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
+  // Locked-down state: a magistrate with zero currently-active
+  // magistrate_courts assignments. Mirrors requireApprovedMagistrateCourt
+  // (router.tsx) -- the nav must never dangle a link to a page the route
+  // gate will just bounce them right back out of.
+  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
 
   useEffect(() => {
     function onScroll() {
@@ -65,7 +72,7 @@ export function TopNav() {
     };
   }, []);
 
-  const visibleItems = visibleNavItems(NAV_ITEMS, profile?.role);
+  const visibleItems = visibleNavItems(NAV_ITEMS, profile?.role, isPendingMagistrate);
   const primary = visibleItems.filter((item) => PRIMARY_HREFS.has(item.href));
   const more = visibleItems.filter((item) => !PRIMARY_HREFS.has(item.href));
   const moreGroups = groupNavItems(more).groups;
@@ -106,7 +113,7 @@ export function TopNav() {
       </Button>
 
       <Link
-        to={ROUTES.dashboard}
+        to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.dashboard}
         className="min-w-0 shrink rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <AppLogo size="md" markOnly={!showWordmark} />
@@ -153,7 +160,7 @@ export function TopNav() {
       </nav>
 
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
-        {isDesktop && searchOpen ? (
+        {isPendingMagistrate ? null : isDesktop && searchOpen ? (
           <form onSubmit={handleSearchSubmit} className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
             <Input
@@ -184,7 +191,7 @@ export function TopNav() {
         <ReportIssueButton />
         <UserMenu compact />
       </div>
-      {!isDesktop ? (
+      {!isDesktop && !isPendingMagistrate ? (
         <MobileSearchDialog
           open={searchOpen}
           query={query}

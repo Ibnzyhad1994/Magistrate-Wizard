@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
 import { getInitials } from "@/lib/utils";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
@@ -21,6 +22,8 @@ interface UserMenuProps {
 
 export function UserMenu({ compact = false }: UserMenuProps) {
   const { user, profile, signOut, isSigningOut } = useAuth();
+  const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
+  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
 
   const displayName = profile?.full_name ?? user?.email ?? "Account";
   const email = user?.email ?? "";
@@ -65,12 +68,14 @@ export function UserMenu({ compact = false }: UserMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to={ROUTES.settings}>
-            <Settings />
-            Settings
-          </Link>
-        </DropdownMenuItem>
+        {!isPendingMagistrate && (
+          <DropdownMenuItem asChild>
+            <Link to={ROUTES.settings}>
+              <Settings />
+              Settings
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onSelect={(event) => {
             event.preventDefault();

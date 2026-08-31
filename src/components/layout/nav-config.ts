@@ -23,6 +23,16 @@ export type NavGroupId = "court" | "research" | "workbench" | "admin";
 
 export interface AppNavItem extends NavItem {
   group?: NavGroupId;
+  /**
+   * Stays visible even to a magistrate pending court approval (zero
+   * currently-active magistrate_courts assignments — the locked-down
+   * state routed everywhere else to /court-assignments). Only the Court
+   * Assignments item itself should ever set this; every other item is
+   * hidden for a pending magistrate, matching the route-level gate
+   * (requireApprovedMagistrateCourt, router.tsx) so the nav never offers
+   * a link that just bounces the user right back.
+   */
+  visibleWhilePending?: boolean;
 }
 
 export const NAV_GROUP_ORDER: NavGroupId[] = [
@@ -77,6 +87,7 @@ export const NAV_ITEMS: AppNavItem[] = [
     icon: Landmark,
     roles: ["magistrate", "admin"],
     group: "court",
+    visibleWhilePending: true,
   },
   {
     label: "Judgments",
@@ -160,8 +171,21 @@ export const NAV_ITEMS: AppNavItem[] = [
 export const navItemLabel = (item: AppNavItem) =>
   item.label === "Dashboard" ? "Home" : item.label;
 
-export const visibleNavItems = (items: AppNavItem[], role?: UserRole | null) =>
-  items.filter((item) => !item.roles || (role != null && item.roles.includes(role)));
+export const visibleNavItems = (
+  items: AppNavItem[],
+  role?: UserRole | null,
+  isPendingMagistrate?: boolean,
+) =>
+  items.filter((item) => {
+    if (item.roles && (role == null || !item.roles.includes(role))) return false;
+    // Self-defending, matching resolveProtectedRouteGate's own pattern:
+    // the pending-lockdown only ever applies when role is ACTUALLY
+    // 'magistrate', regardless of what a caller passes for
+    // isPendingMagistrate -- a caller mistake (e.g. forgetting its own
+    // role check) can never over-restrict a clerk or admin.
+    if (isPendingMagistrate && role === "magistrate" && !item.visibleWhilePending) return false;
+    return true;
+  });
 
 export interface NavSection {
   id: NavGroupId;
