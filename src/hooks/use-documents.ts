@@ -166,19 +166,12 @@ export async function downloadDocumentAsFile(documentId: string): Promise<File> 
 }
 
 /**
- * In-app view URL. A `blob:` object URL (the previous approach here) is
- * what a shared signed URL should have been replaced with, but Chromium
- * does not reliably render a PDF navigated into an `<iframe>` via a
- * `blob:` URL — the built-in PDF viewer's activation path expects a real
- * network response, and the frame's navigation to the blob silently
- * aborts (confirmed: the blob itself is valid and correctly typed —
- * `fetch()` on it from the same page succeeds — only the iframe
- * navigation fails). A short-lived signed URL (60s) keeps the original
- * security intent — RLS is re-checked at signing time and the URL is
- * worthless well before a magistrate could usefully share it — while
- * still being a normal HTTP(S) response Chromium's PDF viewer renders
- * the same way it always has. Caller does not need to revoke anything;
- * the URL simply expires.
+ * Short-lived signed URL for image previews and "open in a new tab to
+ * print". PDFs are NOT previewed this way — Chromium's native plugin
+ * inside an iframe of a signed Storage URL shows a lock or blank pane
+ * (permission-restricted publisher files, CSP frame-src, 60s expiry on
+ * large files). In-app PDF viewing uses pdf.js on bytes from
+ * downloadDocumentBlob instead (DocumentViewerDialog, LegislationPdfViewer).
  */
 export async function getDocumentViewUrl(filePath: string): Promise<string> {
   const { data, error } = await supabase.storage

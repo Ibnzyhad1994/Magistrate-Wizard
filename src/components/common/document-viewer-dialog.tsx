@@ -22,6 +22,7 @@ import {
 } from "@/lib/document-preview"
 import { sanitizePreviewHtml, wrapDocxPagePreviewSrcDoc, wrapSanitizedPreviewSrcDoc } from "@/lib/html-sanitize"
 import { markdownToSafeHtml } from "@/lib/markdown-preview"
+import { LegislationPdfViewer } from "@/components/legislation/legislation-pdf-viewer"
 import type { Document } from "@/types/database.types"
 
 interface DocumentViewerDialogProps {
@@ -57,10 +58,13 @@ export const DocumentViewerDialog = ({
   const isLegacyWord = doc ? isLegacyWordDocument(doc.mime_type, doc.file_name) : false
 
   const loadPreview = async (source: Document, fileKind: typeof kind) => {
-    if (fileKind === "pdf" || fileKind === "image") {
+    if (fileKind === "image") {
       // A short-lived (60s) signed URL, not a blob: object URL — see
       // getDocumentViewUrl's own comment for why. Nothing to revoke; it
-      // just expires on its own.
+      // just expires on its own. PDFs do not use this path: Chromium's
+      // native plugin in an iframe of a signed Storage URL shows a lock
+      // or blank pane (permission-restricted publisher files, CSP
+      // frame-src, 60s expiry on large files). They render via pdf.js.
       const previewUrl = await getDocumentViewUrl(source.file_path)
       return { previewUrl, content: { mode: "url" as const } }
     }
@@ -101,10 +105,11 @@ export const DocumentViewerDialog = ({
   }
 
   useEffect(() => {
-    if (!open || !doc || kind === "unsupported") {
+    if (!open || !doc || kind === "unsupported" || kind === "pdf") {
       setUrl(null)
       setPreview(null)
       setLoadError(null)
+      setLoading(false)
       return
     }
     let cancelled = false
@@ -127,10 +132,10 @@ export const DocumentViewerDialog = ({
     }
     // Re-fetch whenever a different document is opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, doc?.id])
+  }, [open, doc?.id, kind])
 
   const handleRetry = () => {
-    if (!doc || kind === "unsupported") return
+    if (!doc || kind === "unsupported" || kind === "pdf") return
     setLoading(true)
     setLoadError(null)
     loadPreview(doc, kind)
@@ -144,8 +149,8 @@ export const DocumentViewerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[85vh] w-full max-w-4xl flex-col gap-3 sm:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="flex h-[85vh] w-full max-w-4xl flex-col gap-3 overflow-hidden sm:max-w-4xl">
+        <DialogHeader className={kind === "pdf" ? "sr-only" : undefined}>
           <DialogTitle className="truncate pr-8">{doc?.file_name ?? "Document"}</DialogTitle>
         </DialogHeader>
 
@@ -179,12 +184,17 @@ export const DocumentViewerDialog = ({
             <div className="flex h-full items-center justify-center">
               <LoadingSpinner size={24} />
             </div>
+          ) : kind === "pdf" ? (
+            <LegislationPdfViewer
+              documentId={doc.id}
+              title={doc.file_name}
+              className="h-full min-h-0"
+              toolbarClassName="pr-12"
+            />
           ) : loadError ? (
             <div className="p-6">
               <InlineError error={loadError} onRetry={handleRetry} />
             </div>
-          ) : url && kind === "pdf" ? (
-            <iframe src={url} title={doc.file_name} className="h-full w-full" />
           ) : url && kind === "image" ? (
             <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
               <img src={url} alt={doc.file_name} className="max-h-full max-w-full object-contain" />
@@ -215,7 +225,7 @@ export const DocumentViewerDialog = ({
           ) : null}
         </div>
 
-        {doc && kind !== "unsupported" && (
+        {doc && kind !== "unsupported" && kind !== "pdf" && (
           <div className="flex justify-end">
             <Button size="sm" variant="outline" onClick={() => onDownload(doc)}>
               <Download className="h-4 w-4" />
