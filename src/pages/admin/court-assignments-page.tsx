@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
@@ -25,6 +26,7 @@ import {
   useCreateCourtAssignment,
   useEndCourtAssignment,
 } from "@/hooks/admin/use-court-assignments";
+import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-court-request-review-panel";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
@@ -98,6 +100,13 @@ export default function CourtAssignmentsPage() {
         description="A Court assignment originates ordinary Docket authority, so it's admin-managed only. Find a profile, then assign or end a Court assignment. Ending never deletes history."
       />
 
+      <Tabs defaultValue="roster">
+        <TabsList>
+          <TabsTrigger value="roster">Roster</TabsTrigger>
+          <TabsTrigger value="requests">Pending Requests</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="roster">
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card className="h-fit">
           <CardHeader>
@@ -321,6 +330,12 @@ export default function CourtAssignmentsPage() {
           </div>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="requests">
+          <MagistrateCourtRequestReviewPanel />
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog
         open={!!endTarget}

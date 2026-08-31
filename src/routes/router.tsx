@@ -25,7 +25,8 @@ import BookmarksPage from "@/pages/bookmarks/bookmarks-page";
 import SearchPage from "@/pages/search/search-page";
 import CalendarPage from "@/pages/calendar/calendar-page";
 import SettingsPage from "@/pages/settings/settings-page";
-import CourtAssignmentsPage from "@/pages/admin/court-assignments-page";
+import AdminCourtAssignmentsPage from "@/pages/admin/court-assignments-page";
+import CourtAssignmentsPage from "@/pages/court-assignments/court-assignments-page";
 import LegalLibraryAdminPage from "@/pages/admin/legal-library-admin-page";
 import ClerkAccessAdminPage from "@/pages/admin/clerk-access-admin-page";
 import IssueReportsAdminPage from "@/pages/admin/issue-reports-admin-page";
@@ -125,6 +126,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.search, element: <SearchPage /> },
           { path: ROUTES.calendar, element: <CalendarPage /> },
           { path: ROUTES.clerkAccessRequests, element: <ClerkAccessRequestsPage /> },
+          { path: ROUTES.courtAssignments, element: <CourtAssignmentsPage /> },
         ],
       },
     ],
@@ -145,7 +147,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: ROUTES.adminCourtAssignments, element: <CourtAssignmentsPage /> },
+          { path: ROUTES.adminCourtAssignments, element: <AdminCourtAssignmentsPage /> },
           { path: ROUTES.adminLegalLibrary, element: <LegalLibraryAdminPage /> },
           { path: ROUTES.adminClerkAccess, element: <ClerkAccessAdminPage /> },
           { path: ROUTES.adminIssueReports, element: <IssueReportsAdminPage /> },

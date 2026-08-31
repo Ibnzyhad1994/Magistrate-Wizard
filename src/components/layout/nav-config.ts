@@ -72,6 +72,13 @@ export const NAV_ITEMS: AppNavItem[] = [
     group: "court",
   },
   {
+    label: "Court Assignments",
+    href: ROUTES.courtAssignments,
+    icon: Landmark,
+    roles: ["magistrate", "admin"],
+    group: "court",
+  },
+  {
     label: "Judgments",
     href: ROUTES.judgments,
     icon: Scale,
@@ -121,7 +128,7 @@ export const NAV_ITEMS: AppNavItem[] = [
     group: "workbench",
   },
   {
-    label: "Court Assignments",
+    label: "Manage Court Assignments",
     href: ROUTES.adminCourtAssignments,
     icon: Landmark,
     roles: ["admin"],

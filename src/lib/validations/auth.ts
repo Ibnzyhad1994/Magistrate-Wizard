@@ -7,15 +7,16 @@ export const loginSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 /**
- * `accountType` is a pure UI/form concept -- it only ever decides what
- * this form collects and, via useAuth().signUp, which SAFE literal
- * signal ("clerk") gets sent as `requested_role` signup metadata. The
- * real authorization boundary is server-side (handle_new_user(), 0086):
- * anything other than the literal string "clerk" resolves to the
- * existing safe "magistrate" default, and no signup path can ever reach
- * "admin". Choosing "Magistrate" here collects nothing extra and changes
- * nothing about the existing, unmodified magistrate signup outcome --
- * still zero Court access until an admin separately assigns one.
+ * `accountType` decides what this form collects and, via
+ * useAuth().signUp, which SAFE literal signal ("clerk") gets sent as
+ * `requested_role` signup metadata -- anything other than the literal
+ * string "clerk" resolves to the safe "magistrate" default server-side
+ * (handle_new_user(), 0086), and no signup path can ever reach "admin".
+ * Both account types now collect a district + one-or-more courts:
+ * handle_new_user() creates one PENDING request per selected court --
+ * clerk_access_requests for a clerk, magistrate_court_requests for a
+ * magistrate (0106) -- never an immediate assignment. Selecting a court
+ * here is a request, not a grant.
  */
 export const registerSchema = z
   .object({
@@ -42,7 +43,6 @@ export const registerSchema = z
     path: ["confirmPassword"],
   })
   .superRefine((data, ctx) => {
-    if (data.accountType !== "clerk") return;
     if (!data.districtId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

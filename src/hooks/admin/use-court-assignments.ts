@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import type { Database } from "@/types/database.types";
 
 export interface ProfileSearchResult {
@@ -99,20 +100,24 @@ export function useProfileCourtAssignments(profileId: string | undefined) {
 }
 
 /**
- * Create a Court assignment for another profile. The actual authority is
- * the `magistrate_courts` INSERT RLS policy ("Admins can create Court
- * assignments", `with check (is_admin())` — 0052); this mutation merely
- * exercises it as an Admin. `check_court_active_for_assignment()` (0017,
+ * Create a Court assignment for another profile via admin_assign_magistrate_court()
+ * (0108, SECURITY DEFINER) rather than a raw table insert — same admin-only
+ * authority (is_admin(), re-verified inside the RPC), but with clean
+ * conflict handling: a primary-exclusivity conflict (0105) or a same-
+ * (profile,court) duplicate surfaces as a readable message instead of a
+ * raw Postgres error. `check_court_active_for_assignment()` (0017,
  * unmodified) remains the backend gate against assigning an inactive
- * Court, including for Admins.
+ * Court, including for Admins. Only ever creates 'regular' assignments
+ * here — acting/relief assignment_type is a separate admin action not
+ * exposed by this screen today.
  */
 export function useCreateCourtAssignment(profileId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (courtId: string) => {
-      const { error } = await supabase.from("magistrate_courts").insert({
-        profile_id: profileId,
-        court_id: courtId,
+      const { error } = await supabase.rpc("admin_assign_magistrate_court", {
+        p_profile_id: profileId,
+        p_court_id: courtId,
       });
       if (error) throw error;
     },
@@ -121,23 +126,24 @@ export function useCreateCourtAssignment(profileId: string) {
       void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
 
 /**
- * End a profile's current Court assignment. The actual authority is the
- * `magistrate_courts` UPDATE RLS policy ("Admins can manage Court
- * assignments", `using/with check (is_admin())` — 0052). Only sets
- * `ended_at` — the row itself is never deleted, preserving history.
+ * End a profile's current Court assignment via relinquish_magistrate_court()
+ * (0108, SECURITY DEFINER) — the same function a magistrate uses to end
+ * their own assignment, here exercised under its is_admin() branch. Only
+ * sets `ended_at`/`ended_by`/`end_reason` — the row itself is never
+ * deleted, preserving history.
  */
 export function useEndCourtAssignment(profileId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (assignmentId: string) => {
-      const { error } = await supabase
-        .from("magistrate_courts")
-        .update({ ended_at: new Date().toISOString() })
-        .eq("id", assignmentId);
+      const { error } = await supabase.rpc("relinquish_magistrate_court", {
+        p_assignment_id: assignmentId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -145,5 +151,6 @@ export function useEndCourtAssignment(profileId: string) {
       void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

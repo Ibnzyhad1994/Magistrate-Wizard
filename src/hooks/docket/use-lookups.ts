@@ -41,6 +41,24 @@ export function useSignupCourts() {
   });
 }
 
+/**
+ * Anon-safe, magistrate-registration variant of useSignupCourts() above:
+ * same id/name/district_id shape, plus `is_assigned` -- whether the court
+ * already has an active primary magistrate. Never discloses who; "it is
+ * sufficient to show that the court is unavailable."
+ */
+export function useSignupCourtsForMagistrate() {
+  return useQuery({
+    queryKey: ["signup", "courts-for-magistrate"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_active_courts_for_magistrate_signup");
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 60_000,
+  });
+}
+
 export function useCourts() {
   return useQuery({
     queryKey: ["courts"],

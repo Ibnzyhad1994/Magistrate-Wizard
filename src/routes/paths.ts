@@ -32,6 +32,7 @@ export const ROUTES = {
   bookmarks: "/bookmarks",
   search: "/search",
   calendar: "/calendar",
+  courtAssignments: "/court-assignments",
   settings: "/settings",
   adminCourtAssignments: "/admin/court-assignments",
   adminClerkAccess: "/admin/clerk-access",
