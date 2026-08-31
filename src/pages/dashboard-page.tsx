@@ -90,8 +90,6 @@ export default function DashboardPage() {
     return path ? coverUrls?.[path] : undefined;
   }
 
-  const noCourts = !courtsPending && (courts?.length ?? 0) === 0;
-
   // Personalized welcome hero, not a specific case/matter — the home
   // screen is the entry point into the app, not a particular docket item.
   // Real matter/appearance data still populates the rows below unchanged.
@@ -105,15 +103,21 @@ export default function DashboardPage() {
   // pending-approval experience in place of any operational content.
   const isPendingClerk = isClerk && !clerkRequestsPending && approvedClerkRequests.length === 0;
 
+  // A magistrate can no longer reach this page at all without an
+  // approved court (requireApprovedMagistrateCourt, router.tsx — they're
+  // redirected to /court-assignments before DashboardPage ever mounts),
+  // so there is no remaining "no court" case to special-case for the
+  // magistrate persona this billboard is written for. An admin with no
+  // personal magistrate_courts row is unaffected by that gate and can
+  // still land here — the "Sitting at ..." line below already handles
+  // that plainly (it just doesn't render), so no separate banner is
+  // needed for them either.
   const billboard = !isClerk
     ? {
         tone: "judgment" as const,
         eyebrow: APP_NAME,
         title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
-        description: noCourts
-          ? "Your account is active, but you have not yet been assigned to a Court. Contact an administrator. Judgments, Case Law, Quick Codes, and Bench Notes remain available; Docket access requires a Court assignment."
-          : `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
-        badges: noCourts ? ["No court assignment"] : undefined,
+        description: `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
         primaryAction: { label: "Browse docket", href: ROUTES.docket },
         secondaryAction: { label: "Judgments", href: ROUTES.judgments },
       }

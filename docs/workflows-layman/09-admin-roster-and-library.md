@@ -8,7 +8,8 @@
 
 Covered in [Court assignment](02-court-assignment.md). Recap:
 
-- Only admin can create or end a sitting.
+- A magistrate requests a Court and relinquishes their own sitting; only a Court Assignment Administrator approves a request, and nobody approves their own.
+- Admin can still create or end a sitting directly for a correction, or to stand up an acting/relief sitting.
 - Ending a sitting does not delete the Court's files.
 - Admin still needs their *own* sitting to work a docket.
 
