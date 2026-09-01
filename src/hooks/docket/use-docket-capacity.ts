@@ -76,7 +76,7 @@ export function useUpsertDocketCapacitySetting() {
 export function useDeleteDocketCapacitySetting() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, silent }: { id: string; silent?: boolean }) => {
+    mutationFn: async ({ id }: { id: string; silent?: boolean }) => {
       const { error } = await supabase.from("docket_capacity_settings").delete().eq("id", id);
       if (error) throw error;
     },
