@@ -1386,6 +1386,8 @@ export type Database = {
           appeal_status: string
           arraignment_status: string
           case_number: string
+          category_id: string | null
+          category_other: string | null
           charge_or_issue: string | null
           court_id: string
           cover_image_path: string | null
@@ -1412,6 +1414,8 @@ export type Database = {
           appeal_status?: string
           arraignment_status?: string
           case_number: string
+          category_id?: string | null
+          category_other?: string | null
           charge_or_issue?: string | null
           court_id: string
           cover_image_path?: string | null
@@ -1438,6 +1442,8 @@ export type Database = {
           appeal_status?: string
           arraignment_status?: string
           case_number?: string
+          category_id?: string | null
+          category_other?: string | null
           charge_or_issue?: string | null
           court_id?: string
           cover_image_path?: string | null
@@ -1461,6 +1467,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "docket_matters_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matter_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "docket_matters_court_id_fkey"
             columns: ["court_id"]
@@ -3296,11 +3309,15 @@ export type Database = {
         }
         Returns: {
           appeal_status: string
+          appearance_outcome: string
           appearance_stage: string
           appearance_status: string
           arraignment_status: string
           can_edit: boolean
           case_number: string
+          category_id: string
+          category_name: string
+          category_other: string
           charge_or_issue: string
           court_id: string
           court_name: string

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +40,7 @@ import {
 } from "@/lib/validations/docket";
 import { getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import type { DocketEvent } from "@/types/database.types";
+import { useDocketMatter } from "@/hooks/docket/use-docket-matters";
 
 export function DocketEventDialog({
   matterId,
@@ -54,6 +55,7 @@ export function DocketEventDialog({
 }) {
   const schedule = useScheduleDocketEventWithCapacity(matterId);
   const { data: categories } = useDocketMatterCategories();
+  const { data: matter } = useDocketMatter(event ? undefined : matterId);
   const isPending = schedule.isPending;
 
   // The last capacity_reached result from a submit attempt, plus the
@@ -83,6 +85,13 @@ export function DocketEventDialog({
       category_id: event?.category_id ?? defaults?.category_id ?? "",
     },
   });
+
+  useEffect(() => {
+    if (event) return;
+    if (form.getValues("category_id")) return;
+    const fallback = defaults?.category_id || matter?.category_id;
+    if (fallback) form.setValue("category_id", fallback);
+  }, [event, defaults?.category_id, matter?.category_id, form]);
 
   const watchedDate = form.watch("scheduled_date");
   const watchedCategoryId = form.watch("category_id");

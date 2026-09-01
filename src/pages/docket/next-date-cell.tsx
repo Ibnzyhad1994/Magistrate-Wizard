@@ -26,10 +26,12 @@ import { formatDate, getLocalDateOnly } from "@/lib/utils";
 export function NextDateCell({
   matterId,
   nextDate,
+  matterCategoryId,
   canEdit,
 }: {
   matterId: string;
   nextDate: string | null;
+  matterCategoryId?: string | null;
   canEdit: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -48,7 +50,14 @@ export function NextDateCell({
       >
         {nextDate ? formatDate(nextDate) : "+ Set date"}
       </button>
-      {open && <NextDateDialog matterId={matterId} currentDate={nextDate} onClose={() => setOpen(false)} />}
+      {open && (
+        <NextDateDialog
+          matterId={matterId}
+          currentDate={nextDate}
+          matterCategoryId={matterCategoryId ?? null}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -56,10 +65,12 @@ export function NextDateCell({
 function NextDateDialog({
   matterId,
   currentDate,
+  matterCategoryId,
   onClose,
 }: {
   matterId: string;
   currentDate: string | null;
+  matterCategoryId: string | null;
   onClose: () => void;
 }) {
   const { data: categories } = useDocketMatterCategories();
@@ -83,11 +94,14 @@ function NextDateDialog({
   // very first render — fill it in once it arrives, but only if the
   // magistrate hasn't already deliberately picked something themselves.
   useEffect(() => {
-    if (!categoryTouched && currentAppearance?.category_id) {
+    if (categoryTouched) return;
+    if (currentAppearance?.category_id) {
       setCategoryId(currentAppearance.category_id);
+      return;
     }
+    if (matterCategoryId) setCategoryId(matterCategoryId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentAppearance?.category_id]);
+  }, [currentAppearance?.category_id, matterCategoryId]);
 
   async function submit(acknowledgeOverride: boolean, overrideReason: string | null) {
     const result = await setNextDate.mutateAsync({

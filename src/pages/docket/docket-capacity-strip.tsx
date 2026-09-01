@@ -118,9 +118,11 @@ function DayTile({
 export function DocketCapacityStrip({
   selectedDate,
   onSelectDate,
+  onEditLimits,
 }: {
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
+  onEditLimits?: () => void;
 }) {
   const today = getLocalDateOnly();
   const [todayYear, todayMonthNum] = today.split("-").map(Number);
@@ -210,6 +212,7 @@ export function DocketCapacityStrip({
                     scheduledCount={row?.scheduled_count ?? 0}
                     dailyCapacity={row?.daily_capacity ?? null}
                     variant="chip"
+                    onPress={onEditLimits}
                   />
                 );
               })}

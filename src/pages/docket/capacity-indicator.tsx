@@ -13,31 +13,48 @@ export function CapacityIndicator({
   scheduledCount,
   dailyCapacity,
   variant = "bar",
+  onPress,
 }: {
   categoryName: string;
   scheduledCount: number;
   dailyCapacity: number | null;
   variant?: "bar" | "chip";
+  onPress?: () => void;
 }) {
   const style = getCapacityStyle(scheduledCount, dailyCapacity);
+  const editLabel =
+    dailyCapacity == null
+      ? `Set a daily limit for ${categoryName}`
+      : `Edit daily limit for ${categoryName}, currently ${scheduledCount} of ${dailyCapacity}`;
 
   if (style.band === "not_set") {
-    return variant === "bar" ? (
-      <div className="flex items-center justify-between rounded px-2 py-1 text-xs text-muted-foreground">
-        <span>{categoryName}</span>
-        <span>Capacity not set</span>
-      </div>
-    ) : (
+    const unsetChip = (
       <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-        {categoryName} — not set
+        {categoryName} — set a limit
       </span>
     );
+    if (variant === "bar") {
+      return (
+        <div className="flex items-center justify-between rounded px-2 py-1 text-xs text-muted-foreground">
+          <span>{categoryName}</span>
+          <span>Capacity not set</span>
+        </div>
+      );
+    }
+    if (onPress) {
+      return (
+        <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
+          {unsetChip}
+        </button>
+      );
+    }
+    return unsetChip;
   }
 
   const countText = `${scheduledCount} / ${dailyCapacity}`;
 
   if (variant === "chip") {
-    return (
+    const chip = (
       <span
         className={`inline-flex items-center gap-1 rounded-full border border-black/10 px-2 py-0.5 text-[11px] ${style.textClass} ${style.bold ? "font-bold" : "font-medium"}`}
         style={{ backgroundColor: style.bg }}
@@ -48,6 +65,14 @@ export function CapacityIndicator({
         {style.label ? ` ${style.label}` : ""}
       </span>
     );
+    if (onPress) {
+      return (
+        <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
+          {chip}
+        </button>
+      );
+    }
+    return chip;
   }
 
   return (

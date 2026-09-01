@@ -193,7 +193,11 @@ export default function DocketListPage() {
         )
       )}
 
-      <DocketCapacityStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      <DocketCapacityStrip
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        onEditLimits={() => setCapacityOpen(true)}
+      />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-medium text-foreground">

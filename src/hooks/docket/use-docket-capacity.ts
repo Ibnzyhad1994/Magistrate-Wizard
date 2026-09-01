@@ -54,6 +54,7 @@ export function useUpsertDocketCapacitySetting() {
     }: {
       categoryId: string;
       dailyCapacity: number;
+      silent?: boolean;
     }) => {
       const { error } = await supabase
         .from("docket_capacity_settings")
@@ -63,8 +64,8 @@ export function useUpsertDocketCapacitySetting() {
         );
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Capacity saved.");
+    onSuccess: (_data, variables) => {
+      if (!variables.silent) toast.success("Capacity saved.");
       void queryClient.invalidateQueries({ queryKey: docketCapacityKeys.settings });
       void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
     },
@@ -75,12 +76,14 @@ export function useUpsertDocketCapacitySetting() {
 export function useDeleteDocketCapacitySetting() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, silent }: { id: string; silent?: boolean }) => {
       const { error } = await supabase.from("docket_capacity_settings").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Capacity limit removed. This category is unrestricted again.");
+    onSuccess: (_data, variables) => {
+      if (!variables.silent) {
+        toast.success("Capacity limit removed. This category is unrestricted again.");
+      }
       void queryClient.invalidateQueries({ queryKey: docketCapacityKeys.settings });
       void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
     },

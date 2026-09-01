@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { formatCaseLawTitle } from "@/lib/case-law-title";
 import { interpretDuplicateQuery } from "@/lib/duplicate-check";
 import {
   extractCaseLawMetadataWithConfidence,
@@ -809,7 +810,7 @@ export function useIngestCaseLaw() {
       const writtenDate = input.known.decided_date ?? proposed.decided_date_guess ?? null;
 
       const { data, error } = await supabase.rpc("create_case_law_import", {
-        p_case_name: writtenCaseName,
+        p_case_name: formatCaseLawTitle(writtenCaseName),
         p_citation: writtenCitation,
         p_court: input.known.court,
         p_jurisdiction: input.known.jurisdiction,
@@ -1096,7 +1097,7 @@ export function useReprocessCaseLawExtraction() {
         }
       }
       const next: MachineProposal = {
-        case_name: nextName || "Untitled (pending review)",
+        case_name: formatCaseLawTitle(nextName || "Untitled (pending review)"),
         citation: nextCitation,
         court_id: nextCourtId,
         jurisdiction_id: nextJurisdictionId,

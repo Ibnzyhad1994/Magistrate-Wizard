@@ -148,8 +148,8 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
     const withCategory = (data ?? [])
       .filter((e) => e.category_id)
       .sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date));
-    return withCategory[0]?.category_id ?? null;
-  }, [data]);
+    return withCategory[0]?.category_id ?? matter.category_id ?? null;
+  }, [data, matter.category_id]);
 
   return (
     <Card className="lg:col-span-3">

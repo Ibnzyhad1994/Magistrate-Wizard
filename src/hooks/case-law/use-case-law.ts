@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { formatCaseLawTitle } from "@/lib/case-law-title";
 
 export const caseLawKeys = {
   all: ["case-law"] as const,
@@ -172,7 +173,7 @@ export function useCreatePersonalCaseLaw() {
       if (!user) throw new Error("Not signed in.");
       const { data, error } = await supabase
         .from("case_law")
-        .insert({ ...values, owner_id: user.id })
+        .insert({ ...values, case_name: formatCaseLawTitle(values.case_name), owner_id: user.id })
         .select()
         .single();
       if (error) throw error;
@@ -231,7 +232,12 @@ export function useCreateCanonicalCaseLaw() {
     ) => {
       const { data, error } = await supabase
         .from("case_law")
-        .insert({ ...values, owner_id: null, review_status: "draft" })
+        .insert({
+          ...values,
+          case_name: formatCaseLawTitle(values.case_name),
+          owner_id: null,
+          review_status: "draft",
+        })
         .select()
         .single();
       if (error) throw error;
@@ -249,9 +255,12 @@ export function useUpdateCanonicalCaseLaw(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (values: Partial<CanonicalCaseLawInput>) => {
+      const next = values.case_name
+        ? { ...values, case_name: formatCaseLawTitle(values.case_name) }
+        : values;
       const { data, error } = await supabase
         .from("case_law")
-        .update(values)
+        .update(next)
         .eq("id", id)
         .select()
         .single();
@@ -373,9 +382,12 @@ export function useUpdateCaseLawFields(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (values: Partial<CaseLawInput>) => {
+      const next = values.case_name
+        ? { ...values, case_name: formatCaseLawTitle(values.case_name) }
+        : values;
       const { data, error } = await supabase
         .from("case_law")
-        .update(values)
+        .update(next)
         .eq("id", id)
         .select()
         .single();

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -27,7 +27,12 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { EmptyState } from "@/components/common/empty-state";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { useCreateDocketMatter } from "@/hooks/docket/use-docket-matters";
-import { docketMatterSchema, type DocketMatterFormValues } from "@/lib/validations/docket";
+import { useDocketMatterCategories } from "@/hooks/docket/use-docket-capacity";
+import {
+  OTHER_MATTER_CATEGORY_NAME,
+  docketMatterSchemaForCategories,
+  type DocketMatterFormValues,
+} from "@/lib/validations/docket";
 import { ROUTES } from "@/routes/paths";
 
 interface CreateDocketMatterDialogProps {
@@ -69,11 +74,17 @@ export function CreateDocketMatterDialog({
 }: CreateDocketMatterDialogProps) {
   const navigate = useNavigate();
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
+  const { data: categories } = useDocketMatterCategories();
   const createMatter = useCreateDocketMatter();
   const lockedCourt = defaultCourtId ? myCourts?.find((c) => c.court_id === defaultCourtId) : undefined;
+  const otherCategoryId = categories?.find((c) => c.name === OTHER_MATTER_CATEGORY_NAME)?.id;
+  const schema = useMemo(
+    () => docketMatterSchemaForCategories(otherCategoryId),
+    [otherCategoryId],
+  );
 
   const form = useForm<DocketMatterFormValues>({
-    resolver: zodResolver(docketMatterSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       court_id: "",
       district_id: "",
@@ -81,6 +92,8 @@ export function CreateDocketMatterDialog({
       matter_title: "",
       charge_or_issue: "",
       status: "active",
+      category_id: "",
+      category_other: "",
     },
   });
 
@@ -99,7 +112,9 @@ export function CreateDocketMatterDialog({
   }, [open, lockedCourt, form]);
 
   const selectedCourtId = form.watch("court_id");
+  const selectedCategoryId = form.watch("category_id");
   const selectedCourt = myCourts?.find((c) => c.court_id === selectedCourtId);
+  const isOtherClassification = !!otherCategoryId && selectedCategoryId === otherCategoryId;
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
   const missingDistrict = !!selectedCourtId && !!selectedCourt && !selectedCourt.district_id;
 
@@ -110,10 +125,23 @@ export function CreateDocketMatterDialog({
   }
 
   async function onSubmit(values: DocketMatterFormValues) {
+    if (otherCategoryId && values.category_id === otherCategoryId && !values.category_other?.trim()) {
+      form.setError("category_other", { type: "manual", message: "Describe the matter type" })
+      return
+    }
     try {
       const created = await createMatter.mutateAsync({
-        ...values,
+        court_id: values.court_id,
+        district_id: values.district_id,
+        case_number: values.case_number,
+        matter_title: values.matter_title,
         charge_or_issue: values.charge_or_issue || null,
+        status: values.status,
+        category_id: values.category_id,
+        category_other:
+          otherCategoryId && values.category_id === otherCategoryId
+            ? values.category_other?.trim() || null
+            : null,
       });
       onOpenChange(false);
       form.reset();
@@ -222,6 +250,56 @@ export function CreateDocketMatterDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Classification</FormLabel>
+                    <FormControl>
+                      <Select
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (e.target.value !== otherCategoryId) {
+                            form.setValue("category_other", "");
+                          }
+                        }}
+                        aria-label="Matter classification"
+                      >
+                        <option value="">Select a classification…</option>
+                        {(categories ?? []).map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {isOtherClassification && (
+                <FormField
+                  control={form.control}
+                  name="category_other"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type of matter</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Describe the matter type"
+                          {...field}
+                          aria-label="Type of matter"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

@@ -21,6 +21,7 @@ import { ROUTES } from "@/routes/paths";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
 import type { TablesUpdate } from "@/types/database.types";
+import { matterClassificationLabel } from "@/lib/validations/docket";
 
 export type LogAppearanceRequest = {
   matterId: string;
@@ -68,6 +69,8 @@ function DocketStageRow({
   const caseColBase =
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
 
+  const classification = matterClassificationLabel(row.category_name, row.category_other);
+
   async function handleChange(column: ProcedureColumnKey, next: string) {
     try {
       await onPatch(row.id, { [column]: next }, row.updated_at);
@@ -96,6 +99,11 @@ function DocketStageRow({
           {row.charge_or_issue && (
             <p className="hidden truncate text-xs text-white/45 sm:block">{row.charge_or_issue}</p>
           )}
+          {classification && (
+            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+              {classification}
+            </span>
+          )}
           {showCourt && row.court_name && (
             <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
               {row.court_name}
@@ -118,7 +126,7 @@ function DocketStageRow({
               {row.appearance_status === "scheduled"
                 ? "Scheduled"
                 : row.appearance_status === "completed"
-                  ? "Heard / Adjourned"
+                  ? row.appearance_outcome || "Heard / Adjourned"
                   : "Rescheduled"}
             </span>
           )}
@@ -149,7 +157,12 @@ function DocketStageRow({
         );
       })}
       <TableCell className="whitespace-nowrap">
-        <NextDateCell matterId={row.id} nextDate={row.next_appearance} canEdit={row.can_edit} />
+        <NextDateCell
+          matterId={row.id}
+          nextDate={row.next_appearance}
+          matterCategoryId={row.category_id}
+          canEdit={row.can_edit}
+        />
       </TableCell>
     </TableRow>
   );

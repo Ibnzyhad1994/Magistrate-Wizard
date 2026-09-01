@@ -87,6 +87,20 @@ export const PARTY_STATUSES = ["active", "entered_in_error"] as const;
 
 export const SHARE_PERMISSIONS = ["view", "edit"] as const;
 
+/** Lookup row name for the free-text classification escape hatch (0119). */
+export const OTHER_MATTER_CATEGORY_NAME = "Other";
+
+export function matterClassificationLabel(
+  categoryName: string | null | undefined,
+  categoryOther: string | null | undefined,
+): string | null {
+  if (!categoryName) return null;
+  if (categoryName === OTHER_MATTER_CATEGORY_NAME) {
+    return categoryOther?.trim() ? categoryOther.trim() : categoryName;
+  }
+  return categoryName;
+}
+
 export const docketMatterSchema = z.object({
   court_id: z.string().min(1, "Court is required"),
   district_id: z.string().min(1, "District is required"),
@@ -94,8 +108,50 @@ export const docketMatterSchema = z.object({
   matter_title: z.string().min(1, "Matter title is required").max(300),
   charge_or_issue: z.string().max(2000).optional().or(z.literal("")),
   status: z.enum(DOCKET_MATTER_STATUSES).default("active"),
+  category_id: z.string().min(1, "Classification is required"),
+  category_other: z.string().max(200).optional().or(z.literal("")),
 });
 export type DocketMatterFormValues = z.infer<typeof docketMatterSchema>;
+
+export const docketMatterClassificationSchema = z.object({
+  category_id: z.string().min(1, "Classification is required"),
+  category_other: z.string().max(200).optional().or(z.literal("")),
+});
+export type DocketMatterClassificationFormValues = z.infer<
+  typeof docketMatterClassificationSchema
+>;
+
+export const docketMatterSchemaForCategories = (otherCategoryId: string | undefined) =>
+  docketMatterSchema.superRefine((values, ctx) => {
+    if (
+      otherCategoryId &&
+      values.category_id === otherCategoryId &&
+      !values.category_other?.trim()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Describe the matter type",
+        path: ["category_other"],
+      });
+    }
+  });
+
+export const docketMatterClassificationSchemaForCategories = (
+  otherCategoryId: string | undefined,
+) =>
+  docketMatterClassificationSchema.superRefine((values, ctx) => {
+    if (
+      otherCategoryId &&
+      values.category_id === otherCategoryId &&
+      !values.category_other?.trim()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Describe the matter type",
+        path: ["category_other"],
+      });
+    }
+  });
 
 export const docketMatterOutcomeSchema = z.object({
   orders_summary: z.string().max(4000).optional().or(z.literal("")),

@@ -38,9 +38,14 @@ import {
   useEndRetainedAssignment,
 } from "@/hooks/docket/use-docket-assignments";
 import { useDocketEvents } from "@/hooks/docket/use-docket-events";
+import { useDocketMatterCategories } from "@/hooks/docket/use-docket-capacity";
 import {
   DOCKET_MATTER_STATUSES,
+  OTHER_MATTER_CATEGORY_NAME,
+  docketMatterClassificationSchemaForCategories,
   docketMatterOutcomeSchema,
+  matterClassificationLabel,
+  type DocketMatterClassificationFormValues,
   type DocketMatterOutcomeFormValues,
 } from "@/lib/validations/docket";
 import { matterCurrentStage, PROCEDURE_STAGE_LABELS, PROCEDURE_VALUE_LABELS } from "@/lib/docket-procedure";
@@ -61,6 +66,7 @@ interface OverviewSectionProps {
 
 export function OverviewSection({ matter }: OverviewSectionProps) {
   const [editingOutcome, setEditingOutcome] = useState(false);
+  const [editingClassification, setEditingClassification] = useState(false);
   const [retainOpen, setRetainOpen] = useState(false);
   const [retainNotes, setRetainNotes] = useState("");
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
@@ -81,6 +87,11 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const anyActiveRetained = assignments?.find((a) => !a.ended_at);
 
   const { data: events } = useDocketEvents(matter.id);
+  const { data: categories } = useDocketMatterCategories();
+  const classificationLabel = matterClassificationLabel(
+    categories?.find((c) => c.id === matter.category_id)?.name,
+    matter.category_other,
+  );
   const nextDate = useMemo(() => {
     const today = getLocalDateOnly();
     const upcoming = (events ?? [])
@@ -158,6 +169,19 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           </Badge>
         )}
         <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
+        <Badge variant="outline">{classificationLabel ?? "Unclassified"}</Badge>
+        {canEdit && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7"
+            onClick={() => setEditingClassification(true)}
+            aria-label="Edit classification"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Classification
+          </Button>
+        )}
 
         <span className="mx-1 h-4 w-px bg-border" />
 
@@ -349,6 +373,14 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         </DialogContent>
       </Dialog>
 
+      {editingClassification && (
+        <ClassificationDialog
+          matter={matter}
+          canEdit={canEdit}
+          onClose={() => setEditingClassification(false)}
+        />
+      )}
+
       <AlertDialog
         open={!!pendingEnd}
         onOpenChange={(open) => !open && setPendingEnd(null)}
@@ -368,10 +400,134 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         <DocketEventDialog
           matterId={matter.id}
           event={null}
-          defaults={logAppearance}
+          defaults={{ ...logAppearance, category_id: matter.category_id ?? "" }}
           onClose={() => setLogAppearance(null)}
         />
       )}
     </div>
   );
+}
+
+function ClassificationDialog({
+  matter,
+  canEdit,
+  onClose,
+}: {
+  matter: DocketMatter
+  canEdit: boolean
+  onClose: () => void
+}) {
+  const { data: categories } = useDocketMatterCategories()
+  const updateMatter = useUpdateDocketMatter(matter.id)
+  const otherCategoryId = categories?.find((c) => c.name === OTHER_MATTER_CATEGORY_NAME)?.id
+  const schema = useMemo(
+    () => docketMatterClassificationSchemaForCategories(otherCategoryId),
+    [otherCategoryId],
+  )
+  const form = useForm<DocketMatterClassificationFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      category_id: matter.category_id ?? "",
+      category_other: matter.category_other ?? "",
+    },
+  })
+  const watchedCategoryId = form.watch("category_id")
+  const isOther = !!otherCategoryId && watchedCategoryId === otherCategoryId
+
+  async function handleSubmit(values: DocketMatterClassificationFormValues) {
+    if (otherCategoryId && values.category_id === otherCategoryId && !values.category_other?.trim()) {
+      form.setError("category_other", { type: "manual", message: "Describe the matter type" })
+      return
+    }
+    try {
+      await updateMatter.mutateAsync({
+        values: {
+          category_id: values.category_id,
+          category_other:
+            otherCategoryId && values.category_id === otherCategoryId
+              ? values.category_other?.trim() || null
+              : null,
+        },
+        expectedUpdatedAt: matter.updated_at,
+      })
+      onClose()
+    } catch (err) {
+      if (isConcurrentEditError(err)) onClose()
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Matter classification</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Classification</FormLabel>
+                  <FormControl>
+                    <Select
+                      {...field}
+                      disabled={!canEdit}
+                      onChange={(e) => {
+                        field.onChange(e)
+                        if (e.target.value !== otherCategoryId) {
+                          form.setValue("category_other", "")
+                        }
+                      }}
+                      aria-label="Matter classification"
+                    >
+                      <option value="">Select a classification…</option>
+                      {(categories ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {isOther && (
+              <FormField
+                control={form.control}
+                name="category_other"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type of matter</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Describe the matter type"
+                        {...field}
+                        disabled={!canEdit}
+                        aria-label="Type of matter"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose} disabled={updateMatter.isPending}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateMatter.isPending || !canEdit}>
+                {updateMatter.isPending && (
+                  <LoadingSpinner className="text-current" size={16} />
+                )}
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
 }
