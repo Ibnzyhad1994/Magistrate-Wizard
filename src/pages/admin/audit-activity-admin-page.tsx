@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { ChevronDown, History } from "lucide-react"
 import { BrowseHeader, BrowsePage } from "@/components/browse"
 import { Badge } from "@/components/ui/badge"
@@ -42,8 +43,9 @@ const summarizeRow = (row: ActivityRow) => {
  * audit_log for SQL review.
  */
 const AuditActivityAdminPage = () => {
+  const [searchParams] = useSearchParams()
   const [filter, setFilter] = useState<ActivityFilter>("all")
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "")
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const { data: rows, isPending, isError, error, refetch } = useAuditActivity(filter)
 

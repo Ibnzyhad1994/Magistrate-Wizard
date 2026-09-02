@@ -38,6 +38,7 @@ export const ROUTES = {
   adminClerkAccess: "/admin/clerk-access",
   adminIssueReports: "/admin/issue-reports",
   adminActivity: "/admin/activity",
+  adminPeople: "/admin/people",
   clerkAccess: "/clerk-access",
   clerkAccessRequests: "/clerk-access-requests",
   login: "/login",

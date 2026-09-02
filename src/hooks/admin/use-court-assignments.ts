@@ -129,33 +129,56 @@ export function useProfileCourtAssignments(profileId: string | undefined) {
   });
 }
 
+export type CourtAssignmentType = "regular" | "acting" | "relief" | "other";
+
+export type CreateCourtAssignmentInput =
+  | string
+  | { courtId: string; assignmentType?: CourtAssignmentType };
+
+function invalidateAfterAdminCourtChange(
+  queryClient: ReturnType<typeof useQueryClient>,
+  profileId: string,
+) {
+  void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
+  void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.waiting });
+  void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
+  void queryClient.invalidateQueries({ queryKey: ["docket", "my-current-courts"] });
+  void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "my-assignments"] });
+  void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "courts"] });
+  void queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
+}
+
 /**
- * Create a Court assignment for another profile via admin_assign_magistrate_court()
- * (0108, SECURITY DEFINER) rather than a raw table insert — same admin-only
- * authority (is_admin(), re-verified inside the RPC), but with clean
- * conflict handling: a primary-exclusivity conflict (0105) or a same-
- * (profile,court) duplicate surfaces as a readable message instead of a
- * raw Postgres error. `check_court_active_for_assignment()` (0017,
+ * Create a Court assignment via admin_assign_magistrate_court()
+ * (0108/0110, SECURITY DEFINER) rather than a raw table insert — same
+ * admin-only authority (is_admin(), re-verified inside the RPC), but with
+ * clean conflict handling: a primary-exclusivity conflict (0105) or a
+ * same-(profile,court) duplicate surfaces as a readable message instead of
+ * a raw Postgres error. `check_court_active_for_assignment()` (0017,
  * unmodified) remains the backend gate against assigning an inactive
- * Court, including for Admins. Only ever creates 'regular' assignments
- * here — acting/relief assignment_type is a separate admin action not
- * exposed by this screen today.
+ * Court, including for Admins.
+ *
+ * A string argument (the Court Assignments roster) creates a `regular`
+ * assignment. Pass `{ courtId, assignmentType }` when the caller needs
+ * acting/relief/other — required for an administrator seating themselves,
+ * because 0110 blocks a silent self-assign of `regular`.
  */
 export function useCreateCourtAssignment(profileId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (courtId: string) => {
+    mutationFn: async (input: CreateCourtAssignmentInput) => {
+      const courtId = typeof input === "string" ? input : input.courtId;
+      const assignmentType = typeof input === "string" ? "regular" : (input.assignmentType ?? "regular");
       const { error } = await supabase.rpc("admin_assign_magistrate_court", {
         p_profile_id: profileId,
         p_court_id: courtId,
+        p_assignment_type: assignmentType,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Court assignment created.");
-      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
-      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.waiting });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
+      invalidateAfterAdminCourtChange(queryClient, profileId);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -179,9 +202,7 @@ export function useEndCourtAssignment(profileId: string) {
     },
     onSuccess: () => {
       toast.success("Court assignment ended.");
-      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
-      void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.waiting });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
+      invalidateAfterAdminCourtChange(queryClient, profileId);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

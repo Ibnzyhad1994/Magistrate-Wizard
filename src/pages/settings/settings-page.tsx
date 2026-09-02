@@ -24,6 +24,7 @@ import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { APP_BUILD, APP_VERSION } from "@/lib/app-version";
 import { GoogleCalendarCard } from "@/pages/settings/google-calendar-card";
+import { AdminSelfCourtCard } from "@/pages/settings/admin-self-court-card";
 import { ROUTES } from "@/routes/paths";
 
 export default function SettingsPage() {
@@ -106,7 +107,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {profile && profile.role !== "clerk" && (
+      {profile?.role === "admin" && <AdminSelfCourtCard />}
+
+      {profile && profile.role !== "clerk" && profile.role !== "admin" && (
         <Card className="mt-6 max-w-xl">
           <CardHeader>
             <CardTitle className="text-base">Court Assignments</CardTitle>

@@ -31,6 +31,7 @@ import LegalLibraryAdminPage from "@/pages/admin/legal-library-admin-page";
 import ClerkAccessAdminPage from "@/pages/admin/clerk-access-admin-page";
 import IssueReportsAdminPage from "@/pages/admin/issue-reports-admin-page";
 import AuditActivityAdminPage from "@/pages/admin/audit-activity-admin-page";
+import PeopleAdminPage from "@/pages/admin/people-admin-page";
 import ClerkAccessPage from "@/pages/clerk/clerk-access-page";
 import ClerkAccessRequestsPage from "@/pages/clerk/clerk-access-requests-page";
 import NotFoundPage from "@/pages/not-found-page";
@@ -180,6 +181,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.adminClerkAccess, element: <ClerkAccessAdminPage /> },
           { path: ROUTES.adminIssueReports, element: <IssueReportsAdminPage /> },
           { path: ROUTES.adminActivity, element: <AuditActivityAdminPage /> },
+          { path: ROUTES.adminPeople, element: <PeopleAdminPage /> },
           { path: "/legislation/:id/edit", element: <LegislationEditPage /> },
         ],
       },
