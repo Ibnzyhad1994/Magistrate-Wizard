@@ -21,7 +21,7 @@ import { DocketCapacityStrip } from "@/pages/docket/docket-capacity-strip";
 import { DailyProgressReportButton } from "@/pages/docket/daily-progress-report-button";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
+import { formatDate, toTitleCase } from "@/lib/utils";
 import { EMPTY_PROCEDURE_FILTERS, hasActiveProcedureFilters, type ProcedureFilters } from "@/lib/docket-procedure";
 import { useUiStore } from "@/store/ui-store";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,13 +95,11 @@ export default function DocketListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [capacityOpen, setCapacityOpen] = useState(false);
   const [logAppearance, setLogAppearance] = useState<LogAppearanceRequest | null>(null);
-  // The calendar's selected date now drives the table below it, not just
-  // its own detail panel — this is the fix for the core bug (the table
-  // used to always show every matter regardless of which date was
-  // clicked). Defaults to today, matching the calendar's own prior
-  // default; null means "All Matters" (unfiltered), reachable via the
-  // toggle next to the search bar.
-  const [selectedDate, setSelectedDate] = useState<string | null>(getLocalDateOnly());
+  // The calendar strip can still filter the table to one date. Opening
+  // Docket defaults to All Matters — most files have no appearance today,
+  // so defaulting to today made the list look empty until the user clicked
+  // a matter from Home (which is unfiltered) or pressed All Matters.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Switching Docket scope must never leave a stale search/filter/date
   // combination — or its results — visible from the previously-selected
@@ -114,7 +112,7 @@ export default function DocketListPage() {
     previousCourtId.current = courtId;
     setSearch("");
     setFilters(EMPTY_PROCEDURE_FILTERS);
-    setSelectedDate(getLocalDateOnly());
+    setSelectedDate(null);
   }, [courtId]);
 
   const docketBrowseView = useUiStore((s) => s.docketBrowseView);

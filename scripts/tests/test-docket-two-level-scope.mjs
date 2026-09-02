@@ -14,7 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 function loadEnv() {
   const text = readFileSync(new URL("../../.env", import.meta.url), "utf8");
   const env = {};
-  for (const line of text.split("\n")) {
+  for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
     if (m) env[m[1]] = m[2];
   }

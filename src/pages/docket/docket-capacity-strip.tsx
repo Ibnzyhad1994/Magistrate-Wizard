@@ -182,7 +182,7 @@ export function DocketCapacityStrip({
                 date={cell.date}
                 selected={cell.date === selectedDate}
                 today={cell.date === today}
-                onSelect={() => onSelectDate(cell.date)}
+                onSelect={() => onSelectDate(cell.date === selectedDate ? null : cell.date)}
               />
             ) : (
               <div key={`blank-${i}`} className="h-12 w-full sm:h-14" />
