@@ -15,6 +15,7 @@ import { toTitleCase } from "@/lib/utils";
 
 interface JudgmentsSectionProps {
   matterId: string;
+  frozen?: boolean;
 }
 
 /**
@@ -26,10 +27,10 @@ interface JudgmentsSectionProps {
  * governs read visibility — a linked Judgment the current user cannot
  * see simply won't appear here.
  */
-export function JudgmentsSection({ matterId }: JudgmentsSectionProps) {
+export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionProps) {
   const { data, isPending, isError, error, refetch } = useLinkedJudgments(matterId);
   const { data: access } = useDocketMatterAccess(matterId);
-  const canManage = access?.canManage ?? false;
+  const canManage = (access?.canManage ?? false) && !frozen;
   const deleteLink = useDeleteDocketJudgmentLink(matterId);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 

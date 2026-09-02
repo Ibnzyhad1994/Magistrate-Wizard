@@ -47,6 +47,7 @@ export function useDocketMatters(search: string) {
         .select(
           "id, case_number, matter_title, status, charge_or_issue, created_at, updated_at, court_id, district_id, cover_image_path, courts(name)",
         )
+        .is("deleted_at", null)
         .order("updated_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -277,6 +278,78 @@ export function usePatchDocketProcedure() {
       void queryClient.invalidateQueries({
         queryKey: docketMattersKeys.detail(variables.id),
       });
+    },
+  });
+}
+
+export type BinnedDocketMatterRow =
+  Database["public"]["Functions"]["list_binned_docket_matters"]["Returns"][number];
+
+function invalidateAfterBinChange(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id?: string,
+) {
+  void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
+  if (id) {
+    void queryClient.invalidateQueries({ queryKey: docketMattersKeys.detail(id) });
+  }
+  void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  void queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+}
+
+export function useBinnedDocketMatters() {
+  return useQuery({
+    queryKey: [...docketMattersKeys.all, "bin"] as const,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_binned_docket_matters");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useBinDocketMatter(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("bin_docket_matter", { p_id: id });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Matter moved to the bin. It will be permanently deleted after 7 days.");
+      invalidateAfterBinChange(queryClient, id);
+    },
+  });
+}
+
+export function useRestoreDocketMatter(id?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (matterId: string) => {
+      const { data, error } = await supabase.rpc("restore_docket_matter", {
+        p_id: matterId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, matterId) => {
+      toast.success("Matter restored to the docket.");
+      invalidateAfterBinChange(queryClient, id ?? matterId);
+    },
+  });
+}
+
+export function usePurgeDocketMatter(id?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (matterId: string) => {
+      const { error } = await supabase.rpc("purge_docket_matter", { p_id: matterId });
+      if (error) throw error;
+    },
+    onSuccess: (_data, matterId) => {
+      toast.success("Matter permanently deleted.");
+      invalidateAfterBinChange(queryClient, id ?? matterId);
     },
   });
 }

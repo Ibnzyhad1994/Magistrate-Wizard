@@ -113,7 +113,7 @@ function toIntOrNull(v: string | undefined): number | null {
 export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
   const { data, isPending, isError, error, refetch } = useDocketEvents(matter.id);
   const { data: access } = useDocketMatterAccess(matter.id);
-  const canEdit = access?.canEdit ?? false;
+  const canEdit = (access?.canEdit ?? false) && !matter.deleted_at;
   const [dialogEntry, setDialogEntry] = useState<DocketEvent | "new" | null>(null);
 
   const progressEntries = useMemo(() => (data ?? []).filter(hasProgressData), [data]);

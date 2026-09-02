@@ -10,6 +10,7 @@ import RegisterPage from "@/pages/auth/register-page";
 import ForgotPasswordPage from "@/pages/auth/forgot-password-page";
 import DashboardPage from "@/pages/dashboard-page";
 import DocketListPage from "@/pages/docket/docket-list-page";
+import DocketBinPage from "@/pages/docket/docket-bin-page";
 import DocketMatterDetailPage from "@/pages/docket/docket-matter-detail-page";
 import JudgmentListPage from "@/pages/judgments/judgment-list-page";
 import JudgmentDetailPage from "@/pages/judgments/judgment-detail-page";
@@ -122,6 +123,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: ROUTES.docket, element: <DocketListPage /> },
+          { path: ROUTES.docketBin, element: <DocketBinPage /> },
           { path: "/docket/:id", element: <DocketMatterDetailPage /> },
         ],
       },

@@ -87,5 +87,62 @@ check(
   true,
 )
 
+check(
+  "docket is an institutional table and has its own filter",
+  tablesForFilter("docket"),
+  ["docket_matters"],
+)
+
+check(
+  "docket create names the case",
+  summarizeChange("docket_matters", "insert", null, { case_number: "123/2026", matter_title: "Police v. Doe" }).title,
+  "Docket matter created: 123/2026 · Police v. Doe",
+)
+
+check(
+  "identity edit is named, not a generic update",
+  summarizeChange(
+    "docket_matters",
+    "update",
+    { case_number: "123/2026", matter_title: "Police v. Doe", charge_or_issue: "Theft" },
+    { case_number: "124/2026", matter_title: "Police v. Doe", charge_or_issue: "Theft" },
+  ).title,
+  "Matter case number updated",
+)
+
+check(
+  "bin is named from deleted_at going set",
+  summarizeChange(
+    "docket_matters",
+    "update",
+    { case_number: "123/2026", matter_title: "Police v. Doe", deleted_at: null },
+    { case_number: "123/2026", matter_title: "Police v. Doe", deleted_at: "2026-09-01T00:00:00Z" },
+  ).title,
+  "Moved to bin: 123/2026 · Police v. Doe",
+)
+
+check(
+  "restore is named from deleted_at clearing",
+  summarizeChange(
+    "docket_matters",
+    "update",
+    { case_number: "123/2026", matter_title: "Police v. Doe", deleted_at: "2026-09-01T00:00:00Z" },
+    { case_number: "123/2026", matter_title: "Police v. Doe", deleted_at: null },
+  ).title,
+  "Restored from bin: 123/2026 · Police v. Doe",
+)
+
+check(
+  "purge delete uses old_data as the subject",
+  summarizeChange("docket_matters", "delete", { case_number: "123/2026", matter_title: "Police v. Doe" }, null).title,
+  "Docket matter permanently deleted: 123/2026 · Police v. Doe",
+)
+
+check(
+  "docket events are categorized separately from access",
+  summarizeChange("docket_matters", "insert", null, { case_number: "1", matter_title: "A" }).category,
+  "docket",
+)
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`)
 process.exit(failures === 0 ? 0 : 1)

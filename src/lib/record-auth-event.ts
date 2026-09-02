@@ -13,8 +13,8 @@ export const recordAuthEvent = async (
     const userAgent = typeof navigator === "undefined" ? null : navigator.userAgent
     const { error } = await supabase.rpc("record_auth_event", {
       p_event: event,
-      p_email: email ?? null,
-      p_user_agent: userAgent,
+      p_email: email ?? "",
+      p_user_agent: userAgent ?? "",
     })
     if (error) {
       console.warn("auth event was not recorded", error.message)

@@ -65,7 +65,7 @@ const fetchChangeRows = async (filter: ActivityFilter): Promise<ChangeActivityRo
 }
 
 const fetchAuthRows = async (filter: ActivityFilter): Promise<AuthActivityRow[]> => {
-  if (filter === "access" || filter === "library") return []
+  if (filter === "access" || filter === "library" || filter === "docket") return []
   const { data, error } = await supabase
     .from("auth_event_log")
     .select(

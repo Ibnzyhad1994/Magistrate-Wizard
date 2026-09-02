@@ -58,12 +58,13 @@ import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface PartiesSectionProps {
   matterId: string;
+  frozen?: boolean;
 }
 
-export function PartiesSection({ matterId }: PartiesSectionProps) {
+export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketParties(matterId);
   const { data: access } = useDocketMatterAccess(matterId);
-  const canEdit = access?.canEdit ?? false;
+  const canEdit = (access?.canEdit ?? false) && !frozen;
   const [dialogParty, setDialogParty] = useState<DocketMatterParty | "new" | null>(
     null,
   );

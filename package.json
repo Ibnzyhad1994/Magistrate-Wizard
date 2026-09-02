@@ -48,6 +48,7 @@
     "test:pentest": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/pentest-security-audit.mjs",
     "test:seed-heuristics": "node scripts/tests/test-seed-heuristics.mjs",
     "test:docket-procedure": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-procedure.mjs",
+    "test:docket-bin-purge": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-matter-bin-purge.mjs",
     "test:case-law-title": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-title.mjs",
     "test:ingest-harvest-quality": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-harvest-quality.mjs",
     "test:csp": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-csp.mjs",

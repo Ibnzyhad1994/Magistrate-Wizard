@@ -12,14 +12,17 @@ export const ACCESS_AUDIT_TABLES = [
 
 export const LIBRARY_AUDIT_TABLES = ["statutes", "case_law", "documents"] as const
 
+export const DOCKET_AUDIT_TABLES = ["docket_matters"] as const
+
 export const INSTITUTIONAL_AUDIT_TABLES = [
   ...ACCESS_AUDIT_TABLES,
   ...LIBRARY_AUDIT_TABLES,
+  ...DOCKET_AUDIT_TABLES,
 ] as const
 
 export type InstitutionalAuditTable = (typeof INSTITUTIONAL_AUDIT_TABLES)[number]
 
-export type ActivityFilter = "all" | "access" | "library" | "signin"
+export type ActivityFilter = "all" | "access" | "library" | "docket" | "signin"
 
 export type AuthEventType =
   | "login_success"
@@ -53,6 +56,7 @@ const TABLE_LABELS: Record<InstitutionalAuditTable, string> = {
   statutes: "Legislation",
   case_law: "Case law",
   documents: "Document",
+  docket_matters: "Docket",
 }
 
 const HIDDEN_DETAIL_KEYS = new Set([
@@ -93,9 +97,13 @@ const personLabel = (row: Record<string, unknown>): string | null =>
 const isLibraryTable = (tableName: string): tableName is (typeof LIBRARY_AUDIT_TABLES)[number] =>
   (LIBRARY_AUDIT_TABLES as readonly string[]).includes(tableName)
 
+const isDocketTable = (tableName: string): tableName is (typeof DOCKET_AUDIT_TABLES)[number] =>
+  (DOCKET_AUDIT_TABLES as readonly string[]).includes(tableName)
+
 export const tablesForFilter = (filter: ActivityFilter): readonly string[] => {
   if (filter === "access") return ACCESS_AUDIT_TABLES
   if (filter === "library") return LIBRARY_AUDIT_TABLES
+  if (filter === "docket") return DOCKET_AUDIT_TABLES
   if (filter === "signin") return []
   return INSTITUTIONAL_AUDIT_TABLES
 }
@@ -132,7 +140,9 @@ export const summarizeChange = (
   const newRow = asRecord(newData)
   const category: Exclude<ActivityFilter, "all"> = isLibraryTable(tableName)
     ? "library"
-    : "access"
+    : isDocketTable(tableName)
+      ? "docket"
+      : "access"
   const badge = TABLE_LABELS[tableName as InstitutionalAuditTable] ?? tableName
 
   if (tableName === "profiles") {
@@ -288,6 +298,43 @@ export const summarizeChange = (
       }
     }
     return { category, badge, title: "Document updated", subject: fileName }
+  }
+
+  if (tableName === "docket_matters") {
+    const caseNumber = asText(newRow.case_number) ?? asText(oldRow.case_number)
+    const title = asText(newRow.matter_title) ?? asText(oldRow.matter_title)
+    const subject = [caseNumber, title].filter(Boolean).join(" · ") || null
+    if (action === "insert") {
+      return { category, badge, title: subject ? `Docket matter created: ${subject}` : "Docket matter created", subject }
+    }
+    if (action === "delete") {
+      return {
+        category,
+        badge,
+        title: subject ? `Docket matter permanently deleted: ${subject}` : "Docket matter permanently deleted",
+        subject,
+      }
+    }
+    if (!oldRow.deleted_at && newRow.deleted_at) {
+      return { category, badge, title: subject ? `Moved to bin: ${subject}` : "Moved to bin", subject }
+    }
+    if (oldRow.deleted_at && !newRow.deleted_at) {
+      return { category, badge, title: subject ? `Restored from bin: ${subject}` : "Restored from bin", subject }
+    }
+    const identityChanges = [
+      oldRow.case_number !== newRow.case_number ? "case number" : null,
+      oldRow.matter_title !== newRow.matter_title ? "title" : null,
+      oldRow.charge_or_issue !== newRow.charge_or_issue ? "charge" : null,
+    ].filter(Boolean)
+    if (identityChanges.length > 0) {
+      return {
+        category,
+        badge,
+        title: `Matter ${identityChanges.join(", ")} updated`,
+        subject,
+      }
+    }
+    return { category, badge, title: subject ? `Docket matter updated: ${subject}` : "Docket matter updated", subject }
   }
 
   const verb = action === "insert" ? "added" : action === "delete" ? "removed" : "updated"

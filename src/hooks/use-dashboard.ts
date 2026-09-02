@@ -44,14 +44,19 @@ export function useUpcomingAppearances() {
       const { data, error } = await supabase
         .from("docket_events")
         .select(
-          "id, docket_matter_id, event_type, scheduled_date, scheduled_time, event_status, docket_matters(id, matter_title, case_number, charge_or_issue, status, cover_image_path)",
+          "id, docket_matter_id, event_type, scheduled_date, scheduled_time, event_status, docket_matters(id, matter_title, case_number, charge_or_issue, status, cover_image_path, deleted_at)",
         )
         .gte("scheduled_date", today)
         .eq("event_status", "scheduled")
         .order("scheduled_date", { ascending: true })
         .limit(8);
       if (error) throw error;
-      return data;
+      return (data ?? []).filter((row) => {
+        const matter = Array.isArray(row.docket_matters)
+          ? row.docket_matters[0]
+          : row.docket_matters;
+        return matter && !matter.deleted_at;
+      });
     },
   });
 }
@@ -80,14 +85,17 @@ export function useMyRetainedMatters() {
       const { data: matters, error: mattersError } = await supabase
         .from("docket_matters")
         .select("id, matter_title, case_number, charge_or_issue, status, cover_image_path")
-        .in("id", ids);
+        .in("id", ids)
+        .is("deleted_at", null);
       if (mattersError) throw mattersError;
 
       const byId = new Map((matters ?? []).map((matter) => [matter.id, matter]));
-      return assignments.map((row) => ({
-        ...row,
-        docket_matters: byId.get(row.docket_matter_id) ?? null,
-      }));
+      return assignments
+        .map((row) => ({
+          ...row,
+          docket_matters: byId.get(row.docket_matter_id) ?? null,
+        }))
+        .filter((row) => row.docket_matters);
     },
   });
 }

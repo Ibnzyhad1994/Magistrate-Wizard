@@ -1394,6 +1394,8 @@ export type Database = {
           created_at: string
           created_by: string
           custody_status: string
+          deleted_at: string | null
+          deleted_by: string | null
           disclosure_status: string
           district_id: string
           id: string
@@ -1422,6 +1424,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           custody_status?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           disclosure_status?: string
           district_id: string
           id?: string
@@ -1450,6 +1454,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           custody_status?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           disclosure_status?: string
           district_id?: string
           id?: string
@@ -1484,6 +1490,13 @@ export type Database = {
           {
             foreignKeyName: "docket_matters_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_matters_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2883,6 +2896,45 @@ export type Database = {
         Args: { p_statute_id: string; p_tag_names: string[] }
         Returns: undefined
       }
+      bin_docket_matter: {
+        Args: { p_id: string }
+        Returns: {
+          appeal_status: string
+          arraignment_status: string
+          case_number: string
+          category_id: string | null
+          category_other: string | null
+          charge_or_issue: string | null
+          court_id: string
+          cover_image_path: string | null
+          created_at: string
+          created_by: string
+          custody_status: string
+          deleted_at: string | null
+          deleted_by: string | null
+          disclosure_status: string
+          district_id: string
+          id: string
+          judgment_status: string
+          last_updated_by: string | null
+          matter_title: string
+          orders_summary: string | null
+          outcome: string | null
+          procedure_stage: string | null
+          ruling_status: string
+          search_vector: unknown
+          sentence_status: string
+          status: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "docket_matters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_access_court: { Args: { p_court_id: string }; Returns: boolean }
       can_attach_preview_derivative: {
         Args: {
@@ -3000,6 +3052,19 @@ export type Database = {
           jurisdiction_id: string
           result_count: number
         }[]
+      }
+      case_law_matches_query: {
+        Args: {
+          p_case_name: string
+          p_citation: string
+          p_query: string
+          p_search_vector: unknown
+        }
+        Returns: boolean
+      }
+      case_law_search_rank: {
+        Args: { p_case_name: string; p_query: string; p_search_vector: unknown }
+        Returns: number
       }
       clerk_access_request_email_confirmed: {
         Args: { p_request_id: string }
@@ -3160,6 +3225,15 @@ export type Database = {
         }
         Returns: string
       }
+      format_case_law_title: { Args: { p_input: string }; Returns: string }
+      format_case_law_title_atom: {
+        Args: { p_force_cap: boolean; p_word: string }
+        Returns: string
+      }
+      format_case_law_title_word: {
+        Args: { p_force_cap: boolean; p_word: string }
+        Returns: string
+      }
       get_daily_docket_report_data: {
         Args: { p_court_id?: string; p_date: string }
         Returns: {
@@ -3212,6 +3286,7 @@ export type Database = {
         Args: { p_court_id: string }
         Returns: boolean
       }
+      has_active_magistrate_court: { Args: never; Returns: boolean }
       has_docket_matter_authority: {
         Args: { p_docket_matter_id: string }
         Returns: boolean
@@ -3252,6 +3327,20 @@ export type Database = {
           name: string
         }[]
       }
+      list_binned_docket_matters: {
+        Args: never
+        Returns: {
+          case_number: string
+          court_id: string
+          court_name: string
+          deleted_at: string
+          deleted_by: string
+          id: string
+          matter_title: string
+          status: Database["public"]["Enums"]["docket_matter_status"]
+          updated_at: string
+        }[]
+      }
       list_clerk_access_requests_needing_admin_attention: {
         Args: never
         Returns: {
@@ -3286,13 +3375,6 @@ export type Database = {
           id: string
           name: string
           status: string
-        }[]
-      }
-      list_magistrate_court_request_email_confirmation: {
-        Args: never
-        Returns: {
-          email_confirmed: boolean
-          request_id: string
         }[]
       }
       list_docket_matters: {
@@ -3342,6 +3424,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_magistrate_court_request_email_confirmation: {
+        Args: never
+        Returns: {
+          email_confirmed: boolean
+          request_id: string
+        }[]
+      }
+      magistrate_court_request_email_confirmed: {
+        Args: { p_request_id: string }
+        Returns: boolean
+      }
       matter_current_stage_label: {
         Args: { p_docket_matter_id: string }
         Returns: string
@@ -3355,8 +3448,11 @@ export type Database = {
         Args: { p_statute_id: string }
         Returns: undefined
       }
+      purge_docket_matter: { Args: { p_id: string }; Returns: undefined }
+      purge_docket_matter_row: { Args: { p_id: string }; Returns: undefined }
+      purge_expired_docket_matters: { Args: never; Returns: number }
       record_auth_event: {
-        Args: { p_email: string | null; p_event: string; p_user_agent: string | null }
+        Args: { p_email: string; p_event: string; p_user_agent: string }
         Returns: undefined
       }
       reject_case_law_import: {
@@ -3411,6 +3507,45 @@ export type Database = {
           display_name: string
           profile_id: string
         }[]
+      }
+      restore_docket_matter: {
+        Args: { p_id: string }
+        Returns: {
+          appeal_status: string
+          arraignment_status: string
+          case_number: string
+          category_id: string | null
+          category_other: string | null
+          charge_or_issue: string | null
+          court_id: string
+          cover_image_path: string | null
+          created_at: string
+          created_by: string
+          custody_status: string
+          deleted_at: string | null
+          deleted_by: string | null
+          disclosure_status: string
+          district_id: string
+          id: string
+          judgment_status: string
+          last_updated_by: string | null
+          matter_title: string
+          orders_summary: string | null
+          outcome: string | null
+          procedure_stage: string | null
+          ruling_status: string
+          search_vector: unknown
+          sentence_status: string
+          status: Database["public"]["Enums"]["docket_matter_status"]
+          trial_status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "docket_matters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       revoke_clerk_court_access: {
         Args: { p_assignment_id: string; p_reason?: string }
@@ -3863,6 +3998,14 @@ export const Constants = {
         "expired",
       ],
       docket_matter_status: ["active", "stayed", "completed", "archived"],
+      magistrate_court_decision: ["approved", "rejected"],
+      magistrate_court_request_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "cancelled",
+        "expired",
+      ],
       note_status: ["draft", "published"],
       party_role: [
         "plaintiff",
@@ -3878,8 +4021,6 @@ export const Constants = {
     },
   },
 } as const
-
-// --- Magistrate Wizard convenience aliases (not part of the generated output) -----
 
 export type Profile = Tables<"profiles">;
 export type Court = Tables<"courts">;
@@ -3929,4 +4070,3 @@ export type DocketCapacityOverride = Tables<"docket_capacity_overrides">;
 
 export type ClerkCourt = Tables<"clerk_courts">;
 export type ClerkAccessRequest = Tables<"clerk_access_requests">;
-

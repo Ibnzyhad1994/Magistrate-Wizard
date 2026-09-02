@@ -75,6 +75,9 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const { data: access } = useDocketMatterAccess(matter.id);
   const canEdit = access?.canEdit ?? false;
   const canManage = access?.canManage ?? false;
+  const isBinned = Boolean(matter.deleted_at);
+  const liveEdit = canEdit && !isBinned;
+  const liveManage = canManage && !isBinned;
   const updateMatter = useUpdateDocketMatter(matter.id);
   const patchProcedure = usePatchDocketProcedure();
   const createRetained = useCreateRetainedAssignment(matter.id);
@@ -140,7 +143,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           read-only here (it's already editable on the Procedure board
           just below, so it isn't given a second editing surface). */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        {canEdit ? (
+        {liveEdit ? (
           <Select
             value={matter.status}
             onChange={(e) =>
@@ -170,7 +173,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         )}
         <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
         <Badge variant="outline">{classificationLabel ?? "Unclassified"}</Badge>
-        {canEdit && (
+        {liveEdit && (
           <Button
             size="sm"
             variant="ghost"
@@ -190,7 +193,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             <span className="text-muted-foreground">
               Retained: <span className="font-medium text-foreground">Yes ({anyActiveRetained.display_name ?? "Unknown magistrate"})</span>
             </span>
-            {myActiveRetained && (
+            {myActiveRetained && liveManage && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -204,7 +207,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         ) : (
           <>
             <span className="text-muted-foreground">Retained: No</span>
-            {canManage && (
+            {liveManage && (
               <Button size="sm" variant="ghost" className="h-7" onClick={() => setRetainOpen(true)}>
                 <Bookmark className="h-3.5 w-3.5" />
                 Retain as part-heard
@@ -227,7 +230,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
 
       <DocketStageStrip
         matter={matter}
-        canEdit={canEdit}
+        canEdit={liveEdit}
         onPatch={(values, expectedUpdatedAt) =>
           patchProcedure.mutateAsync({ id: matter.id, values, expectedUpdatedAt })
         }
@@ -239,7 +242,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between py-3">
           <CardTitle className="text-sm text-muted-foreground">Orders & outcome</CardTitle>
-          {canEdit && !editingOutcome && (
+          {liveEdit && !editingOutcome && (
             <Button
               size="sm"
               variant="ghost"
@@ -376,7 +379,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       {editingClassification && (
         <ClassificationDialog
           matter={matter}
-          canEdit={canEdit}
+          canEdit={liveEdit}
           onClose={() => setEditingClassification(false)}
         />
       )}

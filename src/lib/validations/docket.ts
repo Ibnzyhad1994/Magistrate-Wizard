@@ -113,6 +113,14 @@ export const docketMatterSchema = z.object({
 });
 export type DocketMatterFormValues = z.infer<typeof docketMatterSchema>;
 
+/** Identity fields editable after create. Court and district stay locked. */
+export const docketMatterIdentitySchema = docketMatterSchema.pick({
+  case_number: true,
+  matter_title: true,
+  charge_or_issue: true,
+});
+export type DocketMatterIdentityFormValues = z.infer<typeof docketMatterIdentitySchema>;
+
 export const docketMatterClassificationSchema = z.object({
   category_id: z.string().min(1, "Classification is required"),
   category_other: z.string().max(200).optional().or(z.literal("")),

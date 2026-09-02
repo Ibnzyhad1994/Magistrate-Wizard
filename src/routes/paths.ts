@@ -6,6 +6,7 @@ export const ROUTES = {
   home: "/",
   dashboard: "/dashboard",
   docket: "/docket",
+  docketBin: "/docket/bin",
   docketMatter: (id: string) => `/docket/${id}`,
   docketMatterEvents: (id: string) => `/docket/${id}?tab=events`,
   judgments: "/judgments",

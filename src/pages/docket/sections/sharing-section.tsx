@@ -38,12 +38,13 @@ import { formatDate, toTitleCase } from "@/lib/utils";
 
 interface SharingSectionProps {
   matterId: string;
+  frozen?: boolean;
 }
 
-export function SharingSection({ matterId }: SharingSectionProps) {
+export function SharingSection({ matterId, frozen = false }: SharingSectionProps) {
   const { user } = useAuth();
   const { data: access } = useDocketMatterAccess(matterId);
-  const canManage = access?.canManage ?? false;
+  const canManage = (access?.canManage ?? false) && !frozen;
   const { data, isPending, isError, error, refetch } = useDocketShares(matterId);
   const revokeShare = useRevokeShare(matterId);
   const [pendingRevoke, setPendingRevoke] = useState<ResolvedShare | null>(null);

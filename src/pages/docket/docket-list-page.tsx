@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Search, Plus, Gavel, Gauge, Landmark } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Search, Plus, Gavel, Gauge, Landmark, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -143,6 +143,12 @@ export default function DocketListPage() {
         onViewSelectChange={setDocketBrowseView}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to={ROUTES.docketBin}>
+                <Trash2 className="h-4 w-4" />
+                Bin
+              </Link>
+            </Button>
             <Button variant="outline" onClick={() => setCapacityOpen(true)}>
               <Gauge className="h-4 w-4" />
               Docket Capacity

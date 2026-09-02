@@ -26,6 +26,7 @@ const FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "access", label: "Access" },
   { id: "library", label: "Library" },
+  { id: "docket", label: "Docket" },
   { id: "signin", label: "Sign-in" },
 ]
 
@@ -38,9 +39,9 @@ const summarizeRow = (row: ActivityRow) => {
 
 /**
  * Admin-only ledger of institutional changes and sign-in events.
- * Docket notes, judgments, and other private work product are not
- * listed here even though some of those tables are still written to
- * audit_log for SQL review.
+ * Docket identity edits, bin, and purge appear here. Private judicial
+ * writing (bench notes, judgment text) is not listed even though some
+ * of those tables are still written to audit_log for SQL review.
  */
 const AuditActivityAdminPage = () => {
   const [searchParams] = useSearchParams()
@@ -75,7 +76,7 @@ const AuditActivityAdminPage = () => {
     <BrowsePage>
       <BrowseHeader
         title="Activity"
-        description="Who changed court access, the legal library, or account privileges, and who signed in. Private judicial writing is not shown here."
+        description="Who changed court access, the legal library, docket identity and bin/purge events, or account privileges, and who signed in. Private judicial writing is not shown here."
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

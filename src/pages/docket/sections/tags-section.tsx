@@ -15,12 +15,13 @@ import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface TagsSectionProps {
   matterId: string;
+  frozen?: boolean;
 }
 
-export function TagsSection({ matterId }: TagsSectionProps) {
+export function TagsSection({ matterId, frozen = false }: TagsSectionProps) {
   const { data, isPending, isError, error, refetch } = useDocketTags(matterId);
   const { data: access } = useDocketMatterAccess(matterId);
-  const canEdit = access?.canEdit ?? false;
+  const canEdit = (access?.canEdit ?? false) && !frozen;
   const addTag = useAddDocketTag(matterId);
   const removeTag = useRemoveDocketTag(matterId);
   const [value, setValue] = useState("");
