@@ -2,8 +2,8 @@
 -- / `supabase db reset`. Not for production.
 --
 -- Logins (email confirmation is disabled in config.toml):
---   admin@magistrate-wizard.local      / password123  (admin + Georgetown Court 1)
---   magistrate@magistrate-wizard.local / password123  (magistrate + Georgetown Court 1)
+--   admin@magistrate-wizard.local      / password123  (admin + acting at Georgetown Court 1)
+--   magistrate@magistrate-wizard.local / password123  (magistrate + primary at Georgetown Court 1)
 
 create extension if not exists pgcrypto;
 
@@ -115,15 +115,16 @@ where id = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
 -- ---------------------------------------------------------------------------
 -- Court assignments (required for Docket access — admin bypass does not apply)
+-- Only one active assignment_type='regular' row is allowed per court (0105).
 -- ---------------------------------------------------------------------------
 
 insert into public.magistrate_courts (profile_id, court_id, assignment_type)
-select u.id, c.id, 'regular'
+select u.id, c.id, u.assignment_type
 from (
   values
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid),
-    ('b1ffcd00-8d1c-4ef8-bb6d-6bb9bd380a22'::uuid)
-) as u(id)
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid, 'acting'),
+    ('b1ffcd00-8d1c-4ef8-bb6d-6bb9bd380a22'::uuid, 'regular')
+) as u(id, assignment_type)
 cross join lateral (
   select id
   from public.courts
