@@ -44,6 +44,7 @@ export function DocketStageCell({
   canEdit,
   isCurrent,
   compact,
+  className,
   onChange,
   attachments,
 }: {
@@ -52,6 +53,7 @@ export function DocketStageCell({
   canEdit: boolean;
   isCurrent?: boolean;
   compact?: boolean;
+  className?: string;
   onChange: (next: string) => void;
   attachments?: StageCellAttachments;
 }) {
@@ -59,12 +61,13 @@ export function DocketStageCell({
   const tone = procedureCellTone(column, value);
   const label = procedureCellLabel(value, { column, canEdit });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const className = cn(
+  const cellClassName = cn(
     "inline-flex max-w-full touch-manipulation items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
     isCurrent && "ring-2 ring-[hsl(var(--match))]",
     compact ? "min-h-8" : "min-h-9 min-w-[5.5rem] sm:min-h-7",
     mode === "edit" && "cursor-pointer hover:brightness-110",
+    className,
   );
   const hint =
     mode === "edit"
@@ -80,7 +83,7 @@ export function DocketStageCell({
   if (mode === "read") {
     return (
       <HintTooltip label={hint}>
-        <span className={className} aria-label={`${column.replace(/_/g, " ")}: ${label}`}>
+        <span className={cellClassName} aria-label={`${column.replace(/_/g, " ")}: ${label}`}>
           {label}
           {attachmentIcon}
         </span>
@@ -97,7 +100,7 @@ export function DocketStageCell({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className={className}
+              className={cellClassName}
               aria-label={`${column.replace(/_/g, " ")}: ${label}${attachments?.hasFile ? " (file attached)" : ""}`}
             >
               {label}

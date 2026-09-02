@@ -130,7 +130,10 @@ export function Billboard({
             {description}
           </p>
         )}
-        <div className={cn("flex flex-wrap gap-3", isDetail ? "mt-4" : "mt-6")}>
+        <div
+          data-tour-focus=""
+          className={cn("flex flex-wrap gap-3", isDetail ? "mt-4" : "mt-6")}
+        >
           {primaryAction && (
             <BillboardButton
               action={primaryAction}

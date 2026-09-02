@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { ProcedureColumnKey } from "@/lib/docket-procedure";
 
-export const PROCEDURE_COLUMN_ICONS: Record<ProcedureColumnKey, LucideIcon> = {
+const PROCEDURE_COLUMN_ICONS: Record<ProcedureColumnKey, LucideIcon> = {
   arraignment_status: UserRound,
   custody_status: Shield,
   disclosure_status: FolderOpen,

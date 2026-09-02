@@ -179,6 +179,29 @@
     padding-left: 4vw;
     padding-right: 4vw;
   }
+
+  @keyframes tour-ring-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.95;
+    }
+    50% {
+      transform: scale(1.22);
+      opacity: 0.4;
+    }
+  }
+
+  .tour-ring-pulse {
+    animation: tour-ring-pulse 1.5s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tour-ring-pulse {
+      animation: none;
+    }
+  }
 }
 
 @layer utilities {

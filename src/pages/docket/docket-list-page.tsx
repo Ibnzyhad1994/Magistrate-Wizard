@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Search, Plus, ClipboardList, Gauge, Landmark, Trash2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Search, Plus, ClipboardList, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
-import { HintTooltip } from "@/components/ui/tooltip";
 import { InlineError } from "@/components/common/inline-error";
 import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
+import { useIsDesktop } from "@/hooks/use-media-query";
 import {
   useDocketMatterBoard,
   usePatchDocketProcedure,
@@ -17,6 +17,8 @@ import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-di
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 import { DocketStageFilters } from "@/pages/docket/docket-stage-filters";
 import { DocketStageSheet, type LogAppearanceRequest } from "@/pages/docket/docket-stage-sheet";
+import { DocketMatterCard, DocketMatterCardSkeleton } from "@/pages/docket/docket-matter-card";
+import { DocketToolbar } from "@/pages/docket/docket-toolbar";
 import { DocketCapacitySettingsDialog } from "@/pages/docket/docket-capacity-settings-dialog";
 import { DocketCapacityStrip } from "@/pages/docket/docket-capacity-strip";
 import { DailyProgressReportButton } from "@/pages/docket/daily-progress-report-button";
@@ -116,6 +118,7 @@ export default function DocketListPage() {
     setSelectedDate(null);
   }, [courtId]);
 
+  const isDesktop = useIsDesktop();
   const docketBrowseView = useUiStore((s) => s.docketBrowseView);
   const setDocketBrowseView = useUiStore((s) => s.setDocketBrowseView);
   const { data, isPending, isError, error, refetch } = useDocketMatterBoard(
@@ -147,44 +150,16 @@ export default function DocketListPage() {
     <BrowsePage>
       <BrowseHeader
         title={docketScopeTitle(selectedCourt?.court_name ?? null)}
-        description="List is the working sheet. Swipe for stages on a phone. Tiles stay for cover-photo browse. Set Next date and record hearing progress on each file."
+        description="List is the working sheet. On a phone each file shows its stages. Tiles stay for cover-photo browse. Set Next date and record hearing progress on each file."
         showViewSelect
         viewSelectValue={docketBrowseView}
         onViewSelectChange={setDocketBrowseView}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link to={ROUTES.docketBin}>
-                <Trash2 className="h-4 w-4" />
-                Bin
-              </Link>
-            </Button>
-            <Button variant="outline" onClick={() => setCapacityOpen(true)}>
-              <Gauge className="h-4 w-4" />
-              Docket Capacity
-            </Button>
-            {noCourts ? (
-              <HintTooltip label="You have no current Court assignment.">
-                <span className="inline-flex">
-                  <Button variant="play" disabled data-tour="docket-new-matter" aria-label="New matter">
-                    <Plus className="h-4 w-4" />
-                    New matter
-                  </Button>
-                </span>
-              </HintTooltip>
-            ) : (
-              <Button
-                variant="play"
-                onClick={() => setCreateOpen(true)}
-                data-tour="docket-new-matter"
-                aria-label="New matter"
-              >
-                <Plus className="h-4 w-4" />
-                New matter
-              </Button>
-            )}
-          </div>
-        }
+      />
+
+      <DocketToolbar
+        noCourts={noCourts}
+        onOpenCapacity={() => setCapacityOpen(true)}
+        onNewMatter={() => setCreateOpen(true)}
       />
 
       {noCourts ? (
@@ -219,6 +194,7 @@ export default function DocketListPage() {
       )}
 
       <DocketCapacityStrip
+        key={courtId ?? "all"}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         onEditLimits={() => setCapacityOpen(true)}
@@ -255,7 +231,15 @@ export default function DocketListPage() {
 
       {isPending ? (
         docketBrowseView === "list" ? (
-          <Skeleton className="h-64 w-full rounded-sm" />
+          isDesktop ? (
+            <Skeleton className="h-64 w-full rounded-sm" />
+          ) : (
+            <div className="flex flex-col gap-3">
+              <DocketMatterCardSkeleton />
+              <DocketMatterCardSkeleton />
+              <DocketMatterCardSkeleton />
+            </div>
+          )
         ) : (
           <TitleCardSkeletonGallery />
         )
@@ -305,12 +289,29 @@ export default function DocketListPage() {
         />
         </div>
       ) : docketBrowseView === "list" ? (
-        <DocketStageSheet
-          rows={data}
-          showCourt={courtId === null}
-          onPatch={(id, values, expectedUpdatedAt) => patch.mutateAsync({ id, values, expectedUpdatedAt })}
-          onLogAppearance={setLogAppearance}
-        />
+        isDesktop ? (
+          <DocketStageSheet
+            rows={data}
+            showCourt={courtId === null}
+            onPatch={(id, values, expectedUpdatedAt) => patch.mutateAsync({ id, values, expectedUpdatedAt })}
+            onLogAppearance={setLogAppearance}
+          />
+        ) : (
+          <div className="flex flex-col gap-3" data-tour="docket-board">
+            {data.map((row, index) => (
+              <DocketMatterCard
+                key={row.id}
+                row={row}
+                showCourt={courtId === null}
+                isTourNextDate={index === 0}
+                onPatch={(id, values, expectedUpdatedAt) =>
+                  patch.mutateAsync({ id, values, expectedUpdatedAt })
+                }
+                onLogAppearance={setLogAppearance}
+              />
+            ))}
+          </div>
+        )
       ) : (
         <div className="flex flex-wrap gap-2">
           {data.map((matter) => (

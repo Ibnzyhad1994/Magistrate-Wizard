@@ -37,7 +37,7 @@ export default function DocketBinPage() {
     <BrowsePage>
       <BrowseHeader
         title="Docket bin"
-        description="Deleted files stay here for 7 days. Restore to put them back on the docket, or empty now to permanently delete."
+        description="Binned files stay here for 7 days. Restore to put them back on the docket, or empty now to permanently delete."
         action={
           <Button variant="outline" asChild>
             <Link to={back.to}>{back.label}</Link>
@@ -53,7 +53,7 @@ export default function DocketBinPage() {
         <EmptyState
           icon={Trash2}
           title="Bin is empty"
-          description="Matters you delete from the docket appear here for 7 days."
+          description="Matters you move to the bin appear here for 7 days."
         />
       ) : (
         <Table>

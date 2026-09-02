@@ -1,37 +1,24 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
 import { loadDeviceJson, saveDeviceJson } from "@/lib/device-storage";
-import { ROUTES } from "@/routes/paths";
 import {
-  WALKTHROUGH_VERSION,
+  clearWalkthroughAutoPlaySessions,
+  hasWalkthroughAutoPlaySession,
+  markWalkthroughAutoPlaySession,
+  shouldAutoStartWalkthrough,
+  walkthroughRecordAfterAutoStart,
+  walkthroughRecordAfterComplete,
+  walkthroughRecordForPending,
   walkthroughStepsFor,
   walkthroughStorageKey,
   type WalkthroughRecord,
 } from "@/lib/walkthrough";
-import { resolveTourTarget, TourOverlay } from "@/components/tour/tour-overlay";
+import { TourOverlay } from "@/components/tour/tour-overlay";
+import { TourContext } from "@/components/tour/use-tour";
+import { resolveTourTarget } from "@/lib/tour-target";
 import type { UserRole } from "@/lib/constants";
-
-type TourContextValue = {
-  isActive: boolean;
-  canWalkthrough: boolean;
-  startWalkthrough: () => void;
-};
-
-const TourContext = createContext<TourContextValue | null>(null);
-
-export const useTour = (): TourContextValue => {
-  const ctx = useContext(TourContext);
-  if (!ctx) {
-    return {
-      isActive: false,
-      canWalkthrough: false,
-      startWalkthrough: () => undefined,
-    };
-  }
-  return ctx;
-};
 
 export function TourProvider({ children }: { children: ReactNode }) {
   const { user, profile, status } = useAuth();
@@ -46,14 +33,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const canWalkthrough = steps.length > 0;
   const [isActive, setIsActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  const autoStarted = useRef(false);
+  const isActiveRef = useRef(false);
+  const didAutoStartThisInstance = useRef(false);
+  isActiveRef.current = isActive;
 
   const persistCompleted = useCallback(async () => {
     if (!user?.id) return;
-    await saveDeviceJson(walkthroughStorageKey(user.id), {
-      version: WALKTHROUGH_VERSION,
-      completedAt: new Date().toISOString(),
-    } satisfies WalkthroughRecord);
+    const key = walkthroughStorageKey(user.id);
+    const existing = await loadDeviceJson<WalkthroughRecord>(key);
+    await saveDeviceJson(key, walkthroughRecordAfterComplete(existing, new Date().toISOString()));
   }, [user?.id]);
 
   const handleStop = useCallback(
@@ -74,6 +62,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
       navigate(firstRoute);
     }
   }, [location.pathname, navigate, steps]);
+
+  const startWalkthroughRef = useRef(startWalkthrough);
+  startWalkthroughRef.current = startWalkthrough;
+  const stepsRef = useRef(steps);
+  stepsRef.current = steps;
 
   const handleSkip = useCallback(() => {
     void handleStop(true);
@@ -108,30 +101,60 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [isActive, location.pathname, stepIndex, steps]);
 
   useEffect(() => {
-    if (autoStarted.current) return;
+    if (status !== "authenticated") {
+      clearWalkthroughAutoPlaySessions();
+      didAutoStartThisInstance.current = false;
+    }
+  }, [status]);
+
+  useEffect(() => {
+    didAutoStartThisInstance.current = false;
+  }, [user?.id]);
+
+  useEffect(() => {
     if (status !== "authenticated") return;
     if (!user?.id || !profile) return;
     if (profile.role === "magistrate" && typeof hasApprovedMagistrateCourt !== "boolean") return;
-    if (!canWalkthrough) {
-      autoStarted.current = true;
-      return;
-    }
-    if (location.pathname !== ROUTES.dashboard) return;
-    autoStarted.current = true;
+
+    let cancelled = false;
+    const key = walkthroughStorageKey(user.id);
+
     void (async () => {
-      const record = await loadDeviceJson<WalkthroughRecord>(walkthroughStorageKey(user.id));
-      if (record?.version === WALKTHROUGH_VERSION && record.completedAt) return;
-      startWalkthrough();
+      const record = await loadDeviceJson<WalkthroughRecord>(key);
+      if (cancelled) return;
+
+      if (isPendingMagistrate) {
+        const next = walkthroughRecordForPending(record);
+        if (next.awaitingAssignment !== record?.awaitingAssignment) {
+          await saveDeviceJson(key, next);
+        }
+        return;
+      }
+
+      if (isActiveRef.current || didAutoStartThisInstance.current) return;
+      if (stepsRef.current.length === 0) return;
+
+      if (
+        !shouldAutoStartWalkthrough({
+          role: profile.role as UserRole,
+          isPendingMagistrate,
+          record,
+          sessionAutoPlay: hasWalkthroughAutoPlaySession(user.id),
+        })
+      ) {
+        return;
+      }
+      markWalkthroughAutoPlaySession(user.id);
+      void saveDeviceJson(key, walkthroughRecordAfterAutoStart(record, new Date().toISOString()));
+      if (cancelled) return;
+      didAutoStartThisInstance.current = true;
+      startWalkthroughRef.current();
     })();
-  }, [
-    canWalkthrough,
-    hasApprovedMagistrateCourt,
-    location.pathname,
-    profile,
-    startWalkthrough,
-    status,
-    user?.id,
-  ]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasApprovedMagistrateCourt, isPendingMagistrate, profile, status, user?.id]);
 
   const current = isActive ? steps[stepIndex] : undefined;
 

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -11,12 +10,12 @@ import {
 import { DocketStageCell } from "@/pages/docket/docket-stage-cell";
 import { NextDateCell } from "@/pages/docket/next-date-cell";
 import {
-  appearanceHintForColumn,
   currentStage,
   PROCEDURE_COLUMNS,
   type ProcedureColumnKey,
   type ProcedureSnapshot,
 } from "@/lib/docket-procedure";
+import { logProcedurePatch } from "@/lib/docket-procedure-log";
 import { ROUTES } from "@/routes/paths";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
@@ -73,22 +72,16 @@ function DocketStageRow({
   const classification = matterClassificationLabel(row.category_name, row.category_other);
 
   async function handleChange(column: ProcedureColumnKey, next: string) {
-    try {
-      await onPatch(row.id, { [column]: next }, row.updated_at);
-      const hint = appearanceHintForColumn(column, next);
-      toast.success("Logged on the board.", {
-        action: {
-          label: "Log appearance",
-          onClick: () =>
-            onLogAppearance({
-              matterId: row.id,
-              ...hint,
-            }),
-        },
-      });
-    } catch {
-      // Mutation cache toast subscriber.
-    }
+    const meta = PROCEDURE_COLUMNS.find((item) => item.key === column);
+    const previous = String(row[column] ?? meta?.emptyValue ?? "");
+    await logProcedurePatch({
+      column,
+      previous,
+      next,
+      expectedUpdatedAt: row.updated_at,
+      patch: (values, expectedUpdatedAt) => onPatch(row.id, values, expectedUpdatedAt),
+      onLogAppearance: (hint) => onLogAppearance({ matterId: row.id, ...hint }),
+    });
   }
 
   return (
@@ -186,10 +179,7 @@ export function DocketStageSheet({
 
   return (
     <div className="relative" data-tour="docket-board">
-      <p className="mb-2 text-xs text-white/50 sm:hidden">
-        Swipe sideways for the stage columns.
-      </p>
-      <div className="relative rounded-sm border border-white/10 [&>div]:max-h-[min(28rem,58dvh)] sm:[&>div]:max-h-none">
+      <div className="relative rounded-sm border border-white/10">
         <Table className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -198,6 +188,7 @@ export function DocketStageSheet({
                 <TableHead
                   key={column.key}
                   className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
+                  data-tour-focus={column.key === "arraignment_status" ? "" : undefined}
                 >
                   <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
@@ -223,10 +214,6 @@ export function DocketStageSheet({
             ))}
           </TableBody>
         </Table>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-px right-px w-8 rounded-r-sm bg-gradient-to-l from-[#181818] to-transparent sm:hidden"
-        />
       </div>
     </div>
   );

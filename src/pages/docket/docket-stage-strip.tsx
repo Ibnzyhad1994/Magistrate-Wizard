@@ -1,13 +1,13 @@
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DocketStageCell, type StageCellAttachments } from "@/pages/docket/docket-stage-cell";
+import { type StageCellAttachments } from "@/pages/docket/docket-stage-cell";
+import { ProcedureStageGrid } from "@/pages/docket/procedure-stage-grid";
 import {
-  appearanceHintForColumn,
   matterCurrentStage,
   PROCEDURE_COLUMNS,
   type ProcedureColumnKey,
 } from "@/lib/docket-procedure";
-import { ProcedureColumnHeading } from "@/pages/docket/procedure-column-heading";
+import { logProcedurePatch } from "@/lib/docket-procedure-log";
 import { getDocumentDownloadUrl, useDocuments, useUploadDocument } from "@/hooks/use-documents";
 import { getErrorMessage } from "@/lib/utils";
 import type { DocketMatter } from "@/types/database.types";
@@ -43,18 +43,16 @@ export function DocketStageStrip({
   const uploadJudgment = useUploadDocument("docket_matter", matter.id);
 
   async function handleChange(column: ProcedureColumnKey, next: string) {
-    try {
-      await onPatch({ [column]: next }, matter.updated_at);
-      const hint = appearanceHintForColumn(column, next);
-      toast.success("Logged on the board.", {
-        action: {
-          label: "Log appearance",
-          onClick: () => onLogAppearance(hint),
-        },
-      });
-    } catch {
-      // Mutation cache toast subscriber.
-    }
+    const meta = PROCEDURE_COLUMNS.find((item) => item.key === column);
+    const previous = String(matter[column] ?? meta?.emptyValue ?? "");
+    await logProcedurePatch({
+      column,
+      previous,
+      next,
+      expectedUpdatedAt: matter.updated_at,
+      patch: (values, expectedUpdatedAt) => onPatch(values, expectedUpdatedAt),
+      onLogAppearance,
+    });
   }
 
   async function handleDownload(filePath: string) {
@@ -95,24 +93,18 @@ export function DocketStageStrip({
           also attach the actual document, separate from the Judgments tab,
           which is for a magistrate's own written judgments.
         </p>
-        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-2">
-          {PROCEDURE_COLUMNS.map((column) => (
-            <div key={column.key} className="min-w-0 space-y-1 sm:min-w-[6.5rem]">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <ProcedureColumnHeading columnKey={column.key} label={column.label} />
-              </p>
-              <DocketStageCell
-                column={column.key}
-                value={String(matter[column.key] ?? column.emptyValue)}
-                canEdit={canEdit}
-                isCurrent={stage === column.stage}
-                compact
-                onChange={(next) => void handleChange(column.key, next)}
-                attachments={attachmentsFor(column.key)}
-              />
-            </div>
-          ))}
-        </div>
+        <ProcedureStageGrid
+          layout="overview"
+          compact
+          currentStage={stage}
+          canEdit={canEdit}
+          getValue={(column) => {
+            const meta = PROCEDURE_COLUMNS.find((item) => item.key === column);
+            return String(matter[column] ?? meta?.emptyValue ?? "");
+          }}
+          attachmentsFor={attachmentsFor}
+          onChange={(column, next) => void handleChange(column, next)}
+        />
       </CardContent>
     </Card>
   );

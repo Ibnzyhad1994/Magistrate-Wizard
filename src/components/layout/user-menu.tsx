@@ -15,7 +15,7 @@ import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requ
 import { getInitials } from "@/lib/utils";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
-import { useTour } from "@/components/tour/tour-provider";
+import { useTour } from "@/components/tour/use-tour";
 
 interface UserMenuProps {
   compact?: boolean;

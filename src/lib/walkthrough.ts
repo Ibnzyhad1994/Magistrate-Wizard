@@ -3,9 +3,13 @@ import type { UserRole } from "@/lib/constants";
 
 export const WALKTHROUGH_VERSION = 1;
 
+const autoPlaySessions = new Set<string>();
+
 export type WalkthroughRecord = {
   version: number;
-  completedAt: string;
+  completedAt?: string;
+  autoStartedAt?: string;
+  awaitingAssignment?: boolean;
 };
 
 export const walkthroughStorageKey = (userId: string): string =>
@@ -102,3 +106,71 @@ export const walkthroughStepsFor = (
     },
   ];
 };
+
+/**
+ * Auto-play only for a magistrate who waited without a court on this
+ * device, then received an assignment. Clerks, admins, and already-seated
+ * magistrates never auto-start. Skip/complete or a prior auto-start
+ * blocks later sessions; Settings and the account menu still replay.
+ */
+export function shouldAutoStartWalkthrough(args: {
+  role: UserRole | null | undefined;
+  isPendingMagistrate: boolean;
+  record: WalkthroughRecord | null;
+  sessionAutoPlay?: boolean;
+}): boolean {
+  if (args.role !== "magistrate") return false;
+  if (args.isPendingMagistrate) return false;
+  if (args.record?.completedAt) return false;
+  if (args.record?.awaitingAssignment === true && !args.record.autoStartedAt) return true;
+  return Boolean(args.sessionAutoPlay && args.record?.autoStartedAt);
+}
+
+export function walkthroughRecordForPending(
+  existing: WalkthroughRecord | null,
+): WalkthroughRecord {
+  if (existing?.completedAt || existing?.autoStartedAt) {
+    return existing;
+  }
+  if (existing?.awaitingAssignment) return existing;
+  return {
+    version: WALKTHROUGH_VERSION,
+    awaitingAssignment: true,
+  };
+}
+
+export function walkthroughRecordAfterAutoStart(
+  existing: WalkthroughRecord | null,
+  at: string,
+): WalkthroughRecord {
+  return {
+    version: WALKTHROUGH_VERSION,
+    completedAt: existing?.completedAt,
+    awaitingAssignment: false,
+    autoStartedAt: existing?.autoStartedAt ?? at,
+  };
+}
+
+export function walkthroughRecordAfterComplete(
+  existing: WalkthroughRecord | null,
+  at: string,
+): WalkthroughRecord {
+  return {
+    version: WALKTHROUGH_VERSION,
+    completedAt: at,
+    autoStartedAt: existing?.autoStartedAt,
+    awaitingAssignment: false,
+  };
+}
+
+export function markWalkthroughAutoPlaySession(userId: string): void {
+  autoPlaySessions.add(userId);
+}
+
+export function hasWalkthroughAutoPlaySession(userId: string): boolean {
+  return autoPlaySessions.has(userId);
+}
+
+export function clearWalkthroughAutoPlaySessions(): void {
+  autoPlaySessions.clear();
+}

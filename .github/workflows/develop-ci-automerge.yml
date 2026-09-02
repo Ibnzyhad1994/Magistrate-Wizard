@@ -85,6 +85,12 @@ jobs:
       - name: Docket scope resolution
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-scope.mjs
 
+      - name: Walkthrough and tour overlay
+        run: npm run test:walkthrough
+
+      - name: Docket week helpers
+        run: npm run test:docket-week
+
       - name: DOCX page preview sanitisation
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docx-page-preview-sanitize.mjs
 
