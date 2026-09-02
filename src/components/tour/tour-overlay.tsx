@@ -45,6 +45,8 @@ export function TourOverlay({
   useLayoutEffect(() => {
     let cancelled = false;
     let focus: HTMLElement | null = null;
+    let observer: ResizeObserver | null = null;
+    const timers: number[] = [];
     const isPage = step.kind === "page";
 
     const viewport = () => ({ width: window.innerWidth, height: window.innerHeight });
@@ -92,6 +94,22 @@ export function TourOverlay({
       setRect(new DOMRect(box.left, box.top, box.width, box.height));
     };
 
+    const later = (fn: () => void) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(fn);
+      });
+    };
+
+    const observe = () => {
+      if (typeof ResizeObserver === "undefined") return;
+      observer = new ResizeObserver(() => measure());
+      if (focus) observer.observe(focus);
+      const header = document.querySelector("header");
+      if (header) observer.observe(header);
+      const nav = isPage ? resolveTourNav(step) : null;
+      if (nav) observer.observe(nav);
+    };
+
     void (async () => {
       if (step.kind === "choice") {
         setRect(null);
@@ -102,9 +120,9 @@ export function TourOverlay({
       if (cancelled) return;
       if (isPage) {
         measurePage();
-        requestAnimationFrame(() => {
-          requestAnimationFrame(measurePage);
-        });
+        later(measurePage);
+        observe();
+        timers.push(window.setTimeout(measurePage, 120), window.setTimeout(measurePage, 400));
         return;
       }
       if (!target) {
@@ -114,15 +132,17 @@ export function TourOverlay({
       focus = pickTourFocus(target);
       scrollTourTargetIntoView(focus);
       measure();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(measure);
-      });
+      later(measure);
+      observe();
+      timers.push(window.setTimeout(measure, 120), window.setTimeout(measure, 400));
     })();
 
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
       cancelled = true;
+      observer?.disconnect();
+      for (const id of timers) window.clearTimeout(id);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
@@ -167,7 +187,7 @@ export function TourOverlay({
         : { top: 96, left: Math.max(16, viewport.width / 2 - 160) };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="walkthrough-title">
+    <div className="fixed inset-0 z-[200] overflow-hidden pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="walkthrough-title">
       <div className="absolute inset-0" />
       {circle ? (
         <div

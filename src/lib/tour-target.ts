@@ -109,21 +109,21 @@ export const tightTourBox = (el: HTMLElement): { top: number; left: number; widt
   return { top, left, width: right - left, height: bottom - top };
 };
 
-const isInsideFixed = (el: HTMLElement): boolean => {
+const isInsideFixedOrSticky = (el: HTMLElement): boolean => {
   let node: HTMLElement | null = el;
   while (node && node !== document.documentElement) {
     const position = getComputedStyle(node).position;
-    if (position === "fixed") return true;
+    if (position === "fixed" || position === "sticky") return true;
     node = node.parentElement;
   }
   return false;
 };
 
 export const scrollTourTargetIntoView = (el: HTMLElement): void => {
-  if (isInsideFixed(el)) return;
+  if (isInsideFixedOrSticky(el)) return;
   el.style.scrollMarginTop = `${TOUR_NAV_OFFSET}px`;
   el.style.scrollMarginBottom = `${TOUR_FOOTER_OFFSET}px`;
-  el.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+  el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
   const rect = el.getBoundingClientRect();
   const delta = tourFocusScrollDelta(rect, window.innerHeight);
   if (delta === 0) return;

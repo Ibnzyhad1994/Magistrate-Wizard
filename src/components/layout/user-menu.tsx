@@ -82,7 +82,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
         {canWalkthrough && (
           <DropdownMenuItem
             onSelect={() => {
-              startWalkthrough();
+              window.setTimeout(() => startWalkthrough(), 0);
             }}
           >
             <Map />
