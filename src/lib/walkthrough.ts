@@ -2,6 +2,7 @@ import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
 
 export const WALKTHROUGH_VERSION = 1;
+export const FIRST_MATTER_TOUR_ID = "docket-first-matter";
 
 const autoPlaySessions = new Set<string>();
 
@@ -15,6 +16,8 @@ export type WalkthroughRecord = {
 export const walkthroughStorageKey = (userId: string): string =>
   `magistrate-wizard-walkthrough:${userId}`;
 
+export type WalkthroughChapter = "sitting" | "rest";
+
 export type WalkthroughStep = {
   id: string;
   title: string;
@@ -22,6 +25,38 @@ export type WalkthroughStep = {
   target: string;
   fallbackTarget?: string;
   route?: string;
+  chapter?: WalkthroughChapter;
+  requiresMatter?: boolean;
+  kind?: "spotlight" | "choice" | "page";
+  navTarget?: string;
+};
+
+export const docketMatterPathFromLocation = (pathname: string): string | null => {
+  if (pathname === ROUTES.docket) return null;
+  if (pathname === ROUTES.docketBin || pathname.startsWith(`${ROUTES.docketBin}/`)) return null;
+  const match = pathname.match(/^\/docket\/([^/]+)$/);
+  return match ? pathname : null;
+};
+
+export const visibleWalkthroughSteps = (
+  steps: WalkthroughStep[],
+  chapter: WalkthroughChapter,
+  hasMatter: boolean,
+): WalkthroughStep[] => {
+  if (chapter === "rest") return steps.filter((step) => step.chapter === "rest");
+  return steps.filter((step) => {
+    if (step.chapter === "rest") return false;
+    if (step.requiresMatter && !hasMatter) return false;
+    return true;
+  });
+};
+
+export const walkthroughStepRoute = (
+  step: WalkthroughStep,
+  matterPath: string | null,
+): string | undefined => {
+  if (step.requiresMatter && matterPath) return matterPath;
+  return step.route;
 };
 
 export const walkthroughStepsFor = (
@@ -50,13 +85,14 @@ export const walkthroughStepsFor = (
     ];
   }
 
-  return [
+  const sitting: WalkthroughStep[] = [
     {
       id: "home",
       title: "Your week starts here",
       body: "New matter opens a file on the working sheet. Browse docket lists every matter you sit.",
       target: "home-billboard",
       route: ROUTES.dashboard,
+      chapter: "sitting",
     },
     {
       id: "docket",
@@ -65,6 +101,7 @@ export const walkthroughStepsFor = (
       target: "docket-new-matter",
       fallbackTarget: "docket-board",
       route: ROUTES.docket,
+      chapter: "sitting",
     },
     {
       id: "board",
@@ -72,6 +109,7 @@ export const walkthroughStepsFor = (
       body: "Empty cells say + Set arraignment and the rest. Click a cell to record that stage.",
       target: "docket-board",
       route: ROUTES.docket,
+      chapter: "sitting",
     },
     {
       id: "next",
@@ -80,31 +118,110 @@ export const walkthroughStepsFor = (
       target: "docket-next-date",
       fallbackTarget: "docket-board",
       route: ROUTES.docket,
+      chapter: "sitting",
+    },
+    {
+      id: "open-file",
+      title: "Open a file",
+      body: "Tap a case to open the file. Overview holds the charge, procedure, and hearing record.",
+      target: "matter-header",
+      fallbackTarget: "docket-first-matter",
+      route: ROUTES.docket,
+      chapter: "sitting",
+      requiresMatter: true,
     },
     {
       id: "hearing",
       title: "Hearing progress",
-      body: "Open a file to record witnesses and sitting notes on Overview. That is the hearing record.",
+      body: "Record witnesses and sitting notes here. That is the hearing record.",
       target: "hearing-progress",
-      fallbackTarget: "docket-board",
+      fallbackTarget: "matter-header",
       route: ROUTES.docket,
+      chapter: "sitting",
+      requiresMatter: true,
     },
     {
-      id: "more",
-      title: "More",
-      body:
-        role === "admin"
-          ? "Calendar, research, and Administration live under More."
-          : "Calendar, research, and your notes live under More.",
-      target: "nav-more",
+      id: "file",
+      title: "The file",
+      body: "Hearing dates, parties, documents, and judgments live on this page, not on the board.",
+      target: "matter-tabs",
+      fallbackTarget: "matter-header",
+      route: ROUTES.docket,
+      chapter: "sitting",
+      requiresMatter: true,
+    },
+    {
+      id: "chapter-rest",
+      title: "Sitting day",
+      body: "That is the sheet you work from. Continue for Calendar, research, and notes, or Done to finish.",
+      target: "",
+      chapter: "sitting",
+      kind: "choice",
+    },
+  ];
+
+  const rest: WalkthroughStep[] = [
+    {
+      id: "calendar",
+      title: "Calendar",
+      body: "Hearings you can already see on the Docket appear here. Capacity still lives on the Docket week strip.",
+      target: "page-calendar",
+      navTarget: "nav-calendar",
+      fallbackTarget: "nav-more",
+      route: ROUTES.calendar,
+      chapter: "rest",
+      kind: "page",
+    },
+    {
+      id: "case-law",
+      title: "Case Law",
+      body: "The shared library and your own research live here. Pin an authority onto a file from the file itself.",
+      target: "page-case-law",
+      navTarget: "nav-case-law",
+      fallbackTarget: "nav-more",
+      route: ROUTES.caseLaw,
+      chapter: "rest",
+      kind: "page",
+    },
+    {
+      id: "legislation",
+      title: "Legislation",
+      body: "Acts and other instruments every magistrate can read. Open one to search inside the text.",
+      target: "page-legislation",
+      navTarget: "nav-legislation",
+      fallbackTarget: "nav-more",
+      route: ROUTES.legislation,
+      chapter: "rest",
+      kind: "page",
+    },
+    {
+      id: "bench-notes",
+      title: "Bench Notes",
+      body: "Your notes stay yours. Attach them to a file, a judgment, or an authority when you need them later.",
+      target: "page-bench-notes",
+      navTarget: "nav-bench-notes",
+      fallbackTarget: "nav-more",
+      route: ROUTES.benchNotes,
+      chapter: "rest",
+      kind: "page",
     },
     {
       id: "search",
       title: "Search",
-      body: "Find a matter, judgment, or statute without leaving the page you are on.",
-      target: "nav-search",
+      body:
+        role === "admin"
+          ? "Find a matter, judgment, or statute without leaving the page you are on. Administration lives under More."
+          : "Find a matter, judgment, or statute without leaving the page you are on.",
+      target: "page-search",
+      navTarget: "nav-search",
+      fallbackTarget: "nav-more",
+      route: ROUTES.search,
+      chapter: "rest",
+      kind: "page",
     },
   ];
+
+  return [...sitting, ...rest];
 };
 
 /**

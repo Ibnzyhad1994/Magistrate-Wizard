@@ -187,6 +187,18 @@ export const NAV_ITEMS: AppNavItem[] = [
 export const navItemLabel = (item: AppNavItem) =>
   item.label === "Dashboard" ? "Home" : item.label;
 
+export const navTourIdForHref = (href: string): string | undefined => {
+  if (href === ROUTES.dashboard) return "nav-home";
+  if (href === ROUTES.docket) return "nav-docket";
+  if (href === ROUTES.calendar) return "nav-calendar";
+  if (href === ROUTES.judgments) return "nav-judgments";
+  if (href === ROUTES.caseLaw) return "nav-case-law";
+  if (href === ROUTES.legislation) return "nav-legislation";
+  if (href === ROUTES.benchNotes) return "nav-bench-notes";
+  if (href === ROUTES.search) return "nav-search";
+  return undefined;
+};
+
 export const visibleNavItems = (
   items: AppNavItem[],
   role?: UserRole | null,

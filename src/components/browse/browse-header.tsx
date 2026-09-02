@@ -10,6 +10,7 @@ interface BrowseHeaderProps {
   showViewSelect?: boolean;
   viewSelectValue?: BrowseView;
   onViewSelectChange?: (view: BrowseView) => void;
+  dataTour?: string;
 }
 
 export function BrowseHeader({
@@ -19,11 +20,15 @@ export function BrowseHeader({
   showViewSelect = false,
   viewSelectValue,
   onViewSelectChange,
+  dataTour,
 }: BrowseHeaderProps) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+        <h1
+          className="w-fit text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
+          data-tour={dataTour}
+        >
           {title}
         </h1>
         {description && (

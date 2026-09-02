@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
-import { NAV_ITEMS, groupNavItems, navItemLabel, visibleNavItems } from "@/components/layout/nav-config";
+import { NAV_ITEMS, groupNavItems, navItemLabel, navTourIdForHref, visibleNavItems } from "@/components/layout/nav-config";
 import { AppLogo } from "@/components/brand/app-logo";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ReportIssueButton } from "@/components/feedback/report-issue-button";
@@ -132,7 +132,7 @@ export function TopNav() {
               )
             }
             end={item.href === ROUTES.dashboard}
-            data-tour={item.href === ROUTES.docket ? "nav-docket" : undefined}
+            data-tour={navTourIdForHref(item.href)}
           >
             {navItemLabel(item)}
           </NavLink>
@@ -154,7 +154,9 @@ export function TopNav() {
                   </DropdownMenuLabel>
                   {section.items.map((item) => (
                     <DropdownMenuItem key={item.href} asChild>
-                      <Link to={item.href}>{item.label}</Link>
+                      <Link to={item.href} data-tour={navTourIdForHref(item.href)}>
+                        {item.label}
+                      </Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>

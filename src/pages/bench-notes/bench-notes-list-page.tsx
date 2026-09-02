@@ -55,6 +55,7 @@ export default function BenchNotesListPage() {
         title="Bench Notes"
         description="Your notes, attached to Docket Matters, Judgments, Case Law, or Legislation."
         showViewSelect
+        dataTour="page-bench-notes"
         action={
           <Button variant="play" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />

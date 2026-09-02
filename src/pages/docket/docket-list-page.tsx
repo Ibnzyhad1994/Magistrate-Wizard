@@ -304,6 +304,7 @@ export default function DocketListPage() {
                 row={row}
                 showCourt={courtId === null}
                 isTourNextDate={index === 0}
+                isTourFirstMatter={index === 0}
                 onPatch={(id, values, expectedUpdatedAt) =>
                   patch.mutateAsync({ id, values, expectedUpdatedAt })
                 }
@@ -314,12 +315,13 @@ export default function DocketListPage() {
         )
       ) : (
         <div className="flex flex-wrap gap-2">
-          {data.map((matter) => (
+          {data.map((matter, index) => (
             <TitleCard
               key={matter.id}
               layout="tiles"
               tone="docket"
               href={ROUTES.docketMatter(matter.id)}
+              dataTour={index === 0 ? "docket-first-matter" : undefined}
               imageUrl={
                 matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined
               }

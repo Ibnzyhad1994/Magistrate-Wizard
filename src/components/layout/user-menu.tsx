@@ -81,8 +81,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
         )}
         {canWalkthrough && (
           <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
+            onSelect={() => {
               startWalkthrough();
             }}
           >

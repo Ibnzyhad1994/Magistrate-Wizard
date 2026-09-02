@@ -117,6 +117,7 @@ export default function SearchPage() {
         title="Search"
         description="Search across Docket Matters, Judgments, Case Law, Quick Codes, Bench Notes, Cases, and Legislation. Results are limited to what you're already allowed to see."
         showViewSelect
+        dataTour="page-search"
       />
 
       <div className="relative mb-8 max-w-lg">

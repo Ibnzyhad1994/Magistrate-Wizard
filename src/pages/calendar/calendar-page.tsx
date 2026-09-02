@@ -95,6 +95,7 @@ export default function CalendarPage() {
       <BrowseHeader
         title="Calendar"
         description="Hearings and appearances from Docket matters you can already see. Google sync lives in Settings."
+        dataTour="page-calendar"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button

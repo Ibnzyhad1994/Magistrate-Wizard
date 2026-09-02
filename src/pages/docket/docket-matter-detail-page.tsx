@@ -113,6 +113,7 @@ export default function DocketMatterDetailPage() {
         imageUrl={
           matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined
         }
+        tourId="matter-header"
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
         secondaryAction={
           liveEdit
@@ -190,7 +191,10 @@ export default function DocketMatterDetailPage() {
         }}
         className="w-full"
       >
-        <TabsList className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-[#141414] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
+        <TabsList
+          className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-[#141414] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]"
+          data-tour="matter-tabs"
+        >
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="parties">Parties</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>

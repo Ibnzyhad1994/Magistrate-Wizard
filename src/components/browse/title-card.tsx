@@ -24,6 +24,7 @@ interface TitleCardProps {
   /** Force tiles layout even when Settings is set to List (dashboard carousels). */
   layout?: BrowseView;
   children?: ReactNode;
+  dataTour?: string;
 }
 
 /**
@@ -43,6 +44,7 @@ export function TitleCard({
   className,
   layout: layoutOverride,
   children,
+  dataTour,
 }: TitleCardProps) {
   const storedView = useUiStore((s) => s.browseView);
   const tileSize = useUiStore((s) => s.tileSize);
@@ -165,7 +167,7 @@ export function TitleCard({
 
   if (href) {
     return (
-      <Link to={href} onClick={onClick} className={wrapClass}>
+      <Link to={href} onClick={onClick} className={wrapClass} data-tour={dataTour}>
         {body}
       </Link>
     );

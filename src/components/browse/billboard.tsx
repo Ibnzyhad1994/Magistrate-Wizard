@@ -27,6 +27,7 @@ interface BillboardProps {
    * a full-viewport billboard.
    */
   variant?: "hero" | "detail";
+  tourId?: string;
 }
 
 /**
@@ -45,13 +46,14 @@ export function Billboard({
   tertiaryAction,
   className,
   variant = "hero",
+  tourId,
 }: BillboardProps) {
   const Icon = TONE_ICON[tone];
   const isDetail = variant === "detail";
 
   return (
     <section
-      data-tour="home-billboard"
+      data-tour={tourId ?? (isDetail ? undefined : "home-billboard")}
       className={cn(
         "relative isolate w-full overflow-hidden bg-gradient-to-br",
         isDetail ? "min-h-0" : "min-h-[78vh]",
@@ -97,8 +99,9 @@ export function Billboard({
           </p>
         )}
         <h1
+          data-tour-focus={isDetail ? "" : undefined}
           className={cn(
-            "font-extrabold tracking-tight text-white drop-shadow-lg",
+            "w-fit font-extrabold tracking-tight text-white drop-shadow-lg",
             isDetail
               ? "text-2xl sm:text-3xl lg:text-4xl"
               : "text-4xl sm:text-5xl lg:text-6xl",

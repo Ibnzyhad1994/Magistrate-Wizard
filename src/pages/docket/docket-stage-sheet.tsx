@@ -54,6 +54,8 @@ function DocketStageRow({
   row,
   stage,
   showCourt,
+  isTourNextDate,
+  isTourFirstMatter,
   onPatch,
   onLogAppearance,
 }: {
@@ -61,6 +63,8 @@ function DocketStageRow({
   stage: ReturnType<typeof currentStage>;
   /** True in the All My Courts combined view — every matter needs a visible, readable court identifier there, never colour alone (0097). False when already scoped to one court, where repeating it on every row would be redundant noise. */
   showCourt: boolean;
+  isTourNextDate?: boolean;
+  isTourFirstMatter?: boolean;
   onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
@@ -87,7 +91,11 @@ function DocketStageRow({
   return (
     <TableRow>
       <TableCell className={`${caseColBase} z-20`}>
-        <Link to={ROUTES.docketMatter(row.id)} className="block min-w-0 hover:underline">
+        <Link
+          to={ROUTES.docketMatter(row.id)}
+          className="block min-w-0 hover:underline"
+          data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
+        >
           <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
           <p className="truncate text-sm text-white">{row.matter_title}</p>
           {row.charge_or_issue && (
@@ -150,7 +158,10 @@ function DocketStageRow({
           </TableCell>
         );
       })}
-      <TableCell className="whitespace-nowrap">
+      <TableCell
+        className="whitespace-nowrap"
+        data-tour-join={isTourNextDate ? "docket-next-date" : undefined}
+      >
         <NextDateCell
           matterId={row.id}
           nextDate={row.next_appearance}
@@ -202,12 +213,14 @@ export function DocketStageSheet({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <DocketStageRow
                 key={row.id}
                 row={row}
                 stage={currentStage(snapshotOf(row))}
                 showCourt={showCourt}
+                isTourNextDate={index === 0}
+                isTourFirstMatter={index === 0}
                 onPatch={onPatch}
                 onLogAppearance={onLogAppearance}
               />

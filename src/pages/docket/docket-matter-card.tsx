@@ -72,12 +72,14 @@ export function DocketMatterCard({
   row,
   showCourt,
   isTourNextDate,
+  isTourFirstMatter,
   onPatch,
   onLogAppearance,
 }: {
   row: DocketMatterBoardRow;
   showCourt: boolean;
   isTourNextDate?: boolean;
+  isTourFirstMatter?: boolean;
   onPatch: (
     id: string,
     values: TablesUpdate<"docket_matters">,
@@ -115,7 +117,11 @@ export function DocketMatterCard({
   return (
     <article className="rounded-sm border border-white/10 bg-[#181818] p-3">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <Link to={ROUTES.docketMatter(row.id)} className="min-w-0 hover:underline">
+        <Link
+          to={ROUTES.docketMatter(row.id)}
+          className="min-w-0 hover:underline"
+          data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
+        >
           <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
           <p className="text-sm text-white">{row.matter_title}</p>
           {classification && (

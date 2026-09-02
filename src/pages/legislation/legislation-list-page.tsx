@@ -83,6 +83,7 @@ export default function LegislationListPage() {
         title="Legislation"
         description="Acts, regulations, and other legal instruments, maintained centrally and available to every magistrate."
         showViewSelect
+        dataTour="page-legislation"
         action={
           canCreate ? (
             <Button variant="play" onClick={handleOpenCreate}>
