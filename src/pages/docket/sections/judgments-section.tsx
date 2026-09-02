@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Scale, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
@@ -12,6 +13,7 @@ import { useDeleteDocketJudgmentLink } from "@/hooks/docket/use-docket-judgment-
 import { LinkJudgmentDialog } from "@/pages/docket/link-judgment-dialog";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { toTitleCase } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 
 interface JudgmentsSectionProps {
   matterId: string;
@@ -74,7 +76,7 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                 <div>
                   <p className="font-medium text-foreground">{judgment.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {[judgment.case_number, judgment.citation].filter(Boolean).join(" · ") || "—"}
+                    {[judgment.case_number, judgment.citation].filter(Boolean).join(" · ") || NOT_SET}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -82,11 +84,11 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                     {toTitleCase(judgment.status)}
                   </Badge>
                   {canManage && (
+                    <HintTooltip label="Unlink">
                     <Button
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      title="Unlink"
                       aria-label={`Unlink judgment ${judgment.title}`}
                       disabled={deleteLink.isPending}
                       onClick={() =>
@@ -95,6 +97,7 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                     >
                       {deleteLink.isPending ? <LoadingSpinner size={14} /> : <X className="h-4 w-4" />}
                     </Button>
+                    </HintTooltip>
                   )}
                 </div>
               </CardContent>

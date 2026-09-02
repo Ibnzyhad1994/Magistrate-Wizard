@@ -267,7 +267,7 @@ function ExtractionStatusPanel({
     docx: "Word document",
     manual_paste: "Manually entered",
     ocr: "OCR",
-    none: "—",
+    none: "Not set",
   };
   const state = deriveIngestionUiState(envelope, caseNameConfidence);
   const hasTechnicalDetail =

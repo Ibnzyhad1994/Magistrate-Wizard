@@ -19,6 +19,7 @@ interface BillboardProps {
   imageUrl?: string | null;
   primaryAction?: BillboardAction;
   secondaryAction?: BillboardAction;
+  tertiaryAction?: BillboardAction;
   className?: string;
   /**
    * `hero` is the cinematic dashboard splash. `detail` is compact so
@@ -41,6 +42,7 @@ export function Billboard({
   imageUrl,
   primaryAction,
   secondaryAction,
+  tertiaryAction,
   className,
   variant = "hero",
 }: BillboardProps) {
@@ -49,6 +51,7 @@ export function Billboard({
 
   return (
     <section
+      data-tour="home-billboard"
       className={cn(
         "relative isolate w-full overflow-hidden bg-gradient-to-br",
         isDetail ? "min-h-0" : "min-h-[78vh]",
@@ -139,6 +142,14 @@ export function Billboard({
           {secondaryAction && (
             <BillboardButton
               action={secondaryAction}
+              variant="more"
+              icon="info"
+              compact={isDetail}
+            />
+          )}
+          {tertiaryAction && (
+            <BillboardButton
+              action={tertiaryAction}
               variant="more"
               icon="info"
               compact={isDetail}

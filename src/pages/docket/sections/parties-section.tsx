@@ -47,6 +47,7 @@ import {
   type DocketPartyFormValues,
 } from "@/lib/validations/docket";
 import { toTitleCase } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 import type { DocketMatterParty } from "@/types/database.types";
 import { SignedThumb } from "@/components/common/signed-thumb";
 import { IdentificationImageControl } from "@/components/common/identification-image-control";
@@ -143,7 +144,7 @@ export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps
                   {toTitleCase(party.party_type)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {party.attorney_name || "—"}
+                  {party.attorney_name || NOT_SET}
                 </TableCell>
                 <TableCell>
                   {party.party_status !== "active" && (

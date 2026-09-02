@@ -202,7 +202,7 @@ export default function CalendarPage() {
                             event.pending && "text-amber-200/90",
                           )}
                           title={event.court_name ?? undefined}
-                          aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` — ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
+                          aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
                         >
                           {event.scheduled_time
                             ? `${formatTimeOnly(event.scheduled_time)} · `
@@ -237,7 +237,7 @@ export default function CalendarPage() {
               >
                 <div>
                   <p className="text-sm font-semibold text-white">
-                    {event.case_number} — {event.matter_title}
+                    {event.case_number} · {event.matter_title}
                   </p>
                   {event.court_name && (
                     <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">

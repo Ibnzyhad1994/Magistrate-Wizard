@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { TopNav } from "@/components/layout/top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
+import { TourProvider } from "@/components/tour/tour-provider";
 
 /**
  * Netflix-style shell: fixed top nav over a full-bleed cinematic canvas.
@@ -9,6 +10,7 @@ import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
  */
 export function AppLayout() {
   return (
+    <TourProvider>
     <div className="min-h-dvh w-full bg-[#141414]">
       <TopNav />
       <OfflineSyncBanner />
@@ -17,5 +19,6 @@ export function AppLayout() {
         <Outlet />
       </main>
     </div>
+    </TourProvider>
   );
 }

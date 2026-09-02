@@ -118,8 +118,9 @@ export default function DashboardPage() {
         eyebrow: APP_NAME,
         title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
         description: `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
-        primaryAction: { label: "Browse docket", href: ROUTES.docket },
-        secondaryAction: { label: "Judgments", href: ROUTES.judgments },
+        primaryAction: { label: "New matter", href: `${ROUTES.docket}?new=1` },
+        secondaryAction: { label: "Browse docket", href: ROUTES.docket },
+        tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
       }
     : isPendingClerk
       ? {

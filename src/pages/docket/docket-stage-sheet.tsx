@@ -22,6 +22,7 @@ import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
 import type { TablesUpdate } from "@/types/database.types";
 import { matterClassificationLabel } from "@/lib/validations/docket";
+import { ProcedureColumnHeading } from "@/pages/docket/procedure-column-heading";
 
 export type LogAppearanceRequest = {
   matterId: string;
@@ -184,7 +185,7 @@ export function DocketStageSheet({
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
 
   return (
-    <div className="relative">
+    <div className="relative" data-tour="docket-board">
       <p className="mb-2 text-xs text-white/50 sm:hidden">
         Swipe sideways for the stage columns.
       </p>
@@ -198,10 +199,13 @@ export function DocketStageSheet({
                   key={column.key}
                   className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
                 >
-                  {column.label}
+                  <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
               ))}
-              <TableHead className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7.5rem]">
+              <TableHead
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7.5rem]"
+                data-tour="docket-next-date"
+              >
                 Next date
               </TableHead>
             </TableRow>

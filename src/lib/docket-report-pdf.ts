@@ -117,7 +117,7 @@ export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta:
   const w = new ReportWriter();
 
   // ---- Header ----
-  w.text("BENCHBOOK — MAGISTRATE WIZARD", { size: 9, bold: true, color: 100, gap: 2 });
+  w.text("BENCHBOOK: MAGISTRATE WIZARD", { size: 9, bold: true, color: 100, gap: 2 });
   w.text("Daily Docket Progress Report", { size: 16, bold: true, gap: 6 });
   w.keyValueRow([
     ["Date", meta.dateLabel],

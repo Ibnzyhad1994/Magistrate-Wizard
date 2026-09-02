@@ -11,7 +11,9 @@ import {
 } from "@/hooks/docket/use-docket-capacity";
 import { useDocketEvents } from "@/hooks/docket/use-docket-events";
 import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 
 /**
  * The Next Date cell on the Docket board — click/tap it to set or change
@@ -37,19 +39,21 @@ export function NextDateCell({
   const [open, setOpen] = useState(false);
 
   if (!canEdit) {
-    return <span className="whitespace-nowrap text-xs text-white/70">{nextDate ? formatDate(nextDate) : "—"}</span>;
+    return <span className="whitespace-nowrap text-xs text-white/70">{nextDate ? formatDate(nextDate) : NOT_SET}</span>;
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-white/70 underline decoration-dotted underline-offset-2 hover:bg-white/10 hover:text-white"
-        aria-label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"}
-      >
-        {nextDate ? formatDate(nextDate) : "+ Set date"}
-      </button>
+      <HintTooltip label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Click to set the next hearing date"}>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-white/70 underline decoration-dotted underline-offset-2 hover:bg-white/10 hover:text-white"
+          aria-label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"}
+        >
+          {nextDate ? formatDate(nextDate) : "+ Set date"}
+        </button>
+      </HintTooltip>
       {open && (
         <NextDateDialog
           matterId={matterId}
@@ -62,7 +66,7 @@ export function NextDateCell({
   );
 }
 
-function NextDateDialog({
+export function NextDateDialog({
   matterId,
   currentDate,
   matterCategoryId,

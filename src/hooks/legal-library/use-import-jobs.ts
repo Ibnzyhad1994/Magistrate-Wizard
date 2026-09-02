@@ -593,7 +593,7 @@ export function useImportBatchDetail(batchId: string | null) {
             extracted_metadata: j.extracted_metadata,
             created_at: j.created_at,
             filename: cl?.original_filename ?? "(unknown file)",
-            displayName: cl ? `${cl.case_name} — ${cl.citation}` : null,
+            displayName: cl ? `${cl.case_name} · ${cl.citation}` : null,
             reviewStatus: cl?.review_status ?? null,
             contentQualityStatus: cl?.content_quality_status ?? null,
           };

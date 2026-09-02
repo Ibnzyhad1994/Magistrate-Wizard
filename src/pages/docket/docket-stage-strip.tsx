@@ -7,6 +7,7 @@ import {
   PROCEDURE_COLUMNS,
   type ProcedureColumnKey,
 } from "@/lib/docket-procedure";
+import { ProcedureColumnHeading } from "@/pages/docket/procedure-column-heading";
 import { getDocumentDownloadUrl, useDocuments, useUploadDocument } from "@/hooks/use-documents";
 import { getErrorMessage } from "@/lib/utils";
 import type { DocketMatter } from "@/types/database.types";
@@ -89,15 +90,16 @@ export function DocketStageStrip({
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">
-          Where this file is. Click a cell to record the result. Dates still go on Events.
-          Ruling/Judgment cells can also attach the actual document, separate from the
-          Judgments tab, which is for a magistrate's own written judgments.
+          Where this file is. Click a cell to record the result. Next date and
+          Hearing progress sit on this Overview. Ruling and Judgment cells can
+          also attach the actual document, separate from the Judgments tab,
+          which is for a magistrate's own written judgments.
         </p>
         <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-2">
           {PROCEDURE_COLUMNS.map((column) => (
             <div key={column.key} className="min-w-0 space-y-1 sm:min-w-[6.5rem]">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {column.label}
+                <ProcedureColumnHeading columnKey={column.key} label={column.label} />
               </p>
               <DocketStageCell
                 column={column.key}

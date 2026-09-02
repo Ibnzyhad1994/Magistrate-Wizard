@@ -17,6 +17,7 @@ import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useCreateDocketJudgmentLink } from "@/hooks/docket/use-docket-judgment-links";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 
 interface LinkJudgmentDialogProps {
   matterId: string;
@@ -140,7 +141,7 @@ export function LinkJudgmentDialog({
                         {j.title}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        {[j.case_number, j.citation].filter(Boolean).join(" · ") || "—"}
+                        {[j.case_number, j.citation].filter(Boolean).join(" · ") || NOT_SET}
                       </span>
                     </span>
                     {createLink.isPending ? (

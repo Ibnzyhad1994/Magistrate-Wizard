@@ -1,4 +1,4 @@
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Map, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requ
 import { getInitials } from "@/lib/utils";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
+import { useTour } from "@/components/tour/tour-provider";
 
 interface UserMenuProps {
   compact?: boolean;
@@ -24,6 +25,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
   const { user, profile, signOut, isSigningOut } = useAuth();
   const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
   const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
+  const { canWalkthrough, startWalkthrough } = useTour();
 
   const displayName = profile?.full_name ?? user?.email ?? "Account";
   const email = user?.email ?? "";
@@ -39,6 +41,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
               ? "h-11 w-11 shrink-0 rounded-sm p-0 hover:bg-transparent"
               : "h-9 w-full justify-start gap-2 px-2"
           }
+          aria-label="Account menu"
         >
           <Avatar className={compact ? "h-8 w-8 rounded-sm" : "h-7 w-7"}>
             <AvatarImage src={profile?.avatar_url ?? undefined} alt={displayName} />
@@ -74,6 +77,17 @@ export function UserMenu({ compact = false }: UserMenuProps) {
               <Settings />
               Settings
             </Link>
+          </DropdownMenuItem>
+        )}
+        {canWalkthrough && (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              startWalkthrough();
+            }}
+          >
+            <Map />
+            Guided walkthrough
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

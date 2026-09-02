@@ -108,8 +108,8 @@ check(
 
 // --- titles --------------------------------------------------------------
 
-check("title for All My Courts", docketScopeTitle(null), "Docket — All My Courts");
-check("title for a specific court", docketScopeTitle("Vigilance Magistrates' Court 1"), "Docket — Vigilance Magistrates' Court 1");
+check("title for All My Courts", docketScopeTitle(null), "Docket: All My Courts");
+check("title for a specific court", docketScopeTitle("Vigilance Magistrates' Court 1"), "Docket: Vigilance Magistrates' Court 1");
 
 if (failures > 0) {
   console.log(`\n${failures} failure(s).`);

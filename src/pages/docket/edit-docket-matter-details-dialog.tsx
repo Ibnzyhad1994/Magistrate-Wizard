@@ -27,6 +27,7 @@ import {
   type DocketMatterIdentityFormValues,
 } from "@/lib/validations/docket";
 import { isConcurrentEditError } from "@/lib/concurrency";
+import { NOT_SET } from "@/lib/empty-display";
 import type { DocketMatter } from "@/types/database.types";
 
 interface EditDocketMatterDetailsDialogProps {
@@ -93,12 +94,12 @@ export function EditDocketMatterDetailsDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1 text-sm">
               <p className="text-muted-foreground">Court</p>
-              <p className="font-medium text-foreground">{matter.courts?.name ?? "—"}</p>
+              <p className="font-medium text-foreground">{matter.courts?.name ?? NOT_SET}</p>
             </div>
             <div className="space-y-1 text-sm">
               <p className="text-muted-foreground">Magisterial district</p>
               <p className="font-medium text-foreground">
-                {matter.magisterial_districts?.name ?? "—"}
+                {matter.magisterial_districts?.name ?? NOT_SET}
               </p>
             </div>
 

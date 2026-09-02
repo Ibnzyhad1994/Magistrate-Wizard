@@ -108,6 +108,7 @@ export function TopNav() {
         aria-label="Open navigation"
         aria-expanded={mobileNavOpen}
         aria-haspopup="dialog"
+        data-tour="nav-more"
       >
         <Menu className="h-6 w-6" />
       </Button>
@@ -131,13 +132,17 @@ export function TopNav() {
               )
             }
             end={item.href === ROUTES.dashboard}
+            data-tour={item.href === ROUTES.docket ? "nav-docket" : undefined}
           >
             {navItemLabel(item)}
           </NavLink>
         ))}
         {more.length > 0 && (
           <DropdownMenu>
-            <DropdownMenuTrigger className="text-sm font-medium text-white/80 outline-none hover:text-white">
+            <DropdownMenuTrigger
+              className="text-sm font-medium text-white/80 outline-none hover:text-white"
+              data-tour="nav-more"
+            >
               More
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[12rem] border-white/10 bg-[#181818]">
@@ -173,6 +178,7 @@ export function TopNav() {
               placeholder="Titles, notes, legislation…"
               className="h-9 w-48 border-white/40 bg-black/70 pl-8 text-sm text-white placeholder:text-white/50 sm:w-64"
               aria-label="Search"
+              data-tour="nav-search"
             />
           </form>
         ) : (
@@ -184,6 +190,7 @@ export function TopNav() {
             aria-label="Search"
             aria-haspopup={isDesktop ? undefined : "dialog"}
             aria-expanded={isDesktop ? undefined : searchOpen}
+            data-tour="nav-search"
           >
             <Search className="h-5 w-5" />
           </Button>

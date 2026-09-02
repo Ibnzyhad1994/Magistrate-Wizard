@@ -26,6 +26,7 @@ import { APP_BUILD, APP_VERSION } from "@/lib/app-version";
 import { GoogleCalendarCard } from "@/pages/settings/google-calendar-card";
 import { AdminSelfCourtCard } from "@/pages/settings/admin-self-court-card";
 import { ROUTES } from "@/routes/paths";
+import { useTour } from "@/components/tour/tour-provider";
 
 export default function SettingsPage() {
   const browseView = useUiStore((s) => s.browseView);
@@ -35,6 +36,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { profile } = useAuth();
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
+  const { canWalkthrough, startWalkthrough } = useTour();
 
   return (
     <BrowsePage>
@@ -106,6 +108,22 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {canWalkthrough && (
+        <Card className="mt-6 max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">Help</CardTitle>
+            <CardDescription>
+              Take a 1-minute tour of Home, Docket, and the board.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button type="button" variant="outline" size="sm" onClick={startWalkthrough}>
+              Start walkthrough
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {profile?.role === "admin" && <AdminSelfCourtCard />}
 

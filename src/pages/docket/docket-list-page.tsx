@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Search, Plus, Gavel, Gauge, Landmark, Trash2 } from "lucide-react";
+import { Search, Plus, ClipboardList, Gauge, Landmark, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { InlineError } from "@/components/common/inline-error";
 import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
 import {
@@ -129,6 +130,15 @@ export default function DocketListPage() {
     (data ?? []).map((m) => m.cover_image_path),
   );
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    if (noCourts) return;
+    setCreateOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+  }, [noCourts, searchParams, setSearchParams]);
   const filtersOn = hasActiveProcedureFilters(filters);
   const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (search || filtersOn);
   const emptyBecauseDate = !isPending && !isError && (data?.length ?? 0) === 0 && !!selectedDate && !search && !filtersOn;
@@ -137,7 +147,7 @@ export default function DocketListPage() {
     <BrowsePage>
       <BrowseHeader
         title={docketScopeTitle(selectedCourt?.court_name ?? null)}
-        description="List is the working sheet. Swipe for stages on a phone. Tiles stay for cover-photo browse. Events still hold the dates."
+        description="List is the working sheet. Swipe for stages on a phone. Tiles stay for cover-photo browse. Set Next date and record hearing progress on each file."
         showViewSelect
         viewSelectValue={docketBrowseView}
         onViewSelectChange={setDocketBrowseView}
@@ -153,15 +163,26 @@ export default function DocketListPage() {
               <Gauge className="h-4 w-4" />
               Docket Capacity
             </Button>
-            <Button
-              variant="play"
-              onClick={() => setCreateOpen(true)}
-              disabled={noCourts}
-              title={noCourts ? "You have no current Court assignment." : undefined}
-            >
-              <Plus className="h-4 w-4" />
-              New matter
-            </Button>
+            {noCourts ? (
+              <HintTooltip label="You have no current Court assignment.">
+                <span className="inline-flex">
+                  <Button variant="play" disabled data-tour="docket-new-matter" aria-label="New matter">
+                    <Plus className="h-4 w-4" />
+                    New matter
+                  </Button>
+                </span>
+              </HintTooltip>
+            ) : (
+              <Button
+                variant="play"
+                onClick={() => setCreateOpen(true)}
+                data-tour="docket-new-matter"
+                aria-label="New matter"
+              >
+                <Plus className="h-4 w-4" />
+                New matter
+              </Button>
+            )}
           </div>
         }
       />
@@ -241,8 +262,9 @@ export default function DocketListPage() {
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} className="border-0" />
       ) : !data || data.length === 0 ? (
+        <div data-tour="docket-board">
         <EmptyState
-          icon={Gavel}
+          icon={ClipboardList}
           title={
             emptyBecauseFilters
               ? "No matters at this stage"
@@ -281,6 +303,7 @@ export default function DocketListPage() {
             )
           }
         />
+        </div>
       ) : docketBrowseView === "list" ? (
         <DocketStageSheet
           rows={data}

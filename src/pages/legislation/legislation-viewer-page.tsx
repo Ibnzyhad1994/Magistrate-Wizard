@@ -259,7 +259,7 @@ export default function LegislationViewerPage() {
                         <CardTitle className="text-base">
                           {LEVEL_LABELS[selected.level] ?? selected.level}
                           {selected.number ? ` ${selected.number}` : ""}
-                          {selected.heading ? ` — ${selected.heading}` : ""}
+                          {selected.heading ? ` · ${selected.heading}` : ""}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -350,7 +350,7 @@ export default function LegislationViewerPage() {
               ? {
                   entityType: "statute_provision",
                   entityId: selected.id,
-                  label: `${statute.title} — ${LEVEL_LABELS[selected.level] ?? selected.level}${selected.number ? ` ${selected.number}` : ""}`,
+                  label: `${statute.title} · ${LEVEL_LABELS[selected.level] ?? selected.level}${selected.number ? ` ${selected.number}` : ""}`,
                 }
               : { entityType: "statute", entityId: statute.id, label: statute.title }
           }

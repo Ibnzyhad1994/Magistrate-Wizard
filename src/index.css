@@ -43,6 +43,14 @@
 
     --match: 137 57% 55%;
 
+    --stage-progress: 38 92% 50%;
+    --stage-done: 160 84% 39%;
+    --stage-remand: 347 77% 60%;
+    --capacity-available: 142 71% 45%;
+    --capacity-filling: 38 92% 50%;
+    --capacity-full: 0 72% 51%;
+    --capacity-over: 0 63% 31%;
+
     --radius: 0.25rem;
 
     --sidebar-background: 0 0% 5%;

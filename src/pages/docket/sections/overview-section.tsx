@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Pencil, Bookmark } from "lucide-react";
+import { Pencil, Pin } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -56,6 +56,7 @@ import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { DocketStageStrip, type OverviewLogAppearance } from "@/pages/docket/docket-stage-strip";
 import { HearingProgressSection } from "@/pages/docket/sections/hearing-progress-section";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
+import { NextDateDialog } from "@/pages/docket/next-date-cell";
 
 interface OverviewSectionProps {
   matter: DocketMatter & {
@@ -71,6 +72,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const [retainNotes, setRetainNotes] = useState("");
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
   const [logAppearance, setLogAppearance] = useState<OverviewLogAppearance | null>(null);
+  const [nextDateOpen, setNextDateOpen] = useState(false);
   const { user } = useAuth();
   const { data: access } = useDocketMatterAccess(matter.id);
   const canEdit = access?.canEdit ?? false;
@@ -171,7 +173,18 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             {PROCEDURE_VALUE_LABELS[matter.custody_status] ?? toTitleCase(matter.custody_status)}
           </Badge>
         )}
-        <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
+        {liveEdit ? (
+          <button
+            type="button"
+            onClick={() => setNextDateOpen(true)}
+            className="rounded-full"
+            aria-label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"}
+          >
+            <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
+          </button>
+        ) : (
+          <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
+        )}
         <Badge variant="outline">{classificationLabel ?? "Unclassified"}</Badge>
         {liveEdit && (
           <Button
@@ -209,7 +222,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             <span className="text-muted-foreground">Retained: No</span>
             {liveManage && (
               <Button size="sm" variant="ghost" className="h-7" onClick={() => setRetainOpen(true)}>
-                <Bookmark className="h-3.5 w-3.5" />
+                <Pin className="h-3.5 w-3.5" />
                 Retain as part-heard
               </Button>
             )}
@@ -405,6 +418,14 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           event={null}
           defaults={{ ...logAppearance, category_id: matter.category_id ?? "" }}
           onClose={() => setLogAppearance(null)}
+        />
+      )}
+      {nextDateOpen && (
+        <NextDateDialog
+          matterId={matter.id}
+          currentDate={nextDate}
+          matterCategoryId={matter.category_id ?? null}
+          onClose={() => setNextDateOpen(false)}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 import type { Json } from "@/types/database.types"
+import { NOT_SET } from "@/lib/empty-display"
 
 export const ACCESS_AUDIT_TABLES = [
   "profiles",
@@ -85,10 +86,10 @@ const asText = (value: unknown): string | null => {
 }
 
 const displayValue = (value: unknown): string => {
-  if (value === null || value === undefined) return "—"
-  if (typeof value === "string") return value || "—"
+  if (value === null || value === undefined) return NOT_SET
+  if (typeof value === "string") return value || NOT_SET
   if (typeof value === "number" || typeof value === "boolean") return String(value)
-  return "—"
+  return NOT_SET
 }
 
 const personLabel = (row: Record<string, unknown>): string | null =>

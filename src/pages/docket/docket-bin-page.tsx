@@ -22,6 +22,7 @@ import {
 } from "@/hooks/docket/use-docket-matters";
 import { docketBinDaysLabel, docketBinPurgeAt } from "@/lib/docket-bin";
 import { formatDateTime, toTitleCase } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
 
@@ -78,7 +79,7 @@ export default function DocketBinPage() {
                   <p className="text-sm text-muted-foreground">{row.matter_title}</p>
                   <p className="text-xs text-muted-foreground">{toTitleCase(row.status)}</p>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{row.court_name ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{row.court_name ?? NOT_SET}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDateTime(row.deleted_at)}
                 </TableCell>

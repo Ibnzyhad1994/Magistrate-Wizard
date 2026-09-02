@@ -1,6 +1,6 @@
 import {
   LayoutDashboard,
-  Gavel,
+  ClipboardList,
   Scale,
   BookOpen,
   ScrollText,
@@ -66,7 +66,7 @@ export const NAV_ITEMS: AppNavItem[] = [
   {
     label: "Docket",
     href: ROUTES.docket,
-    icon: Gavel,
+    icon: ClipboardList,
     group: "court",
   },
   {
@@ -155,7 +155,7 @@ export const NAV_ITEMS: AppNavItem[] = [
     group: "admin",
   },
   {
-    label: "Clerk Access — Unresolved",
+    label: "Clerk Access: Unresolved",
     href: ROUTES.adminClerkAccess,
     icon: ShieldAlert,
     roles: ["admin"],

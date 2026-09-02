@@ -147,7 +147,12 @@ check(
 check("toggle adds then removes", toggleFilterValue(["trial"], "trial"), []);
 check("toggle adds missing", toggleFilterValue(["trial"], "disclosure"), ["trial", "disclosure"]);
 
-check("empty arraignment shows em dash", procedureCellLabel("not_started"), "—");
+check("empty arraignment shows Not set", procedureCellLabel("not_started"), "Not set");
+check(
+  "empty arraignment editable shows set cue",
+  procedureCellLabel("not_started", { column: "arraignment_status", canEdit: true }),
+  "+ Set arraignment",
+);
 check("disclosure none is labelled", procedureCellLabel("none"), "No disclosure");
 check("remand tone is distinct", procedureCellTone("custody_status", "remanded"), "remand");
 check("done tone", procedureCellTone("arraignment_status", "done"), "done");

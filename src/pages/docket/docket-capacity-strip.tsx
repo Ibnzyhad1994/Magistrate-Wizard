@@ -6,7 +6,8 @@ import {
   useDocketCapacitySnapshot,
 } from "@/hooks/docket/use-docket-capacity";
 import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
-import { getCapacityStyle } from "@/lib/docket-capacity";
+import { HintTooltip } from "@/components/ui/tooltip";
+import { capacityStatusLabel, getCapacityStyle } from "@/lib/docket-capacity";
 import { getLocalDateOnly } from "@/lib/utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -78,30 +79,31 @@ function DayTile({
   const style = worst
     ? getCapacityStyle(worst.scheduled_count, worst.daily_capacity)
     : getCapacityStyle(0, null);
+  const hint = worst
+    ? `${capacityStatusLabel(style.band)}. Busiest: ${worst.scheduled_count} of ${worst.daily_capacity}`
+    : "No capacity configured for this date";
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      title={
-        worst
-          ? `Busiest category this date: ${worst.scheduled_count} of ${worst.daily_capacity}`
-          : "No capacity configured for this date"
-      }
-      className={`flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors sm:h-14 ${style.textClass} ${
-        today ? "border-2 border-blue-500" : "border-black/10"
-      } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
-      style={{ backgroundColor: style.bg }}
-    >
-      <span className="text-sm font-bold leading-none">{day}</span>
-      {worst && (
-        <span className="flex items-center gap-0.5 text-[10px] font-semibold leading-none">
-          {style.band === "over_capacity" && <AlertTriangle className="h-2.5 w-2.5" />}
-          {worst.scheduled_count}/{worst.daily_capacity}
-        </span>
-      )}
-    </button>
+    <HintTooltip label={hint}>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        aria-label={`${date}. ${hint}`}
+        className={`flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors sm:h-14 ${style.textClass} ${
+          today ? "border-2 border-blue-500" : "border-black/10"
+        } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+        style={{ backgroundColor: style.bg }}
+      >
+        <span className="text-sm font-bold leading-none">{day}</span>
+        {worst && (
+          <span className="flex items-center gap-0.5 text-[10px] font-semibold leading-none">
+            {style.band === "over_capacity" && <AlertTriangle className="h-2.5 w-2.5" />}
+            {worst.scheduled_count}/{worst.daily_capacity}
+          </span>
+        )}
+      </button>
+    </HintTooltip>
   );
 }
 
@@ -150,17 +152,21 @@ export function DocketCapacityStrip({
   return (
     <div className="mb-4 space-y-3 rounded-md border border-border p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-foreground">Docket capacity — {monthLabel(year, month)}</span>
+        <span className="text-sm font-medium text-foreground">Docket capacity: {monthLabel(year, month)}</span>
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" aria-label="Previous month" onClick={() => goToMonth(year, month - 1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+          <HintTooltip label="Previous month">
+            <Button size="icon" variant="ghost" aria-label="Previous month" onClick={() => goToMonth(year, month - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </HintTooltip>
           <Button size="sm" variant="ghost" onClick={goToday}>
             Today
           </Button>
-          <Button size="icon" variant="ghost" aria-label="Next month" onClick={() => goToMonth(year, month + 1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <HintTooltip label="Next month">
+            <Button size="icon" variant="ghost" aria-label="Next month" onClick={() => goToMonth(year, month + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </HintTooltip>
         </div>
       </div>
 

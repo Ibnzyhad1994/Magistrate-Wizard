@@ -44,6 +44,7 @@ import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { EVENT_STAGES } from "@/lib/validations/docket";
 import { matterCurrentStage, PROCEDURE_STAGE_LABELS } from "@/lib/docket-procedure";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 import type { DocketEvent, DocketMatter } from "@/types/database.types";
 
 /** A "hearing progress" entry is any docket_events row where at least one witness field has been recorded — the same table the Events tab reads, filtered/presented for trial-narrative purposes rather than scheduling logistics. */
@@ -152,7 +153,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
   }, [data, matter.category_id]);
 
   return (
-    <Card className="lg:col-span-3">
+    <Card className="lg:col-span-3" data-tour="hearing-progress">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">Hearing / Trial Progress</CardTitle>
         {canEdit && (
@@ -218,7 +219,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-foreground">
                         {formatDate(entry.scheduled_date)}
-                        {entry.stage_at_event ? ` — ${entry.stage_at_event}` : ""}
+                        {entry.stage_at_event ? ` · ${entry.stage_at_event}` : ""}
                       </p>
                       <span
                         className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
@@ -444,7 +445,7 @@ function HearingProgressDialog({
                   <FormItem>
                     <FormLabel className="text-xs">Called</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="—" {...field} />
+                      <Input type="number" min={0} step={1} placeholder={NOT_SET} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -457,7 +458,7 @@ function HearingProgressDialog({
                   <FormItem>
                     <FormLabel className="text-xs">Completed</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="—" {...field} />
+                      <Input type="number" min={0} step={1} placeholder={NOT_SET} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -470,7 +471,7 @@ function HearingProgressDialog({
                   <FormItem>
                     <FormLabel className="text-xs">Partly heard</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="—" {...field} />
+                      <Input type="number" min={0} step={1} placeholder={NOT_SET} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -483,7 +484,7 @@ function HearingProgressDialog({
                   <FormItem>
                     <FormLabel className="text-xs">Remaining</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step={1} placeholder="—" {...field} />
+                      <Input type="number" min={0} step={1} placeholder={NOT_SET} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -502,7 +503,7 @@ function HearingProgressDialog({
                 <FormItem>
                   <FormLabel>Witnesses / details (optional)</FormLabel>
                   <FormControl>
-                    <Textarea rows={2} placeholder="e.g. PW1 John Thomas — completed; PW2 Mary Singh — partly heard" {...field} />
+                    <Textarea rows={2} placeholder="e.g. PW1 John Thomas: completed; PW2 Mary Singh: partly heard" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

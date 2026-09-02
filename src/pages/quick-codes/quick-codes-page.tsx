@@ -60,6 +60,7 @@ import { toast } from "sonner";
 import { useAddBookmark, useIsBookmarked, useRemoveBookmark } from "@/hooks/bookmarks/use-bookmarks";
 import type { QuickCode } from "@/types/database.types";
 import { cn } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 
 export default function QuickCodesPage() {
   const { data, isPending, isError, error, refetch } = useQuickCodes();
@@ -231,12 +232,12 @@ export default function QuickCodesPage() {
                     <TableCell className="font-mono font-medium text-foreground">
                       {qc.code_word}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{qc.title || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{qc.title || NOT_SET}</TableCell>
                     <TableCell>
                       {qc.category ? (
                         <Badge variant="secondary">{qc.category}</Badge>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">{NOT_SET}</span>
                       )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">

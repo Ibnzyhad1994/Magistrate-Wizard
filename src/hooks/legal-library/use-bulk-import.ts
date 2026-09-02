@@ -350,8 +350,8 @@ export function useBulkImportCaseLaw() {
       // class of bug this app's DD/MM/YYYY date-entry work already fixed
       // elsewhere). Time is included (not just the date) so two batches
       // started the same day are still distinguishable in the batch list.
-      const prefix = opts.sourceName ? `${opts.sourceName} — ` : "";
-      const label = `${prefix}Bulk import — ${formatDateTime(new Date())} — ${files.length} document${files.length === 1 ? "" : "s"}`;
+      const prefix = opts.sourceName ? `${opts.sourceName}: ` : "";
+      const label = `${prefix}Bulk import: ${formatDateTime(new Date())} · ${files.length} document${files.length === 1 ? "" : "s"}`;
       const batch = await createBatch.mutateAsync({
         label,
         content_type: "case_law",

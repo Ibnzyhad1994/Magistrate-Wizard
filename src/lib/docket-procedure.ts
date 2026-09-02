@@ -3,6 +3,8 @@
  * CHECK constraints on docket_matters (migration 0070) must stay in sync.
  */
 
+import { NOT_SET } from "@/lib/empty-display";
+
 export const ARRAIGNMENT_STATUSES = ["not_started", "done"] as const;
 export const CUSTODY_STATUSES = ["unset", "on_bail", "remanded"] as const;
 export const DISCLOSURE_STATUSES = ["none", "partial", "full"] as const;
@@ -93,7 +95,7 @@ export const NEXT_DATE_LABELS: Record<NextDateFilter, string> = {
 export const PROCEDURE_VALUE_LABELS: Record<string, string> = {
   not_started: "Not started",
   done: "Done",
-  unset: "—",
+  unset: NOT_SET,
   on_bail: "On bail",
   remanded: "Remanded",
   none: "No disclosure",
@@ -266,8 +268,21 @@ export function isProcedureEmptyValue(value: string): boolean {
   return MUTED_VALUES.has(value);
 }
 
-export function procedureCellLabel(value: string): string {
-  if (isProcedureEmptyValue(value)) return "—";
+export type ProcedureCellLabelOpts = {
+  column?: ProcedureColumnKey;
+  canEdit?: boolean;
+};
+
+export const procedureSetLabel = (column: ProcedureColumnKey): string => {
+  const name = PROCEDURE_COLUMNS.find((c) => c.key === column)?.label ?? "status";
+  return `+ Set ${name.toLowerCase()}`;
+};
+
+export function procedureCellLabel(value: string, opts?: ProcedureCellLabelOpts): string {
+  if (isProcedureEmptyValue(value)) {
+    if (opts?.canEdit && opts.column) return procedureSetLabel(opts.column);
+    return NOT_SET;
+  }
   return PROCEDURE_VALUE_LABELS[value] ?? value;
 }
 

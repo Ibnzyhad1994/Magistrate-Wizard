@@ -58,6 +58,7 @@ import {
   type JudgmentFieldsFormValues,
 } from "@/lib/validations/judgment";
 import { formatDate, formatDateTime, getErrorMessage, toTitleCase } from "@/lib/utils";
+import { NOT_SET } from "@/lib/empty-display";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { Billboard } from "@/components/browse";
@@ -400,21 +401,21 @@ function FieldsCard({
         <CardContent className="space-y-3 text-sm">
           <p>
             <span className="font-medium text-foreground">Case number: </span>
-            <span className="text-muted-foreground">{judgment.case_number || "—"}</span>
+            <span className="text-muted-foreground">{judgment.case_number || NOT_SET}</span>
           </p>
           <p>
             <span className="font-medium text-foreground">Court: </span>
-            <span className="text-muted-foreground">{judgment.court_name || "—"}</span>
+            <span className="text-muted-foreground">{judgment.court_name || NOT_SET}</span>
           </p>
           <p>
             <span className="font-medium text-foreground">Judgment date: </span>
             <span className="text-muted-foreground">
-              {judgment.judgment_date ? formatDate(judgment.judgment_date) : "—"}
+              {judgment.judgment_date ? formatDate(judgment.judgment_date) : NOT_SET}
             </span>
           </p>
           <p>
             <span className="font-medium text-foreground">Citation: </span>
-            <span className="text-muted-foreground">{judgment.citation || "—"}</span>
+            <span className="text-muted-foreground">{judgment.citation || NOT_SET}</span>
           </p>
         </CardContent>
       </Card>
@@ -592,7 +593,7 @@ function ClassificationCard({
         <CardContent className="space-y-3 text-sm">
           <p>
             <span className="font-medium text-foreground">Category: </span>
-            <span className="text-muted-foreground">{categoryName || "—"}</span>
+            <span className="text-muted-foreground">{categoryName || NOT_SET}</span>
           </p>
           <div className="flex flex-wrap gap-2">
             {data?.map((tag) => (

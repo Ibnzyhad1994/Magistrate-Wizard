@@ -94,7 +94,7 @@ const createdResult = await pushOneEvent(createdRun.deps, {
 });
 check("push create returns Google id", createdResult.externalEventId, "gcal-1");
 check("push create wrote one Google event", createdRun.created.length, 1);
-check("push title is case number + matter", createdRun.created[0].summary, "2026/MAG/1 — Police v. Test");
+check("push title is case number + matter", createdRun.created[0].summary, "2026/MAG/1 · Police v. Test");
 check("unique link row stored", createdRun.links.length, 1);
 check(
   "link unique key",

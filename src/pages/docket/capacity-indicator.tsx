@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
-import { getCapacityStyle } from "@/lib/docket-capacity";
+import { HintTooltip } from "@/components/ui/tooltip";
+import { capacityStatusLabel, getCapacityStyle } from "@/lib/docket-capacity";
 
 /**
  * The single shared rendering of a capacity band — used by the Settings
@@ -27,10 +28,12 @@ export function CapacityIndicator({
       ? `Set a daily limit for ${categoryName}`
       : `Edit daily limit for ${categoryName}, currently ${scheduledCount} of ${dailyCapacity}`;
 
+  const bandHint = `${capacityStatusLabel(style.band)}${style.label ? `: ${style.label}` : ""}`;
+
   if (style.band === "not_set") {
     const unsetChip = (
       <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-        {categoryName} — set a limit
+        {categoryName}: set a limit
       </span>
     );
     if (variant === "bar") {
@@ -43,36 +46,40 @@ export function CapacityIndicator({
     }
     if (onPress) {
       return (
-        <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
-          {unsetChip}
-        </button>
+        <HintTooltip label={editLabel}>
+          <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
+            {unsetChip}
+          </button>
+        </HintTooltip>
       );
     }
-    return unsetChip;
+    return <HintTooltip label={editLabel}>{unsetChip}</HintTooltip>;
   }
 
   const countText = `${scheduledCount} / ${dailyCapacity}`;
+  const chipHint = `${categoryName}: ${countText}. ${bandHint}`;
 
   if (variant === "chip") {
     const chip = (
       <span
         className={`inline-flex items-center gap-1 rounded-full border border-black/10 px-2 py-0.5 text-[11px] ${style.textClass} ${style.bold ? "font-bold" : "font-medium"}`}
         style={{ backgroundColor: style.bg }}
-        title={`${categoryName}: ${countText}${style.label ? ` — ${style.label}` : ""}`}
       >
         {style.band === "over_capacity" && <AlertTriangle className="h-3 w-3" />}
-        {categoryName} — {countText}
+        {categoryName}: {countText}
         {style.label ? ` ${style.label}` : ""}
       </span>
     );
     if (onPress) {
       return (
-        <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
-          {chip}
-        </button>
+        <HintTooltip label={chipHint}>
+          <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
+            {chip}
+          </button>
+        </HintTooltip>
       );
     }
-    return chip;
+    return <HintTooltip label={chipHint}>{chip}</HintTooltip>;
   }
 
   return (
@@ -84,7 +91,7 @@ export function CapacityIndicator({
       <span className={`flex items-center gap-1 ${style.bold ? "font-bold" : "font-medium"}`}>
         {style.band === "over_capacity" && <AlertTriangle className="h-3.5 w-3.5" />}
         {countText}
-        {style.label ? ` — ${style.label}` : ""}
+        {style.label ? `: ${style.label}` : ""}
       </span>
     </div>
   );

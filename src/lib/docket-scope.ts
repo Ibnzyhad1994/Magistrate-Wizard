@@ -71,7 +71,7 @@ export function resolveDocketScope(args: {
   return { status: "resolved", courtId: null };
 }
 
-/** Docket page heading, e.g. "Docket — All My Courts" / "Docket — Vigilance Magistrates' Court 1". */
+/** Docket page heading, e.g. "Docket: All My Courts" / "Docket: Vigilance Magistrates' Court 1". */
 export function docketScopeTitle(courtName: string | null): string {
-  return courtName ? `Docket — ${courtName}` : "Docket — All My Courts";
+  return courtName ? `Docket: ${courtName}` : "Docket: All My Courts";
 }

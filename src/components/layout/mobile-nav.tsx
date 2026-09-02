@@ -36,6 +36,7 @@ const MobileNavLink = ({
     <NavLink
       to={item.href}
       onClick={onNavigate}
+      data-tour={item.href === ROUTES.docket ? "nav-docket" : undefined}
       className={({ isActive }) =>
         cn(
           "flex min-h-11 items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors",

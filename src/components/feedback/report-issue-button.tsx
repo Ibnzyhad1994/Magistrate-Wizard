@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Bug } from "lucide-react";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,7 @@ export function ReportIssueButton() {
         if (!next) reset();
       }}
     >
+      <HintTooltip label="Report a bug or suggestion">
       <Button
         variant="ghost"
         size="icon"
@@ -71,6 +73,7 @@ export function ReportIssueButton() {
       >
         <Bug className="h-5 w-5" />
       </Button>
+      </HintTooltip>
       <DialogContent>
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-1 flex-col gap-4">
           <DialogHeader>

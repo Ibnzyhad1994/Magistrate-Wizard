@@ -115,7 +115,7 @@ export function EventsSection({ matterId }: EventsSectionProps) {
                   <p className="font-medium text-foreground">
                     {formatDate(event.scheduled_date)}
                     {event.scheduled_time ? ` at ${formatTimeOnly(event.scheduled_time)}` : ""}
-                    {event.event_type ? ` — ${event.event_type}` : ""}
+                    {event.event_type ? ` · ${event.event_type}` : ""}
                   </p>
                   {event.stage_at_event && (
                     <p className="text-sm text-muted-foreground">

@@ -24,7 +24,7 @@ export default function ClerkAccessAdminPage() {
   return (
     <BrowsePage>
       <BrowseHeader
-        title="Clerk Access — Unresolved Requests"
+        title="Clerk Access: Unresolved Requests"
         description="Verified clerk access requests whose court currently has no magistrate authorized to review them."
       />
 

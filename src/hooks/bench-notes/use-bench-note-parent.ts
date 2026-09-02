@@ -96,7 +96,7 @@ export function useBenchNoteParent(
         const provisionLabel = data.heading || `${data.level} ${data.number ?? ""}`.trim();
         const statuteTitle = (data.statutes as unknown as { title: string } | null)?.title;
         return {
-          label: statuteTitle ? `${statuteTitle} — ${provisionLabel}` : provisionLabel,
+          label: statuteTitle ? `${statuteTitle} · ${provisionLabel}` : provisionLabel,
           subtitle: data.number ? `${data.level} ${data.number}` : data.level,
           href: ROUTES.legislationProvision(data.statute_id, entityId as string),
         };

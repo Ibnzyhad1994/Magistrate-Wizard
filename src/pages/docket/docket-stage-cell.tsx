@@ -1,6 +1,7 @@
 import { useRef } from "react";
-import { Paperclip } from "lucide-react";
+import { Download, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HintTooltip } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +24,9 @@ import { INGEST_FILE_ACCEPT } from "@/lib/ingest-source";
 
 const TONE_CLASS: Record<ReturnType<typeof procedureCellTone>, string> = {
   muted: "text-white/40",
-  progress: "bg-amber-400/15 text-amber-200",
-  done: "bg-emerald-400/15 text-emerald-200",
-  remand: "bg-rose-400/20 text-rose-200",
+  progress: "bg-[hsl(var(--stage-progress)/0.15)] text-[hsl(var(--stage-progress))]",
+  done: "bg-[hsl(var(--stage-done)/0.15)] text-[hsl(var(--stage-done))]",
+  remand: "bg-[hsl(var(--stage-remand)/0.20)] text-[hsl(var(--stage-remand))]",
 };
 
 /** Ruling/Judgment-only: lets the cell attach the actual file, not just record a status (0074). */
@@ -56,15 +57,21 @@ export function DocketStageCell({
 }) {
   const mode = procedureCellMode(canEdit);
   const tone = procedureCellTone(column, value);
-  const label = procedureCellLabel(value);
+  const label = procedureCellLabel(value, { column, canEdit });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const className = cn(
     "inline-flex max-w-full touch-manipulation items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
-    isCurrent && "ring-1 ring-white/45",
+    isCurrent && "ring-2 ring-[hsl(var(--match))]",
     compact ? "min-h-8" : "min-h-9 min-w-[5.5rem] sm:min-h-7",
     mode === "edit" && "cursor-pointer hover:brightness-110",
   );
+  const hint =
+    mode === "edit"
+      ? tone === "muted"
+        ? "Click to record this stage"
+        : "Click to update this stage"
+      : label;
 
   const attachmentIcon = attachments?.hasFile && (
     <Paperclip className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
@@ -72,10 +79,12 @@ export function DocketStageCell({
 
   if (mode === "read") {
     return (
-      <span className={className} title={label}>
-        {label}
-        {attachmentIcon}
-      </span>
+      <HintTooltip label={hint}>
+        <span className={className} aria-label={`${column.replace(/_/g, " ")}: ${label}`}>
+          {label}
+          {attachmentIcon}
+        </span>
+      </HintTooltip>
     );
   }
 
@@ -83,16 +92,20 @@ export function DocketStageCell({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className={className}
-          aria-label={`${column.replace(/_/g, " ")}: ${label}${attachments?.hasFile ? " (file attached)" : ""}`}
-        >
-          {label}
-          {attachmentIcon}
-        </button>
-      </DropdownMenuTrigger>
+      <HintTooltip label={hint}>
+        <span className="inline-flex max-w-full">
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={className}
+              aria-label={`${column.replace(/_/g, " ")}: ${label}${attachments?.hasFile ? " (file attached)" : ""}`}
+            >
+              {label}
+              {attachmentIcon}
+            </button>
+          </DropdownMenuTrigger>
+        </span>
+      </HintTooltip>
       <DropdownMenuContent align="start" collisionPadding={16} className="min-w-[11rem]">
         <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
           {options.map((option) => (
@@ -121,7 +134,8 @@ export function DocketStageCell({
                 className="min-h-10 truncate"
                 onSelect={() => file.onDownload()}
               >
-                ↓ {file.file_name}
+                <Download className="h-3.5 w-3.5" />
+                {file.file_name}
               </DropdownMenuItem>
             ))}
             <input

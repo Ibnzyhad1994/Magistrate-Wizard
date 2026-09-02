@@ -78,7 +78,7 @@ export const docketMatterDeepLink = (appOrigin: string, matterId: string) =>
   `${appOrigin.replace(/\/$/, "")}/docket/${matterId}?tab=events`;
 
 export const toGoogleEvent = (row: DocketLogistics): GoogleEventPayload => {
-  const summary = `${row.case_number} — ${row.matter_title}`.trim();
+  const summary = `${row.case_number} · ${row.matter_title}`.trim();
   const typeLabel = row.event_type?.trim() || "Hearing";
   const description = `${typeLabel}\n${docketMatterDeepLink(row.appOrigin, row.docket_matter_id)}`;
   const cancelled = isInactiveEventStatus(row.event_status);

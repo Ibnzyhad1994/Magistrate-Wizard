@@ -82,7 +82,7 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
       }> | null)?.forEach((r) => {
         const provisionLabel = r.heading || `${r.level} ${r.number ?? ""}`.trim();
         map.set(`statute_provision:${r.id}`, {
-          label: r.statutes ? `${r.statutes.title} — ${provisionLabel}` : provisionLabel,
+          label: r.statutes ? `${r.statutes.title} · ${provisionLabel}` : provisionLabel,
           subtitle: r.number ? `${r.level} ${r.number}` : r.level,
           parentId: r.statute_id,
         });

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { FileText, Upload, Trash2, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -190,7 +191,6 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
                       type="button"
                       onClick={() => setViewingDoc(doc)}
                       className="truncate text-left hover:underline"
-                      title="Open"
                       aria-label={`View ${doc.file_name}`}
                     >
                       {doc.file_name}
@@ -209,6 +209,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
                   {formatDate(doc.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
+                  <HintTooltip label={`View ${doc.file_name}`}>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -217,6 +218,8 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
+                  </HintTooltip>
+                  <HintTooltip label={`Download ${doc.file_name}`}>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -230,7 +233,9 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
                       <Download className="h-4 w-4" />
                     )}
                   </Button>
+                  </HintTooltip>
                   {doc.uploaded_by === user?.id && (
+                    <HintTooltip label={`Delete ${doc.file_name}`}>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -239,6 +244,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
+                    </HintTooltip>
                   )}
                 </TableCell>
               </TableRow>
