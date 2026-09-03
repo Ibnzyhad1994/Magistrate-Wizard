@@ -14,6 +14,7 @@ import {
 } from "@/lib/offline/outbox"
 import { getOutboxJobs, getProfileCache, setOutboxJobs } from "@/lib/offline/store"
 import { hearingFieldsFromEvent } from "@/lib/offline/docket-cache"
+import { lockCurrentSession, notifyAuthExpiredSave } from "@/lib/auth/session-lock"
 
 let flushing = false
 let sessionToastAt = 0
@@ -129,6 +130,7 @@ export const enqueueGooglePendingIfNeeded = async (eventId: string, matterId: st
 
 export const flushPendingHearings = async () => {
   if (flushing) return { skipped: true as const }
+  if (useAuthStore.getState().status === "locked") return { skipped: true as const }
   const profileId = await currentProfileId()
   if (!profileId) return { skipped: true as const }
   const jobs = getOutboxJobs(profileId)
@@ -139,6 +141,11 @@ export const flushPendingHearings = async () => {
     await setOutboxJobs(profileId, result.jobs)
     if (result.insertedIds.length > 0 || result.updatedIds.length > 0) {
       invalidateHearingQueries()
+    }
+    if (result.authExpired) {
+      void lockCurrentSession()
+      notifyAuthExpiredSave()
+      return result
     }
     if (result.stopped) {
       const expired = Date.now() - sessionToastAt > 30_000

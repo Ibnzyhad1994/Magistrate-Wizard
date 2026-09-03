@@ -7,10 +7,12 @@ import { ROUTES } from "@/routes/paths";
 import { toast } from "sonner";
 import { clearOfflineForProfile } from "@/lib/offline/store";
 import { recordAuthEvent } from "@/lib/record-auth-event";
+import { setRememberMeFlag } from "@/lib/auth/session-storage";
 
 interface SignInParams {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 interface SignUpParams {
@@ -45,7 +47,10 @@ export function useAuth() {
   const profile = useAuthStore((state) => state.profile);
 
   const signInMutation = useMutation({
-    mutationFn: async ({ email, password }: SignInParams) => {
+    mutationKey: ["auth", "signIn"],
+    mutationFn: async ({ email, password, rememberMe = false }: SignInParams) => {
+      // Preference must land before GoTrue persists the session blob.
+      setRememberMeFlag(rememberMe);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -59,11 +64,34 @@ export function useAuth() {
     },
     onSuccess: () => {
       toast.success("Welcome back.");
-      navigate(ROUTES.dashboard);
+    },
+  });
+
+  const reauthenticateMutation = useMutation({
+    mutationKey: ["auth", "reauthenticate"],
+    mutationFn: async (password: string) => {
+      const email = user?.email ?? profile?.email;
+      if (!email) {
+        throw new Error("Your session has no email to verify.");
+      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        void recordAuthEvent("login_failed", email);
+        throw error;
+      }
+      void recordAuthEvent("login_success", email);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Session restored. Your work is still here.");
     },
   });
 
   const signUpMutation = useMutation({
+    mutationKey: ["auth", "signUp"],
     mutationFn: async ({
       email,
       password,
@@ -73,6 +101,7 @@ export function useAuth() {
       staffId,
       note,
     }: SignUpParams) => {
+      setRememberMeFlag(false);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -113,13 +142,18 @@ export function useAuth() {
   });
 
   const signOutMutation = useMutation({
+    mutationKey: ["auth", "signOut"],
     mutationFn: async () => {
+      const profileId = user?.id;
+      // Leave `locked` before GoTrue SIGNED_OUT so AuthProvider does not
+      // ignore the event and keep the overlay up.
+      useAuthStore.getState().clearForSignOut();
       await recordAuthEvent("logout");
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      return profileId;
     },
-    onSuccess: () => {
-      const profileId = user?.id;
+    onSuccess: (profileId) => {
       queryClient.clear();
       if (profileId) void clearOfflineForProfile(profileId);
       navigate(ROUTES.login);
@@ -127,6 +161,7 @@ export function useAuth() {
   });
 
   const resetPasswordMutation = useMutation({
+    mutationKey: ["auth", "resetPassword"],
     mutationFn: async (email: string) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}${ROUTES.login}`,
@@ -150,11 +185,14 @@ export function useAuth() {
     session,
     user,
     profile,
-    isAuthenticated: status === "authenticated",
+    isAuthenticated: status === "authenticated" || status === "locked",
+    isLocked: status === "locked",
     isLoading: status === "loading",
     hasRole,
     signIn: signInMutation.mutateAsync,
     isSigningIn: signInMutation.isPending,
+    reauthenticate: reauthenticateMutation.mutateAsync,
+    isReauthenticating: reauthenticateMutation.isPending,
     signUp: signUpMutation.mutateAsync,
     isSigningUp: signUpMutation.isPending,
     signOut: signOutMutation.mutateAsync,

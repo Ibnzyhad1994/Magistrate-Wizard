@@ -18,6 +18,7 @@
     "test:calendar-map": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-calendar-map.mjs",
     "test:calendar-sync": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-calendar-sync.mjs",
     "test:offline-outbox": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-offline-outbox.mjs",
+    "test:session-idle": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "typecheck": "tsc -b --noEmit",

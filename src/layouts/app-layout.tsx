@@ -3,6 +3,7 @@ import { TopNav } from "@/components/layout/top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { TourProvider } from "@/components/tour/tour-provider";
+import { SessionLifecycle } from "@/components/auth/session-lifecycle";
 
 /**
  * Netflix-style shell: fixed top nav over a full-bleed cinematic canvas.
@@ -13,6 +14,7 @@ export function AppLayout() {
     <TourProvider>
     <div className="min-h-dvh w-full bg-[#141414]">
       <TopNav />
+      <SessionLifecycle />
       <OfflineSyncBanner />
       <MobileNav />
       <main className="min-h-dvh">

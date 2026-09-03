@@ -79,11 +79,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
-      setSession(session);
-      if (session?.user) {
-        void loadProfile(session.user.id);
-      } else {
+      if (!session) {
+        // Local sign-out during idle lock must not wipe profile or bounce
+        // ProtectedRoute to /login — that unmounts in-progress drafts.
+        if (useAuthStore.getState().status === "locked") return;
+        setSession(null);
         setProfile(null);
+        return;
+      }
+      setSession(session);
+      if (session.user) {
+        void loadProfile(session.user.id);
       }
     });
 

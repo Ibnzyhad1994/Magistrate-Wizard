@@ -61,6 +61,9 @@ jobs:
       - name: Offline outbox
         run: npm run test:offline-outbox
 
+      - name: Session idle lock and Remember me
+        run: npm run test:session-idle
+
       - name: Tag proposal (hard cases)
         run: npm run test:propose-tags-hard
 

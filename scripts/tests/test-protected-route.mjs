@@ -196,5 +196,29 @@ check(
   "pending-magistrate",
 );
 
+check(
+  "idle lock keeps the workspace mounted instead of bouncing to login",
+  resolveProtectedRouteGate({ status: "locked", profile: { role: "magistrate" } }),
+  "ok",
+);
+check(
+  "idle lock on a role-gated admin route still waits for profile",
+  resolveProtectedRouteGate({
+    status: "locked",
+    profile: null,
+    allowedRoles: ["admin"],
+  }),
+  "loading",
+);
+check(
+  "idle lock with an authorized profile stays on the route",
+  resolveProtectedRouteGate({
+    status: "locked",
+    profile: { role: "admin" },
+    allowedRoles: ["admin"],
+  }),
+  "ok",
+);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

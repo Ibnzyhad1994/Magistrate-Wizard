@@ -2,9 +2,10 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
 import { PageLoader } from "@/components/common/page-loader";
+import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
 
 interface LocationState {
-  from?: { pathname: string };
+  from?: { pathname: string; search?: string; hash?: string };
 }
 
 /**
@@ -20,9 +21,9 @@ export function PublicRoute() {
     return <PageLoader />;
   }
 
-  if (status === "authenticated") {
+  if (status === "authenticated" || status === "locked") {
     const state = location.state as LocationState | null;
-    const redirectTo = state?.from?.pathname ?? ROUTES.dashboard;
+    const redirectTo = pathFromLoginRedirect(state?.from, ROUTES.dashboard);
     return <Navigate to={redirectTo} replace />;
   }
 

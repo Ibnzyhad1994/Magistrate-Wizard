@@ -191,6 +191,48 @@ check("google down after insert does not duplicate docket row", googleDownInsert
 check("google down leaves googlePending", googleDown.jobs.map((job) => job.kind), ["googlePending"])
 check("googlePending uses real event id", googleDown.jobs[0]?.id, "real-uuid")
 
+{
+  const { isAuthExpiredError, isPermissionOrValidationError, isQueueableError } = await import(
+    "../../src/lib/offline/is-queueable-error.ts"
+  )
+  check("401 is auth-expired, not queued, not dropped as permission", isAuthExpiredError({ status: 401 }), true)
+  check("PGRST301 is auth-expired", isAuthExpiredError({ code: "PGRST301" }), true)
+  check("403 is not auth-expired", isAuthExpiredError({ status: 403 }), false)
+  check("401 is not a permission drop", isPermissionOrValidationError({ status: 401 }), false)
+  check("PGRST301 is not a permission drop", isPermissionOrValidationError({ code: "PGRST301" }), false)
+  check("403 is still a permission drop", isPermissionOrValidationError({ status: 403 }), true)
+  check("401 is not an offline queueable error", isQueueableError({ status: 401 }), false)
+}
+
+const authExpiredJob = {
+  kind: "create",
+  id: localId,
+  matterId: "mat-1",
+  payload: baseFields(),
+  caseNumber: "GEO-1",
+  matterTitle: "Police v. Test",
+}
+const authExpiredFlush = await flushOutbox([authExpiredJob], {
+  insertEvent: async () => {
+    throw { status: 401, message: "JWT expired" }
+  },
+  updateEvent: async () => {},
+  pushGoogle: async () => ({ synced: true }),
+})
+check("401 flush keeps the create job", authExpiredFlush.jobs.length, 1)
+check("401 flush marks authExpired", authExpiredFlush.authExpired, true)
+check("401 flush stops", authExpiredFlush.stopped, true)
+
+const forbiddenFlush = await flushOutbox([authExpiredJob], {
+  insertEvent: async () => {
+    throw { status: 403 }
+  },
+  updateEvent: async () => {},
+  pushGoogle: async () => ({ synced: true }),
+})
+check("403 flush drops the job", forbiddenFlush.jobs.length, 0)
+check("403 flush is not authExpired", Boolean(forbiddenFlush.authExpired), false)
+
 if (failures > 0) {
   console.error(`${failures} offline outbox checks failed`)
   process.exit(1)

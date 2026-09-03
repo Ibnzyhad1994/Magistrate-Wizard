@@ -1,12 +1,14 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,21 +19,27 @@ import { useAuth } from "@/hooks/use-auth";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
 import { APP_NAME } from "@/lib/constants";
+import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
 
 const fieldClassName =
   "h-12 rounded-sm border border-white/15 bg-[#333] text-white placeholder:text-white/50 focus-visible:border-white/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function LoginPage() {
   const { signIn, isSigningIn } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", rememberMe: false },
   });
 
   async function onSubmit(values: LoginFormValues) {
     try {
       await signIn(values);
+      const from = (location.state as { from?: { pathname: string; search?: string; hash?: string } } | null)
+        ?.from;
+      navigate(pathFromLoginRedirect(from, ROUTES.dashboard), { replace: true });
     } catch {
       // Errors surface globally via the mutation cache toast subscriber
       // in src/lib/query-client.ts; nothing further to do here.
@@ -94,6 +102,32 @@ export default function LoginPage() {
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="rememberMe"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-start gap-3">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                        className="mt-0.5 border-white/40"
+                        aria-label="Remember me"
+                      />
+                    </FormControl>
+                    <div className="space-y-1">
+                      <FormLabel className="text-white/80">Remember me</FormLabel>
+                      <FormDescription className="text-white/50">
+                        Stay signed in on this browser for 14 days. Still locks after
+                        1 hour idle. Do not use on a shared bench computer.
+                      </FormDescription>
+                    </div>
+                  </div>
                 </FormItem>
               )}
             />

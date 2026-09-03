@@ -10,6 +10,8 @@ export const APP_DESCRIPTION =
 export const LOCAL_STORAGE_KEYS = {
   theme: "magistrate-wizard-theme",
   sidebarCollapsed: "magistrate-wizard-sidebar-collapsed",
+  auth: "magistrate-wizard-auth",
+  rememberMe: "magistrate-wizard-remember-me",
 } as const;
 
 export const QUERY_STALE_TIME_MS = 30_000;

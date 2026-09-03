@@ -5,7 +5,7 @@ import {
   type HearingFields,
   type OutboxJob,
 } from "@/lib/offline/outbox"
-import { isPermissionOrValidationError } from "@/lib/offline/is-queueable-error"
+import { isAuthExpiredError, isPermissionOrValidationError } from "@/lib/offline/is-queueable-error"
 
 export type FlushInsertResult = { id: string }
 
@@ -23,6 +23,7 @@ export type FlushResult = {
   updatedIds: string[]
   googlePendingIds: string[]
   stopped: boolean
+  authExpired?: boolean
 }
 
 const maybeGooglePending = (
@@ -37,10 +38,42 @@ const maybeGooglePending = (
   return remaining
 }
 
+const stoppedResult = (
+  remaining: OutboxJob[],
+  insertedIds: string[],
+  updatedIds: string[],
+  authExpired = false,
+): FlushResult => ({
+  jobs: remaining,
+  insertedIds,
+  updatedIds,
+  googlePendingIds: remaining.filter((item) => item.kind === "googlePending").map((item) => item.id),
+  stopped: true,
+  authExpired,
+})
+
+const handleJobError = (
+  error: unknown,
+  job: OutboxJob,
+  queue: OutboxJob[],
+  remaining: OutboxJob[],
+  insertedIds: string[],
+  updatedIds: string[],
+): FlushResult | "drop" => {
+  if (isAuthExpiredError(error)) {
+    remaining.push(job, ...queue)
+    return stoppedResult(remaining, insertedIds, updatedIds, true)
+  }
+  if (isPermissionOrValidationError(error)) return "drop"
+  remaining.push(job, ...queue)
+  return stoppedResult(remaining, insertedIds, updatedIds)
+}
+
 /**
  * Drain creates, then updates (after rewriting local ids), then Google
  * retries. Stops on a queueable network error so the rest stay queued.
- * Permission errors drop that one job and continue.
+ * Permission errors drop that one job and continue. Expired JWTs keep
+ * the job and stop so the user can re-auth without losing the save.
  */
 export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<FlushResult> => {
   let queue = jobs.map((job) => ({ ...job }))
@@ -58,15 +91,9 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
         const google = await deps.pushGoogle(inserted.id)
         maybeGooglePending(remaining, inserted.id, job.matterId, google)
       } catch (error) {
-        if (isPermissionOrValidationError(error)) continue
-        remaining.push(job, ...queue)
-        return {
-          jobs: remaining,
-          insertedIds,
-          updatedIds,
-          googlePendingIds: remaining.filter((item) => item.kind === "googlePending").map((item) => item.id),
-          stopped: true,
-        }
+        const handled = handleJobError(error, job, queue, remaining, insertedIds, updatedIds)
+        if (handled === "drop") continue
+        return handled
       }
       continue
     }
@@ -82,15 +109,9 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
         const google = await deps.pushGoogle(job.id)
         maybeGooglePending(remaining, job.id, job.matterId, google)
       } catch (error) {
-        if (isPermissionOrValidationError(error)) continue
-        remaining.push(job, ...queue)
-        return {
-          jobs: remaining,
-          insertedIds,
-          updatedIds,
-          googlePendingIds: remaining.filter((item) => item.kind === "googlePending").map((item) => item.id),
-          stopped: true,
-        }
+        const handled = handleJobError(error, job, queue, remaining, insertedIds, updatedIds)
+        if (handled === "drop") continue
+        return handled
       }
       continue
     }

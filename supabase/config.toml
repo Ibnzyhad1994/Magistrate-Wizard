@@ -275,6 +275,10 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
+# Do NOT enable inactivity_timeout here (or in the hosted Auth dashboard) at 1h:
+# it would revoke refresh tokens after an hour away and break 14-day Remember me.
+# Idle lock is enforced in the client (src/lib/auth/session-policy.ts).
+# jwt_expiry = 3600 already caps the access token; keep hosted JWT at 1 hour too.
 # [auth.sessions]
 # Force log out after the specified duration.
 # timebox = "24h"

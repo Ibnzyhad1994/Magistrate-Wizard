@@ -1,6 +1,6 @@
 import type { UserRole } from "@/lib/constants"
 
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated"
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "locked"
 
 export type ProtectedRouteGate =
   | "loading"
@@ -44,6 +44,7 @@ export function resolveProtectedRouteGate(args: {
 }): ProtectedRouteGate {
   if (args.status === "loading") return "loading"
   if (args.status === "unauthenticated") return "login"
+  // Idle/JWT lock keeps the current route mounted so drafts survive.
   if (args.allowedRoles && args.allowedRoles.length > 0) {
     if (!args.profile) return "loading"
     if (!args.allowedRoles.includes(args.profile.role)) return "unauthorized"
