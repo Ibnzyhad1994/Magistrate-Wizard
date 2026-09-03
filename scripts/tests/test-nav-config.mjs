@@ -5,7 +5,8 @@
 // (requireApprovedMagistrateCourt, router.tsx) so the nav never dangles
 // a link the router will just bounce the user back out of.
 
-import { visibleNavItems } from "@/components/layout/nav-config";
+import { NAV_ITEMS, visibleNavItems } from "@/components/layout/nav-config";
+import { ROUTES } from "@/routes/paths";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -48,6 +49,17 @@ check(
   "pending flag is a no-op for clerk (clerk has no such item to lose anyway)",
   visibleNavItems(items, "clerk", true).map((i) => i.href),
   ["/dashboard", "/docket"],
+);
+
+check(
+  "notifications is a workbench nav item",
+  NAV_ITEMS.some((item) => item.href === ROUTES.notifications && item.group === "workbench"),
+  true,
+);
+check(
+  "operations is an admin nav item",
+  NAV_ITEMS.some((item) => item.href === ROUTES.adminOperations && item.roles?.includes("admin")),
+  true,
 );
 
 check(

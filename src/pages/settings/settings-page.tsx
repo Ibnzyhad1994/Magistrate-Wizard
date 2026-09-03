@@ -25,6 +25,10 @@ import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { APP_BUILD, APP_VERSION } from "@/lib/app-version";
 import { GoogleCalendarCard } from "@/pages/settings/google-calendar-card";
 import { AdminSelfCourtCard } from "@/pages/settings/admin-self-court-card";
+import {
+  DownloadMyDataCard,
+  HearingRemindersCard,
+} from "@/pages/settings/privacy-and-reminders-cards";
 import { ROUTES } from "@/routes/paths";
 import { useTour } from "@/components/tour/use-tour";
 
@@ -178,6 +182,8 @@ export default function SettingsPage() {
 
       <div className="mt-6 space-y-6">
       <GoogleCalendarCard />
+      <HearingRemindersCard />
+      <DownloadMyDataCard />
 
       <Card className="max-w-xl">
         <CardHeader>

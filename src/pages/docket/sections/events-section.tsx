@@ -47,6 +47,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "dest
   completed: "secondary",
   cancelled: "outline",
   entered_in_error: "destructive",
+  past: "secondary",
 };
 
 interface EventsSectionProps {

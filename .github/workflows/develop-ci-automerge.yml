@@ -83,6 +83,9 @@ jobs:
       - name: Judgment version history helpers
         run: npm run test:judgment-versions
 
+      - name: Remaining audit-phase helpers
+        run: npm run test:audit-ops
+
       - name: Tag proposal (hard cases)
         run: npm run test:propose-tags-hard
 

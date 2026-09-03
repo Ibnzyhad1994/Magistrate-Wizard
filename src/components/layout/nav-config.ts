@@ -6,6 +6,7 @@ import {
   ScrollText,
   Braces,
   StickyNote,
+  Inbox,
   Bookmark,
   Search,
   Landmark,
@@ -16,6 +17,7 @@ import {
   Bug,
   History,
   Users,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ROUTES } from "@/routes/paths";
 import type { UserRole } from "@/lib/constants";
@@ -134,6 +136,12 @@ export const NAV_ITEMS: AppNavItem[] = [
     group: "workbench",
   },
   {
+    label: "Notifications",
+    href: ROUTES.notifications,
+    icon: Inbox,
+    group: "workbench",
+  },
+  {
     label: "Search",
     href: ROUTES.search,
     icon: Search,
@@ -179,6 +187,13 @@ export const NAV_ITEMS: AppNavItem[] = [
     label: "Activity",
     href: ROUTES.adminActivity,
     icon: History,
+    roles: ["admin"],
+    group: "admin",
+  },
+  {
+    label: "Operations",
+    href: ROUTES.adminOperations,
+    icon: SlidersHorizontal,
     roles: ["admin"],
     group: "admin",
   },

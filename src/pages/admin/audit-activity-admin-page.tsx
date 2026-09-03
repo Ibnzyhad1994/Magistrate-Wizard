@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom"
 import { ChevronDown, History } from "lucide-react"
 import { BrowseHeader, BrowsePage } from "@/components/browse"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -21,6 +22,9 @@ import {
   useAuditActivity,
   type ActivityRow,
 } from "@/hooks/admin/use-audit-activity"
+import { useVerifyAuditHashChain } from "@/hooks/admin/use-operations"
+import { activityRowsToCsv } from "@/lib/audit-export"
+import { useFeatureFlag } from "@/hooks/use-feature-flags"
 
 const FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -49,6 +53,8 @@ const AuditActivityAdminPage = () => {
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "")
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const { data: rows, isPending, isError, error, refetch } = useAuditActivity(filter)
+  const { enabled: canExport } = useFeatureFlag("audit_export")
+  const hashChain = useVerifyAuditHashChain()
 
   const visible = useMemo(() => {
     const list = rows ?? []
@@ -72,12 +78,46 @@ const AuditActivityAdminPage = () => {
     setExpandedId((current) => (current === id ? null : id))
   }
 
+  const handleExportCsv = () => {
+    const csv = activityRowsToCsv(visible)
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `audit-activity-${filter}.csv`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <BrowsePage>
       <BrowseHeader
         title="Activity"
         description="Who changed court access, the legal library, docket identity and bin/purge events, or account privileges, and who signed in. Private judicial writing is not shown here."
+        action={
+          canExport ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={visible.length === 0}
+              aria-label="Export visible activity as CSV"
+            >
+              Export CSV
+            </Button>
+          ) : null
+        }
       />
+
+      {hashChain.data && (
+        <p className="text-xs text-white/45">
+          Audit hash chain:{" "}
+          {hashChain.data.ok
+            ? "intact"
+            : `broken at row ${hashChain.data.broken_id ?? "unknown"}`}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-1.5">

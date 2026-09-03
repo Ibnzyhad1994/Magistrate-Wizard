@@ -19,6 +19,8 @@ export type Database = {
           old_data: Json | null
           record_id: string | null
           table_name: string
+          prev_hash: string | null
+          row_hash: string | null
         }
         Insert: {
           action: Database["public"]["Enums"]["audit_action"]
@@ -29,6 +31,8 @@ export type Database = {
           old_data?: Json | null
           record_id?: string | null
           table_name: string
+          prev_hash?: string | null
+          row_hash?: string | null
         }
         Update: {
           action?: Database["public"]["Enums"]["audit_action"]
@@ -39,6 +43,8 @@ export type Database = {
           old_data?: Json | null
           record_id?: string | null
           table_name?: string
+          prev_hash?: string | null
+          row_hash?: string | null
         }
         Relationships: [
           {
@@ -820,6 +826,33 @@ export type Database = {
           },
         ]
       }
+      data_retention_policies: {
+        Row: {
+          action: string
+          notes: string | null
+          retention_days: number
+          table_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action: string
+          notes?: string | null
+          retention_days: number
+          table_name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action?: string
+          notes?: string | null
+          retention_days?: number
+          table_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       docket_capacity_overrides: {
         Row: {
           category_id: string | null
@@ -1573,6 +1606,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_flags: {
+        Row: {
+          court_ids: string[]
+          description: string | null
+          enabled: boolean
+          key: string
+          roles: string[]
+          rollout_percentage: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          court_ids?: string[]
+          description?: string | null
+          enabled?: boolean
+          key: string
+          roles?: string[]
+          rollout_percentage?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          court_ids?: string[]
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          roles?: string[]
+          rollout_percentage?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       import_batches: {
         Row: {
@@ -2328,6 +2394,47 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2881,6 +2988,76 @@ export type Database = {
           },
         ]
       }
+      webhook_endpoints: {
+        Row: {
+          active: boolean
+          court_id: string | null
+          created_at: string
+          created_by: string | null
+          events: string[]
+          id: string
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          court_id?: string | null
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          secret: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          active?: boolean
+          court_id?: string | null
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      webhook_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivered_at: string | null
+          endpoint_id: string
+          event: string
+          id: string
+          last_error: string | null
+          payload: Json
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          endpoint_id: string
+          event: string
+          id?: string
+          last_error?: string | null
+          payload: Json
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          endpoint_id?: string
+          event?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2987,6 +3164,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      download_my_data: { Args: never; Returns: Json }
+      verify_audit_hash_chain: {
+        Args: never
+        Returns: {
+          broken_id: number | null
+          ok: boolean
+        }[]
       }
       can_access_court: { Args: { p_court_id: string }; Returns: boolean }
       can_attach_preview_derivative: {

@@ -891,8 +891,22 @@ Checkboxes for `verified-this-effort` are `[x]` after the matching tests passed 
 
 ### 11.8 Verified and deferred (checklist only)
 
-In-app notification center, feature flags, DSR/retention, backup runbook, webhooks, audit hash-chain export, app-level RPC rate limits, iOS release, Playwright E2E, WCAG AA program, Realtime subscriptions, document redaction, localization, AI wiring.
+App-level RPC rate limits, iOS release, Playwright E2E, WCAG AA program, Realtime subscriptions, document redaction, localization, AI wiring, Datadog/structured logging, CodeQL.
 
 ### 11.9 Explicitly out of scope for this effort
 
-MFA/TOTP, SSO, Resend/email, password length/complexity, `secure_password_change`, in-app notification bell, cron beyond existing 0120 purge, CodeQL (optional; not chosen), wiping query cache on lock, opaque lock overlay, unlock `user.id` bind.
+MFA/TOTP, SSO, Resend/email, password length/complexity, `secure_password_change`, in-app notification bell, wiping query cache on lock, opaque lock overlay, unlock `user.id` bind.
+
+### 11.10 Remaining phase items (this follow-up)
+
+Same exclusions as 11.9. Landed: in-app notifications page (no bell, no email), scheduled jobs (`past` hearings, stale drafts, tomorrow notices), feature flags, backup runbook, audit CSV + hash chain, DSR JSON export + retention catalog, outbound webhooks, device sitting-day reminders.
+
+- [x] `0123_notifications.sql` + `/notifications` (nav Inbox, not a header bell)
+- [x] `0124_scheduled_jobs.sql` daily `run_scheduled_maintenance`
+- [x] `0125_feature_flags.sql` + `FeatureFlag`
+- [x] `docs/backup-and-recovery.md`
+- [x] `0126_audit_tamper_evidence.sql` + Activity CSV export
+- [x] `0127_data_retention.sql` + Settings download
+- [x] `0128_webhooks.sql` + Operations admin
+- [x] Device sitting-day reminders (web Notifications API)
+

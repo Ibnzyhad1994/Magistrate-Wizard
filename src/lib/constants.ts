@@ -12,6 +12,8 @@ export const LOCAL_STORAGE_KEYS = {
   sidebarCollapsed: "magistrate-wizard-sidebar-collapsed",
   auth: "magistrate-wizard-auth",
   rememberMe: "magistrate-wizard-remember-me",
+  hearingReminders: "magistrate-wizard-hearing-reminders",
+  hearingReminderSent: "magistrate-wizard-hearing-reminder-sent",
 } as const;
 
 export const QUERY_STALE_TIME_MS = 30_000;

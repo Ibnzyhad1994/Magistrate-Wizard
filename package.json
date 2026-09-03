@@ -23,6 +23,7 @@
     "test:export-pdf": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-export-pdf.mjs",
     "test:shares": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-shares-item-type.mjs",
     "test:judgment-versions": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-judgment-versions.mjs",
+    "test:audit-ops": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-audit-ops.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "typecheck": "tsc -b --noEmit",

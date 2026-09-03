@@ -1,4 +1,4 @@
-import { LogOut, Map, Settings } from "lucide-react";
+import { Inbox, LogOut, Map, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   DropdownMenu,
@@ -71,6 +71,14 @@ export function UserMenu({ compact = false }: UserMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {!isPendingMagistrate && (
+          <DropdownMenuItem asChild>
+            <Link to={ROUTES.notifications}>
+              <Inbox />
+              Notifications
+            </Link>
+          </DropdownMenuItem>
+        )}
         {!isPendingMagistrate && (
           <DropdownMenuItem asChild>
             <Link to={ROUTES.settings}>

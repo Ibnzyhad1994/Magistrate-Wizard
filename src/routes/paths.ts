@@ -42,6 +42,8 @@ export const ROUTES = {
   adminPeople: "/admin/people",
   clerkAccess: "/clerk-access",
   clerkAccessRequests: "/clerk-access-requests",
+  notifications: "/notifications",
+  adminOperations: "/admin/operations",
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",

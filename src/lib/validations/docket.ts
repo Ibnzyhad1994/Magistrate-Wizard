@@ -19,6 +19,7 @@ export const DOCKET_EVENT_STATUSES = [
   "completed",
   "cancelled",
   "entered_in_error",
+  "past",
 ] as const;
 
 /**

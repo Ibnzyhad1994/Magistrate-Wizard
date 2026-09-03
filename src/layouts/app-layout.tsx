@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { TourProvider } from "@/components/tour/tour-provider";
 import { SessionLifecycle } from "@/components/auth/session-lifecycle";
+import { HearingReminderHost } from "@/components/notifications/hearing-reminder-host";
 
 /**
  * Netflix-style shell: fixed top nav over a full-bleed cinematic canvas.
@@ -15,6 +16,7 @@ export function AppLayout() {
     <div className="min-h-dvh w-full bg-[#141414]">
       <TopNav />
       <SessionLifecycle />
+      <HearingReminderHost />
       <OfflineSyncBanner />
       <MobileNav />
       <main className="min-h-dvh">
