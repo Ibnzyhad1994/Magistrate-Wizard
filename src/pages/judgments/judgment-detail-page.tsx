@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Lock, LockOpen, Trash2, CheckCircle2, Sparkles, Pencil } from "lucide-react";
+import { Lock, LockOpen, Trash2, CheckCircle2, Sparkles, Pencil, FileDown } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,10 @@ import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { Billboard } from "@/components/browse";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
+import { SharingPanel } from "@/components/sharing/sharing-panel";
+import { JudgmentVersionHistory } from "@/pages/judgments/judgment-version-history";
+import { generateJudgmentPdf, judgmentPdfFileName } from "@/lib/export/judgment-pdf";
 
 /**
  * Runs the same deterministic extraction + tag-proposal pipeline the
@@ -142,6 +146,7 @@ export default function JudgmentDetailPage() {
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.judgments, "Back to Judgments");
   const { data: judgment, isPending, isError, error, refetch } = useJudgment(id);
+  const { user } = useAuth();
   const { data: categories } = useLegalCaseCategories();
   // Both called unconditionally, before the early returns below, so this
   // component's hook-call sequence never changes across renders —
@@ -184,7 +189,22 @@ export default function JudgmentDetailPage() {
   }
 
   const isDraft = judgment.status === "draft";
+  const isOwner = judgment.owner_id === user?.id;
   const categoryName = (categories ?? []).find((c) => c.id === judgment.category_id)?.name;
+
+  const handleExportPdf = () => {
+    const doc = generateJudgmentPdf({
+      title: judgment.title,
+      caseNumber: judgment.case_number,
+      citation: judgment.citation,
+      courtName: judgment.court_name,
+      judgmentDate: judgment.judgment_date,
+      status: judgment.status,
+      contentText: judgment.content_text,
+      generatedAtLabel: new Date().toLocaleString(),
+    });
+    doc.save(judgmentPdfFileName(judgment.title));
+  };
 
   return (
     <>
@@ -211,11 +231,20 @@ export default function JudgmentDetailPage() {
           <Badge variant={isDraft ? "secondary" : "default"}>{toTitleCase(judgment.status)}</Badge>
           {categoryName && <Badge variant="outline">{categoryName}</Badge>}
           <BookmarkToggle entityType="judgment" entityId={judgment.id} />
+          <Button size="sm" variant="outline" onClick={handleExportPdf}>
+            <FileDown className="h-4 w-4" />
+            Export PDF
+          </Button>
         </div>
 
       <LifecycleBar judgment={judgment} contentDirty={contentDirty} />
 
-      <ContentCard judgment={judgment} isDraft={isDraft} onDirtyChange={setContentDirty} />
+      <ContentCard
+        key={`${judgment.id}-${judgment.updated_at}`}
+        judgment={judgment}
+        isDraft={isDraft}
+        onDirtyChange={setContentDirty}
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -232,10 +261,13 @@ export default function JudgmentDetailPage() {
         </div>
       </div>
 
+      {isOwner && <JudgmentVersionHistory judgmentId={judgment.id} status={judgment.status} />}
+
       <Tabs defaultValue="links">
         <TabsList>
           <TabsTrigger value="links">Links</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          {isOwner && <TabsTrigger value="sharing">Sharing</TabsTrigger>}
         </TabsList>
         <TabsContent value="links">
           <LinksPanel judgmentId={judgment.id} />
@@ -247,6 +279,11 @@ export default function JudgmentDetailPage() {
             onUploaded={(file) => void autoClassify.run(file)}
           />
         </TabsContent>
+        {isOwner && (
+          <TabsContent value="sharing">
+            <SharingPanel itemType="judgment" itemId={judgment.id} canManage />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
     </>

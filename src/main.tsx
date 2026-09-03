@@ -2,8 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "@/App";
 import { initNativeShell } from "@/lib/native-shell";
+import { initSentry } from "@/lib/sentry";
 import "@/index.css";
 
+initSentry();
 void initNativeShell();
 
 const rootElement = document.getElementById("root");

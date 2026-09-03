@@ -197,6 +197,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [isActive, location.pathname]);
 
   useEffect(() => {
+    if (status === "locked" && isActiveRef.current) {
+      void handleStop(false);
+    }
+  }, [handleStop, status]);
+
+  useEffect(() => {
     if (status !== "authenticated") {
       clearWalkthroughAutoPlaySessions();
       didAutoStartThisInstance.current = false;
@@ -257,7 +263,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   return (
     <TourContext.Provider value={{ isActive, canWalkthrough, startWalkthrough }}>
       {children}
-      {current && (
+      {current && status !== "locked" && (
         <TourOverlay
           key={`${current.id}-${location.pathname}-${chapter}`}
           step={current}

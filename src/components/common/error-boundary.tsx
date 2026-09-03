@@ -3,6 +3,7 @@ import { isRouteErrorResponse, useRouteError } from "react-router-dom";
 import { FullPageError } from "@/components/common/full-page-error";
 import { getErrorMessage } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
+import { reportRenderError } from "@/lib/sentry";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -33,10 +34,8 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Replace with a real error-reporting integration (e.g. Sentry) when
-    // one is wired up. Left as console output intentionally so failures
-    // are never silently swallowed during development.
     console.error(`${APP_NAME} render error:`, error, errorInfo);
+    reportRenderError(error, errorInfo);
   }
 
   private handleRetry = () => {

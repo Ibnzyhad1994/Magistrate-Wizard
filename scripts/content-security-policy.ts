@@ -28,7 +28,7 @@ export function buildCsp(supabaseUrl: string): string {
     "font-src 'self' https://fonts.gstatic.com data:",
     `img-src 'self' blob: data: ${origin}`,
     "media-src 'self' blob:",
-    `connect-src 'self' ${origin} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com`,
+    `connect-src 'self' ${origin} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
     `frame-src 'self' blob: ${origin}`,
     "object-src 'none'",
     "base-uri 'self'",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Trash2 } from "lucide-react";
+import { Trash2, FileDown } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { ROUTES } from "@/routes/paths";
 import { toTitleCase } from "@/lib/utils";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { Billboard } from "@/components/browse";
+import { generateBenchNotePdf, benchNotePdfFileName } from "@/lib/export/bench-note-pdf";
 
 /** How long to wait after the last keystroke before persisting content. */
 const AUTOSAVE_DEBOUNCE_MS = 1200;
@@ -151,6 +152,25 @@ export default function BenchNoteDetailPage() {
             {toTitleCase(note.status)}
           </Badge>
           <BookmarkToggle entityType="bench_note" entityId={note.id} />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const doc = generateBenchNotePdf({
+                title: note.title,
+                parentLabel: parent
+                  ? [parent.label, parent.subtitle].filter(Boolean).join(" · ")
+                  : (PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type),
+                status: note.status,
+                contentText: note.content_text,
+                generatedAtLabel: new Date().toLocaleString(),
+              });
+              doc.save(benchNotePdfFileName(note.title));
+            }}
+          >
+            <FileDown className="h-4 w-4" />
+            Export PDF
+          </Button>
         </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">

@@ -1,0 +1,45 @@
+name: Migration CI
+
+# Apply every committed SQL migration against a fresh local Postgres.
+# Fast develop CI never starts Docker; this job is the apply-break gate.
+# Seed is skipped so the job measures schema apply, not fixture load.
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+      - ".github/workflows/migration-ci.yml"
+  push:
+    branches:
+      - develop
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+      - ".github/workflows/migration-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  apply-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Cache Supabase CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.supabase
+          key: supabase-cli-${{ runner.os }}-${{ hashFiles('supabase/config.toml') }}
+
+      - name: Start local database
+        run: npx supabase db start
+
+      - name: Reset and apply all migrations (no seed)
+        run: npx supabase db reset --yes --no-seed

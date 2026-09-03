@@ -1905,6 +1905,66 @@ export type Database = {
           },
         ]
       }
+      judgment_versions: {
+        Row: {
+          case_number: string | null
+          citation: string | null
+          content: Json | null
+          content_text: string | null
+          court_name: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          judgment_date: string | null
+          judgment_id: string
+          title: string
+          version_number: number
+        }
+        Insert: {
+          case_number?: string | null
+          citation?: string | null
+          content?: Json | null
+          content_text?: string | null
+          court_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          judgment_date?: string | null
+          judgment_id: string
+          title: string
+          version_number: number
+        }
+        Update: {
+          case_number?: string | null
+          citation?: string | null
+          content?: Json | null
+          content_text?: string | null
+          court_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          judgment_date?: string | null
+          judgment_id?: string
+          title?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judgment_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judgment_versions_judgment_id_fkey"
+            columns: ["judgment_id"]
+            isOneToOne: false
+            referencedRelation: "judgments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_authority_courts: {
         Row: {
           aliases: string[]
@@ -2540,13 +2600,6 @@ export type Database = {
             columns: ["granted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shares_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "docket_matters"
             referencedColumns: ["id"]
           },
           {
@@ -3503,6 +3556,13 @@ export type Database = {
       }
       resolve_docket_share_recipient: {
         Args: { p_docket_matter_id: string; p_email: string }
+        Returns: {
+          display_name: string
+          profile_id: string
+        }[]
+      }
+      resolve_item_share_recipient: {
+        Args: { p_email: string; p_item_id: string; p_item_type: string }
         Returns: {
           display_name: string
           profile_id: string

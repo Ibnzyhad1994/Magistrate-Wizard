@@ -57,6 +57,8 @@ import { formatDate, formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { Billboard } from "@/components/browse";
+import { SharingPanel } from "@/components/sharing/sharing-panel";
+import { isShareableCaseLaw } from "@/lib/shares";
 
 export default function CaseLawDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -130,6 +132,10 @@ export default function CaseLawDetailPage() {
             annotations.
           </p>
         </div>
+      )}
+
+      {isOwner && isShareableCaseLaw(caseLaw.owner_id) && (
+        <SharingPanel itemType="case_law" itemId={caseLaw.id} canManage />
       )}
 
       {isCanonical && isAdmin && (

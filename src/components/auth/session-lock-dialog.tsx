@@ -46,8 +46,8 @@ export function SessionLockDialog() {
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
-        overlayClassName="z-[80]"
-        className="z-[80] sm:max-w-md"
+        overlayClassName="z-[220]"
+        className="z-[220] sm:max-w-md"
       >
         <DialogHeader>
           <DialogTitle>Session locked</DialogTitle>
