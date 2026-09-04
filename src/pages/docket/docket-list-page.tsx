@@ -26,10 +26,12 @@ import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
 import { EMPTY_PROCEDURE_FILTERS, hasActiveProcedureFilters, type ProcedureFilters } from "@/lib/docket-procedure";
+import { shouldShowDocketTourExample } from "@/lib/docket-tour-example";
 import { useUiStore } from "@/store/ui-store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ALL_COURTS_PARAM, docketScopeTitle, resolveDocketScope } from "@/lib/docket-scope";
-
+import { useTour } from "@/components/tour/use-tour";
+import { DocketTourExample } from "@/pages/docket/docket-tour-example";
 
 function docketCover(matter: {
   case_number: string;
@@ -119,6 +121,7 @@ export default function DocketListPage() {
   }, [courtId]);
 
   const isDesktop = useIsDesktop();
+  const { isActive: tourActive } = useTour();
   const docketBrowseView = useUiStore((s) => s.docketBrowseView);
   const setDocketBrowseView = useUiStore((s) => s.setDocketBrowseView);
   const { data, isPending, isError, error, refetch } = useDocketMatterBoard(
@@ -143,8 +146,14 @@ export default function DocketListPage() {
     setSearchParams(next, { replace: true });
   }, [noCourts, searchParams, setSearchParams]);
   const filtersOn = hasActiveProcedureFilters(filters);
-  const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (search || filtersOn);
+  const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (!!search || filtersOn);
   const emptyBecauseDate = !isPending && !isError && (data?.length ?? 0) === 0 && !!selectedDate && !search && !filtersOn;
+  const showTourExample = shouldShowDocketTourExample({
+    tourActive,
+    matterCount: data?.length ?? 0,
+    emptyBecauseFilters,
+    emptyBecauseDate,
+  });
 
   return (
     <BrowsePage>
@@ -246,47 +255,50 @@ export default function DocketListPage() {
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} className="border-0" />
       ) : !data || data.length === 0 ? (
-        <div data-tour="docket-board">
-        <EmptyState
-          icon={ClipboardList}
-          title={
-            emptyBecauseFilters
-              ? "No matters at this stage"
-              : emptyBecauseDate
-                ? `No matters scheduled for ${formatDate(selectedDate as string)}.`
-                : "No docket matters yet"
-          }
-          description={
-            emptyBecauseFilters
-              ? "Nothing matches these filters. Clear them to see the rest of the list."
-              : emptyBecauseDate
-                ? "Set a matter's Next Date to this date to see it here, or switch to All Matters."
-                : "Matters you create, are assigned, or are shared on will appear here."
-          }
-          action={
-            emptyBecauseFilters ? (
-              <Button
-                variant="play"
-                size="sm"
-                onClick={() => setFilters(EMPTY_PROCEDURE_FILTERS)}
-              >
-                Clear filters
-              </Button>
-            ) : emptyBecauseDate ? (
-              <Button variant="play" size="sm" onClick={() => setSelectedDate(null)}>
-                All Matters
-              </Button>
-            ) : (
-              !search &&
-              !noCourts && (
-                <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Create the first matter
-                </Button>
-              )
-            )
-          }
-        />
+        <div className="space-y-4">
+          <div {...(!showTourExample ? { "data-tour": "docket-board" } : {})}>
+            <EmptyState
+              icon={ClipboardList}
+              title={
+                emptyBecauseFilters
+                  ? "No matters at this stage"
+                  : emptyBecauseDate
+                    ? `No matters scheduled for ${formatDate(selectedDate as string)}.`
+                    : "No docket matters yet"
+              }
+              description={
+                emptyBecauseFilters
+                  ? "Nothing matches these filters. Clear them to see the rest of the list."
+                  : emptyBecauseDate
+                    ? "Set a matter's Next Date to this date to see it here, or switch to All Matters."
+                    : "Matters you create, are assigned, or are shared on will appear here."
+              }
+              action={
+                emptyBecauseFilters ? (
+                  <Button
+                    variant="play"
+                    size="sm"
+                    onClick={() => setFilters(EMPTY_PROCEDURE_FILTERS)}
+                  >
+                    Clear filters
+                  </Button>
+                ) : emptyBecauseDate ? (
+                  <Button variant="play" size="sm" onClick={() => setSelectedDate(null)}>
+                    All Matters
+                  </Button>
+                ) : (
+                  !search &&
+                  !noCourts && (
+                    <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-4 w-4" />
+                      Create the first matter
+                    </Button>
+                  )
+                )
+              }
+            />
+          </div>
+          {showTourExample && <DocketTourExample />}
         </div>
       ) : docketBrowseView === "list" ? (
         isDesktop ? (

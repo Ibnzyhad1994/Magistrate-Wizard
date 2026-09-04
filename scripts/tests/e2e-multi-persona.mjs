@@ -1,22 +1,17 @@
 /**
- * Persona-driven end-to-end simulation against local Magistrate Wizard.
- * Creates skill-level users, runs distinct workflows (incl. client OCR ingest
- * for curator / experienced magistrate), and writes results JSON.
+ * Comprehensive multi-persona E2E against local Magistrate Wizard APIs
+ * (the same PostgREST + RLS path the UI uses). Complements
+ * simulate-persona-workflows.mjs (OCR/skill paths) and simulate-twenty-users.mjs.
  *
- *   npm run test:persona-workflows
+ *   npm run test:e2e-personas
  */
 import { writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createClient } from "@supabase/supabase-js"
-import { ingestDocument } from "@/lib/ingest-document"
-import { terminateOcrWorker } from "@/lib/ocr/engine"
-import { characterErrorRate, containsNormalized } from "@/lib/ocr/accuracy"
-import { makeRenderedScanPdf, SCAN_GROUND_TRUTH, SCAN_MUST_CONTAIN } from "../test-support/scanned-pdf-fixtures.mjs"
-import { makeTextPdf } from "../test-support/pdf-fixtures.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const RESULTS = join(__dirname, "persona-workflow-results.json")
+const RESULTS = join(__dirname, "e2e-multi-persona-results.json")
 
 const URL = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:55321"
 const ANON =
@@ -26,7 +21,8 @@ const SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
 const PASSWORD = "password123"
-const RUN = `P${Date.now().toString(36).slice(-6).toUpperCase()}`
+const RUN = `E2E${Date.now().toString(36).slice(-5).toUpperCase()}`
+const SEED_ADMIN_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
 
 const admin = createClient(URL, SERVICE, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -35,13 +31,13 @@ const anon = createClient(URL, ANON, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
 
-/** @type {{ ok: boolean, persona: string, step: string, detail: string, ms?: number }[]} */
+/** @type {{ ok: boolean, persona: string, step: string, detail: string }[]} */
 const results = []
 
-const log = (ok, persona, step, detail = "", ms) => {
-  const row = { ok: !!ok, persona, step, detail: String(detail).slice(0, 500), ...(ms != null ? { ms } : {}) }
+const log = (ok, persona, step, detail = "") => {
+  const row = { ok: !!ok, persona, step, detail: String(detail).slice(0, 500) }
   results.push(row)
-  console.log(`${ok ? "PASS" : "FAIL"}  [${persona}] ${step}${detail ? ` — ${detail}` : ""}${ms != null ? ` (${ms}ms)` : ""}`)
+  console.log(`${ok ? "PASS" : "FAIL"}  [${persona}] ${step}${detail ? ` — ${detail}` : ""}`)
 }
 
 const fail = (persona, step, err) => {
@@ -85,7 +81,7 @@ const ensureUser = async ({ email, fullName, role }) => {
   return data.user.id
 }
 
-const ensureAssignment = async (profileId, courtId, assignmentType = "regular") => {
+const ensureMagistrateAssignment = async (profileId, courtId, assignmentType = "acting") => {
   const { data: live } = await admin
     .from("magistrate_courts")
     .select("id")
@@ -121,94 +117,121 @@ const ensureClerkAssignment = async (profileId, courtId, approvedBy) => {
   return data.id
 }
 
-/**
- * Skill-level personas — each exercises a different slice of the product.
- */
+const endCurrentAssignments = async (profileId, reason) => {
+  const { error } = await admin
+    .from("magistrate_courts")
+    .update({
+      ended_at: new Date().toISOString(),
+      end_reason: reason,
+    })
+    .eq("profile_id", profileId)
+    .is("ended_at", null)
+  if (error) throw error
+}
+
+const pickOpenRegularCourt = async (excludeIds = []) => {
+  const { data: occupied } = await admin
+    .from("magistrate_courts")
+    .select("court_id")
+    .eq("assignment_type", "regular")
+    .is("ended_at", null)
+  const taken = new Set([...(occupied ?? []).map((r) => r.court_id), ...excludeIds])
+  const { data: courts } = await admin.from("courts").select("id, name").eq("is_active", true).order("name")
+  const open = (courts ?? []).find((c) => !taken.has(c.id))
+  if (!open) throw new Error("no court without an active regular magistrate")
+  return open
+}
+
 const PERSONAS = [
   {
     key: "novice",
     email: "persona.novice@magistrate-wizard.local",
     fullName: "Hon. Maya Novice (Day-1 Magistrate)",
     role: "magistrate",
-    level: "beginner",
-    description: "First sitting: login, create one matter, parties, short note, search. No OCR.",
-    assignmentType: "regular",
   },
   {
     key: "experienced",
     email: "persona.experienced@magistrate-wizard.local",
     fullName: "Hon. James Experienced (Senior Magistrate)",
     role: "magistrate",
-    level: "advanced",
-    description: "Full docket lifecycle + OCR scanned judgment ingest into draft ruling.",
-    assignmentType: "regular",
   },
   {
     key: "covering",
     email: "persona.covering@magistrate-wizard.local",
     fullName: "Hon. Aisha Covering (Relief Magistrate)",
     role: "magistrate",
-    level: "intermediate",
-    description: "Relief assignment + receive view share; must not edit unless edit share.",
-    assignmentType: "relief",
   },
   {
     key: "clerk",
     email: "persona.clerk@magistrate-wizard.local",
     fullName: "Clerk Devon Registry",
     role: "clerk",
-    level: "intermediate",
-    description: "Court clerk: list matters, add event notes, cannot admin profiles.",
-    assignmentType: "regular",
   },
   {
     key: "admin",
     email: "persona.admin@magistrate-wizard.local",
     fullName: "Admin Lex Curator",
     role: "admin",
-    level: "expert",
-    description: "Admin: profiles, court assign, legal sources, OCR library ingest simulation.",
-    assignmentType: "regular",
   },
   {
     key: "outsider",
     email: "persona.outsider@magistrate-wizard.local",
     fullName: "Outsider No Court",
     role: "magistrate",
-    level: "none",
-    description: "Authenticated magistrate with ZERO court assignment — isolation checks.",
-    assignmentType: null,
+  },
+  {
+    key: "empty",
+    email: "empty.mag@magistrate-wizard.local",
+    fullName: "Empty Docket Magistrate",
+    role: "magistrate",
   },
 ]
 
-const runNoviceWorkflow = async (actor, court) => {
+const insertMatter = async (sb, courtId, caseNumber, title, charge) => {
+  const { data, error } = await sb
+    .from("docket_matters")
+    .insert({
+      court_id: courtId,
+      case_number: caseNumber,
+      matter_title: title,
+      charge_or_issue: charge,
+      status: "active",
+    })
+    .select()
+    .single()
+  return { data, error }
+}
+
+const runNovice = async (actor, court) => {
   const tag = actor.key
-  const t0 = Date.now()
   try {
     const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
+    log(true, tag, "login")
     const sb = clientAs(token)
 
-    const { data: courts, error: cErr } = await sb
+    const { data: courts } = await sb
       .from("magistrate_courts")
-      .select("court_id, courts(name)")
+      .select("court_id, assignment_type, courts(name)")
       .eq("profile_id", user.id)
       .is("ended_at", null)
-    if (cErr) return fail(tag, "list courts", cErr)
     log((courts?.length ?? 0) > 0, tag, "sees court assignment", courts?.[0]?.courts?.name ?? "")
 
+    const { data: notices } = await sb.from("notifications").select("id, type").limit(20)
+    log(true, tag, "list notifications", `${notices?.length ?? 0} (court_assigned expected)`)
+    log(
+      (notices ?? []).some((n) => n.type === "court_assigned"),
+      tag,
+      "received court_assigned notice",
+    )
+
     const caseNumber = `N-${RUN}-01`
-    const { data: matter, error: mErr } = await sb
-      .from("docket_matters")
-      .insert({
-        court_id: court.id,
-        case_number: caseNumber,
-        matter_title: `Police v. First Day Defendant (${tag})`,
-        charge_or_issue: "Simple larceny",
-        status: "active",
-      })
-      .select()
-      .single()
+    const { data: matter, error: mErr } = await insertMatter(
+      sb,
+      court.id,
+      caseNumber,
+      `Police v. First Day Defendant (${tag})`,
+      "Simple larceny",
+    )
     if (mErr) return fail(tag, "create first matter", mErr)
     log(true, tag, "create first matter", caseNumber)
     actor.matterId = matter.id
@@ -224,54 +247,106 @@ const runNoviceWorkflow = async (actor, court) => {
     if (pErr) fail(tag, "add accused", pErr)
     else log(true, tag, "add accused")
 
+    const { error: procErr } = await sb
+      .from("docket_matters")
+      .update({
+        arraignment_status: "done",
+        custody_status: "on_bail",
+        updated_at: matter.updated_at,
+      })
+      .eq("id", matter.id)
+      .eq("updated_at", matter.updated_at)
+    if (procErr) fail(tag, "patch procedure board", procErr)
+    else log(true, tag, "patch procedure board", "arraignment done, on bail")
+
+    const { data: nextDate, error: ndErr } = await sb.rpc("set_docket_matter_next_date", {
+      p_docket_matter_id: matter.id,
+      p_scheduled_date: "2026-09-10",
+    })
+    if (ndErr) fail(tag, "set next date", ndErr)
+    else log(true, tag, "set next date", nextDate?.[0]?.status ?? JSON.stringify(nextDate)?.slice(0, 80))
+
+    const { data: events, error: evErr } = await sb
+      .from("docket_events")
+      .select("id, scheduled_date, event_status")
+      .eq("docket_matter_id", matter.id)
+    if (evErr) fail(tag, "calendar events for matter", evErr)
+    else log((events?.length ?? 0) > 0, tag, "calendar events for matter", `${events?.length ?? 0}`)
+
     const { error: nErr } = await sb.from("bench_notes").insert({
       title: `Day-1 notes — ${caseNumber}`,
       entity_type: "docket_matter",
       entity_id: matter.id,
       status: "draft",
       is_private: true,
-      content_text: "Reminded of plea options. Adjourned for counsel.",
+      content_text: "Reminded of plea options.",
     })
     if (nErr) fail(tag, "draft bench note", nErr)
     else log(true, tag, "draft bench note")
 
-    const { data: hits, error: sErr } = await sb.rpc("search_docket_matters", {
-      p_query: "First",
-      p_limit: 5,
-    })
+    const { data: hits, error: sErr } = await sb.rpc("search_docket_matters", { p_query: "First", p_limit: 5 })
     if (sErr) fail(tag, "search own matter", sErr)
     else log(true, tag, "search own matter", `${hits?.length ?? 0} hits`)
 
-    log(true, tag, "workflow complete", "beginner path", Date.now() - t0)
+    const { data: statutes, error: stErr } = await sb.from("statutes").select("id, title").limit(5)
+    if (stErr) fail(tag, "browse legislation", stErr)
+    else log(true, tag, "browse legislation", `${statutes?.length ?? 0} visible`)
+
+    const { error: bmErr } = await sb.from("bookmarks").insert({
+      entity_type: "docket_matter",
+      entity_id: matter.id,
+      user_id: user.id,
+    })
+    if (bmErr) fail(tag, "bookmark", bmErr)
+    else log(true, tag, "bookmark")
+
+    const { error: binErr } = await sb.rpc("bin_docket_matter", { p_id: matter.id })
+    if (binErr) fail(tag, "bin matter", binErr)
+    else {
+      log(true, tag, "bin matter")
+      const { data: hidden } = await sb
+        .from("docket_matters")
+        .select("id, deleted_at")
+        .eq("id", matter.id)
+        .is("deleted_at", null)
+        .maybeSingle()
+      const { data: binned } = await sb
+        .from("docket_matters")
+        .select("id, deleted_at")
+        .eq("id", matter.id)
+        .maybeSingle()
+      log(!hidden && !!binned?.deleted_at, tag, "binned matter hidden from live list", hidden ? "still on live filter" : "hidden; restore path still readable")
+      const { error: restErr } = await sb.rpc("restore_docket_matter", { p_id: matter.id })
+      if (restErr) fail(tag, "restore from bin", restErr)
+      else log(true, tag, "restore from bin")
+    }
+
+    log(true, tag, "workflow complete")
   } catch (err) {
     fail(tag, "workflow crashed", err)
   }
 }
 
-const runExperiencedWorkflow = async (actor, court, shareWith) => {
+const runExperienced = async (actor, court, shareWith) => {
   const tag = actor.key
-  const t0 = Date.now()
   try {
     const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
+    log(true, tag, "login")
     const sb = clientAs(token)
 
     const caseNumber = `E-${RUN}-42`
-    const { data: matter, error: mErr } = await sb
-      .from("docket_matters")
-      .insert({
-        court_id: court.id,
-        case_number: caseNumber,
-        matter_title: `Police v. Senior Sitting (${tag})`,
-        charge_or_issue: "Assault occasioning actual bodily harm",
-        status: "active",
-      })
-      .select()
-      .single()
+    const { data: matter, error: mErr } = await insertMatter(
+      sb,
+      court.id,
+      caseNumber,
+      `Police v. Senior Sitting (${tag})`,
+      "Assault occasioning actual bodily harm",
+    )
     if (mErr) return fail(tag, "create matter", mErr)
     log(true, tag, "create matter", caseNumber)
     actor.matterId = matter.id
     actor.caseNumber = caseNumber
+    actor.courtId = court.id
 
     for (const p of [
       { full_name: "Senior Sitting Accused", party_type: "individual", role: "accused" },
@@ -308,7 +383,7 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         .update({
           event_status: "completed",
           outcome_at_event: "Adjourned part-heard",
-          orders_made_at_event: "Bail continued. Next sitting 3 Sep 2026.",
+          orders_made_at_event: "Bail continued.",
         })
         .eq("id", event.id)
       if (uErr) fail(tag, "complete hearing", uErr)
@@ -323,36 +398,12 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
     if (retErr) fail(tag, "retain part-heard", retErr)
     else log(true, tag, "retain part-heard")
 
-    for (const t of ["urgent", "part-heard"]) {
-      const { error } = await sb.from("docket_matter_tags").insert({
-        docket_matter_id: matter.id,
-        tag_name: t,
-      })
-      if (error) fail(tag, `tag ${t}`, error)
-      else log(true, tag, `tag ${t}`)
-    }
-
-    // Client-side OCR ingest (what happens when they upload a scan into a draft)
-    const scanFile = makeRenderedScanPdf({ name: `persona-scan-${RUN}.pdf`, jpegQuality: 88 })
-    const ocrT0 = Date.now()
-    const envelope = await ingestDocument(scanFile)
-    const ocrMs = Date.now() - ocrT0
-    const hits = SCAN_MUST_CONTAIN.filter((p) => containsNormalized(envelope.text, p)).length
-    const usable = envelope.status === "extracted" || envelope.status === "low_quality"
-    log(
-      usable && envelope.ocrUsed === true && envelope.requiresReview === true && hits >= 2,
-      tag,
-      "OCR ingest scanned judgment",
-      `status=${envelope.status} hits=${hits}/${SCAN_MUST_CONTAIN.length} cer=${usable ? characterErrorRate(envelope.text, SCAN_GROUND_TRUTH).toFixed(3) : "n/a"}`,
-      ocrMs,
-    )
-    actor.ocrStatus = envelope.status
-    actor.ocrMs = ocrMs
-
-    const judgmentBody =
-      usable && envelope.text
-        ? envelope.text.slice(0, 4000)
-        : "The accused is put to plea. Trial date fixed. [OCR withheld — manual entry]"
+    const { error: procErr } = await sb
+      .from("docket_matters")
+      .update({ trial_status: "partial", disclosure_status: "partial" })
+      .eq("id", matter.id)
+    if (procErr) fail(tag, "update trial/disclosure", procErr)
+    else log(true, tag, "update trial/disclosure")
 
     const { data: judgment, error: jErr } = await sb
       .from("judgments")
@@ -361,13 +412,13 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         case_number: caseNumber,
         court_name: court.name,
         judgment_date: "2026-08-14",
-        content_text: judgmentBody,
+        content_text: "The accused is put to plea. Trial date fixed.",
       })
       .select()
       .single()
-    if (jErr) fail(tag, "create judgment from OCR text", jErr)
+    if (jErr) fail(tag, "create draft judgment", jErr)
     else {
-      log(true, tag, "create judgment from OCR text", judgment.status)
+      log(true, tag, "create draft judgment", judgment.status)
       actor.judgmentId = judgment.id
       const { error: linkErr } = await sb.from("docket_matter_judgments").insert({
         docket_matter_id: matter.id,
@@ -375,26 +426,13 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
       })
       if (linkErr) fail(tag, "link judgment", linkErr)
       else log(true, tag, "link judgment")
-    }
 
-    const { data: note, error: nErr } = await sb
-      .from("bench_notes")
-      .insert({
-        title: `Continuation notes — ${caseNumber}`,
-        entity_type: "docket_matter",
-        entity_id: matter.id,
-        status: "draft",
-        is_private: true,
-        content_text: "Credibility of PW1 to be tested.",
-      })
-      .select()
-      .single()
-    if (nErr) fail(tag, "bench note", nErr)
-    else {
-      log(true, tag, "bench note")
-      const { error: pubErr } = await sb.from("bench_notes").update({ status: "published" }).eq("id", note.id)
-      if (pubErr) fail(tag, "publish bench note", pubErr)
-      else log(true, tag, "publish bench note")
+      const { error: citeErr } = await sb
+        .from("judgments")
+        .update({ citation: `[2026] E2E ${RUN}` })
+        .eq("id", judgment.id)
+      if (citeErr) fail(tag, "update judgment citation", citeErr)
+      else log(true, tag, "update judgment citation")
     }
 
     const { error: qcErr } = await sb.from("quick_codes").insert({
@@ -430,14 +468,6 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
       else log(true, tag, "link case law")
     }
 
-    const { error: bmErr } = await sb.from("bookmarks").insert({
-      entity_type: "docket_matter",
-      entity_id: matter.id,
-      user_id: user.id,
-    })
-    if (bmErr) fail(tag, "bookmark", bmErr)
-    else log(true, tag, "bookmark")
-
     if (shareWith?.email) {
       const { data: resolved, error: rErr } = await sb.rpc("resolve_docket_share_recipient", {
         p_docket_matter_id: matter.id,
@@ -456,40 +486,32 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
             permission: "view",
           })
           if (shErr) fail(tag, "share view with covering", shErr)
-          else {
-            log(true, tag, "share view with covering", shareWith.email)
-            actor.sharedWith = shareWith.email
-            actor.sharePermission = "view"
-          }
+          else log(true, tag, "share view with covering", shareWith.email)
         }
       }
     }
 
-    const { data: gHits, error: gErr } = await sb.rpc("global_search", {
-      p_query: caseNumber,
-      p_limit: 10,
-    })
+    const { data: gHits, error: gErr } = await sb.rpc("global_search", { p_query: caseNumber, p_limit: 10 })
     if (gErr) fail(tag, "global search", gErr)
     else log(true, tag, "global search", `${gHits?.length ?? 0} hits`)
 
-    log(true, tag, "workflow complete", "advanced path", Date.now() - t0)
+    log(true, tag, "workflow complete")
   } catch (err) {
     fail(tag, "workflow crashed", err)
   }
 }
 
-const runCoveringWorkflow = async (actor, court, sharedMatter) => {
+const runCovering = async (actor, court, sharedMatter, foreignMatterId) => {
   const tag = actor.key
-  const t0 = Date.now()
   try {
-    const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
+    const { token } = await signIn(actor.email)
+    log(true, tag, "login")
     const sb = clientAs(token)
 
     const { data: courts } = await sb
       .from("magistrate_courts")
       .select("assignment_type, courts(name)")
-      .eq("profile_id", user.id)
+      .eq("profile_id", actor.id)
       .is("ended_at", null)
     log(
       (courts?.length ?? 0) > 0,
@@ -498,19 +520,14 @@ const runCoveringWorkflow = async (actor, court, sharedMatter) => {
       courts?.map((c) => `${c.assignment_type}:${c.courts?.name}`).join("; ") ?? "",
     )
 
-    // Own short matter on relief court
     const caseNumber = `C-${RUN}-07`
-    const { data: matter, error: mErr } = await sb
-      .from("docket_matters")
-      .insert({
-        court_id: court.id,
-        case_number: caseNumber,
-        matter_title: `Police v. Relief Sitting (${tag})`,
-        charge_or_issue: "Threatening language",
-        status: "active",
-      })
-      .select()
-      .single()
+    const { data: matter, error: mErr } = await insertMatter(
+      sb,
+      court.id,
+      caseNumber,
+      `Police v. Relief Sitting (${tag})`,
+      "Threatening language",
+    )
     if (mErr) fail(tag, "create relief-court matter", mErr)
     else {
       log(true, tag, "create relief-court matter", caseNumber)
@@ -520,7 +537,7 @@ const runCoveringWorkflow = async (actor, court, sharedMatter) => {
     if (sharedMatter?.id) {
       const { data, error } = await sb
         .from("docket_matters")
-        .select("id, case_number, matter_title")
+        .select("id, case_number")
         .eq("id", sharedMatter.id)
         .maybeSingle()
       if (error) fail(tag, "see shared matter", error)
@@ -531,33 +548,49 @@ const runCoveringWorkflow = async (actor, court, sharedMatter) => {
         .update({ outcome: "covering-should-not-edit-view-share" })
         .eq("id", sharedMatter.id)
         .select("id")
-
-      const sameCourt = sharedMatter.court_id === court.id
       const blocked = Boolean(updErr) || !(updated?.length)
-      if (sameCourt) {
-        log(!blocked, tag, "same-court can still edit via assignment", updErr?.message ?? "ok")
-      } else {
-        log(blocked, tag, "view-share cannot edit foreign court", updErr?.message ?? "0 rows")
-      }
+      log(blocked, tag, "view-share cannot edit foreign court", updErr?.message ?? "0 rows")
     }
 
-    log(true, tag, "workflow complete", "covering path", Date.now() - t0)
+    if (foreignMatterId) {
+      const { data } = await sb.from("docket_matters").select("id").eq("id", foreignMatterId).maybeSingle()
+      log(!data, tag, "cannot see other-court unshared matter", data ? "LEAK" : "hidden")
+    }
+
+    const { data: notices } = await sb.from("notifications").select("id, type, title").limit(20)
+    log(true, tag, "list notifications after share", `${notices?.length ?? 0}`)
+
+    log(true, tag, "workflow complete")
   } catch (err) {
     fail(tag, "workflow crashed", err)
   }
 }
 
-const runClerkWorkflow = async (actor, court) => {
+const runClerk = async (actor, court) => {
   const tag = actor.key
-  const t0 = Date.now()
   try {
     const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
+    log(true, tag, "login")
     const sb = clientAs(token)
+
+    const { data: clerkCourts, error: ccErr } = await sb
+      .from("clerk_courts")
+      .select("court_id, courts(name)")
+      .eq("profile_id", user.id)
+      .is("ended_at", null)
+    if (ccErr) fail(tag, "list clerk_courts", ccErr)
+    else log((clerkCourts?.length ?? 0) > 0, tag, "clerk_courts assignment", clerkCourts?.[0]?.courts?.name ?? "")
+
+    const { data: magCourts } = await sb
+      .from("magistrate_courts")
+      .select("id")
+      .eq("profile_id", user.id)
+      .is("ended_at", null)
+    log(true, tag, "magistrate_courts rows for clerk", `${magCourts?.length ?? 0}`)
 
     const { data: matters, error: listErr } = await sb
       .from("docket_matters")
-      .select("id, case_number, matter_title")
+      .select("id, case_number")
       .eq("court_id", court.id)
       .order("updated_at", { ascending: false })
       .limit(20)
@@ -565,17 +598,13 @@ const runClerkWorkflow = async (actor, court) => {
     else log(true, tag, "list court docket", `${matters?.length ?? 0} matters`)
 
     const caseNumber = `K-${RUN}-03`
-    const { data: matter, error: mErr } = await sb
-      .from("docket_matters")
-      .insert({
-        court_id: court.id,
-        case_number: caseNumber,
-        matter_title: `Registry filing (${tag})`,
-        charge_or_issue: "Failure to maintain a child",
-        status: "active",
-      })
-      .select()
-      .single()
+    const { data: matter, error: mErr } = await insertMatter(
+      sb,
+      court.id,
+      caseNumber,
+      `Registry filing (${tag})`,
+      "Failure to maintain a child",
+    )
     if (mErr) fail(tag, "create registry matter", mErr)
     else {
       log(true, tag, "create registry matter", caseNumber)
@@ -601,18 +630,28 @@ const runClerkWorkflow = async (actor, court) => {
       log(leaked.length === 0, tag, "cannot browse other profiles", leaked.length ? `LEAK ${leaked.length}` : "own only")
     }
 
-    log(true, tag, "workflow complete", "clerk path", Date.now() - t0)
+    const { error: assignErr } = await sb.from("magistrate_courts").insert({
+      profile_id: user.id,
+      court_id: court.id,
+      assignment_type: "acting",
+    })
+    log(!!assignErr, tag, "cannot self-assign magistrate_courts", assignErr?.message ?? "INSERT succeeded")
+
+    const { data: issueReports, error: irErr } = await sb.from("issue_reports").select("id").limit(5)
+    if (irErr) log(true, tag, "issue_reports blocked or empty", irErr.message)
+    else log((issueReports?.length ?? 0) === 0, tag, "cannot browse others' issue reports", `${issueReports?.length ?? 0}`)
+
+    log(true, tag, "workflow complete")
   } catch (err) {
     fail(tag, "workflow crashed", err)
   }
 }
 
-const runAdminWorkflow = async (actor, targetProfileId, extraCourt) => {
+const runAdmin = async (actor, targetProfileId, extraCourt) => {
   const tag = actor.key
-  const t0 = Date.now()
   try {
     const { token } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
+    log(true, tag, "login")
     const sb = clientAs(token)
 
     const { data: profiles, error: pErr } = await sb.from("profiles").select("id, email, role").order("email").limit(50)
@@ -625,7 +664,9 @@ const runAdminWorkflow = async (actor, targetProfileId, extraCourt) => {
         court_id: extraCourt.id,
         assignment_type: "acting",
       })
-      if (error) fail(tag, "assign acting court", error)
+      if (error?.message?.includes("magistrate_courts_current_pair_idx")) {
+        log(true, tag, "assign acting court", `${extraCourt.name} (already seated)`)
+      } else if (error) fail(tag, "assign acting court", error)
       else log(true, tag, "assign acting court", extraCourt.name)
     }
 
@@ -633,45 +674,24 @@ const runAdminWorkflow = async (actor, targetProfileId, extraCourt) => {
     if (sErr) fail(tag, "legal sources", sErr)
     else log(true, tag, "legal sources", `${sources?.length ?? 0}`)
 
-    // Library curator: OCR a scan + prefer text-layer PDF (what bulk ingest does client-side)
-    const scan = makeRenderedScanPdf({ name: `library-scan-${RUN}.pdf`, jpegQuality: 90 })
-    const textPdf = makeTextPdf(SCAN_GROUND_TRUTH.split("\n").filter(Boolean), `library-text-${RUN}.pdf`)
-
-    const ocrT0 = Date.now()
-    const scanEnv = await ingestDocument(scan)
-    const ocrMs = Date.now() - ocrT0
-    const textT0 = Date.now()
-    const textEnv = await ingestDocument(textPdf)
-    const textMs = Date.now() - textT0
-
-    const scanOk =
-      (scanEnv.status === "extracted" || scanEnv.status === "low_quality") &&
-      scanEnv.ocrUsed === true &&
-      scanEnv.requiresReview === true
-    log(scanOk, tag, "library OCR scan ingest", `status=${scanEnv.status}`, ocrMs)
-    log(
-      textEnv.ocrUsed === false && textEnv.method === "pdf_text_layer",
-      tag,
-      "library text-layer prefers fast path",
-      `method=${textEnv.method}`,
-      textMs,
-    )
+    const { data: reports, error: rErr } = await sb.from("issue_reports").select("id, status").limit(10)
+    if (rErr) fail(tag, "list issue reports", rErr)
+    else log(true, tag, "list issue reports", `${reports?.length ?? 0}`)
 
     const { data: matters } = await sb.from("docket_matters").select("id").limit(5)
     log(true, tag, "admin docket visibility is court-gated", `${matters?.length ?? 0} matters`)
 
-    log(true, tag, "workflow complete", "admin/curator path", Date.now() - t0)
+    log(true, tag, "workflow complete")
   } catch (err) {
     fail(tag, "workflow crashed", err)
   }
 }
 
-const runOutsiderWorkflow = async (actor, foreignMatterId) => {
+const runOutsider = async (actor, foreignMatterId, geo1Id) => {
   const tag = actor.key
-  const t0 = Date.now()
   try {
     const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
+    log(true, tag, "login")
     const sb = clientAs(token)
 
     const { data: courts } = await sb
@@ -690,35 +710,80 @@ const runOutsiderWorkflow = async (actor, foreignMatterId) => {
       log(!data, tag, "cannot see foreign matter", data ? "LEAK" : "hidden")
     }
 
+    const { error: insErr } = await sb.from("docket_matters").insert({
+      court_id: geo1Id,
+      case_number: `X-${RUN}-NO`,
+      matter_title: "Should not insert",
+      charge_or_issue: "Isolation",
+      status: "active",
+    })
+    log(!!insErr, tag, "cannot create matter on foreign court", insErr?.message ?? "INSERT succeeded")
+
     const { data: profiles } = await sb.from("profiles").select("id, email").limit(20)
     const leaked = (profiles ?? []).filter((p) => p.email !== actor.email)
     log(leaked.length === 0, tag, "cannot browse profiles", leaked.length ? `LEAK ${leaked.length}` : "own only")
 
-    log(true, tag, "workflow complete", "isolation path", Date.now() - t0)
+    log(true, tag, "workflow complete")
+  } catch (err) {
+    fail(tag, "workflow crashed", err)
+  }
+}
+
+const runEmpty = async (actor, foreignMatterId) => {
+  const tag = actor.key
+  try {
+    const { token, user } = await signIn(actor.email)
+    log(true, tag, "login", actor.email)
+    const sb = clientAs(token)
+
+    const { data: courts } = await sb
+      .from("magistrate_courts")
+      .select("court_id, courts(name)")
+      .eq("profile_id", user.id)
+      .is("ended_at", null)
+    log((courts?.length ?? 0) > 0, tag, "has court but empty docket", courts?.[0]?.courts?.name ?? "")
+
+    const { data: matters, error } = await sb.from("docket_matters").select("id, case_number").limit(50)
+    if (error) fail(tag, "list matters", error)
+    else log((matters?.length ?? 0) === 0, tag, "truly empty docket", `${matters?.length ?? 0} matters`)
+
+    if (foreignMatterId) {
+      const { data } = await sb.from("docket_matters").select("id").eq("id", foreignMatterId).maybeSingle()
+      log(!data, tag, "cannot see other-court files", data ? "LEAK" : "hidden")
+    }
+
+    log(true, tag, "workflow complete")
   } catch (err) {
     fail(tag, "workflow crashed", err)
   }
 }
 
 const main = async () => {
-  console.log(`\nPersona workflow simulation  ${RUN}\n`)
+  console.log(`\nComprehensive multi-persona E2E  ${RUN}\n`)
   const started = Date.now()
 
-  const { data: courts, error: courtErr } = await admin
+  const { data: allCourts, error: courtErr } = await admin
     .from("courts")
     .select("id, name, is_active")
     .eq("is_active", true)
     .order("name")
-    .limit(20)
-  if (courtErr || !courts?.length) {
+  if (courtErr || !allCourts?.length) {
     fail("system", "load courts", courtErr ?? "no active courts")
     writeFileSync(RESULTS, JSON.stringify({ error: "no courts", results }, null, 2))
     process.exit(1)
   }
-  log(true, "system", "load courts", courts.map((c) => c.name).slice(0, 5).join("; "))
+  log(true, "system", "load courts", `${allCourts.length} active`)
 
-  const geo1 = courts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? courts[0]
-  const other = courts.find((c) => c.id !== geo1.id) ?? courts[1] ?? geo1
+  const geo1 = allCourts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? allCourts[0]
+  const acquero = allCourts.find((c) => c.name === "Acquero Magistrate's Court") ?? allCourts[1]
+  const noviceCourt = await pickOpenRegularCourt([geo1.id, acquero.id])
+  const coveringCourt = await pickOpenRegularCourt([geo1.id, acquero.id, noviceCourt.id])
+  const extraActing = allCourts.find(
+    (c) => c.id !== geo1.id && c.id !== noviceCourt.id && c.id !== coveringCourt.id && c.id !== acquero.id,
+  )
+
+  log(true, "system", "novice court", noviceCourt.name)
+  log(true, "system", "covering court", coveringCourt.name)
 
   /** @type {Record<string, any>} */
   const roster = {}
@@ -726,63 +791,72 @@ const main = async () => {
     try {
       const id = await ensureUser(spec)
       roster[spec.key] = { ...spec, id }
-      log(true, "system", `provision ${spec.key}`, `${spec.role} ${spec.email} (${spec.level})`)
+      log(true, "system", `provision ${spec.key}`, spec.email)
     } catch (err) {
       fail("system", `provision ${spec.key}`, err)
     }
   }
 
-  for (const key of ["novice", "experienced", "admin"]) {
-    const u = roster[key]
-    if (!u) continue
-    try {
-      await ensureAssignment(u.id, geo1.id, u.assignmentType ?? "acting")
-      u.court = geo1
-      log(true, "system", `assign ${key}`, `${geo1.name} (${u.assignmentType ?? "acting"})`)
-    } catch (err) {
-      fail("system", `assign ${key}`, err)
-    }
+  try {
+    await ensureMagistrateAssignment(roster.novice.id, noviceCourt.id, "regular")
+    log(true, "system", "assign novice", `${noviceCourt.name} (regular)`)
+  } catch (err) {
+    fail("system", "assign novice", err)
   }
-  if (roster.clerk) {
-    try {
-      await ensureClerkAssignment(roster.clerk.id, geo1.id, roster.admin?.id ?? roster.experienced?.id)
-      roster.clerk.court = geo1
-      log(true, "system", "assign clerk", `${geo1.name} (clerk_courts)`)
-    } catch (err) {
-      fail("system", "assign clerk", err)
-    }
+  try {
+    await ensureMagistrateAssignment(roster.experienced.id, geo1.id, "acting")
+    log(true, "system", "assign experienced", `${geo1.name} (acting)`)
+  } catch (err) {
+    fail("system", "assign experienced", err)
   }
-  if (roster.covering) {
-    try {
-      await ensureAssignment(roster.covering.id, geo1.id, "relief")
-      roster.covering.court = geo1
-      log(true, "system", "assign covering", `${geo1.name} (relief)`)
-    } catch (err) {
-      fail("system", "assign covering", err)
-    }
+  try {
+    await endCurrentAssignments(roster.covering.id, "e2e reseat covering off shared empty court")
+    await ensureMagistrateAssignment(roster.covering.id, coveringCourt.id, "relief")
+    log(true, "system", "assign covering", `${coveringCourt.name} (relief)`)
+  } catch (err) {
+    fail("system", "assign covering", err)
+  }
+  try {
+    const emptyCourt = await pickOpenRegularCourt([geo1.id, acquero.id, noviceCourt.id, coveringCourt.id])
+    await endCurrentAssignments(roster.empty.id, "e2e reseat empty docket magistrate")
+    await ensureMagistrateAssignment(roster.empty.id, emptyCourt.id, "regular")
+    log(true, "system", "assign empty", `${emptyCourt.name} (regular, dedicated)`)
+  } catch (err) {
+    fail("system", "assign empty", err)
+  }
+  try {
+    await ensureClerkAssignment(roster.clerk.id, geo1.id, roster.admin?.id ?? SEED_ADMIN_ID)
+    log(true, "system", "assign clerk via clerk_courts", geo1.name)
+  } catch (err) {
+    fail("system", "assign clerk", err)
+  }
+  try {
+    await ensureMagistrateAssignment(roster.admin.id, geo1.id, "acting")
+    log(true, "system", "assign admin", `${geo1.name} (acting)`)
+  } catch (err) {
+    fail("system", "assign admin", err)
   }
   log(true, "system", "outsider intentionally unassigned", roster.outsider?.email ?? "")
+  log(true, "system", "empty docket magistrate", roster.empty?.email ?? "")
 
-  await runNoviceWorkflow(roster.novice, geo1)
-  await runExperiencedWorkflow(roster.experienced, geo1, roster.covering)
-  await runCoveringWorkflow(roster.covering, geo1, {
+  await runNovice(roster.novice, noviceCourt)
+  await runExperienced(roster.experienced, geo1, roster.covering)
+  await runCovering(roster.covering, coveringCourt, {
     id: roster.experienced?.matterId,
     court_id: geo1.id,
-  })
-  await runClerkWorkflow(roster.clerk, geo1)
-  await runAdminWorkflow(roster.admin, roster.novice?.id, other.id !== geo1.id ? other : null)
-  await runOutsiderWorkflow(roster.outsider, roster.experienced?.matterId)
-
-  await terminateOcrWorker()
+  }, roster.novice?.matterId)
+  await runClerk(roster.clerk, geo1)
+  await runAdmin(roster.admin, roster.novice?.id, extraActing ?? null)
+  await runOutsider(roster.outsider, roster.experienced?.matterId, geo1.id)
+  await runEmpty(roster.empty, roster.experienced?.matterId)
 
   const passed = results.filter((r) => r.ok).length
   const failed = results.filter((r) => !r.ok).length
   const byPersona = {}
   for (const r of results) {
-    if (!byPersona[r.persona]) byPersona[r.persona] = { passed: 0, failed: 0, steps: [] }
+    if (!byPersona[r.persona]) byPersona[r.persona] = { passed: 0, failed: 0 }
     if (r.ok) byPersona[r.persona].passed += 1
     else byPersona[r.persona].failed += 1
-    byPersona[r.persona].steps.push(r)
   }
 
   const payload = {
@@ -792,19 +866,13 @@ const main = async () => {
     total: results.length,
     passed,
     failed,
+    byPersona,
     personas: PERSONAS.map((p) => ({
       key: p.key,
       email: p.email,
-      fullName: p.fullName,
       role: p.role,
-      level: p.level,
-      description: p.description,
-      password: PASSWORD,
-      stats: byPersona[p.key] ?? { passed: 0, failed: 0 },
       matterId: roster[p.key]?.matterId ?? null,
       caseNumber: roster[p.key]?.caseNumber ?? null,
-      ocrStatus: roster[p.key]?.ocrStatus ?? null,
-      ocrMs: roster[p.key]?.ocrMs ?? null,
     })),
     results,
   }

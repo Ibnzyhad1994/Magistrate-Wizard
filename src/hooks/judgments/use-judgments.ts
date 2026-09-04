@@ -8,6 +8,10 @@ export const judgmentsKeys = {
   detail: (id: string) => ["judgments", "detail", id] as const,
 };
 
+export const judgmentVersionsKeys = {
+  list: (judgmentId: string) => ["judgment-versions", judgmentId] as const,
+};
+
 /**
  * Every Judgment the caller can currently see (RLS: owner OR
  * is_discoverable — never another user's private draft/final), split
@@ -100,6 +104,7 @@ export function useUpdateJudgmentFields(id: string) {
       toast.success("Judgment saved.");
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.all });
+      void queryClient.invalidateQueries({ queryKey: judgmentVersionsKeys.list(id) });
     },
   });
 }
@@ -116,6 +121,7 @@ export function useUpdateJudgmentContent(id: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: judgmentVersionsKeys.list(id) });
     },
   });
 }

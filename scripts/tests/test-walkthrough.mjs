@@ -49,6 +49,11 @@ check(
   ["home", "docket", "board", "next", "chapter-rest"],
 );
 check(
+  "board copy still names empty cells without asking to click the sample",
+  magistrate.find((s) => s.id === "board")?.body,
+  "Empty cells say + Set arraignment and the rest. On a real file, click a cell to record that stage.",
+);
+check(
   "full sitting day keeps the file",
   visibleWalkthroughSteps(magistrate, "sitting", true).map((s) => s.id),
   ["home", "docket", "board", "next", "open-file", "hearing", "file", "chapter-rest"],

@@ -106,7 +106,7 @@ export const walkthroughStepsFor = (
     {
       id: "board",
       title: "Procedure board",
-      body: "Empty cells say + Set arraignment and the rest. Click a cell to record that stage.",
+      body: "Empty cells say + Set arraignment and the rest. On a real file, click a cell to record that stage.",
       target: "docket-board",
       route: ROUTES.docket,
       chapter: "sitting",
@@ -114,7 +114,7 @@ export const walkthroughStepsFor = (
     {
       id: "next",
       title: "Next date",
-      body: "Set the next hearing from this column. Capacity colours on the calendar show how full that day is.",
+      body: "The Next date column is where you set the next hearing. Capacity colours on the calendar show how full that day is.",
       target: "docket-next-date",
       fallbackTarget: "docket-board",
       route: ROUTES.docket,

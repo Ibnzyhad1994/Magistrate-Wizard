@@ -3,11 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { canRestoreJudgmentVersion } from "@/lib/judgment-versions";
 import type { Json } from "@/types/database.types";
-import { judgmentsKeys } from "@/hooks/judgments/use-judgments";
-
-export const judgmentVersionsKeys = {
-  list: (judgmentId: string) => ["judgment-versions", judgmentId] as const,
-};
+import { judgmentsKeys, judgmentVersionsKeys } from "@/hooks/judgments/use-judgments";
 
 export function useJudgmentVersions(judgmentId: string | undefined) {
   return useQuery({

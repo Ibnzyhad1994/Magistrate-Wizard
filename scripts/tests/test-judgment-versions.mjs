@@ -33,5 +33,45 @@ check("no client UPDATE policy on versions", !/on public.judgment_versions for u
 check("restore allowed on draft", canRestoreJudgmentVersion("draft"), true)
 check("restore refused on final", canRestoreJudgmentVersion("final"), false)
 
+const judgmentHooks = readFileSync(
+  join(__dirname, "../../src/hooks/judgments/use-judgments.ts"),
+  "utf8",
+)
+const restoreHook = readFileSync(
+  join(__dirname, "../../src/hooks/judgments/use-judgment-versions.ts"),
+  "utf8",
+)
+
+function exportedFunction(source, name) {
+  const start = source.indexOf(`export function ${name}`)
+  if (start < 0) return ""
+  const next = source.indexOf("\nexport function ", start + 1)
+  return next < 0 ? source.slice(start) : source.slice(start, next)
+}
+
+const refreshesVersions = (body) =>
+  body.includes("judgmentVersionsKeys") || body.includes("judgment-versions")
+
+check(
+  "fields save invalidates version history",
+  refreshesVersions(exportedFunction(judgmentHooks, "useUpdateJudgmentFields")),
+  true,
+)
+check(
+  "content save invalidates version history",
+  refreshesVersions(exportedFunction(judgmentHooks, "useUpdateJudgmentContent")),
+  true,
+)
+check(
+  "restore invalidates version history",
+  refreshesVersions(exportedFunction(restoreHook, "useRestoreJudgmentVersion")),
+  true,
+)
+check(
+  "discoverability does not create versions, so it does not invalidate them",
+  refreshesVersions(exportedFunction(judgmentHooks, "useSetJudgmentDiscoverable")),
+  false,
+)
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`)
 process.exit(failures === 0 ? 0 : 1)
