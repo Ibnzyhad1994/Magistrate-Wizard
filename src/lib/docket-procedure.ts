@@ -5,7 +5,13 @@
 
 import { NOT_SET } from "@/lib/empty-display";
 
-export const ARRAIGNMENT_STATUSES = ["not_started", "done"] as const;
+/**
+ * 'not_found' (0131): the accused was not found and needs to be
+ * (re-)summoned. Still counts as arraignment not done for
+ * `currentStage()`/`procedure_stage` purposes -- the matter stays at the
+ * Arraignment stage, distinct from a matter that's never been attempted.
+ */
+export const ARRAIGNMENT_STATUSES = ["not_started", "done", "not_found"] as const;
 export const CUSTODY_STATUSES = ["unset", "on_bail", "remanded"] as const;
 export const DISCLOSURE_STATUSES = ["none", "partial", "full"] as const;
 export const TRIAL_STATUSES = ["not_commenced", "partial", "completed"] as const;
@@ -95,6 +101,7 @@ export const NEXT_DATE_LABELS: Record<NextDateFilter, string> = {
 export const PROCEDURE_VALUE_LABELS: Record<string, string> = {
   not_started: "Not started",
   done: "Done",
+  not_found: "Not Found — To Be Summoned",
   unset: NOT_SET,
   on_bail: "On bail",
   remanded: "Remanded",

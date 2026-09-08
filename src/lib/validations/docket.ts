@@ -11,17 +11,21 @@ import {
 } from "@/lib/docket-procedure";
 
 /**
- * These literal unions mirror LIVE CHECK constraints on `text` columns
- * (verified via `pg_constraint` this session) — the columns themselves
- * are plain `text` in Postgres, not enums, so `database.types.ts` types
- * them as `string`. Keep these lists in sync with the database if a
- * future migration changes the constraint.
+ * `docket_matters.status` is a genuine Postgres ENUM (`docket_matter_status`,
+ * confirmed live via `pg_enum`) — unlike most of the other literal unions
+ * below, which mirror plain CHECK constraints on `text` columns. `dismissed`
+ * was added in 0131, alongside a new `outcome_status` column ('dismissed' |
+ * 'completed') that forces this field to match when set — see that
+ * migration's header for the (deliberately one-directional) sync rule.
+ * Keep this list in sync with the database if a future migration widens
+ * the enum further.
  */
 export const DOCKET_MATTER_STATUSES = [
   "active",
   "stayed",
   "completed",
   "archived",
+  "dismissed",
 ] as const;
 
 export const DOCKET_EVENT_STATUSES = [

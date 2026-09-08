@@ -116,6 +116,9 @@ jobs:
       - name: Callover vocabulary and running-sheet logic
         run: npm run test:callover
 
+      - name: Docket arraignment/outcome vocabulary
+        run: npm run test:docket-outcome
+
       - name: Walkthrough and tour overlay
         run: npm run test:walkthrough
 

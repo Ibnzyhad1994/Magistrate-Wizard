@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -8,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DocketStageCell } from "@/pages/docket/docket-stage-cell";
+import { DocketOutcomeCell } from "@/pages/docket/docket-outcome-cell";
 import { NextDateCell } from "@/pages/docket/next-date-cell";
 import {
   currentStage,
@@ -88,6 +90,19 @@ function DocketStageRow({
     });
   }
 
+  // Not routed through logProcedurePatch's "Log appearance" prompt — that's
+  // specifically about scheduling the next hearing and doesn't apply to a
+  // disposition change. Errors already surface via the shared mutation
+  // cache's toast subscriber; this only adds the success confirmation.
+  async function handleOutcomeChange(next: string | null) {
+    try {
+      await onPatch(row.id, { outcome_status: next }, row.updated_at);
+      toast.success(next ? "Outcome updated." : "Outcome cleared.");
+    } catch {
+      // Surfaced globally via the mutation cache toast subscriber.
+    }
+  }
+
   return (
     <TableRow>
       <TableCell className={`${caseColBase} z-20`}>
@@ -158,6 +173,13 @@ function DocketStageRow({
           </TableCell>
         );
       })}
+      <TableCell className="p-1.5">
+        <DocketOutcomeCell
+          value={row.outcome_status}
+          canEdit={row.can_edit}
+          onChange={(next) => void handleOutcomeChange(next)}
+        />
+      </TableCell>
       <TableCell
         className="whitespace-nowrap"
         data-tour-join={isTourNextDate ? "docket-next-date" : undefined}
@@ -204,6 +226,9 @@ export function DocketStageSheet({
                   <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
               ))}
+              <TableHead className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]">
+                Outcome
+              </TableHead>
               <TableHead
                 className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7.5rem]"
                 data-tour="docket-next-date"

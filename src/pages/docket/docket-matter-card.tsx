@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { NextDateCell } from "@/pages/docket/next-date-cell";
+import { DocketOutcomeCell } from "@/pages/docket/docket-outcome-cell";
 import { ProcedureStageGrid } from "@/pages/docket/procedure-stage-grid";
 import {
   currentStage,
@@ -105,6 +107,18 @@ export function DocketMatterCard({
     });
   };
 
+  // See docket-stage-sheet.tsx's own handleOutcomeChange for why this
+  // bypasses logProcedurePatch (no "Log appearance" prompt) and toasts
+  // directly instead.
+  async function handleOutcomeChange(next: string | null) {
+    try {
+      await onPatch(row.id, { outcome_status: next }, row.updated_at);
+      toast.success(next ? "Outcome updated." : "Outcome cleared.");
+    } catch {
+      // Surfaced globally via the mutation cache toast subscriber.
+    }
+  }
+
   const nextDate = (
     <NextDateCell
       matterId={row.id}
@@ -164,6 +178,14 @@ export function DocketMatterCard({
         }}
         onChange={handleChange}
       />
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
+        <span className="text-[11px] font-medium text-white/45">Outcome</span>
+        <DocketOutcomeCell
+          value={row.outcome_status}
+          canEdit={row.can_edit}
+          onChange={(next) => void handleOutcomeChange(next)}
+        />
+      </div>
     </article>
   );
 }

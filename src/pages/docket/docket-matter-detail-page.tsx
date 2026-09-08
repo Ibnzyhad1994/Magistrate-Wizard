@@ -30,11 +30,13 @@ import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   active: "default",
   stayed: "secondary",
   completed: "outline",
   archived: "outline",
+  // 0131: matches the board's Outcome cell (red for dismissed).
+  dismissed: "destructive",
 };
 
 const MATTER_TABS = [

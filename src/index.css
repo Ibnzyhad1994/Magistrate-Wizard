@@ -46,6 +46,11 @@
     --stage-progress: 38 92% 50%;
     --stage-done: 160 84% 39%;
     --stage-remand: 347 77% 60%;
+    /* Outcome column (0131): red for a dismissed matter, blue for a
+       completed one. Blue is otherwise absent from this red-themed
+       palette, so it's a deliberately new hue, not a reuse. */
+    --stage-dismissed: 357 92% 47%;
+    --stage-outcome-complete: 210 90% 58%;
     --capacity-available: 142 71% 45%;
     --capacity-filling: 38 92% 50%;
     --capacity-full: 0 72% 51%;

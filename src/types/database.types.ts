@@ -1574,6 +1574,7 @@ export type Database = {
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          outcome_status: string | null
           procedure_stage: string | null
           ruling_status: string
           search_vector: unknown
@@ -1606,6 +1607,7 @@ export type Database = {
           matter_title: string
           orders_summary?: string | null
           outcome?: string | null
+          outcome_status?: string | null
           procedure_stage?: string | null
           ruling_status?: string
           search_vector?: unknown
@@ -1638,6 +1640,7 @@ export type Database = {
           matter_title?: string
           orders_summary?: string | null
           outcome?: string | null
+          outcome_status?: string | null
           procedure_stage?: string | null
           ruling_status?: string
           search_vector?: unknown
@@ -3291,6 +3294,7 @@ export type Database = {
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          outcome_status: string
           procedure_stage: string | null
           ruling_status: string
           search_vector: unknown
@@ -3795,6 +3799,7 @@ export type Database = {
           judgment_status: string
           matter_title: string
           next_appearance: string
+          outcome_status: string
           procedure_stage: string
           rank: number
           ruling_status: string
@@ -3923,6 +3928,7 @@ export type Database = {
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          outcome_status: string
           procedure_stage: string | null
           ruling_status: string
           search_vector: unknown
@@ -4209,7 +4215,7 @@ export type Database = {
         | "rejected"
         | "cancelled"
         | "expired"
-      docket_matter_status: "active" | "stayed" | "completed" | "archived"
+      docket_matter_status: "active" | "stayed" | "completed" | "archived" | "dismissed"
       magistrate_court_decision: "approved" | "rejected"
       magistrate_court_request_status:
         | "pending"
@@ -4388,7 +4394,7 @@ export const Constants = {
         "cancelled",
         "expired",
       ],
-      docket_matter_status: ["active", "stayed", "completed", "archived"],
+      docket_matter_status: ["active", "stayed", "completed", "archived", "dismissed"],
       magistrate_court_decision: ["approved", "rejected"],
       magistrate_court_request_status: [
         "pending",
