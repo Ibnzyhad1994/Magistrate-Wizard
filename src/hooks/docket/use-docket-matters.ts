@@ -206,6 +206,20 @@ export function useDocketMatterBoard(
       if (error) throw error;
       return data;
     },
+    /**
+     * Keeps the previous results on screen while a REFINEMENT (search
+     * text, stage filters, selected date) reloads, so narrowing the board
+     * dims the list instead of blanking it to a skeleton.
+     *
+     * Deliberately scoped to the same court: `courtId` is the last segment
+     * of the board key, and carrying one court's matters over into another
+     * court's view — under that court's own heading — would misrepresent
+     * whose docket is on screen. A scope switch keeps the honest skeleton.
+     */
+    placeholderData: (previousData, previousQuery) => {
+      const previousCourtId = previousQuery?.queryKey?.[5];
+      return previousCourtId === courtId ? previousData : undefined;
+    },
   });
 }
 

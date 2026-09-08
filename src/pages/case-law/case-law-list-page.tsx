@@ -11,6 +11,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
 import { useCaseLawList, useCaseLawScopedSearch } from "@/hooks/case-law/use-case-law";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   useLegalJurisdictions,
   useLegalAuthorityCourts,
@@ -34,14 +35,22 @@ export default function CaseLawListPage() {
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const { data: categories } = useLegalCaseCategories();
+  // This page fans one search term out to FIVE server queries (three
+  // dependent facet counts, the scoped-id search, and the scoped result
+  // set), so an un-debounced input cost five round-trips per keystroke.
+  // Every consumer below reads the settled value; only the input itself
+  // reads the raw one, so the facet counts, the id set, and the
+  // client-side match filter can never disagree about which term they
+  // describe.
+  const debouncedQuery = useDebouncedValue(query);
   // Dependent facets (0084): each count is computed with the search text
   // plus the OTHER two filters applied, but never this facet's own
   // selection -- so a facet's own valid alternatives are never wrongly
   // excluded by itself, while its options still shrink to what the other
   // active filters actually leave matching.
-  const { data: courtCounts } = useCaseLawCountsByCourt({ query, jurisdictionId, categoryId });
-  const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction({ query, courtId, categoryId });
-  const { data: categoryCounts } = useCaseLawCountsByCategory({ query, courtId, jurisdictionId });
+  const { data: courtCounts } = useCaseLawCountsByCourt({ query: debouncedQuery, jurisdictionId, categoryId });
+  const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction({ query: debouncedQuery, courtId, categoryId });
+  const { data: categoryCounts } = useCaseLawCountsByCategory({ query: debouncedQuery, courtId, jurisdictionId });
 
   // If a previously-active filter's own value no longer has any accessible
   // matching records once the OTHER filters/search text changed, clear it
@@ -67,12 +76,12 @@ export default function CaseLawListPage() {
   // not by fetching everything and filtering in the browser).
   const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
     "search_case_law",
-    query,
+    debouncedQuery,
   );
 
-  const scopeActive = !!courtId || !!jurisdictionId || !!categoryId || !!query.trim();
+  const scopeActive = !!courtId || !!jurisdictionId || !!categoryId || !!debouncedQuery.trim();
   const { data: scopedResults, isPending: scopedPending } = useCaseLawScopedSearch({
-    query,
+    query: debouncedQuery,
     courtId,
     jurisdictionId,
     tagId: null,
@@ -84,7 +93,7 @@ export default function CaseLawListPage() {
       ...c,
       category_name: (c.legal_case_categories as { name: string } | null)?.name ?? null,
     }));
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     // Category applies uniformly across all three tabs (personal research
     // can carry a category same as canonical rows) -- unlike Court/
     // Jurisdiction, which only ever scope the Canonical tab below, since a
@@ -99,7 +108,7 @@ export default function CaseLawListPage() {
         (c) => c.owner_id !== null && c.owner_id !== user?.id && c.is_discoverable && matches(c),
       ),
     };
-  }, [data, user?.id, query, matchingIds, categoryId]);
+  }, [data, user?.id, debouncedQuery, matchingIds, categoryId]);
 
   const canonicalRows =
     scopeActive && (courtId || jurisdictionId || categoryId)
@@ -142,7 +151,9 @@ export default function CaseLawListPage() {
               aria-label="Search case law"
             />
           </div>
-          {query.trim() && (searchPending || scopedPending) && (
+          {/* Covers the debounce window too, so typing reads as working
+              rather than inert until the search actually fires. */}
+          {query.trim() && (searchPending || scopedPending || query !== debouncedQuery) && (
             <p className="text-xs text-muted-foreground">Searching…</p>
           )}
         </div>

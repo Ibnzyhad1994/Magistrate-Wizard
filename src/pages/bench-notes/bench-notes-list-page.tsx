@@ -8,6 +8,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
@@ -26,23 +27,27 @@ export default function BenchNotesListPage() {
   const [entityFilter, setEntityFilter] = useState("");
   const { data, isPending, isError, error, refetch } = useBenchNotes();
 
+  // Only the settled term reaches the RPC; the input stays instantly
+  // responsive. The match filter below reads the same value so the list is
+  // never filtered against ids fetched for a different term.
+  const debouncedQuery = useDebouncedValue(query);
   // Searches title AND note content (bench_notes.search_vector covers
   // both, see 0004/0010) — previously this page only matched on title
   // client-side despite the backing full-text index already being richer.
   const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
     "search_bench_notes",
-    query,
+    debouncedQuery,
   );
 
   const filtered = useMemo(() => {
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     return (data ?? []).filter((n) => {
       if (q && !(matchingIds?.has(n.id) ?? false)) return false;
       if (statusFilter && n.status !== statusFilter) return false;
       if (entityFilter && n.entity_type !== entityFilter) return false;
       return true;
     });
-  }, [data, query, matchingIds, statusFilter, entityFilter]);
+  }, [data, debouncedQuery, matchingIds, statusFilter, entityFilter]);
 
   const entityTypesInUse = useMemo(
     () => Array.from(new Set((data ?? []).map((n) => n.entity_type))).sort(),

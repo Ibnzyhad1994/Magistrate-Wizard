@@ -135,14 +135,19 @@ export default function SettingsPage() {
         <Card className="mt-6 max-w-xl">
           <CardHeader>
             <CardTitle className="text-base">Court Assignments</CardTitle>
+            {/* Court assignment became self-service (request / relinquish,
+                with a Court Assignment Administrator approving) — this card
+                still described the old admin-only model, and named Court
+                Assignments without linking to it. */}
             <CardDescription>
               Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>. Docket
               access is separate from your platform role. It follows the
-              active court assignments below, which an administrator
-              manages under Court Assignments.
+              active court seatings below, which you request and relinquish
+              yourself under Court Assignments; an administrator approves
+              each request.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {courtsPending ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
             ) : myCourts && myCourts.length > 0 ? (
@@ -156,9 +161,16 @@ export default function SettingsPage() {
               </ul>
             ) : (
               <p className="text-sm text-muted-foreground">
-                You do not currently have an active court assignment.
+                You do not currently have an active court seating.
               </p>
             )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to={ROUTES.courtAssignments}>
+                {myCourts && myCourts.length > 0
+                  ? "Manage court assignments"
+                  : "Request a court"}
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       )}

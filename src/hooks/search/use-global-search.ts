@@ -23,6 +23,11 @@ export function useGlobalSearch(query: string) {
       return data;
     },
     enabled: trimmed.length > 0,
+    // Keeps the previous result set on screen while a refined search
+    // reloads, so narrowing a query dims the page rather than blanking it
+    // back to a skeleton. There is no scope dimension here (global_search
+    // is already RLS-scoped to the caller), so no carve-out is needed.
+    placeholderData: (previousData) => previousData,
     meta: { silent: true },
   });
 }

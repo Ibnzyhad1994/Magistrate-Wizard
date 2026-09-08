@@ -11,6 +11,7 @@ import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/
 import { useAuth } from "@/hooks/use-auth";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { CreateJudgmentDialog } from "@/pages/judgments/create-judgment-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
@@ -21,13 +22,18 @@ export default function JudgmentListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useJudgments();
+  // Only the settled query text reaches the RPC — the input itself stays
+  // instantly responsive. Everything downstream (the search call and the
+  // client-side match filter) uses the same debounced value, so the list
+  // is never filtered against ids fetched for a different search term.
+  const debouncedQuery = useDebouncedValue(query);
   // Real full-text search over Judgments' own search_vector (title,
   // case_number, court_name, citation, content_text) — scoped to
   // Judgments only, never Global Search. Previously this list had no
   // search at all.
   const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
     "search_judgments",
-    query,
+    debouncedQuery,
   );
 
   const { drafts, finals, discoverable } = useMemo(() => {
@@ -35,7 +41,7 @@ export default function JudgmentListPage() {
       ...j,
       category_name: (j.legal_case_categories as { name: string } | null)?.name ?? null,
     }));
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     const matches = (row: (typeof all)[number]) => !q || (matchingIds?.has(row.id) ?? false);
     return {
       drafts: all.filter((j) => j.owner_id === user?.id && j.status === "draft" && matches(j)),
@@ -44,7 +50,7 @@ export default function JudgmentListPage() {
         (j) => j.owner_id !== user?.id && j.is_discoverable && matches(j),
       ),
     };
-  }, [data, user?.id, query, matchingIds]);
+  }, [data, user?.id, debouncedQuery, matchingIds]);
 
   return (
     <BrowsePage>
@@ -71,7 +77,10 @@ export default function JudgmentListPage() {
             aria-label="Search judgments"
           />
         </div>
-        {query.trim() && searchPending && (
+        {/* Covers the debounce window as well as the request itself, so
+            typing gives immediate feedback rather than looking inert
+            until the search actually fires. */}
+        {query.trim() && (searchPending || query !== debouncedQuery) && (
           <p className="text-xs text-muted-foreground">Searching…</p>
         )}
       </div>

@@ -8,6 +8,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
 import { useStatutes } from "@/hooks/legislation/use-legislation";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useAuth } from "@/hooks/use-auth";
 import { CreateLegislationDialog } from "@/pages/legislation/create-legislation-dialog";
 import { ROUTES } from "@/routes/paths";
@@ -43,9 +44,13 @@ export default function LegislationListPage() {
   const handleOpenCreate = () => {
     setCreateOpen(true);
   };
+  // Only the settled term reaches the RPC; the input stays instantly
+  // responsive. The match filter below reads the same value so the list is
+  // never filtered against ids fetched for a different term.
+  const debouncedQuery = useDebouncedValue(query);
   const { data: matchingIds, isPending: searchPending } = useScopedSearchIds(
     "search_statutes",
-    query,
+    debouncedQuery,
   );
 
   const jurisdictions = useMemo(
@@ -65,7 +70,7 @@ export default function LegislationListPage() {
 
   const rows = useMemo(() => {
     let rows = data ?? [];
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     if (q) rows = rows.filter((s) => matchingIds?.has(s.id) ?? false);
     if (jurisdiction !== ALL) rows = rows.filter((s) => s.jurisdiction === jurisdiction);
     if (documentType !== ALL) rows = rows.filter((s) => s.instrument_type === documentType);
@@ -75,7 +80,7 @@ export default function LegislationListPage() {
     else if (sort === "year") sorted.sort((a, b) => (b.enactment_year ?? 0) - (a.enactment_year ?? 0));
     else sorted.sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
     return sorted;
-  }, [data, query, matchingIds, jurisdiction, documentType, year, sort]);
+  }, [data, debouncedQuery, matchingIds, jurisdiction, documentType, year, sort]);
 
   return (
     <BrowsePage>
@@ -106,7 +111,8 @@ export default function LegislationListPage() {
               aria-label="Search legislation"
             />
           </div>
-          {query.trim() && searchPending && (
+          {/* Covers the debounce window too, so typing reads as working. */}
+          {query.trim() && (searchPending || query !== debouncedQuery) && (
             <p className="text-xs text-muted-foreground">Searching…</p>
           )}
         </div>

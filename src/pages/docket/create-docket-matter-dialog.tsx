@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Landmark } from "lucide-react";
@@ -26,6 +26,7 @@ import {
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { EmptyState } from "@/components/common/empty-state";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
+import { useAuth } from "@/hooks/use-auth";
 import { useCreateDocketMatter } from "@/hooks/docket/use-docket-matters";
 import { useDocketMatterCategories } from "@/hooks/docket/use-docket-capacity";
 import {
@@ -73,6 +74,8 @@ export function CreateDocketMatterDialog({
   defaultCourtId,
 }: CreateDocketMatterDialogProps) {
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const { data: categories } = useDocketMatterCategories();
   const createMatter = useCreateDocketMatter();
@@ -163,10 +166,26 @@ export function CreateDocketMatterDialog({
         </DialogHeader>
 
         {courtsPending ? null : noCourts ? (
+          // Same audience as the Docket page's own banner: only an
+          // administrator gets this far without a seating, since the route
+          // gate redirects an unseated magistrate or clerk to their own
+          // request page first. Point them at the action they can actually
+          // take rather than at "an administrator".
           <EmptyState
             icon={Landmark}
-            title="No current Court assignment"
-            description="You're not currently assigned to a Court, so you can't create a Docket Matter yet. Contact an administrator for a Court assignment."
+            title="No current Court seating"
+            description={
+              isAdmin
+                ? "You're not currently seated at a Court, so you can't create a Docket Matter yet. Seat yourself under Settings, or manage the roster under Court Assignments."
+                : "You're not currently seated at a Court, so you can't create a Docket Matter yet. Request a court under Court Assignments."
+            }
+            action={
+              <Button variant="play" size="sm" asChild>
+                <Link to={isAdmin ? ROUTES.settings : ROUTES.courtAssignments}>
+                  {isAdmin ? "Go to Settings" : "Request a court"}
+                </Link>
+              </Button>
+            }
           />
         ) : (
           <Form {...form}>

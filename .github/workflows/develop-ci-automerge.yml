@@ -110,6 +110,9 @@ jobs:
       - name: Docket scope resolution
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-scope.mjs
 
+      - name: Docket board URL params
+        run: npm run test:docket-board-params
+
       - name: Walkthrough and tour overlay
         run: npm run test:walkthrough
 

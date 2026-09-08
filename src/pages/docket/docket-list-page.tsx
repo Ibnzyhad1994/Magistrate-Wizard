@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Search, Plus, ClipboardList, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
 import { useIsDesktop } from "@/hooks/use-media-query";
+import { useAuth } from "@/hooks/use-auth";
 import {
   useDocketMatterBoard,
   usePatchDocketProcedure,
@@ -26,6 +27,12 @@ import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
 import { EMPTY_PROCEDURE_FILTERS, hasActiveProcedureFilters, type ProcedureFilters } from "@/lib/docket-procedure";
+import {
+  boardParamsFromSearchParams,
+  boardParamsToSearchParams,
+  clearBoardParams,
+} from "@/lib/docket-board-params";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { shouldShowDocketTourExample } from "@/lib/docket-tour-example";
 import { useUiStore } from "@/store/ui-store";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,6 +66,8 @@ function docketCover(matter: {
 
 export default function DocketListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const lastDocketScope = useUiStore((s) => s.lastDocketScope);
   const setLastDocketScope = useUiStore((s) => s.setLastDocketScope);
@@ -95,37 +104,102 @@ export default function DocketListPage() {
   const selectedCourt = courtId ? myCourts?.find((c) => c.court_id === courtId) : undefined;
   const scopeReady = scope.status === "resolved";
 
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<ProcedureFilters>(EMPTY_PROCEDURE_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
   const [capacityOpen, setCapacityOpen] = useState(false);
   const [logAppearance, setLogAppearance] = useState<LogAppearanceRequest | null>(null);
+
+  // --- Board controls live in the URL, alongside ?court= ---
+  // Search text, stage filters, and the selected date are all derived from
+  // the URL rather than component state, so opening a matter and pressing
+  // Back returns to the exact view that was left, a refresh survives, and
+  // a filtered day-list can be handed to a clerk as a link. Parsing
+  // re-validates every value (docket-board-params.ts), so a hand-edited or
+  // stale URL degrades to a narrower valid view rather than reaching the
+  // RPC with a filter that doesn't exist.
+  //
   // The calendar strip can still filter the table to one date. Opening
   // Docket defaults to All Matters — most files have no appearance today,
   // so defaulting to today made the list look empty until the user clicked
   // a matter from Home (which is unfiltered) or pressed All Matters.
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const boardParams = boardParamsFromSearchParams(searchParams);
+  const { filters, exactDate: selectedDate } = boardParams;
+
+  // Every board write is `replace`, never `push`: refining a view is not a
+  // navigation, and pushing would make Back walk keystroke-by-keystroke
+  // back through the filters instead of returning to wherever the user
+  // actually came from. The functional updater reads the freshest params,
+  // so a board write can never clobber the scope redirect above.
+  const commitBoardParams = useCallback(
+    (next: Partial<typeof boardParams>) => {
+      setSearchParams(
+        (prev) =>
+          boardParamsToSearchParams({ ...boardParamsFromSearchParams(prev), ...next }, prev),
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const setFilters = useCallback(
+    (value: ProcedureFilters) => commitBoardParams({ filters: value }),
+    [commitBoardParams],
+  );
+  const setSelectedDate = useCallback(
+    (value: string | null) => commitBoardParams({ exactDate: value }),
+    [commitBoardParams],
+  );
+
+  // Search is the one control that keeps local state: the input must stay
+  // instantly responsive while typing, so only the settled value reaches
+  // the URL and the query. Without this, every keystroke was its own
+  // React Query key — one full-text RPC per character, each one blanking
+  // the whole table to a skeleton because a brand-new key has no cached
+  // data to show.
+  const [search, setSearch] = useState(boardParams.query);
+  const debouncedSearch = useDebouncedValue(search);
+
+  useEffect(() => {
+    // Only commit once the debounce has actually caught up with the live
+    // input. Without this guard, clearing the input (notably the court
+    // switch below, which resets it) would see the still-stale debounced
+    // value and write the OLD search term straight back into the URL for
+    // one cycle before settling — the search would visibly come back.
+    if (debouncedSearch !== search) return;
+    if (debouncedSearch.trim() === boardParams.query) return;
+    commitBoardParams({ query: debouncedSearch });
+  }, [debouncedSearch, search, boardParams.query, commitBoardParams]);
+
+  // Drops both refinements at once, and resets the input immediately
+  // rather than waiting out the debounce. Leaves the selected date alone —
+  // that has its own "All Matters" control.
+  const clearRefinements = useCallback(() => {
+    setSearch("");
+    commitBoardParams({ query: "", filters: EMPTY_PROCEDURE_FILTERS });
+  }, [commitBoardParams]);
 
   // Switching Docket scope must never leave a stale search/filter/date
   // combination — or its results — visible from the previously-selected
   // court. React Query already gives each courtId its own cache entry
   // (queryKey includes it), so there's no cross-court data leakage; this
-  // just resets the CONTROLS themselves back to a clean slate on switch.
+  // just resets the CONTROLS themselves back to a clean slate on switch,
+  // in the URL as well as in the local search input.
   const previousCourtId = useRef(courtId);
   useEffect(() => {
     if (previousCourtId.current === courtId) return;
     previousCourtId.current = courtId;
     setSearch("");
-    setFilters(EMPTY_PROCEDURE_FILTERS);
-    setSelectedDate(null);
-  }, [courtId]);
+    setSearchParams((prev) => clearBoardParams(prev), { replace: true });
+  }, [courtId, setSearchParams]);
 
   const isDesktop = useIsDesktop();
   const { isActive: tourActive } = useTour();
   const docketBrowseView = useUiStore((s) => s.docketBrowseView);
   const setDocketBrowseView = useUiStore((s) => s.setDocketBrowseView);
-  const { data, isPending, isError, error, refetch } = useDocketMatterBoard(
-    search,
+  // Queries the settled, URL-backed query text — never the raw input — so
+  // the query key always matches the URL the user could share, and the
+  // empty-state wording below always describes the search that actually ran.
+  const { data, isPending, isFetching, isError, error, refetch } = useDocketMatterBoard(
+    boardParams.query,
     filters,
     selectedDate,
     courtId,
@@ -146,8 +220,9 @@ export default function DocketListPage() {
     setSearchParams(next, { replace: true });
   }, [noCourts, searchParams, setSearchParams]);
   const filtersOn = hasActiveProcedureFilters(filters);
-  const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (!!search || filtersOn);
-  const emptyBecauseDate = !isPending && !isError && (data?.length ?? 0) === 0 && !!selectedDate && !search && !filtersOn;
+  const searchOn = boardParams.query.length > 0;
+  const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (searchOn || filtersOn);
+  const emptyBecauseDate = !isPending && !isError && (data?.length ?? 0) === 0 && !!selectedDate && !searchOn && !filtersOn;
   const showTourExample = shouldShowDocketTourExample({
     tourActive,
     matterCount: data?.length ?? 0,
@@ -172,10 +247,38 @@ export default function DocketListPage() {
       />
 
       {noCourts ? (
+        // Only an administrator actually reaches this: the Docket route
+        // requires an approved seating for magistrates and clerks alike
+        // (requireApprovedMagistrateCourt / requireApprovedClerkCourt,
+        // router.tsx), so both are redirected to their own request page
+        // before this page renders. Telling that audience to "contact an
+        // administrator" was telling them to contact themselves — point
+        // them at the self-seating card in Settings instead.
         <p className="mb-6 text-sm text-muted-foreground">
-          You have no current Court assignment, so you can&apos;t create a new
+          You have no current Court seating, so you can&apos;t create a new
           matter. You can still view and act on matters retained or shared
-          with you below. Contact an administrator for a Court assignment.
+          with you below.{" "}
+          {isAdmin ? (
+            <>
+              Seat yourself at a court under{" "}
+              <Link to={ROUTES.settings} className="underline hover:text-foreground">
+                Settings
+              </Link>
+              , or manage the full roster under{" "}
+              <Link to={ROUTES.adminCourtAssignments} className="underline hover:text-foreground">
+                Court Assignments
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              Request a court under{" "}
+              <Link to={ROUTES.courtAssignments} className="underline hover:text-foreground">
+                Court Assignments
+              </Link>
+              .
+            </>
+          )}
         </p>
       ) : (
         scopeReady && (myCourts?.length ?? 0) > 1 && (
@@ -275,19 +378,23 @@ export default function DocketListPage() {
               }
               action={
                 emptyBecauseFilters ? (
-                  <Button
-                    variant="play"
-                    size="sm"
-                    onClick={() => setFilters(EMPTY_PROCEDURE_FILTERS)}
-                  >
-                    Clear filters
+                  // Clears the search text as well as the stage filters:
+                  // this branch fires for either, so clearing only the
+                  // filters left the button doing visibly nothing when a
+                  // search term was the thing narrowing the list.
+                  <Button variant="play" size="sm" onClick={clearRefinements}>
+                    {searchOn && filtersOn
+                      ? "Clear search and filters"
+                      : searchOn
+                        ? "Clear search"
+                        : "Clear filters"}
                   </Button>
                 ) : emptyBecauseDate ? (
                   <Button variant="play" size="sm" onClick={() => setSelectedDate(null)}>
                     All Matters
                   </Button>
                 ) : (
-                  !search &&
+                  !searchOn &&
                   !noCourts && (
                     <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
                       <Plus className="h-4 w-4" />
@@ -300,46 +407,58 @@ export default function DocketListPage() {
           </div>
           {showTourExample && <DocketTourExample />}
         </div>
-      ) : docketBrowseView === "list" ? (
-        isDesktop ? (
-          <DocketStageSheet
-            rows={data}
-            showCourt={courtId === null}
-            onPatch={(id, values, expectedUpdatedAt) => patch.mutateAsync({ id, values, expectedUpdatedAt })}
-            onLogAppearance={setLogAppearance}
-          />
-        ) : (
-          <div className="flex flex-col gap-3" data-tour="docket-board">
-            {data.map((row, index) => (
-              <DocketMatterCard
-                key={row.id}
-                row={row}
+      ) : (
+        // Refining a view that already has results dims the existing list
+        // instead of replacing it with a skeleton — the magistrate keeps
+        // their place and can see what is being narrowed. The skeleton
+        // above is reserved for a genuinely cold load (including a court
+        // switch, where showing another court's matters would be wrong).
+        <div
+          className={`transition-opacity duration-150 ${isFetching ? "opacity-60" : ""}`}
+          aria-busy={isFetching}
+        >
+          {docketBrowseView === "list" ? (
+            isDesktop ? (
+              <DocketStageSheet
+                rows={data}
                 showCourt={courtId === null}
-                isTourNextDate={index === 0}
-                isTourFirstMatter={index === 0}
-                onPatch={(id, values, expectedUpdatedAt) =>
-                  patch.mutateAsync({ id, values, expectedUpdatedAt })
-                }
+                onPatch={(id, values, expectedUpdatedAt) => patch.mutateAsync({ id, values, expectedUpdatedAt })}
                 onLogAppearance={setLogAppearance}
               />
-            ))}
-          </div>
-        )
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {data.map((matter, index) => (
-            <TitleCard
-              key={matter.id}
-              layout="tiles"
-              tone="docket"
-              href={ROUTES.docketMatter(matter.id)}
-              dataTour={index === 0 ? "docket-first-matter" : undefined}
-              imageUrl={
-                matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined
-              }
-              {...docketCover(matter)}
-            />
-          ))}
+            ) : (
+              <div className="flex flex-col gap-3" data-tour="docket-board">
+                {data.map((row, index) => (
+                  <DocketMatterCard
+                    key={row.id}
+                    row={row}
+                    showCourt={courtId === null}
+                    isTourNextDate={index === 0}
+                    isTourFirstMatter={index === 0}
+                    onPatch={(id, values, expectedUpdatedAt) =>
+                      patch.mutateAsync({ id, values, expectedUpdatedAt })
+                    }
+                    onLogAppearance={setLogAppearance}
+                  />
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {data.map((matter, index) => (
+                <TitleCard
+                  key={matter.id}
+                  layout="tiles"
+                  tone="docket"
+                  href={ROUTES.docketMatter(matter.id)}
+                  dataTour={index === 0 ? "docket-first-matter" : undefined}
+                  imageUrl={
+                    matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined
+                  }
+                  {...docketCover(matter)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
