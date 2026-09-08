@@ -264,6 +264,13 @@ function FieldsCard({
 
   const form = useForm<CaseLawFieldsFormValues>({
     resolver: zodResolver(caseLawFieldsSchema),
+    // `values` re-syncs this form to the server on every refetch — and
+    // this page has several sibling actions (discoverable toggle, review-
+    // status change) that refetch the same row. Without keepDirtyValues,
+    // a field the magistrate is mid-edit on (full_text included) gets
+    // silently overwritten by whatever unrelated action just refreshed
+    // the data.
+    resetOptions: { keepDirtyValues: true },
     values: {
       case_name: caseLaw.case_name,
       citation: caseLaw.citation,

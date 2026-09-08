@@ -129,10 +129,10 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTES.docket, element: <DocketListPage /> },
           { path: ROUTES.docketBin, element: <DocketBinPage /> },
-          // Static segments, so both outrank `/docket/:id` below exactly
-          // as `/docket/bin` already does.
-          { path: ROUTES.callovers, element: <CalloverListPage /> },
-          { path: "/docket/callovers/:id", element: <CalloverDetailPage /> },
+          // Static segment, so it outranks `/docket/:id` below exactly
+          // as `/docket/bin` already does. Callovers themselves live in
+          // the magistrate-only block further down — can_access_callover()
+          // (0129) has no clerk path, unlike this block's own gate.
           { path: "/docket/:id", element: <DocketMatterDetailPage /> },
         ],
       },
@@ -151,6 +151,8 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
+          { path: ROUTES.callovers, element: <CalloverListPage /> },
+          { path: "/docket/callovers/:id", element: <CalloverDetailPage /> },
           { path: ROUTES.judgments, element: <JudgmentListPage /> },
           { path: "/judgments/:id", element: <JudgmentDetailPage /> },
           { path: ROUTES.caseLaw, element: <CaseLawListPage /> },

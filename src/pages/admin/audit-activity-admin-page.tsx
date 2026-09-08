@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 import { ChevronDown, History } from "lucide-react"
 import { BrowseHeader, BrowsePage } from "@/components/browse"
 import { Badge } from "@/components/ui/badge"
@@ -52,12 +53,12 @@ const AuditActivityAdminPage = () => {
   const [filter, setFilter] = useState<ActivityFilter>("all")
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "")
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const { data: rows, isPending, isError, error, refetch } = useAuditActivity(filter)
+  const { data, isPending, isError, error, refetch } = useAuditActivity(filter)
   const { enabled: canExport } = useFeatureFlag("audit_export")
   const hashChain = useVerifyAuditHashChain()
 
   const visible = useMemo(() => {
-    const list = rows ?? []
+    const list = data?.rows ?? []
     return list.filter((row) => {
       const summary = summarizeRow(row)
       const actor = actorDisplayName(
@@ -72,13 +73,21 @@ const AuditActivityAdminPage = () => {
         row.kind === "auth" ? row.email : row.tableName,
       ])
     })
-  }, [rows, query])
+  }, [data, query])
 
   const handleToggleExpanded = (id: string) => {
     setExpandedId((current) => (current === id ? null : id))
   }
 
   const handleExportCsv = () => {
+    // `visible` is already capped by the fetch below (PAGE_SIZE per
+    // table) — an export was previously silently partial with no
+    // indication. Now it says so explicitly, matching the on-screen notice.
+    if (data?.truncated) {
+      toast.message(
+        `Exporting the newest ${data.rows.length} of ${data.totalCount} events — older events aren't included.`,
+      )
+    }
     const csv = activityRowsToCsv(visible)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
@@ -116,6 +125,14 @@ const AuditActivityAdminPage = () => {
           {hashChain.data.ok
             ? "intact"
             : `broken at row ${hashChain.data.broken_id ?? "unknown"}`}
+        </p>
+      )}
+
+      {data?.truncated && (
+        <p className="text-xs text-white/45">
+          Showing the newest {data.rows.length} of {data.totalCount} events for this filter.
+          Older events aren&apos;t shown here or included in the export — narrow the filter to
+          reach them.
         </p>
       )}
 

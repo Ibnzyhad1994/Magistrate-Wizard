@@ -406,6 +406,12 @@ function FieldsCard({
       judgment_date: judgment.judgment_date ?? "",
       citation: judgment.citation ?? "",
     },
+    // `values` re-syncs this form to the server on every refetch — and
+    // this page has several sibling actions (finalize, unlock, category
+    // change) that refetch the same judgment. Without keepDirtyValues, a
+    // field the magistrate is mid-edit on gets silently overwritten by
+    // whatever unrelated action just refreshed the data.
+    resetOptions: { keepDirtyValues: true },
   });
 
   async function onSubmit(values: JudgmentFieldsFormValues) {

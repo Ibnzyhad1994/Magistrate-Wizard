@@ -104,6 +104,7 @@ const FlagsPanel = () => {
             <div>
               <CardTitle className="text-base">{flag.key}</CardTitle>
               <CardDescription>
+                {flag.description && <>{flag.description}. </>}
                 Rollout {flag.rolloutPercentage}%. Empty court and role lists apply to everyone.
               </CardDescription>
             </div>

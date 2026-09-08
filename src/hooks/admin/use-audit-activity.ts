@@ -40,49 +40,71 @@ export const auditActivityKeys = {
 
 const PAGE_SIZE = 200
 
-const fetchChangeRows = async (filter: ActivityFilter): Promise<ChangeActivityRow[]> => {
+const fetchChangeRows = async (
+  filter: ActivityFilter,
+): Promise<{ rows: ChangeActivityRow[]; total: number }> => {
   const tables = tablesForFilter(filter)
-  if (tables.length === 0) return []
-  const { data, error } = await supabase
+  if (tables.length === 0) return { rows: [], total: 0 }
+  const { data, error, count } = await supabase
     .from("audit_log")
     .select(
       "id, action, table_name, old_data, new_data, created_at, profiles!audit_log_actor_id_fkey(full_name, email)",
+      { count: "exact" },
     )
     .in("table_name", [...tables])
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE)
   if (error) throw error
-  return (data ?? []).map((row) => ({
-    kind: "change" as const,
-    id: `change:${row.id}`,
-    createdAt: row.created_at,
-    action: row.action,
-    tableName: row.table_name,
-    oldData: row.old_data,
-    newData: row.new_data,
-    actor: (row.profiles as ProfileRef) ?? null,
-  }))
+  return {
+    rows: (data ?? []).map((row) => ({
+      kind: "change" as const,
+      id: `change:${row.id}`,
+      createdAt: row.created_at,
+      action: row.action,
+      tableName: row.table_name,
+      oldData: row.old_data,
+      newData: row.new_data,
+      actor: (row.profiles as ProfileRef) ?? null,
+    })),
+    total: count ?? (data ?? []).length,
+  }
 }
 
-const fetchAuthRows = async (filter: ActivityFilter): Promise<AuthActivityRow[]> => {
-  if (filter === "access" || filter === "library" || filter === "docket") return []
-  const { data, error } = await supabase
+const fetchAuthRows = async (
+  filter: ActivityFilter,
+): Promise<{ rows: AuthActivityRow[]; total: number }> => {
+  if (filter === "access" || filter === "library" || filter === "docket") {
+    return { rows: [], total: 0 }
+  }
+  const { data, error, count } = await supabase
     .from("auth_event_log")
     .select(
       "id, event_type, email, user_agent, created_at, profiles!auth_event_log_actor_id_fkey(full_name, email)",
+      { count: "exact" },
     )
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE)
   if (error) throw error
-  return (data ?? []).map((row) => ({
-    kind: "auth" as const,
-    id: `auth:${row.id}`,
-    createdAt: row.created_at,
-    eventType: row.event_type,
-    email: row.email,
-    userAgent: row.user_agent,
-    actor: (row.profiles as ProfileRef) ?? null,
-  }))
+  return {
+    rows: (data ?? []).map((row) => ({
+      kind: "auth" as const,
+      id: `auth:${row.id}`,
+      createdAt: row.created_at,
+      eventType: row.event_type,
+      email: row.email,
+      userAgent: row.user_agent,
+      actor: (row.profiles as ProfileRef) ?? null,
+    })),
+    total: count ?? (data ?? []).length,
+  }
+}
+
+export interface AuditActivityResult {
+  rows: ActivityRow[]
+  /** True combined row count across both tables for this filter — independent of PAGE_SIZE, via a `count: "exact", head`-style request that transfers no extra rows. */
+  totalCount: number
+  /** True once `rows.length < totalCount` — the ledger has more than this page shows, so the on-screen list AND any CSV export of `rows` are both partial. */
+  truncated: boolean
 }
 
 /**
@@ -93,14 +115,16 @@ const fetchAuthRows = async (filter: ActivityFilter): Promise<AuthActivityRow[]>
 export const useAuditActivity = (filter: ActivityFilter) =>
   useQuery({
     queryKey: auditActivityKeys.filter(filter),
-    queryFn: async (): Promise<ActivityRow[]> => {
+    queryFn: async (): Promise<AuditActivityResult> => {
       const [changes, auths] = await Promise.all([
         fetchChangeRows(filter),
         fetchAuthRows(filter),
       ])
-      return [...changes, ...auths].sort((a, b) =>
+      const rows = [...changes.rows, ...auths.rows].sort((a, b) =>
         a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
       )
+      const totalCount = changes.total + auths.total
+      return { rows, totalCount, truncated: rows.length < totalCount }
     },
   })
 

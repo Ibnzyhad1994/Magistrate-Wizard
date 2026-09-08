@@ -76,6 +76,11 @@ export const NAV_ITEMS: AppNavItem[] = [
     label: "Callovers",
     href: ROUTES.callovers,
     icon: Gavel,
+    // can_access_callover() (0129) only checks magistrate_courts, unlike
+    // the Docket route's own gate, which has a separate clerk path. A
+    // clerk who could see this item would get a raw RLS-violation error
+    // on submit instead of the option simply not appearing.
+    roles: ["magistrate", "admin"],
     group: "court",
   },
   {

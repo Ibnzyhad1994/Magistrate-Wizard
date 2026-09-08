@@ -2,6 +2,7 @@ import type { UserRole } from "@/lib/constants"
 
 export interface FeatureFlagRecord {
   key: string
+  description: string | null
   enabled: boolean
   rolloutPercentage: number
   courtIds: string[]

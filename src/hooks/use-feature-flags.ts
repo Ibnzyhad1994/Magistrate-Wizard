@@ -16,6 +16,10 @@ export const featureFlagKeys = {
 
 const asFlag = (row: Tables<"feature_flags">): FeatureFlagRecord => ({
   key: row.key,
+  // Was fetched by the query below but silently dropped here — the
+  // Operations page always showed generic rollout text instead of each
+  // flag's actual seeded description.
+  description: row.description,
   enabled: row.enabled,
   rolloutPercentage: row.rollout_percentage,
   courtIds: row.court_ids ?? [],
