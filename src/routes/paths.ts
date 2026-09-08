@@ -7,6 +7,9 @@ export const ROUTES = {
   dashboard: "/dashboard",
   docket: "/docket",
   docketBin: "/docket/bin",
+  /** Callover sittings for the courts the caller sits (0129). Static segment, so it outranks `/docket/:id` exactly as `/docket/bin` already does. */
+  callovers: "/docket/callovers",
+  callover: (id: string) => `/docket/callovers/${id}`,
   docketMatter: (id: string) => `/docket/${id}`,
   docketMatterEvents: (id: string) => `/docket/${id}?tab=events`,
   judgments: "/judgments",

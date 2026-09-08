@@ -113,6 +113,9 @@ jobs:
       - name: Docket board URL params
         run: npm run test:docket-board-params
 
+      - name: Callover vocabulary and running-sheet logic
+        run: npm run test:callover
+
       - name: Walkthrough and tour overlay
         run: npm run test:walkthrough
 

@@ -11,6 +11,8 @@ import ForgotPasswordPage from "@/pages/auth/forgot-password-page";
 import DashboardPage from "@/pages/dashboard-page";
 import DocketListPage from "@/pages/docket/docket-list-page";
 import DocketBinPage from "@/pages/docket/docket-bin-page";
+import CalloverListPage from "@/pages/docket/callover/callover-list-page";
+import CalloverDetailPage from "@/pages/docket/callover/callover-detail-page";
 import DocketMatterDetailPage from "@/pages/docket/docket-matter-detail-page";
 import JudgmentListPage from "@/pages/judgments/judgment-list-page";
 import JudgmentDetailPage from "@/pages/judgments/judgment-detail-page";
@@ -127,6 +129,10 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTES.docket, element: <DocketListPage /> },
           { path: ROUTES.docketBin, element: <DocketBinPage /> },
+          // Static segments, so both outrank `/docket/:id` below exactly
+          // as `/docket/bin` already does.
+          { path: ROUTES.callovers, element: <CalloverListPage /> },
+          { path: "/docket/callovers/:id", element: <CalloverDetailPage /> },
           { path: "/docket/:id", element: <DocketMatterDetailPage /> },
         ],
       },

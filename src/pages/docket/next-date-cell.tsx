@@ -71,11 +71,20 @@ export function NextDateDialog({
   currentDate,
   matterCategoryId,
   onClose,
+  onSaved,
 }: {
   matterId: string;
   currentDate: string | null;
   matterCategoryId: string | null;
   onClose: () => void;
+  /**
+   * Fired with the date that was actually scheduled, once the RPC has
+   * accepted it (including after a capacity override). The callover
+   * running sheet uses this to mirror the result onto its own item row —
+   * the scheduling itself still happens only through
+   * set_docket_matter_next_date(), never by writing the date directly.
+   */
+  onSaved?: (scheduledDate: string) => void;
 }) {
   const { data: categories } = useDocketMatterCategories();
   const setNextDate = useSetDocketMatterNextDate();
@@ -119,6 +128,7 @@ export function NextDateDialog({
       setPendingOverride(result);
       return;
     }
+    onSaved?.(date);
     onClose();
   }
 

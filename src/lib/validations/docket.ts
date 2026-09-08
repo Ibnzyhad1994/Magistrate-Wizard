@@ -1,4 +1,14 @@
 import { z } from "zod";
+import {
+  APPEAL_STATUSES,
+  ARRAIGNMENT_STATUSES,
+  CUSTODY_STATUSES,
+  DISCLOSURE_STATUSES,
+  JUDGMENT_STATUSES,
+  RULING_STATUSES,
+  SENTENCE_STATUSES,
+  TRIAL_STATUSES,
+} from "@/lib/docket-procedure";
 
 /**
  * These literal unions mirror LIVE CHECK constraints on `text` columns
@@ -102,6 +112,32 @@ export function matterClassificationLabel(
   return categoryName;
 }
 
+/**
+ * Brought-forward intake (0129). A matter inherited from a predecessor,
+ * transferred in, or pre-dating this docket has usually already passed
+ * some stages. `procedure_stage` is a generated column (0070) computed
+ * from the eight status columns, so seeding them at INSERT is the whole
+ * mechanism — there is no separate "stage" field to set, and no RPC is
+ * needed. Every value is validated against the same const arrays the
+ * board itself uses, so an intake can never introduce a status the
+ * procedure columns' own CHECK constraints would reject.
+ *
+ * All optional: left alone, a matter is created exactly as before and
+ * lands at Arraignment.
+ */
+const broughtForwardFields = {
+  arraignment_status: z.enum(ARRAIGNMENT_STATUSES).optional(),
+  custody_status: z.enum(CUSTODY_STATUSES).optional(),
+  disclosure_status: z.enum(DISCLOSURE_STATUSES).optional(),
+  trial_status: z.enum(TRIAL_STATUSES).optional(),
+  ruling_status: z.enum(RULING_STATUSES).optional(),
+  judgment_status: z.enum(JUDGMENT_STATUSES).optional(),
+  sentence_status: z.enum(SENTENCE_STATUSES).optional(),
+  appeal_status: z.enum(APPEAL_STATUSES).optional(),
+  brought_forward_from: z.string().max(500).optional().or(z.literal("")),
+  brought_forward_at: z.string().optional().or(z.literal("")),
+};
+
 export const docketMatterSchema = z.object({
   court_id: z.string().min(1, "Court is required"),
   district_id: z.string().min(1, "District is required"),
@@ -111,6 +147,7 @@ export const docketMatterSchema = z.object({
   status: z.enum(DOCKET_MATTER_STATUSES).default("active"),
   category_id: z.string().min(1, "Classification is required"),
   category_other: z.string().max(200).optional().or(z.literal("")),
+  ...broughtForwardFields,
 });
 export type DocketMatterFormValues = z.infer<typeof docketMatterSchema>;
 

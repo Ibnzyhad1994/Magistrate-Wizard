@@ -963,6 +963,141 @@ export type Database = {
           },
         ]
       }
+      docket_callover_items: {
+        Row: {
+          called_at: string | null
+          callover_id: string
+          created_at: string
+          created_by: string | null
+          docket_matter_id: string
+          id: string
+          last_updated_by: string | null
+          next_date: string | null
+          notes: string | null
+          outcome: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          called_at?: string | null
+          callover_id: string
+          created_at?: string
+          created_by?: string | null
+          docket_matter_id: string
+          id?: string
+          last_updated_by?: string | null
+          next_date?: string | null
+          notes?: string | null
+          outcome?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          called_at?: string | null
+          callover_id?: string
+          created_at?: string
+          created_by?: string | null
+          docket_matter_id?: string
+          id?: string
+          last_updated_by?: string | null
+          next_date?: string | null
+          notes?: string | null
+          outcome?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_callover_items_callover_id_fkey"
+            columns: ["callover_id"]
+            isOneToOne: false
+            referencedRelation: "docket_callovers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_callover_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_callover_items_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_callover_items_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docket_callovers: {
+        Row: {
+          callover_date: string
+          court_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_updated_by: string | null
+          notes: string | null
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          callover_date: string
+          court_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_updated_by?: string | null
+          notes?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          callover_date?: string
+          court_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_updated_by?: string | null
+          notes?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_callovers_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_callovers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_callovers_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       docket_event_calendar_links: {
         Row: {
           created_at: string
@@ -1418,6 +1553,8 @@ export type Database = {
         Row: {
           appeal_status: string
           arraignment_status: string
+          brought_forward_at: string | null
+          brought_forward_from: string | null
           case_number: string
           category_id: string | null
           category_other: string | null
@@ -1448,6 +1585,8 @@ export type Database = {
         Insert: {
           appeal_status?: string
           arraignment_status?: string
+          brought_forward_at?: string | null
+          brought_forward_from?: string | null
           case_number: string
           category_id?: string | null
           category_other?: string | null
@@ -1478,6 +1617,8 @@ export type Database = {
         Update: {
           appeal_status?: string
           arraignment_status?: string
+          brought_forward_at?: string | null
+          brought_forward_from?: string | null
           case_number?: string
           category_id?: string | null
           category_other?: string | null
@@ -3173,6 +3314,7 @@ export type Database = {
           ok: boolean
         }[]
       }
+      can_access_callover: { Args: { p_callover_id: string }; Returns: boolean }
       can_access_court: { Args: { p_court_id: string }; Returns: boolean }
       can_attach_preview_derivative: {
         Args: {
@@ -3678,6 +3820,10 @@ export type Database = {
         Returns: string
       }
       my_court_id: { Args: never; Returns: string }
+      populate_callover_from_date: {
+        Args: { p_callover_id: string; p_date?: string }
+        Returns: number
+      }
       publish_case_law_import: {
         Args: { p_case_law_id: string }
         Returns: undefined

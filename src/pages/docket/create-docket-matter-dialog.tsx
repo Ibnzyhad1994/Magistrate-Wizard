@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Landmark } from "lucide-react";
+import { ChevronDown, Landmark } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,14 @@ import {
   type DocketMatterFormValues,
 } from "@/lib/validations/docket";
 import { ROUTES } from "@/routes/paths";
+import { DateOnlyInput } from "@/components/common/date-only-input";
+import {
+  PROCEDURE_COLUMNS,
+  PROCEDURE_STAGE_LABELS,
+  PROCEDURE_VALUE_LABELS,
+  matterCurrentStage,
+} from "@/lib/docket-procedure";
+import { broughtForwardStageNotice } from "@/lib/callover";
 
 interface CreateDocketMatterDialogProps {
   open: boolean;
@@ -49,6 +57,15 @@ interface CreateDocketMatterDialogProps {
    * applies, and the user must choose one before saving.
    */
   defaultCourtId?: string | null;
+  /**
+   * When set, the caller handles what happens next instead of the dialog
+   * navigating to the new matter. The callover running sheet uses this to
+   * add the matter it just created as an item and stay on the sheet —
+   * navigating away mid-sitting would lose the magistrate's place.
+   */
+  onCreated?: (matterId: string) => void;
+  /** Opens the "already in progress" disclosure expanded (callover intake). */
+  defaultBroughtForward?: boolean;
 }
 
 /**
@@ -72,6 +89,8 @@ export function CreateDocketMatterDialog({
   open,
   onOpenChange,
   defaultCourtId,
+  onCreated,
+  defaultBroughtForward = false,
 }: CreateDocketMatterDialogProps) {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
@@ -121,6 +140,36 @@ export function CreateDocketMatterDialog({
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
   const missingDistrict = !!selectedCourtId && !!selectedCourt && !selectedCourt.district_id;
 
+  // Brought-forward intake (0129). Collapsed by default, so the ordinary
+  // creation flow is unchanged: a matter with none of these set takes the
+  // column defaults and lands at Arraignment exactly as before.
+  const [broughtForward, setBroughtForward] = useState(defaultBroughtForward);
+  const seeded = form.watch([
+    "arraignment_status",
+    "custody_status",
+    "disclosure_status",
+    "trial_status",
+    "ruling_status",
+    "judgment_status",
+    "sentence_status",
+    "appeal_status",
+  ]);
+
+  // Previewed with the SAME function the generated procedure_stage column
+  // mirrors (0070), so what the magistrate is told here is what the board
+  // will actually show. Falls back to each column's own empty value for
+  // anything left untouched.
+  const previewStage = matterCurrentStage({
+    arraignment_status: seeded[0] ?? "not_started",
+    custody_status: seeded[1] ?? "unset",
+    disclosure_status: seeded[2] ?? "none",
+    trial_status: seeded[3] ?? "not_commenced",
+    ruling_status: seeded[4] ?? "not_started",
+    judgment_status: seeded[5] ?? "not_started",
+    sentence_status: seeded[6] ?? "not_started",
+    appeal_status: seeded[7] ?? "not_started",
+  });
+
   function handleCourtChange(courtId: string) {
     const court = myCourts?.find((c) => c.court_id === courtId);
     form.setValue("court_id", courtId, { shouldValidate: true });
@@ -145,10 +194,30 @@ export function CreateDocketMatterDialog({
           otherCategoryId && values.category_id === otherCategoryId
             ? values.category_other?.trim() || null
             : null,
+        // Seeding the eight status columns IS the whole brought-forward
+        // mechanism: procedure_stage is generated from them (0070). Only
+        // sent when the disclosure was actually opened, so an ordinary
+        // matter still takes the column defaults untouched.
+        ...(broughtForward
+          ? {
+              arraignment_status: values.arraignment_status,
+              custody_status: values.custody_status,
+              disclosure_status: values.disclosure_status,
+              trial_status: values.trial_status,
+              ruling_status: values.ruling_status,
+              judgment_status: values.judgment_status,
+              sentence_status: values.sentence_status,
+              appeal_status: values.appeal_status,
+              brought_forward_from: values.brought_forward_from?.trim() || null,
+              brought_forward_at: values.brought_forward_at || null,
+            }
+          : {}),
       });
       onOpenChange(false);
       form.reset();
-      navigate(ROUTES.docketMatter(created.id));
+      setBroughtForward(false);
+      if (onCreated) onCreated(created.id);
+      else navigate(ROUTES.docketMatter(created.id));
     } catch {
       // Surfaced globally via the mutation cache toast subscriber.
     }
@@ -333,6 +402,107 @@ export function CreateDocketMatterDialog({
                   </FormItem>
                 )}
               />
+
+              {/* Brought-forward intake (0129). Collapsed by default so
+                  the ordinary creation flow is untouched; a matter that
+                  never opens this lands at Arraignment exactly as before. */}
+              <div className="rounded-md border border-input">
+                <button
+                  type="button"
+                  onClick={() => setBroughtForward((v) => !v)}
+                  className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm"
+                  aria-expanded={broughtForward}
+                >
+                  <span className="font-medium">This matter is already in progress</span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                      broughtForward ? "rotate-180" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {broughtForward && (
+                  <div className="space-y-4 border-t border-input px-3 py-3">
+                    <p className="text-xs text-muted-foreground">
+                      For a matter inherited from a predecessor, transferred in, or
+                      pre-dating this docket. Record where it actually stands so it
+                      appears at the right stage instead of at the start of the board.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {PROCEDURE_COLUMNS.map((column) => (
+                        <FormField
+                          key={column.key}
+                          control={form.control}
+                          name={column.key}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">{column.label}</FormLabel>
+                              <FormControl>
+                                <Select
+                                  {...field}
+                                  value={field.value ?? column.emptyValue}
+                                  aria-label={column.label}
+                                >
+                                  {column.values.map((value) => (
+                                    <option key={value} value={value}>
+                                      {PROCEDURE_VALUE_LABELS[value] ?? value}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+
+                    <p className="rounded-sm bg-muted px-2.5 py-2 text-xs text-foreground">
+                      {broughtForwardStageNotice(
+                        previewStage,
+                        PROCEDURE_STAGE_LABELS[previewStage],
+                      )}
+                    </p>
+
+                    <FormField
+                      control={form.control}
+                      name="brought_forward_from"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Brought forward from (optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Magistrate Singh, Vigilance MC2, file 88/2024"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="brought_forward_at"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Date it entered this docket (optional)</FormLabel>
+                          <FormControl>
+                            <DateOnlyInput
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              aria-label="Date it entered this docket"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
 
               <DialogFooter>
                 <Button

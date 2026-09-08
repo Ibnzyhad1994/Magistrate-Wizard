@@ -12,6 +12,7 @@ import {
   Landmark,
   LibraryBig,
   CalendarDays,
+  Gavel,
   UserCheck,
   ShieldAlert,
   Bug,
@@ -69,6 +70,12 @@ export const NAV_ITEMS: AppNavItem[] = [
     label: "Docket",
     href: ROUTES.docket,
     icon: ClipboardList,
+    group: "court",
+  },
+  {
+    label: "Callovers",
+    href: ROUTES.callovers,
+    icon: Gavel,
     group: "court",
   },
   {

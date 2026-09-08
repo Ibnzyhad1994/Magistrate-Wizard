@@ -17,11 +17,11 @@ import { toTitleCase } from "@/lib/utils";
  * silently omitted.
  */
 
-const MARGIN = 42;
-const PAGE_WIDTH = 595.28; // A4 at 72dpi-equivalent pt
-const PAGE_HEIGHT = 841.89;
-const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const LINE = 13;
+export const MARGIN = 42;
+export const PAGE_WIDTH = 595.28; // A4 at 72dpi-equivalent pt
+export const PAGE_HEIGHT = 841.89;
+export const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+export const LINE = 13;
 
 interface ReportMeta {
   dateLabel: string;
@@ -44,7 +44,12 @@ function appearanceStatusLabel(status: string | null): string {
   }
 }
 
-class ReportWriter {
+/**
+ * Shared A4 report primitives. Exported so a second report (the callover
+ * record, 0129) can reuse the identical page geometry, typography, and
+ * page-break handling instead of re-deriving them and slowly drifting.
+ */
+export class ReportWriter {
   doc: jsPDF;
   y = MARGIN;
 
