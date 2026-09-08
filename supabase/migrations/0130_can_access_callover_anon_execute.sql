@@ -1,0 +1,32 @@
+-- ============================================================================
+-- 0130_can_access_callover_anon_execute.sql
+--
+-- Fixes a grant mistake in 0129.
+--
+-- can_access_callover() is evaluated by docket_callover_items' own RLS
+-- policies, so PostgREST must be able to call it as whatever role is
+-- making the request -- including `anon`. 0129 revoked EXECUTE from anon,
+-- borrowing the pattern used for end-user-callable RPCs
+-- (populate_callover_from_date, resolve_item_share_recipient), where
+-- revoking is correct. For a function that RLS itself evaluates it is
+-- not: an anonymous request to docket_callover_items failed with
+--
+--   401  permission denied for function can_access_callover
+--
+-- instead of the empty array every other table returns. That is a worse
+-- outcome in two ways -- it is inconsistent with the rest of the schema,
+-- and the error names an internal function to an unauthenticated caller.
+--
+-- Every comparable RLS helper in this schema is already anon-executable,
+-- SECURITY DEFINER ones included: can_edit_docket_matter,
+-- has_docket_matter_authority, has_item_share, has_retained_assignment,
+-- has_docket_share, can_access_court, is_admin. This aligns
+-- can_access_callover with them.
+--
+-- No access is widened. The function returns a boolean derived from
+-- auth.uid(), which is NULL for anon, so it can only ever return false
+-- for an anonymous caller -- the row is filtered out exactly as before,
+-- just with the correct empty result rather than an error.
+-- ============================================================================
+
+grant execute on function public.can_access_callover(uuid) to anon;
