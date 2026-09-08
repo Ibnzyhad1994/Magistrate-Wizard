@@ -82,6 +82,22 @@ export const walkthroughStepsFor = (
         fallbackTarget: "docket-new-matter",
         route: ROUTES.docket,
       },
+      {
+        id: "new-matter",
+        title: "New matter",
+        body: "Open a file on this court's sheet without leaving the list.",
+        target: "docket-new-matter",
+        fallbackTarget: "docket-board",
+        route: ROUTES.docket,
+      },
+      {
+        id: "next",
+        title: "Next date",
+        body: "Set the next hearing from this column.",
+        target: "docket-next-date",
+        fallbackTarget: "docket-board",
+        route: ROUTES.docket,
+      },
     ];
   }
 

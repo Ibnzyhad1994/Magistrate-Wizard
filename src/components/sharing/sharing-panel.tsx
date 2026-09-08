@@ -57,10 +57,9 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
     <div className="mt-4 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="max-w-lg text-sm text-muted-foreground">
-          Sharing grants another magistrate or clerk access to this {noun}.
-          Recipients cannot re-share it further. Permission is fixed when the
-          share is created. To change view into edit (or the reverse), revoke
-          it and share again.
+          {itemType === "docket_matter"
+            ? "Anyone sitting this Court already has the file. Share only for another Court. Recipients cannot re-share; revoke to change view or edit."
+            : `Sharing grants another magistrate or clerk access to this ${noun}. Recipients cannot re-share it further. Permission is fixed when the share is created. To change view into edit (or the reverse), revoke it and share again.`}
         </p>
         {canManage && (
           <Button size="sm" onClick={() => setCreateOpen(true)}>

@@ -88,6 +88,15 @@ async function ensureUser({ email, fullName, role }) {
   return data.user.id;
 }
 
+function alreadySeatedError(error) {
+  const msg = error?.message ?? error?.error_description ?? String(error);
+  return (
+    error?.code === "23505" ||
+    msg.includes("magistrate_courts_current_pair_idx") ||
+    /you already (hold|have) an active (primary|assignment)/i.test(msg)
+  );
+}
+
 async function ensureAssignment(profileId, courtId, assignmentType = "regular") {
   const { data: live } = await admin
     .from("magistrate_courts")
@@ -100,6 +109,36 @@ async function ensureAssignment(profileId, courtId, assignmentType = "regular") 
   const { data, error } = await admin
     .from("magistrate_courts")
     .insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType })
+    .select("id")
+    .single();
+  if (error) {
+    if (alreadySeatedError(error)) {
+      const { data: again } = await admin
+        .from("magistrate_courts")
+        .select("id")
+        .eq("profile_id", profileId)
+        .eq("court_id", courtId)
+        .is("ended_at", null)
+        .maybeSingle();
+      if (again?.id) return again.id;
+    }
+    throw error;
+  }
+  return data.id;
+}
+
+async function ensureClerkAssignment(profileId, courtId, approvedBy) {
+  const { data: live } = await admin
+    .from("clerk_courts")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("court_id", courtId)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (live?.id) return live.id;
+  const { data, error } = await admin
+    .from("clerk_courts")
+    .insert({ profile_id: profileId, court_id: courtId, approved_by: approvedBy })
     .select("id")
     .single();
   if (error) throw error;
@@ -162,8 +201,9 @@ async function runMagistrateWorkflow(actor, court, shareWith, index) {
   const sb = clientAs(token);
   const tag = actor.key;
 
+  const courtsTable = actor.role === "clerk" ? "clerk_courts" : "magistrate_courts";
   const { data: myCourts, error: courtsErr } = await sb
-    .from("magistrate_courts")
+    .from(courtsTable)
     .select("court_id, courts(name)")
     .eq("profile_id", user.id)
     .is("ended_at", null);
@@ -316,43 +356,47 @@ async function runMagistrateWorkflow(actor, court, shareWith, index) {
     }
   }
 
-  const { data: judgment, error: jErr } = await sb
-    .from("judgments")
-    .insert({
-      title: `Ruling — ${matter.matter_title}`,
-      case_number: caseNumber,
-      court_name: court.name,
-      judgment_date: "2026-08-12",
-      citation: null,
-      content_text: "The accused is put to plea. Trial date fixed.",
-    })
-    .select()
-    .single();
-  if (jErr) fail(`${tag}: create draft judgment`, jErr);
-  else {
-    log(true, `${tag}: create draft judgment`, judgment.status);
-    actor.judgmentId = judgment.id;
-    const { error: linkErr } = await sb.from("docket_matter_judgments").insert({
-      docket_matter_id: matter.id,
-      judgment_id: judgment.id,
-    });
-    if (linkErr) fail(`${tag}: link judgment to matter`, linkErr);
-    else log(true, `${tag}: link judgment to matter`);
+  if (actor.role === "clerk") {
+    log(true, `${tag}: skip judgment and case law`, "clerks are not a library/judgment role");
+  } else {
+    const { data: judgment, error: jErr } = await sb
+      .from("judgments")
+      .insert({
+        title: `Ruling — ${matter.matter_title}`,
+        case_number: caseNumber,
+        court_name: court.name,
+        judgment_date: "2026-08-12",
+        citation: null,
+        content_text: "The accused is put to plea. Trial date fixed.",
+      })
+      .select()
+      .single();
+    if (jErr) fail(`${tag}: create draft judgment`, jErr);
+    else {
+      log(true, `${tag}: create draft judgment`, judgment.status);
+      actor.judgmentId = judgment.id;
+      const { error: linkErr } = await sb.from("docket_matter_judgments").insert({
+        docket_matter_id: matter.id,
+        judgment_id: judgment.id,
+      });
+      if (linkErr) fail(`${tag}: link judgment to matter`, linkErr);
+      else log(true, `${tag}: link judgment to matter`);
 
-    if (index % 3 === 0) {
-      const { error: finErr } = await sb
-        .from("judgments")
-        .update({ status: "final", content_text: "Final ruling recorded." })
-        .eq("id", judgment.id);
-      if (finErr) fail(`${tag}: finalize judgment`, finErr);
-      else log(true, `${tag}: finalize judgment`);
+      if (index % 3 === 0) {
+        const { error: finErr } = await sb
+          .from("judgments")
+          .update({ status: "final", content_text: "Final ruling recorded." })
+          .eq("id", judgment.id);
+        if (finErr) fail(`${tag}: finalize judgment`, finErr);
+        else log(true, `${tag}: finalize judgment`);
 
-      const { error: discErr } = await sb
-        .from("judgments")
-        .update({ is_discoverable: true })
-        .eq("id", judgment.id);
-      if (discErr) fail(`${tag}: make judgment discoverable`, discErr);
-      else log(true, `${tag}: make judgment discoverable`);
+        const { error: discErr } = await sb
+          .from("judgments")
+          .update({ is_discoverable: true })
+          .eq("id", judgment.id);
+        if (discErr) fail(`${tag}: make judgment discoverable`, discErr);
+        else log(true, `${tag}: make judgment discoverable`);
+      }
     }
   }
 
@@ -389,27 +433,29 @@ async function runMagistrateWorkflow(actor, court, shareWith, index) {
   if (qcErr) fail(`${tag}: create quick code`, qcErr);
   else log(true, `${tag}: create quick code`);
 
-  const { data: research, error: clErr } = await sb
-    .from("case_law")
-    .insert({
-      owner_id: user.id,
-      case_name: `Research note: ${accused}`,
-      citation: `[2026] SIM ${index}`,
-      court: court.name,
-      jurisdiction: "Guyana",
-      summary: "Personal research for this sitting.",
-    })
-    .select()
-    .single();
-  if (clErr) fail(`${tag}: personal case law`, clErr);
-  else {
-    log(true, `${tag}: personal case law`, research.id);
-    const { error: clLinkErr } = await sb.from("docket_matter_case_law").insert({
-      docket_matter_id: matter.id,
-      case_law_id: research.id,
-    });
-    if (clLinkErr) fail(`${tag}: link case law to matter`, clLinkErr);
-    else log(true, `${tag}: link case law to matter`);
+  if (actor.role !== "clerk") {
+    const { data: research, error: clErr } = await sb
+      .from("case_law")
+      .insert({
+        owner_id: user.id,
+        case_name: `Research note: ${accused}`,
+        citation: `[2026] SIM ${index}`,
+        court: court.name,
+        jurisdiction: "Guyana",
+        summary: "Personal research for this sitting.",
+      })
+      .select()
+      .single();
+    if (clErr) fail(`${tag}: personal case law`, clErr);
+    else {
+      log(true, `${tag}: personal case law`, research.id);
+      const { error: clLinkErr } = await sb.from("docket_matter_case_law").insert({
+        docket_matter_id: matter.id,
+        case_law_id: research.id,
+      });
+      if (clLinkErr) fail(`${tag}: link case law to matter`, clLinkErr);
+      else log(true, `${tag}: link case law to matter`);
+    }
   }
 
   const { error: bmErr } = await sb.from("bookmarks").insert({
@@ -527,7 +573,10 @@ async function runAdminWorkflow(adminUser, targetProfileId, extraCourtId) {
       court_id: extraCourtId,
       assignment_type: "acting",
     });
-    if (error) fail(`${tag}: assign acting court`, error);
+    if (error) {
+      if (alreadySeatedError(error)) log(true, `${tag}: assign acting court`, "already seated");
+      else fail(`${tag}: assign acting court`, error);
+    }
     else log(true, `${tag}: assign acting court`);
   }
 
@@ -611,7 +660,11 @@ async function main() {
     const u = byKey[key];
     if (!u || !court) continue;
     try {
-      await ensureAssignment(u.id, court.id, key === "clerk" ? "relief" : "regular");
+      if (u.role === "clerk") {
+        await ensureClerkAssignment(u.id, court.id, byKey.admin?.id ?? byKey["seed-mag"]?.id);
+      } else {
+        await ensureAssignment(u.id, court.id, "acting");
+      }
       u.court = court;
       log(true, `assign ${key}`, court.name);
     } catch (err) {

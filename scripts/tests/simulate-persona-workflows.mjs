@@ -85,6 +85,15 @@ const ensureUser = async ({ email, fullName, role }) => {
   return data.user.id
 }
 
+const alreadySeatedError = (error) => {
+  const msg = error?.message ?? error?.error_description ?? String(error)
+  return (
+    error?.code === "23505" ||
+    msg.includes("magistrate_courts_current_pair_idx") ||
+    /you already (hold|have) an active (primary|assignment)/i.test(msg)
+  )
+}
+
 const ensureAssignment = async (profileId, courtId, assignmentType = "regular") => {
   const { data: live } = await admin
     .from("magistrate_courts")
@@ -99,7 +108,19 @@ const ensureAssignment = async (profileId, courtId, assignmentType = "regular") 
     .insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType })
     .select("id")
     .single()
-  if (error) throw error
+  if (error) {
+    if (alreadySeatedError(error)) {
+      const { data: again } = await admin
+        .from("magistrate_courts")
+        .select("id")
+        .eq("profile_id", profileId)
+        .eq("court_id", courtId)
+        .is("ended_at", null)
+        .maybeSingle()
+      if (again?.id) return again.id
+    }
+    throw error
+  }
   return data.id
 }
 
@@ -124,6 +145,19 @@ const ensureClerkAssignment = async (profileId, courtId, approvedBy) => {
 /**
  * Skill-level personas — each exercises a different slice of the product.
  */
+const pickOpenRegularCourt = async (excludeIds = []) => {
+  const { data: occupied } = await admin
+    .from("magistrate_courts")
+    .select("court_id")
+    .eq("assignment_type", "regular")
+    .is("ended_at", null)
+  const taken = new Set([...(occupied ?? []).map((r) => r.court_id), ...excludeIds])
+  const { data: courts } = await admin.from("courts").select("id, name").eq("is_active", true).order("name")
+  const open = (courts ?? []).find((c) => !taken.has(c.id))
+  if (!open) throw new Error("no court without an active regular magistrate")
+  return open
+}
+
 const PERSONAS = [
   {
     key: "novice",
@@ -625,8 +659,10 @@ const runAdminWorkflow = async (actor, targetProfileId, extraCourt) => {
         court_id: extraCourt.id,
         assignment_type: "acting",
       })
-      if (error) fail(tag, "assign acting court", error)
-      else log(true, tag, "assign acting court", extraCourt.name)
+      if (error) {
+        if (alreadySeatedError(error)) log(true, tag, "assign acting court", `${extraCourt.name} (already seated)`)
+        else fail(tag, "assign acting court", error)
+      } else log(true, tag, "assign acting court", extraCourt.name)
     }
 
     const { data: sources, error: sErr } = await sb.from("legal_sources").select("id, name").limit(10)
@@ -718,7 +754,9 @@ const main = async () => {
   log(true, "system", "load courts", courts.map((c) => c.name).slice(0, 5).join("; "))
 
   const geo1 = courts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? courts[0]
-  const other = courts.find((c) => c.id !== geo1.id) ?? courts[1] ?? geo1
+  const noviceCourt = await pickOpenRegularCourt([geo1.id])
+  const coveringCourt =
+    courts.find((c) => c.id !== geo1.id && c.id !== noviceCourt.id) ?? noviceCourt
 
   /** @type {Record<string, any>} */
   const roster = {}
@@ -732,15 +770,36 @@ const main = async () => {
     }
   }
 
-  for (const key of ["novice", "experienced", "admin"]) {
+  for (const key of ["experienced", "admin"]) {
     const u = roster[key]
     if (!u) continue
     try {
-      await ensureAssignment(u.id, geo1.id, u.assignmentType ?? "acting")
+      await ensureAssignment(u.id, geo1.id, "acting")
       u.court = geo1
-      log(true, "system", `assign ${key}`, `${geo1.name} (${u.assignmentType ?? "acting"})`)
+      log(true, "system", `assign ${key}`, `${geo1.name} (acting)`)
     } catch (err) {
       fail("system", `assign ${key}`, err)
+    }
+  }
+  if (roster.novice) {
+    try {
+      const { data: liveRows } = await admin
+        .from("magistrate_courts")
+        .select("court_id, courts(name)")
+        .eq("profile_id", roster.novice.id)
+        .is("ended_at", null)
+        .limit(1)
+      const live = liveRows?.[0]
+      if (live?.court_id) {
+        roster.novice.court = { id: live.court_id, name: live.courts?.name ?? "Court" }
+        log(true, "system", "assign novice", `${roster.novice.court.name} (already seated)`)
+      } else {
+        await ensureAssignment(roster.novice.id, noviceCourt.id, "regular")
+        roster.novice.court = noviceCourt
+        log(true, "system", "assign novice", `${noviceCourt.name} (regular)`)
+      }
+    } catch (err) {
+      fail("system", "assign novice", err)
     }
   }
   if (roster.clerk) {
@@ -754,23 +813,32 @@ const main = async () => {
   }
   if (roster.covering) {
     try {
-      await ensureAssignment(roster.covering.id, geo1.id, "relief")
-      roster.covering.court = geo1
-      log(true, "system", "assign covering", `${geo1.name} (relief)`)
+      await admin
+        .from("magistrate_courts")
+        .update({
+          ended_at: new Date().toISOString(),
+          end_reason: "persona workflow: covering must sit a different court from the shared file",
+        })
+        .eq("profile_id", roster.covering.id)
+        .eq("court_id", geo1.id)
+        .is("ended_at", null)
+      await ensureAssignment(roster.covering.id, coveringCourt.id, "relief")
+      roster.covering.court = coveringCourt
+      log(true, "system", "assign covering", `${coveringCourt.name} (relief)`)
     } catch (err) {
       fail("system", "assign covering", err)
     }
   }
   log(true, "system", "outsider intentionally unassigned", roster.outsider?.email ?? "")
 
-  await runNoviceWorkflow(roster.novice, geo1)
+  await runNoviceWorkflow(roster.novice, roster.novice?.court ?? noviceCourt)
   await runExperiencedWorkflow(roster.experienced, geo1, roster.covering)
-  await runCoveringWorkflow(roster.covering, geo1, {
+  await runCoveringWorkflow(roster.covering, roster.covering?.court ?? coveringCourt, {
     id: roster.experienced?.matterId,
     court_id: geo1.id,
   })
   await runClerkWorkflow(roster.clerk, geo1)
-  await runAdminWorkflow(roster.admin, roster.novice?.id, other.id !== geo1.id ? other : null)
+  await runAdminWorkflow(roster.admin, roster.novice?.id, coveringCourt.id !== geo1.id ? coveringCourt : null)
   await runOutsiderWorkflow(roster.outsider, roster.experienced?.matterId)
 
   await terminateOcrWorker()

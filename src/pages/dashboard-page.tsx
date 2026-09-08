@@ -4,7 +4,6 @@ import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
 import {
-  useCurrentCourts,
   useMyRetainedMatters,
   useUpcomingAppearances,
 } from "@/hooks/use-dashboard";
@@ -13,6 +12,8 @@ import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { useMyClerkAccessRequests } from "@/hooks/clerk/use-clerk-access";
+import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
+import { clerkHomeState, clerkPendingDescription } from "@/lib/clerk-home";
 import { APP_NAME } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
@@ -26,12 +27,13 @@ import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
  * Role-branched: a clerk (pending or approved) never sees the
  * magistrate's Judgments/Bench Notes/Quick Codes/Retained rows or the
  * Judgments shortcut — those queries aren't even fetched for a clerk, not
- * merely hidden once empty. A pending clerk (zero currently-active court
- * assignments) sees the pending-approval welcome instead of any
- * operational content at all.
+ * merely hidden once empty. A pending clerk (zero currently-active
+ * clerk_courts rows) sees the pending-approval welcome instead of any
+ * operational content at all. Access requests never grant the Docket.
  */
 export default function DashboardPage() {
   const { user, profile } = useAuth();
+  const rolePending = !profile;
   const isClerk = profile?.role === "clerk";
   const {
     data: matters,
@@ -40,13 +42,13 @@ export default function DashboardPage() {
     error: mattersErr,
     refetch: refetchMatters,
   } = useDocketMatters("");
-  const { data: courts, isPending: courtsPending } = useCurrentCourts();
+  const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const { data: appearances, isPending: appearancesPending } = useUpcomingAppearances();
   const { data: retained } = useMyRetainedMatters();
-  const { data: judgments, isPending: judgmentsPending } = useJudgments({ enabled: !isClerk });
-  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes({ enabled: !isClerk });
-  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes({ enabled: !isClerk });
-  const { data: clerkRequests, isPending: clerkRequestsPending } = useMyClerkAccessRequests();
+  const { data: judgments, isPending: judgmentsPending } = useJudgments({ enabled: Boolean(profile) && !isClerk });
+  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes({ enabled: Boolean(profile) && !isClerk });
+  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes({ enabled: Boolean(profile) && !isClerk });
+  const { data: clerkRequests } = useMyClerkAccessRequests();
 
   const activeMatters = useMemo(
     () => (matters ?? []).filter((m) => m.status === "active"),
@@ -95,13 +97,18 @@ export default function DashboardPage() {
   // Real matter/appearance data still populates the rows below unchanged.
   const name = profile?.full_name?.trim() || null;
 
-  const approvedClerkRequests = (clerkRequests ?? []).filter((r) => r.status === "approved");
   const pendingClerkRequests = (clerkRequests ?? []).filter((r) => r.status === "pending");
-  // A clerk with at least one approved court gets the ordinary clerk
-  // welcome + Docket rows below, even while other requests remain
-  // pending elsewhere — only a clerk with ZERO approved courts sees the
-  // pending-approval experience in place of any operational content.
-  const isPendingClerk = isClerk && !clerkRequestsPending && approvedClerkRequests.length === 0;
+  const clerkState = rolePending
+    ? "loading"
+    : isClerk
+      ? clerkHomeState({
+          courtsPending,
+          courtCount: myCourts?.length ?? 0,
+        })
+      : "ready";
+  const isPendingClerk = clerkState === "pending";
+  const sittingNames = (myCourts ?? []).map((c) => c.court_name).filter(Boolean);
+  const sittingPending = courtsPending;
 
   // A magistrate can no longer reach this page at all without an
   // approved court (requireApprovedMagistrateCourt, router.tsx — they're
@@ -112,7 +119,14 @@ export default function DashboardPage() {
   // still land here — the "Sitting at ..." line below already handles
   // that plainly (it just doesn't render), so no separate banner is
   // needed for them either.
-  const billboard = !isClerk
+  const billboard = rolePending
+    ? {
+        tone: "judgment" as const,
+        eyebrow: APP_NAME,
+        title: "Welcome",
+        description: "Loading your workspace.",
+      }
+    : !isClerk
     ? {
         tone: "judgment" as const,
         eyebrow: APP_NAME,
@@ -122,24 +136,29 @@ export default function DashboardPage() {
         secondaryAction: { label: "Browse docket", href: ROUTES.docket },
         tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
       }
-    : isPendingClerk
+    : clerkState === "loading"
+      ? {
+          tone: "judgment" as const,
+          eyebrow: APP_NAME,
+          title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
+          description: "Loading your court assignment.",
+        }
+      : isPendingClerk
       ? {
           tone: "judgment" as const,
           eyebrow: APP_NAME,
           title: name ? `Welcome, ${name}` : "Welcome",
-          description:
-            pendingClerkRequests.length === 1
-              ? `Your request to access the docket for ${pendingClerkRequests[0].courts?.name ?? "your requested court"} is awaiting approval from the assigned magistrate.`
-              : pendingClerkRequests.length > 1
-                ? "Your court access requests are awaiting approval from each court's assigned magistrate."
-                : "Request access to a court to get started. The court's assigned magistrate will review your request.",
+          description: clerkPendingDescription({
+            pendingRequestCount: pendingClerkRequests.length,
+            pendingCourtName: pendingClerkRequests[0]?.courts?.name,
+          }),
           primaryAction: { label: "View my requests", href: ROUTES.clerkAccess },
         }
       : {
           tone: "judgment" as const,
           eyebrow: APP_NAME,
           title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
-          description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${approvedClerkRequests.length > 1 ? "s" : ""}.`,
+          description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
           primaryAction: { label: "Open docket", href: ROUTES.docket },
         };
 
@@ -148,7 +167,7 @@ export default function DashboardPage() {
       <Billboard {...billboard} />
 
       <div className="relative z-10 -mt-16 space-y-9 pb-20">
-        {isPendingClerk ? null : (
+        {isPendingClerk || clerkState === "loading" ? null : (
           <>
         {mattersError && (
           <div className="browse-gutter">
@@ -156,9 +175,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {!courtsPending && courts && courts.length > 0 && (
+        {!sittingPending && sittingNames.length > 0 && (
           <p className="browse-gutter text-sm text-white/55">
-            Sitting at {courts.map((c) => rel(c.courts)?.name).filter(Boolean).join(" · ")}
+            Sitting at {sittingNames.join(" · ")}
           </p>
         )}
 

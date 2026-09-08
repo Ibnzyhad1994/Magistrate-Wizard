@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search, Landmark, Plus, X, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import {
   useCreateCourtAssignment,
   useEndCourtAssignment,
   useUnassignedMagistrates,
+  useProfileClerkCourts,
   type ProfileSearchResult,
 } from "@/hooks/admin/use-court-assignments";
 import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-court-request-review-panel";
@@ -33,6 +35,7 @@ import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
+import { ROUTES } from "@/routes/paths";
 
 /**
  * Admin-only Court Assignment management. `magistrate_courts` is
@@ -78,12 +81,28 @@ export default function CourtAssignmentsPage() {
     error: assignmentsErr,
     refetch: refetchAssignments,
   } = useProfileCourtAssignments(selectedProfileId ?? undefined);
+  const {
+    data: clerkAssignments,
+    isPending: clerkAssignmentsPending,
+    isError: clerkAssignmentsError,
+    error: clerkAssignmentsErr,
+    refetch: refetchClerkAssignments,
+  } = useProfileClerkCourts(selectedProfileId ?? undefined);
   const { data: courts, isPending: courtsPending } = useCourts();
   const createAssignment = useCreateCourtAssignment(selectedProfileId ?? "");
   const endAssignment = useEndCourtAssignment(selectedProfileId ?? "");
 
-  const current = assignments?.filter((a) => !a.ended_at) ?? [];
-  const history = assignments?.filter((a) => a.ended_at) ?? [];
+  const isClerkProfile = selectedProfile?.role === "clerk";
+  const current = isClerkProfile
+    ? (clerkAssignments ?? []).filter((a) => !a.ended_at)
+    : (assignments?.filter((a) => !a.ended_at) ?? []);
+  const history = isClerkProfile
+    ? (clerkAssignments ?? []).filter((a) => a.ended_at)
+    : (assignments?.filter((a) => a.ended_at) ?? []);
+  const listPending = isClerkProfile ? clerkAssignmentsPending : assignmentsPending;
+  const listError = isClerkProfile ? clerkAssignmentsError : assignmentsError;
+  const listErr = isClerkProfile ? clerkAssignmentsErr : assignmentsErr;
+  const refetchList = isClerkProfile ? refetchClerkAssignments : refetchAssignments;
   const availableCourts = (courts ?? []).filter(
     (c) => !current.some((a) => a.court_id === c.id),
   );
@@ -109,7 +128,7 @@ export default function CourtAssignmentsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Court Assignments"
-        description="Review court-assignment requests, or find a profile to assign or end a Court. Ending never deletes history."
+        description="Review court-assignment requests, or find a profile to assign or end a Court. Ending never deletes history. Acting and relief sit the same files as a primary sitting."
       />
 
       <Tabs defaultValue="requests">
@@ -283,14 +302,18 @@ export default function CourtAssignmentsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {assignmentsPending ? (
+                {listPending ? (
                   <Skeleton className="h-10 w-full" />
-                ) : assignmentsError ? (
-                  <InlineError error={assignmentsErr} onRetry={() => void refetchAssignments()} />
+                ) : listError ? (
+                  <InlineError error={listErr} onRetry={() => void refetchList()} />
                 ) : current.length === 0 ? (
                   <EmptyState
                     title="No current Court assignment"
-                    description="This profile is not currently assigned to a Court."
+                    description={
+                      isClerkProfile
+                        ? "This clerk has no court yet. They request access; the sitting magistrate approves it."
+                        : "This profile is not currently assigned to a Court."
+                    }
                   />
                 ) : (
                   <ul className="divide-y divide-border">
@@ -301,18 +324,25 @@ export default function CourtAssignmentsPage() {
                             {a.courts?.name ?? "Unknown court"}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
+                            {"assignment_type" in a && a.assignment_type && a.assignment_type !== "regular"
+                              ? `${a.assignment_type} · `
+                              : isClerkProfile
+                                ? "Clerk · "
+                                : ""}
                             {a.courts?.jurisdiction} · Since {formatDate(a.started_at)}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setEndTarget({ id: a.id, courtName: a.courts?.name ?? "this Court" })
-                          }
-                        >
-                          End assignment
-                        </Button>
+                        {!isClerkProfile && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setEndTarget({ id: a.id, courtName: a.courts?.name ?? "this Court" })
+                            }
+                          >
+                            End assignment
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -325,6 +355,15 @@ export default function CourtAssignmentsPage() {
                   </p>
                 )}
 
+                {isClerkProfile ? (
+                  <p className="border-t border-border pt-3 text-sm text-muted-foreground">
+                    Clerks sit a court through{" "}
+                    <Link className="text-primary underline-offset-2 hover:underline" to={ROUTES.clerkAccessRequests}>
+                      Clerk Access
+                    </Link>
+                    , not this roster.
+                  </p>
+                ) : (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
                   <Select
                     value={courtToAssign}
@@ -353,6 +392,7 @@ export default function CourtAssignmentsPage() {
                     Assign
                   </Button>
                 </div>
+                )}
               </CardContent>
             </Card>
 
@@ -362,7 +402,7 @@ export default function CourtAssignmentsPage() {
                 <CardDescription>Ended Court assignments: preserved, never deleted.</CardDescription>
               </CardHeader>
               <CardContent>
-                {assignmentsPending ? (
+                {listPending ? (
                   <Skeleton className="h-10 w-full" />
                 ) : history.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No ended assignments.</p>

@@ -67,7 +67,7 @@ export default function PeopleAdminPage() {
     <BrowsePage>
       <BrowseHeader
         title="People"
-        description="Every account, the court they are assigned to, last sign-in, and latest institutional activity."
+        description="Every account, the court they sit, last sign-in, and latest institutional activity. Acting and relief sit that Court's docket."
       />
 
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

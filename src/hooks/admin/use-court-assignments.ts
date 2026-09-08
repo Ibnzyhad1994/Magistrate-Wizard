@@ -25,6 +25,7 @@ export const courtAssignmentKeys = {
   search: (q: string) => ["admin", "profile-search", q] as const,
   profile: (id: string) => ["admin", "profile", id] as const,
   assignments: (profileId: string) => ["admin", "court-assignments", profileId] as const,
+  clerkAssignments: (profileId: string) => ["admin", "clerk-courts", profileId] as const,
   waiting: ["admin", "unassigned-magistrates"] as const,
 };
 
@@ -120,6 +121,34 @@ export function useProfileCourtAssignments(profileId: string | undefined) {
         .select(
           "id, court_id, assignment_type, started_at, ended_at, courts(id, name, jurisdiction, is_active)",
         )
+        .eq("profile_id", profileId as string)
+        .order("started_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profileId,
+  });
+}
+
+export interface ClerkCourtAssignmentRow {
+  id: string;
+  court_id: string;
+  started_at: string;
+  ended_at: string | null;
+  courts: { id: string; name: string; jurisdiction: string; is_active: boolean } | null;
+}
+
+/**
+ * Every `clerk_courts` row for one profile. Clerks sit a Court through
+ * Clerk Access (decide_clerk_access_request), not magistrate_courts.
+ */
+export function useProfileClerkCourts(profileId: string | undefined) {
+  return useQuery({
+    queryKey: courtAssignmentKeys.clerkAssignments(profileId ?? ""),
+    queryFn: async (): Promise<ClerkCourtAssignmentRow[]> => {
+      const { data, error } = await supabase
+        .from("clerk_courts")
+        .select("id, court_id, started_at, ended_at, courts(id, name, jurisdiction, is_active)")
         .eq("profile_id", profileId as string)
         .order("started_at", { ascending: false });
       if (error) throw error;

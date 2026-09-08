@@ -20,7 +20,12 @@ function check(label, actual, expected) {
 }
 
 check("pending magistrate has no tour", walkthroughStepsFor("magistrate", true).length, 0);
-check("clerk tour is short", walkthroughStepsFor("clerk", false).length, 2);
+check("clerk tour is short", walkthroughStepsFor("clerk", false).map((s) => s.id), [
+  "home",
+  "docket",
+  "new-matter",
+  "next",
+]);
 
 const magistrate = walkthroughStepsFor("magistrate", false);
 check(

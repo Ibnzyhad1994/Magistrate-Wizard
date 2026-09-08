@@ -56,7 +56,7 @@
     "test:seed-heuristics": "node scripts/tests/test-seed-heuristics.mjs",
     "test:docket-procedure": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-procedure.mjs",
     "test:docket-week": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-week.mjs",
-    "test:walkthrough": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-walkthrough.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-tour-overlay.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-tour-example.mjs",
+    "test:walkthrough": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-walkthrough.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-tour-overlay.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-tour-example.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-clerk-home.mjs",
     "test:docket-bin-purge": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-matter-bin-purge.mjs",
     "test:case-law-title": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-title.mjs",
     "test:ingest-harvest-quality": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-harvest-quality.mjs",

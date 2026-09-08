@@ -197,6 +197,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [isActive, location.pathname]);
 
   useEffect(() => {
+    if (!isActive || !hasMatter) return;
+    if (!docketMatterPathFromLocation(location.pathname)) return;
+    if (stepId !== "docket" && stepId !== "board" && stepId !== "next") return;
+    const list = visibleWalkthroughSteps(allSteps, chapter, true);
+    const openIdx = list.findIndex((step) => step.id === "open-file");
+    if (openIdx < 0) return;
+    setStepIndex(openIdx);
+    setStepId("open-file");
+  }, [allSteps, chapter, hasMatter, isActive, location.pathname, stepId]);
+
+  useEffect(() => {
     if (status === "locked" && isActiveRef.current) {
       void handleStop(false);
     }

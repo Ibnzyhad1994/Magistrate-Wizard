@@ -105,37 +105,39 @@ function DayTile({
     : getCapacityStyle(0, null);
   const hint = worst
     ? `${capacityStatusLabel(style.band)}. Busiest: ${worst.scheduled_count} of ${worst.daily_capacity}`
-    : "No capacity configured for this date";
+    : null;
+  const ariaHint = worst ? hint : `Select ${date}`;
 
-  return (
-    <HintTooltip label={hint}>
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-pressed={selected}
-        aria-label={`${date}. ${hint}`}
-        className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors ${
-          size === "day" ? "h-20 sm:h-24" : "h-12 sm:h-14"
-        } ${style.textClass} ${
-          today ? "border-2 border-blue-500" : "border-black/10"
-        } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
-        style={{ backgroundColor: style.bg }}
-      >
-        <span className="text-sm font-bold leading-none">{day}</span>
-        {worst && (
-          <span className="flex items-center gap-0.5 text-[10px] font-semibold leading-none">
-            {style.band === "over_capacity" && <AlertTriangle className="h-2.5 w-2.5" />}
-            {worst.scheduled_count}/{worst.daily_capacity}
-          </span>
-        )}
-        {size === "day" && (
-          <span className="text-[10px] font-medium leading-none">
-            {parseDateOnly(date).toLocaleDateString("en-GB", { weekday: "short" })}
-          </span>
-        )}
-      </button>
-    </HintTooltip>
+  const tile = (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      aria-label={ariaHint}
+      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors ${
+        size === "day" ? "h-20 sm:h-24" : "h-12 sm:h-14"
+      } ${style.textClass} ${
+        today ? "border-2 border-blue-500" : "border-black/10"
+      } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+      style={{ backgroundColor: style.bg }}
+    >
+      <span className="text-sm font-bold leading-none">{day}</span>
+      {worst && (
+        <span className="flex items-center gap-0.5 text-[10px] font-semibold leading-none">
+          {style.band === "over_capacity" && <AlertTriangle className="h-2.5 w-2.5" />}
+          {worst.scheduled_count}/{worst.daily_capacity}
+        </span>
+      )}
+      {size === "day" && (
+        <span className="text-[10px] font-medium leading-none">
+          {parseDateOnly(date).toLocaleDateString("en-GB", { weekday: "short" })}
+        </span>
+      )}
+    </button>
   );
+
+  if (!hint) return tile;
+  return <HintTooltip label={hint}>{tile}</HintTooltip>;
 }
 
 /**

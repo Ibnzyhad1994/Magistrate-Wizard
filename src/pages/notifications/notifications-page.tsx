@@ -50,7 +50,7 @@ export default function NotificationsPage() {
         <EmptyState
           icon={Inbox}
           title="No notices yet"
-          description="When a matter is shared with you, a hearing is listed tomorrow, or a request needs attention, it will appear here."
+          description="Nothing waiting right now."
         />
       ) : (
         <div className="mx-auto max-w-3xl space-y-3">

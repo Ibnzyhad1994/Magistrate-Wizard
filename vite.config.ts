@@ -15,7 +15,7 @@ const native = JSON.parse(
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const supabaseUrl = env.VITE_SUPABASE_URL || "http://127.0.0.1:55321";
+  const supabaseUrl = env.VITE_SUPABASE_URL || "http://127.0.0.1:56321";
   const csp = buildCsp(supabaseUrl);
   const productionHeaders = { "Content-Security-Policy": csp };
 

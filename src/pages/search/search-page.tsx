@@ -127,6 +127,10 @@ export default function SearchPage() {
           placeholder="Search everything…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onInput={(e) => setInput((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setQuery(input);
+          }}
           aria-label="Search"
           autoFocus
         />
