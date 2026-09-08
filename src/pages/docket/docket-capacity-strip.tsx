@@ -106,7 +106,7 @@ function DayTile({
   const hint = worst
     ? `${capacityStatusLabel(style.band)}. Busiest: ${worst.scheduled_count} of ${worst.daily_capacity}`
     : null;
-  const ariaHint = worst ? hint : `Select ${date}`;
+  const ariaHint = hint ?? `Select ${date}`;
 
   const tile = (
     <button
