@@ -3944,6 +3944,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      return_unassigned_magistrate_to_requester: {
+        Args: { p_profile_id: string; p_reason?: string }
+        Returns: number
+      }
       revoke_clerk_court_access: {
         Args: { p_assignment_id: string; p_reason?: string }
         Returns: {

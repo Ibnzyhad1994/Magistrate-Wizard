@@ -32,7 +32,12 @@ import {
 } from "@/hooks/admin/use-court-assignments";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-court-request-review-panel";
+import { RosterProfileRequests } from "@/pages/admin/roster-profile-requests";
 import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate-court-requests";
+import {
+  pendingRequestsForProfile,
+  waitingListRequestLabel,
+} from "@/lib/court-assignment-roster";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
@@ -212,7 +217,8 @@ export default function CourtAssignmentsPage() {
             <div className="space-y-2 border-t border-border pt-3">
               <p className="text-sm font-medium text-foreground">Waiting for assignment</p>
               <p className="text-xs text-muted-foreground">
-                Magistrates with no active court. Select one to assign a court.
+                Magistrates with no active court. Select one to assign, reject an open
+                request, or send them back to request again.
               </p>
               {waitingPending ? (
                 <Skeleton className="h-16 w-full" />
@@ -224,7 +230,11 @@ export default function CourtAssignmentsPage() {
                 </p>
               ) : (
                 <ul className="divide-y divide-border rounded-md border border-border">
-                  {waiting.map((p) => (
+                  {waiting.map((p) => {
+                    const openRequestLabel = waitingListRequestLabel(
+                      pendingRequestsForProfile(reviewRequests, p.id).length,
+                    );
+                    return (
                     <li key={p.id}>
                       <button
                         type="button"
@@ -240,14 +250,22 @@ export default function CourtAssignmentsPage() {
                             {p.email}
                           </span>
                         </span>
-                        {!p.is_active && (
-                          <Badge variant="outline" className="shrink-0">
-                            Inactive
-                          </Badge>
-                        )}
+                        <span className="flex shrink-0 items-center gap-1">
+                          {openRequestLabel && (
+                            <Badge variant="outline" className="shrink-0">
+                              {openRequestLabel}
+                            </Badge>
+                          )}
+                          {!p.is_active && (
+                            <Badge variant="outline" className="shrink-0">
+                              Inactive
+                            </Badge>
+                          )}
+                        </span>
                       </button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -307,6 +325,14 @@ export default function CourtAssignmentsPage() {
                 </div>
               </CardHeader>
             </Card>
+
+            {selectedProfile && !isClerkProfile && !listPending && (
+              <RosterProfileRequests
+                profileId={selectedProfile.id}
+                role={selectedProfile.role}
+                hasActiveAssignment={current.length > 0}
+              />
+            )}
 
             <Card>
               <CardHeader>

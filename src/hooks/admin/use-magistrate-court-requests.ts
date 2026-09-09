@@ -137,3 +137,31 @@ export function useAdminBootstrapSelfApprove() {
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
+
+/**
+ * Roster action: reject any still-open requests for an unassigned
+ * magistrate and notify them to request the correct court. Does not
+ * change their account role.
+ */
+export function useReturnUnassignedMagistrate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { profileId: string; reason?: string }) => {
+      const { data, error } = await supabase.rpc("return_unassigned_magistrate_to_requester", {
+        p_profile_id: input.profileId,
+        p_reason: input.reason ?? undefined,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (rejectedCount) => {
+      toast.success(
+        rejectedCount
+          ? "Sent back. Open requests were rejected and they were notified."
+          : "Sent back. They were notified to request the correct court.",
+      );
+      invalidateAfterDecision(queryClient);
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
