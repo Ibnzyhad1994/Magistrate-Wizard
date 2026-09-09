@@ -1,14 +1,9 @@
 /**
- * Optional audio confirmation for outcomes a magistrate might otherwise
- * miss — a save that completed, or an action that failed — while their
- * attention is on the bench rather than the screen.
+ * Audio confirmation for outcomes a magistrate might otherwise miss — a
+ * save that completed, or an action that failed — while their attention
+ * is on the bench rather than the screen.
  *
- * Three deliberate constraints, all from the setting this runs in:
- *
- *   OFF BY DEFAULT. This application is used in an active courtroom. A
- *   product that makes noise the first time it is opened, in that room,
- *   is a product that gets muted at the operating-system level and never
- *   trusted again. It is opt-in from Settings, per device.
+ * Two deliberate constraints, both from the setting this runs in:
  *
  *   SYNTHESISED, NOT SAMPLED. Tones are generated with Web Audio rather
  *   than shipped as audio files: nothing to download, nothing to cache,
@@ -18,6 +13,12 @@
  *   QUIET AND SHORT. Peak gain is deliberately low and every cue is under
  *   a fifth of a second. These are confirmations, not alerts — the screen
  *   remains the source of truth, and the toast still says what happened.
+ *
+ * On by default, opt-out from Settings, per device: a browser will not
+ * play audio before the page has been interacted with anyway (see
+ * getContext below), so there is no risk of noise on first load in a
+ * silent room — by the time a cue could fire, someone has already
+ * clicked something.
  */
 
 const STORAGE_KEY = "magistrate-wizard-sound-cues";
@@ -50,11 +51,12 @@ function getContext(): AudioContext | null {
 export function soundCuesEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "true";
+    // On by default: absent or anything but the literal "false" plays.
+    return window.localStorage.getItem(STORAGE_KEY) !== "false";
   } catch {
-    // Private-browsing or a blocked storage partition — treat as off
-    // rather than letting a preference read break a save path.
-    return false;
+    // Private-browsing or a blocked storage partition — default still
+    // applies; a preference read must never break a save path.
+    return true;
   }
 }
 

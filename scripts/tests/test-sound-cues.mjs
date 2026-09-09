@@ -20,17 +20,18 @@ function check(label, actual, expected) {
 const src = readFileSync("src/lib/sound-cues.ts", "utf8");
 
 // --- default state ---------------------------------------------------------
-// The single most important property: opening the app in a courtroom
-// must not make a sound.
+// On by default, opt-out rather than opt-in: a browser will not play any
+// audio before the page has had a genuine user interaction, so there is
+// no risk of unprompted sound on first load regardless of this setting.
 
 check(
-  "cues are off unless localStorage explicitly says 'true'",
-  /getItem\(STORAGE_KEY\)\s*===\s*"true"/.test(src),
+  "cues are on unless localStorage explicitly says 'false'",
+  /getItem\(STORAGE_KEY\)\s*!==\s*"false"/.test(src),
   true,
 );
 check(
-  "a storage failure falls back to OFF, never on",
-  /catch\s*\{[^}]*return false/s.test(src),
+  "a storage failure falls back to the default (on), not silently off",
+  /catch\s*\{[^}]*return true/s.test(src),
   true,
 );
 check(

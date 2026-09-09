@@ -28,9 +28,10 @@ import {
 import { toast } from "sonner"
 
 /**
- * Off by default, and per device rather than per account: the same
+ * On by default, and per device rather than per account: the same
  * magistrate may work from a courtroom bench and a chambers desk, and
- * only one of those rooms tolerates sound.
+ * this is the one that needs to be turned off, not opted into, on
+ * whichever of those rooms doesn't tolerate sound.
  */
 export function SoundCuesCard() {
   const [enabled, setEnabled] = useState(soundCuesEnabled)
@@ -49,7 +50,7 @@ export function SoundCuesCard() {
         <CardTitle className="text-base">Sound cues</CardTitle>
         <CardDescription>
           A short tone when something saves or fails, for when your attention is on
-          the bench rather than the screen. Off by default. This setting applies to
+          the bench rather than the screen. On by default. This setting applies to
           this device only.
         </CardDescription>
       </CardHeader>
