@@ -8,6 +8,7 @@ import { RouteErrorBoundary } from "@/components/common/error-boundary";
 import LoginPage from "@/pages/auth/login-page";
 import RegisterPage from "@/pages/auth/register-page";
 import ForgotPasswordPage from "@/pages/auth/forgot-password-page";
+import ResetPasswordPage from "@/pages/auth/reset-password-page";
 import DashboardPage from "@/pages/dashboard-page";
 import DocketListPage from "@/pages/docket/docket-list-page";
 import DocketBinPage from "@/pages/docket/docket-bin-page";
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.login, element: <LoginPage /> },
           { path: ROUTES.register, element: <RegisterPage /> },
           { path: ROUTES.forgotPassword, element: <ForgotPasswordPage /> },
+          { path: ROUTES.resetPassword, element: <ResetPasswordPage /> },
         ],
       },
     ],

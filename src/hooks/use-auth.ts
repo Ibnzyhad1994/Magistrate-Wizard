@@ -164,13 +164,37 @@ export function useAuth() {
     mutationKey: ["auth", "resetPassword"],
     mutationFn: async (email: string) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}${ROUTES.login}`,
+        // Security-audit finding: this used to redirect to /login, which
+        // auto-authenticated the user from the recovery link and left the
+        // "forgotten" password untouched -- nothing in the app ever called
+        // updateUser(). ResetPasswordPage is the form that actually does.
+        redirectTo: `${window.location.origin}${ROUTES.resetPassword}`,
       });
       if (error) throw error;
       void recordAuthEvent("password_reset_requested", email);
     },
     onSuccess: () => {
       toast.success("Password reset email sent.");
+    },
+  });
+
+  const confirmPasswordResetMutation = useMutation({
+    mutationKey: ["auth", "confirmPasswordReset"],
+    mutationFn: async (password: string) => {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      // Sign out rather than drop the user straight into the app: the
+      // session on this page came from a one-time recovery link, not a
+      // real login, and AuthProvider deliberately never promoted it to
+      // `authenticated` (see the PASSWORD_RECOVERY branch there) -- so
+      // there's no app session to continue into anyway. A clean sign-in
+      // with the new password is the correct next step, not a surprise
+      // one on a page that never looked logged in.
+      await supabase.auth.signOut({ scope: "local" });
+    },
+    onSuccess: () => {
+      toast.success("Password updated — sign in with your new password.");
+      navigate(ROUTES.login);
     },
   });
 
@@ -199,5 +223,7 @@ export function useAuth() {
     isSigningOut: signOutMutation.isPending,
     resetPassword: resetPasswordMutation.mutateAsync,
     isResettingPassword: resetPasswordMutation.isPending,
+    confirmPasswordReset: confirmPasswordResetMutation.mutateAsync,
+    isConfirmingPasswordReset: confirmPasswordResetMutation.isPending,
   };
 }

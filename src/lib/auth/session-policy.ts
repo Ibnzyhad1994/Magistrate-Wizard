@@ -74,6 +74,18 @@ export function isRememberExpired(rememberUntil: number | null, now: number): bo
 }
 
 /**
+ * True when the current URL is a password-recovery link landing (Supabase
+ * appends `type=recovery` to the redirect -- confirmed empirically against
+ * a real recovery email in this app's configured flow: a hash fragment
+ * carrying `access_token`/`refresh_token`/`type=recovery`). AuthProvider
+ * uses this to skip promoting that one-time session to a real app
+ * sign-in; ResetPasswordPage reads the session itself, independently.
+ */
+export function isPasswordRecoveryUrl(hash: string, search: string): boolean {
+  return hash.includes("type=recovery") || search.includes("type=recovery")
+}
+
+/**
  * Open-redirect guard for post-login `location.state.from`.
  */
 export function pathFromLoginRedirect(

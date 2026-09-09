@@ -65,3 +65,20 @@ export const forgotPasswordSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
 });
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+
+/** Same password policy as registerSchema, kept as its own schema since this form has no other fields to share it with. */
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain an uppercase letter")
+      .regex(/[a-z]/, "Password must contain a lowercase letter")
+      .regex(/[0-9]/, "Password must contain a number"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;

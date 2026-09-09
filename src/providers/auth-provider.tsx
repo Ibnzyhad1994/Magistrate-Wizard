@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { APP_NAME } from "@/lib/constants";
 import { isQueueableError } from "@/lib/offline/is-queueable-error";
 import { getCachedProfile, hydrateOfflineStore, setCachedProfile } from "@/lib/offline/store";
+import { isPasswordRecoveryUrl } from "@/lib/auth/session-policy";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -54,6 +55,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async function init() {
       setStatus("loading");
       await hydrateOfflineStore();
+
+      // Supabase's client parses a password-recovery link's URL fragment
+      // (#access_token=...&type=recovery&...) into a real session during
+      // its own internal initialization, before this effect even runs --
+      // confirmed against a real recovery email in this app's configured
+      // (implicit) flow. Without this check, the getSession() call below
+      // would pick that session up and promote it exactly like a normal
+      // login, which is the bug: nothing would ever ask for a new
+      // password. ResetPasswordPage reads the same session directly via
+      // its own getSession() call, independent of this store, so it still
+      // works -- this only stops the app treating it as a real sign-in.
+      if (isPasswordRecoveryUrl(window.location.hash, window.location.search)) {
+        if (isMounted) setSession(null);
+        return;
+      }
+
       const {
         data: { session },
         error,
@@ -77,8 +94,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
+      // A password-recovery link authenticates the Supabase client with a
+      // one-time session so ResetPasswordPage can call updateUser() -- but
+      // that must not be treated as a real sign-in. Before this branch
+      // existed, this listener promoted it exactly like SIGNED_IN, so the
+      // app never asked for a new password: it just logged the user back
+      // in with the old (forgotten) one still active. Deliberately not
+      // calling setSession/loadProfile here leaves global auth status
+      // untouched (PublicRoute won't redirect ResetPasswordPage away, and
+      // ProtectedRoute won't treat this as real access) -- the page reads
+      // the recovery session itself via getSession(), independent of this
+      // store, exactly like it would if this listener never fired at all.
+      if (event === "PASSWORD_RECOVERY") return;
       if (!session) {
         // Local sign-out during idle lock must not wipe profile or bounce
         // ProtectedRoute to /login — that unmounts in-progress drafts.

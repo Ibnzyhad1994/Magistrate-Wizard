@@ -74,6 +74,9 @@ jobs:
       - name: Session lock security
         run: npm run test:session-lock
 
+      - name: Password reset flow
+        run: npm run test:password-reset
+
       - name: Judgment and bench-note PDF export
         run: npm run test:export-pdf
 
