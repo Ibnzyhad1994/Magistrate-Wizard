@@ -61,6 +61,12 @@ function DesktopExampleSheet() {
                 </TableHead>
               ))}
               <TableHead
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
+                data-tour="docket-outcome"
+              >
+                Outcome
+              </TableHead>
+              <TableHead
                 className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7.5rem]"
                 data-tour="docket-next-date"
               >
@@ -81,6 +87,9 @@ function DesktopExampleSheet() {
                   />
                 </TableCell>
               ))}
+              <TableCell className="p-1.5">
+                <ExampleStageChip label="+ Set outcome" />
+              </TableCell>
               <TableCell className="whitespace-nowrap">
                 <span className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-white/70 underline decoration-dotted underline-offset-2">
                   + Set date
@@ -127,6 +136,13 @@ function MobileExampleCard() {
             />
           </div>
         ))}
+      </div>
+      <div
+        className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-2"
+        data-tour="docket-outcome"
+      >
+        <span className="text-[11px] font-medium text-white/45">Outcome</span>
+        <ExampleStageChip label="+ Set outcome" />
       </div>
     </article>
   );

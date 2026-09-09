@@ -7,6 +7,11 @@ import {
   walkthroughRecordForPending,
   walkthroughStepsFor,
 } from "../../src/lib/walkthrough.ts";
+import {
+  NAV_ITEMS,
+  navTourIdForHref,
+  visibleNavItems,
+} from "../../src/components/layout/nav-config.ts";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -20,23 +25,140 @@ function check(label, actual, expected) {
 }
 
 check("pending magistrate has no tour", walkthroughStepsFor("magistrate", true).length, 0);
-check("clerk tour is short", walkthroughStepsFor("clerk", false).map((s) => s.id), [
+
+const clerk = walkthroughStepsFor("clerk", false);
+const magistrate = walkthroughStepsFor("magistrate", false);
+const admin = walkthroughStepsFor("admin", false);
+const idsIn = (steps, chapter) =>
+  steps.filter((s) => s.chapter === chapter).map((s) => s.id);
+
+// --- role coverage ---------------------------------------------------------
+// The rule the tour is built on: never point at something the role cannot
+// reach. This is checked against nav-config itself rather than a copied
+// list, so adding a `roles` restriction to a nav item fails here instead
+// of silently leaving a step ringing empty space.
+
+const navTourIdsFor = (role) =>
+  new Set(
+    visibleNavItems(NAV_ITEMS, role, false)
+      .map((item) => navTourIdForHref(item.href))
+      .filter(Boolean),
+  );
+
+for (const [role, steps] of [
+  ["clerk", clerk],
+  ["magistrate", magistrate],
+  ["admin", admin],
+]) {
+  const reachable = navTourIdsFor(role);
+  const unreachable = steps
+    .filter((s) => s.navTarget && s.navTarget !== "nav-more")
+    .filter((s) => !reachable.has(s.navTarget))
+    .map((s) => `${s.id} -> ${s.navTarget}`);
+  check(`every ${role} step points at a nav item that role can see`, unreachable, []);
+}
+
+check(
+  "a clerk is never shown Callovers, Judgments, Case Law, or Search",
+  clerk.filter((s) =>
+    ["callovers", "judgments", "case-law", "legislation", "search"].includes(s.id),
+  ),
+  [],
+);
+check(
+  "only a clerk is walked through their own court-access request page",
+  {
+    clerk: clerk.some((s) => s.id === "clerk-access"),
+    magistrate: magistrate.some((s) => s.id === "clerk-access"),
+  },
+  { clerk: true, magistrate: false },
+);
+check(
+  "only magistrates and admins are walked through the clerk-access review queue",
+  {
+    clerk: clerk.some((s) => s.id === "clerk-access-requests"),
+    magistrate: magistrate.some((s) => s.id === "clerk-access-requests"),
+    admin: admin.some((s) => s.id === "clerk-access-requests"),
+  },
+  { clerk: false, magistrate: true, admin: true },
+);
+check(
+  "admin gets the magistrate tour plus Administration, not a separate one",
+  admin.filter((s) => !magistrate.some((m) => m.id === s.id)).map((s) => s.id),
+  ["legal-library", "people", "administration"],
+);
+
+// --- the shared board ------------------------------------------------------
+// Clerks and magistrates work the same sheet, so the board steps must be
+// the same steps, not two drifting copies.
+
+const boardIds = ["board", "outcome", "next"];
+check(
+  "clerk and magistrate get identical board steps",
+  boardIds.map((id) => JSON.stringify(clerk.find((s) => s.id === id))),
+  boardIds.map((id) => JSON.stringify(magistrate.find((s) => s.id === id))),
+);
+check(
+  "the board step teaches the not-found arraignment status",
+  magistrate.find((s) => s.id === "board")?.body.includes("Not Found — To Be Summoned"),
+  true,
+);
+check(
+  "the outcome step names both values and what setting one does",
+  (() => {
+    const body = magistrate.find((s) => s.id === "outcome")?.body ?? "";
+    return ["Dismissed", "Completed", "status"].every((word) => body.includes(word));
+  })(),
+  true,
+);
+check(
+  "outcome falls back to the board when the column is off screen",
+  {
+    target: magistrate.find((s) => s.id === "outcome")?.target,
+    fallback: magistrate.find((s) => s.id === "outcome")?.fallbackTarget,
+  },
+  { target: "docket-outcome", fallback: "docket-board" },
+);
+
+// --- chapter shape ---------------------------------------------------------
+
+check("clerk sitting-day ids", idsIn(clerk, "sitting"), [
   "home",
   "docket",
   "new-matter",
+  "board",
+  "outcome",
   "next",
+  "open-file",
+  "chapter-rest",
 ]);
-
-const magistrate = walkthroughStepsFor("magistrate", false);
+check("clerk rest-of-app ids", idsIn(clerk, "rest"), ["clerk-access", "notifications"]);
+check("magistrate sitting-day ids", idsIn(magistrate, "sitting"), [
+  "home",
+  "docket",
+  "board",
+  "outcome",
+  "next",
+  "open-file",
+  "hearing",
+  "file",
+  "chapter-rest",
+]);
+check("magistrate rest-of-app ids", idsIn(magistrate, "rest"), [
+  "callovers",
+  "calendar",
+  "judgments",
+  "case-law",
+  "legislation",
+  "bench-notes",
+  "clerk-access-requests",
+  "court-assignments",
+  "search",
+]);
 check(
-  "magistrate sitting-day ids",
-  magistrate.filter((s) => s.chapter === "sitting").map((s) => s.id),
-  ["home", "docket", "board", "next", "open-file", "hearing", "file", "chapter-rest"],
-);
-check(
-  "magistrate rest-of-app ids",
-  magistrate.filter((s) => s.chapter === "rest").map((s) => s.id),
-  ["calendar", "case-law", "legislation", "bench-notes", "search"],
+  "every role gets a chapter break it can stop at",
+  [clerk, magistrate, admin].map((steps) => steps.find((s) => s.kind === "choice")?.id),
+  ["chapter-rest", "chapter-rest", "chapter-rest"],
 );
 check(
   "file steps require a matter",
@@ -44,87 +166,57 @@ check(
   ["open-file", "hearing", "file"],
 );
 check(
-  "choice step sits at the chapter break",
-  magistrate.find((s) => s.kind === "choice")?.id,
-  "chapter-rest",
-);
-check(
   "empty docket sitting day skips the file",
   visibleWalkthroughSteps(magistrate, "sitting", false).map((s) => s.id),
-  ["home", "docket", "board", "next", "chapter-rest"],
-);
-check(
-  "board copy still names empty cells without asking to click the sample",
-  magistrate.find((s) => s.id === "board")?.body,
-  "Empty cells say + Set arraignment and the rest. On a real file, click a cell to record that stage.",
+  ["home", "docket", "board", "outcome", "next", "chapter-rest"],
 );
 check(
   "full sitting day keeps the file",
   visibleWalkthroughSteps(magistrate, "sitting", true).map((s) => s.id),
-  ["home", "docket", "board", "next", "open-file", "hearing", "file", "chapter-rest"],
+  idsIn(magistrate, "sitting"),
 );
 check(
-  "rest chapter is calendar through search",
-  visibleWalkthroughSteps(magistrate, "rest", true).map((s) => s.id),
-  ["calendar", "case-law", "legislation", "bench-notes", "search"],
+  "a clerk's chapter break still offers something after it",
+  visibleWalkthroughSteps(clerk, "rest", false).length > 0,
+  true,
 );
 check(
   "rest steps are page spotlights, not control rings",
-  magistrate.filter((s) => s.chapter === "rest").every((s) => s.kind === "page"),
+  [clerk, magistrate, admin].every((steps) =>
+    steps.filter((s) => s.chapter === "rest").every((s) => s.kind === "page"),
+  ),
   true,
-);
-check(
-  "calendar page lights Calendar in the nav",
-  {
-    nav: magistrate.find((s) => s.id === "calendar")?.navTarget,
-    fallback: magistrate.find((s) => s.id === "calendar")?.fallbackTarget,
-  },
-  { nav: "nav-calendar", fallback: "nav-more" },
-);
-check(
-  "case law page lights the Case Law nav link",
-  magistrate.find((s) => s.id === "case-law")?.navTarget,
-  "nav-case-law",
-);
-check(
-  "legislation page lights the Legislation nav link",
-  magistrate.find((s) => s.id === "legislation")?.navTarget,
-  "nav-legislation",
-);
-check(
-  "bench notes page lights Bench Notes in the nav",
-  {
-    nav: magistrate.find((s) => s.id === "bench-notes")?.navTarget,
-    fallback: magistrate.find((s) => s.id === "bench-notes")?.fallbackTarget,
-  },
-  { nav: "nav-bench-notes", fallback: "nav-more" },
-);
-check(
-  "search page lights the search control",
-  {
-    nav: magistrate.find((s) => s.id === "search")?.navTarget,
-    fallback: magistrate.find((s) => s.id === "search")?.fallbackTarget,
-  },
-  { nav: "nav-search", fallback: "nav-more" },
 );
 check(
   "sitting-day control steps keep a ring",
-  magistrate
-    .filter((s) => s.chapter === "sitting" && s.kind !== "choice")
-    .every((s) => s.kind !== "page"),
+  [clerk, magistrate, admin].every((steps) =>
+    steps
+      .filter((s) => s.chapter === "sitting" && s.kind !== "choice")
+      .every((s) => s.kind !== "page"),
+  ),
   true,
 );
 check(
-  "clerk tour has no chapters",
-  walkthroughStepsFor("clerk", false).every((s) => !s.chapter && s.kind !== "choice"),
+  "every page step can fall back to the More menu",
+  [clerk, magistrate, admin].every((steps) =>
+    steps
+      .filter((s) => s.kind === "page")
+      .every((s) => s.fallbackTarget === "nav-more" || s.navTarget === "nav-more"),
+  ),
   true,
 );
 check(
-  "admin search mentions Administration",
-  walkthroughStepsFor("admin", false).some((s) => s.id === "search" && s.body.includes("Administration")),
+  "every step that is not the chapter break has somewhere to point",
+  [clerk, magistrate, admin].every((steps) =>
+    steps.filter((s) => s.kind !== "choice").every((s) => Boolean(s.target)),
+  ),
   true,
 );
-check("magistrate search does not mention Administration", magistrate.find((s) => s.id === "search")?.body.includes("Administration"), false);
+check(
+  "no role has a duplicate step id",
+  [clerk, magistrate, admin].map((steps) => steps.length - new Set(steps.map((s) => s.id)).size),
+  [0, 0, 0],
+);
 check("docket list is not a matter path", docketMatterPathFromLocation("/docket"), null);
 check("docket bin is not a matter path", docketMatterPathFromLocation("/docket/bin"), null);
 check(

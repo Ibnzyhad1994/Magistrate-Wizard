@@ -433,6 +433,7 @@ export default function DocketListPage() {
                     row={row}
                     showCourt={courtId === null}
                     isTourNextDate={index === 0}
+                    isTourOutcome={index === 0}
                     isTourFirstMatter={index === 0}
                     onPatch={(id, values, expectedUpdatedAt) =>
                       patch.mutateAsync({ id, values, expectedUpdatedAt })

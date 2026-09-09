@@ -74,6 +74,7 @@ export function DocketMatterCard({
   row,
   showCourt,
   isTourNextDate,
+  isTourOutcome,
   isTourFirstMatter,
   onPatch,
   onLogAppearance,
@@ -81,6 +82,7 @@ export function DocketMatterCard({
   row: DocketMatterBoardRow;
   showCourt: boolean;
   isTourNextDate?: boolean;
+  isTourOutcome?: boolean;
   isTourFirstMatter?: boolean;
   onPatch: (
     id: string,
@@ -178,7 +180,10 @@ export function DocketMatterCard({
         }}
         onChange={handleChange}
       />
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
+      <div
+        className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2"
+        data-tour={isTourOutcome ? "docket-outcome" : undefined}
+      >
         <span className="text-[11px] font-medium text-white/45">Outcome</span>
         <DocketOutcomeCell
           value={row.outcome_status}

@@ -227,15 +227,31 @@ export const NAV_ITEMS: AppNavItem[] = [
 export const navItemLabel = (item: AppNavItem) =>
   item.label === "Dashboard" ? "Home" : item.label;
 
+/**
+ * Anchors the walkthrough rings onto nav links. Every destination the
+ * tour has a step for needs an entry here, including the ones only one
+ * role ever sees — a clerk's My Court Access and an admin's Legal
+ * Library are exactly the items that are hardest to discover unaided,
+ * so they are the ones most worth pointing at.
+ */
 export const navTourIdForHref = (href: string): string | undefined => {
   if (href === ROUTES.dashboard) return "nav-home";
   if (href === ROUTES.docket) return "nav-docket";
+  if (href === ROUTES.callovers) return "nav-callovers";
   if (href === ROUTES.calendar) return "nav-calendar";
   if (href === ROUTES.judgments) return "nav-judgments";
   if (href === ROUTES.caseLaw) return "nav-case-law";
   if (href === ROUTES.legislation) return "nav-legislation";
   if (href === ROUTES.benchNotes) return "nav-bench-notes";
   if (href === ROUTES.search) return "nav-search";
+  if (href === ROUTES.courtAssignments) return "nav-court-assignments";
+  // The two sides of the same clerk-access workflow: the review queue
+  // magistrates and admins act on, and the clerk's own request page.
+  if (href === ROUTES.clerkAccessRequests) return "nav-clerk-access-requests";
+  if (href === ROUTES.clerkAccess) return "nav-clerk-access";
+  if (href === ROUTES.notifications) return "nav-notifications";
+  if (href === ROUTES.adminLegalLibrary) return "nav-legal-library";
+  if (href === ROUTES.adminPeople) return "nav-people";
   return undefined;
 };
 

@@ -57,6 +57,7 @@ function DocketStageRow({
   stage,
   showCourt,
   isTourNextDate,
+  isTourOutcome,
   isTourFirstMatter,
   onPatch,
   onLogAppearance,
@@ -66,6 +67,7 @@ function DocketStageRow({
   /** True in the All My Courts combined view — every matter needs a visible, readable court identifier there, never colour alone (0097). False when already scoped to one court, where repeating it on every row would be redundant noise. */
   showCourt: boolean;
   isTourNextDate?: boolean;
+  isTourOutcome?: boolean;
   isTourFirstMatter?: boolean;
   onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
@@ -173,7 +175,7 @@ function DocketStageRow({
           </TableCell>
         );
       })}
-      <TableCell className="p-1.5">
+      <TableCell className="p-1.5" data-tour-join={isTourOutcome ? "docket-outcome" : undefined}>
         <DocketOutcomeCell
           value={row.outcome_status}
           canEdit={row.can_edit}
@@ -226,7 +228,10 @@ export function DocketStageSheet({
                   <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
               ))}
-              <TableHead className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]">
+              <TableHead
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
+                data-tour="docket-outcome"
+              >
                 Outcome
               </TableHead>
               <TableHead
@@ -245,6 +250,7 @@ export function DocketStageSheet({
                 stage={currentStage(snapshotOf(row))}
                 showCourt={showCourt}
                 isTourNextDate={index === 0}
+                isTourOutcome={index === 0}
                 isTourFirstMatter={index === 0}
                 onPatch={onPatch}
                 onLogAppearance={onLogAppearance}

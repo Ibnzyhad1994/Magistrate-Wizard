@@ -6,8 +6,8 @@ import {
   padTourBox,
   tourCardPosition,
   tourCardPositionForPage,
-  tourCircleFromRect,
   tourPageContentBox,
+  tourSpotlightFromRect,
   unionTourBoxes,
   visibleTourBox,
   type TourBox,
@@ -116,8 +116,9 @@ export function TourOverlay({
         setNavBox(null);
         return;
       }
-      const target = await resolveTourTarget(step);
-      if (cancelled) return;
+      // A page step masks the content area and rings the nav link; it
+      // never spotlights its own target, so waiting to resolve one only
+      // delays the overlay appearing.
       if (isPage) {
         measurePage();
         later(measurePage);
@@ -125,6 +126,8 @@ export function TourOverlay({
         timers.push(window.setTimeout(measurePage, 120), window.setTimeout(measurePage, 400));
         return;
       }
+      const target = await resolveTourTarget(step);
+      if (cancelled) return;
       if (!target) {
         setRect(null);
         return;
@@ -171,8 +174,8 @@ export function TourOverlay({
   const isChoice = step.kind === "choice";
   const isPage = step.kind === "page";
   const viewport = { width: typeof window === "undefined" ? 1280 : window.innerWidth, height: typeof window === "undefined" ? 800 : window.innerHeight };
-  const circle = !isChoice && !isPage && rect
-    ? tourCircleFromRect(visibleTourBox(rect, viewport))
+  const spot = !isChoice && !isPage && rect
+    ? tourSpotlightFromRect(visibleTourBox(rect, viewport))
     : null;
   const contentBox = isPage ? tourPageContentBox(headerBottom, viewport) : null;
   const cardPos = isChoice
@@ -182,21 +185,24 @@ export function TourOverlay({
       }
     : isPage
       ? tourCardPositionForPage(navBox, viewport, cardBox, headerBottom)
-      : circle
-        ? tourCardPosition(circle, viewport, cardBox)
+      : spot
+        ? tourCardPosition(spot, viewport, cardBox)
         : { top: 96, left: Math.max(16, viewport.width / 2 - 160) };
 
   return (
     <div className="fixed inset-0 z-[200] overflow-hidden pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="walkthrough-title">
       <div className="absolute inset-0" />
-      {circle ? (
+      {spot ? (
+        // One element, both shapes: a circle is just a square box with a
+        // half-size radius, so nothing here branches on shape.
         <div
-          className="pointer-events-none absolute rounded-full"
+          className="pointer-events-none absolute"
           style={{
-            top: circle.top,
-            left: circle.left,
-            width: circle.size,
-            height: circle.size,
+            top: spot.top,
+            left: spot.left,
+            width: spot.width,
+            height: spot.height,
+            borderRadius: spot.radius,
             boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
           }}
         />
@@ -229,14 +235,23 @@ export function TourOverlay({
       ) : (
         <div className="absolute inset-0 bg-black/60" />
       )}
-      {circle && (
+      {spot && (
         <div
           className="pointer-events-none absolute z-[81]"
-          style={{ top: circle.top, left: circle.left, width: circle.size, height: circle.size }}
+          style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}
           aria-hidden="true"
         >
-          <span className="tour-ring-pulse absolute inset-0 rounded-full border-2 border-[hsl(var(--primary))]" />
-          <span className="absolute inset-[5px] rounded-full border-[3px] border-[hsl(var(--primary))] shadow-[0_0_18px_rgba(229,9,20,0.55)]" />
+          <span
+            className="tour-ring-pulse absolute inset-0 border-2 border-[hsl(var(--primary))]"
+            style={{ borderRadius: spot.radius }}
+          />
+          <span
+            className="absolute inset-[5px] border-[3px] border-[hsl(var(--primary))] shadow-[0_0_18px_rgba(229,9,20,0.55)]"
+            // The inner ring is inset 5px, so its radius has to shrink by
+            // the same amount or the two rings stop being concentric on a
+            // rounded rectangle.
+            style={{ borderRadius: Math.max(0, spot.radius - 5) }}
+          />
         </div>
       )}
       <div

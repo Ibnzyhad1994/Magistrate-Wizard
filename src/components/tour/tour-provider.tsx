@@ -161,7 +161,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isActive) return;
     const step = visible[stepIndex];
-    if (!step) return;
+    if (!step || step.kind === "page") return;
     void resolveTourTarget(step);
   }, [isActive, location.pathname, stepIndex, visible]);
 
@@ -199,8 +199,18 @@ export function TourProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isActive || !hasMatter) return;
     if (!docketMatterPathFromLocation(location.pathname)) return;
-    if (stepId !== "docket" && stepId !== "board" && stepId !== "next") return;
+    // Opening a matter mid-tour should jump to the file step. Decided by
+    // what the step IS — a board step on the docket route — rather than a
+    // list of step ids, which silently stopped covering the tour every
+    // time a board step was added.
     const list = visibleWalkthroughSteps(allSteps, chapter, true);
+    const currentStep = list.find((step) => step.id === stepId);
+    const isBoardStep =
+      currentStep?.route === ROUTES.docket &&
+      !currentStep.requiresMatter &&
+      currentStep.kind !== "choice" &&
+      currentStep.kind !== "page";
+    if (!isBoardStep) return;
     const openIdx = list.findIndex((step) => step.id === "open-file");
     if (openIdx < 0) return;
     setStepIndex(openIdx);
