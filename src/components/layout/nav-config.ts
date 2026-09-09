@@ -91,10 +91,23 @@ export const NAV_ITEMS: AppNavItem[] = [
     group: "court",
   },
   {
+    // The REVIEW side: magistrates and admins deciding clerks' requests.
     label: "Clerk Access",
     href: ROUTES.clerkAccessRequests,
     icon: UserCheck,
     roles: ["magistrate", "admin"],
+    group: "court",
+  },
+  {
+    // The clerk's OWN side of the same workflow. Previously reachable
+    // only via account menu -> Settings -> Court Access card -> button,
+    // three levels deep, while the review page above sat in top-level
+    // nav for everyone else. A clerk sees three nav items in total, so
+    // there is no crowding argument against surfacing it.
+    label: "My Court Access",
+    href: ROUTES.clerkAccess,
+    icon: UserCheck,
+    roles: ["clerk"],
     group: "court",
   },
   {

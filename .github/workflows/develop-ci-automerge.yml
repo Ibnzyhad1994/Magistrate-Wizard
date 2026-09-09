@@ -119,6 +119,9 @@ jobs:
       - name: Docket arraignment/outcome vocabulary
         run: npm run test:docket-outcome
 
+      - name: Sound cue constraints
+        run: npm run test:sound-cues
+
       - name: Walkthrough and tour overlay
         run: npm run test:walkthrough
 

@@ -13,6 +13,7 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Field, JurisdictionField } from "@/components/legal-library/taxonomy-fields";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useAuth } from "@/hooks/use-auth";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { useLegalJurisdictions } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useStatute,
@@ -84,17 +85,14 @@ export default function LegislationEditPage() {
     }
   }, [statute, initialized]);
 
-  // Same pattern as judgment-detail-page.tsx's ContentCard: warn on tab
-  // close/refresh while there are unsaved metadata edits.
-  useEffect(() => {
-    if (!dirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty]);
+  // Same pattern as judgment-detail-page.tsx's ContentCard: warn before
+  // unsaved metadata edits are discarded — on tab close/refresh AND on
+  // in-app navigation, which the previous beforeunload-only version
+  // never caught.
+  useUnsavedChangesGuard(
+    dirty,
+    "This Legislation record has unsaved changes. Leave the page and discard them?",
+  );
 
   function setField<K extends keyof typeof fields>(key: K, value: (typeof fields)[K]) {
     setFields((f) => ({ ...f, [key]: value }));

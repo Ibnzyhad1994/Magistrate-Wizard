@@ -62,12 +62,21 @@ const TableRow = React.forwardRef<
 ));
 TableRow.displayName = "TableRow";
 
+/**
+ * Defaults to `scope="col"`. Without it a screen reader announces a cell's
+ * contents with no column context — on the Docket board that means
+ * "Done", "Partial", "Reserved" arriving stripped of the very thing that
+ * gives them meaning (WCAG 1.3.1). Every header in the app is a column
+ * header today; a row header can still override via the `scope` prop,
+ * since `...props` is spread after this.
+ */
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => (
   <th
     ref={ref}
+    scope="col"
     className={cn(
       "h-10 px-3 text-left align-middle font-medium text-white/55 [&:has([role=checkbox])]:pr-0",
       className,

@@ -4,6 +4,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
 import { isAuthExpiredError } from "@/lib/offline/is-queueable-error";
 import { lockCurrentSession, notifyAuthExpiredSave } from "@/lib/auth/session-lock";
+import { playCue } from "@/lib/sound-cues";
 
 /**
  * Shared TanStack Query client. Query errors surface as toasts by default;
@@ -36,12 +37,17 @@ const handleAuthExpired = (error: unknown): boolean => {
 // Global error surfacing for queries/mutations that don't handle their own
 // errors. Attach `meta: { silent: true }` to suppress the toast for a
 // specific query or mutation.
+// The error cue rides along with the toast rather than being wired at
+// call sites: this is already the one place every unhandled failure in
+// the application passes through, so a cue here covers all of them and
+// stays silent for anything explicitly marked `meta.silent`.
 queryClient.getQueryCache().subscribe((event) => {
   if (event.type !== "updated" || event.action.type !== "error") return;
   const { query } = event;
   if (query.meta?.silent) return;
   if (handleAuthExpired(event.action.error)) return;
   toast.error(getErrorMessage(event.action.error));
+  playCue("error");
 });
 
 queryClient.getMutationCache().subscribe((event) => {
@@ -50,4 +56,5 @@ queryClient.getMutationCache().subscribe((event) => {
   if (mutation.meta?.silent) return;
   if (handleAuthExpired(event.action.error)) return;
   toast.error(getErrorMessage(event.action.error));
+  playCue("error");
 });

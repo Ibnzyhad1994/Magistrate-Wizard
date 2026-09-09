@@ -49,6 +49,8 @@ import {
   useJudgmentQuickCodes,
 } from "@/hooks/judgments/use-judgment-links";
 import { useLegalCaseCategories } from "@/hooks/legal-library/use-legal-taxonomy";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { SaveState } from "@/components/common/save-state";
 import { useDocuments, downloadDocumentAsFile } from "@/hooks/use-documents";
 import { ingestDocument } from "@/lib/ingest-document";
 import { proposeTagsScored } from "@/lib/legal-extraction";
@@ -467,8 +469,13 @@ function FieldsCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Details</CardTitle>
+        {/* This card commits on an explicit Save, while Classification
+            and the discoverable toggle on the same screen commit
+            instantly — say which this one is rather than leaving it to
+            be remembered. */}
+        <SaveState isDirty={form.formState.isDirty} isSaving={updateFields.isPending} />
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -726,8 +733,11 @@ function ClassificationCard({
  * already-typed judgment: typing was never sent to the server at all,
  * confirmed via audit_log showing content_text empty since the row's very
  * first insert — there was nothing to silently overwrite, it just never
- * left the browser). A native beforeunload prompt is the second half of
- * the same fix — refreshing or closing the tab mid-edit must warn too.
+ * left the browser). Leaving the page mid-edit must warn too — that is
+ * useUnsavedChangesGuard below, which covers the native
+ * refresh/tab-close route AND in-app navigation. The latter was the
+ * remaining hole: beforeunload never fires for a React Router
+ * navigation, so clicking any nav item discarded the draft in silence.
  */
 function ContentCard({
   judgment,
@@ -749,15 +759,13 @@ function ContentCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onDirtyChange is a stable setState wrapper from the parent, not a reactive dependency
   }, [judgment.id, isDraft]);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty]);
+  // Covers BOTH exit routes now. The beforeunload half (previously the
+  // only half) never fired for in-app navigation, so clicking any nav
+  // item mid-edit discarded the draft silently.
+  useUnsavedChangesGuard(
+    dirty,
+    "This judgment has unsaved content. Leave the page and discard it?",
+  );
 
   function markDirty(next: boolean) {
     setDirty(next);
@@ -768,9 +776,14 @@ function ContentCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Content</CardTitle>
-        {isDraft && dirty && (
+        {isDraft && (
           <div className="flex items-center gap-2">
-            <p className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</p>
+            {/* Was a bespoke "Unsaved changes" line here; now the shared
+                indicator, so this card and Details read identically and
+                a completed save is confirmed rather than just going
+                quiet. */}
+            <SaveState isDirty={dirty} isSaving={updateContent.isPending} />
+            {dirty && (
             <Button
               size="sm"
               disabled={updateContent.isPending}
@@ -786,6 +799,7 @@ function ContentCard({
               <CheckCircle2 className="h-4 w-4" />
               Save content
             </Button>
+            )}
           </div>
         )}
       </CardHeader>

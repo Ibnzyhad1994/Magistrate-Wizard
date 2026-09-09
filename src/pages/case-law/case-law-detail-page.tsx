@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { SaveState } from "@/components/common/save-state";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { DateOnlyInput } from "@/components/common/date-only-input";
@@ -355,8 +356,12 @@ function FieldsCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">Details</CardTitle>
+        {/* Same mixed model as the Judgment page: this card needs an
+            explicit Save, while Discoverability and Tags below commit
+            the moment they change. */}
+        <SaveState isDirty={form.formState.isDirty} isSaving={updateFields.isPending} />
       </CardHeader>
       <CardContent>
         <Form {...form}>

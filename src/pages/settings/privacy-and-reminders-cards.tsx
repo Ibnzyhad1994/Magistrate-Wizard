@@ -19,7 +19,62 @@ import {
   saveHearingReminderPrefs,
   type HearingReminderPrefs,
 } from "@/lib/hearing-reminders"
+import {
+  playCue,
+  previewCue,
+  setSoundCuesEnabled,
+  soundCuesEnabled,
+} from "@/lib/sound-cues"
 import { toast } from "sonner"
+
+/**
+ * Off by default, and per device rather than per account: the same
+ * magistrate may work from a courtroom bench and a chambers desk, and
+ * only one of those rooms tolerates sound.
+ */
+export function SoundCuesCard() {
+  const [enabled, setEnabled] = useState(soundCuesEnabled)
+
+  const handleToggle = (checked: boolean) => {
+    setEnabled(checked)
+    setSoundCuesEnabled(checked)
+    // Play the cue on switching on, so the volume is known before it
+    // first fires unprompted in a room full of people.
+    if (checked) playCue("success")
+  }
+
+  return (
+    <Card className="mt-6 max-w-xl">
+      <CardHeader>
+        <CardTitle className="text-base">Sound cues</CardTitle>
+        <CardDescription>
+          A short tone when something saves or fails, for when your attention is on
+          the bench rather than the screen. Off by default. This setting applies to
+          this device only.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={enabled}
+            onCheckedChange={(checked) => handleToggle(checked === true)}
+          />
+          Play a tone on save and on error
+        </Label>
+        {enabled && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => previewCue("success")}>
+              Hear the save tone
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => previewCue("error")}>
+              Hear the error tone
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export function HearingRemindersCard() {
   const { enabled: flagOn } = useFeatureFlag("hearing_reminders")

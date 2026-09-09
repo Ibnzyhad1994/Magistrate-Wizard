@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { Pencil, Trash2, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,6 @@ export default function DocketMatterDetailPage() {
   const { data: access } = useDocketMatterAccess(id);
   const { data: coverUrls } = useSignedUrls([matter?.cover_image_path]);
   const [editOpen, setEditOpen] = useState(false);
-  const [binOpen, setBinOpen] = useState(false);
   const [purgeOpen, setPurgeOpen] = useState(false);
 
   const canEdit = access?.canEdit ?? false;
@@ -69,6 +69,32 @@ export default function DocketMatterDetailPage() {
   const binMatter = useBinDocketMatter(matter?.id ?? "");
   const restoreMatter = useRestoreDocketMatter(matter?.id);
   const purgeMatter = usePurgeDocketMatter(matter?.id);
+
+  /**
+   * Undo rather than confirm. Binning is already reversible by design —
+   * the matter sits restorable for seven days — so a modal asking "are
+   * you sure?" charged routine work an extra click for a safety net that
+   * already existed. This follows the pattern the board's own stage
+   * changes use (docket-procedure-log.ts): act immediately, offer a real
+   * revert. Permanent deletion below keeps its confirmation, because that
+   * one genuinely is a one-way door.
+   */
+  function handleMoveToBin() {
+    if (!matter) return;
+    const id = matter.id;
+    binMatter.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Moved to the bin.", {
+          duration: 10000,
+          description: "It will be permanently deleted after 7 days.",
+          action: {
+            label: "Undo",
+            onClick: () => restoreMatter.mutate(id),
+          },
+        });
+      },
+    });
+  }
 
   if (isPending) {
     return (
@@ -173,7 +199,8 @@ export default function DocketMatterDetailPage() {
                 size="sm"
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
-                onClick={() => setBinOpen(true)}
+                onClick={handleMoveToBin}
+                disabled={binMatter.isPending}
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Move to bin
@@ -237,19 +264,6 @@ export default function DocketMatterDetailPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         matter={matter}
-      />
-      <AlertDialog
-        open={binOpen}
-        onOpenChange={setBinOpen}
-        title="Move this matter to the bin?"
-        description="It leaves the working docket immediately and is permanently deleted after 7 days. You can restore it from the bin until then."
-        confirmLabel="Move to bin"
-        isConfirming={binMatter.isPending}
-        onConfirm={() => {
-          binMatter.mutate(undefined, {
-            onSuccess: () => setBinOpen(false),
-          });
-        }}
       />
       <AlertDialog
         open={purgeOpen}
