@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Gavel, ShieldAlert, X } from "lucide-react";
+import { Check, Gavel, ShieldAlert, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,15 +31,8 @@ import {
   useMagistrateCourtRequestsToReview,
   type MagistrateRequestForReview,
 } from "@/hooks/admin/use-magistrate-court-requests";
+import { courtRequestStatusLabel } from "@/lib/court-assignment-roster";
 import { formatDate } from "@/lib/utils";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-  expired: "Expired",
-};
 
 /**
  * Court Assignment Administrator review console for magistrate court
@@ -107,7 +100,7 @@ export function MagistrateCourtRequestReviewPanel() {
           <EmptyState
             icon={Gavel}
             title="No pending requests"
-            description="New magistrate court assignment requests will appear here."
+            description="New magistrate court assignment requests will appear here. People who cancelled or were returned still appear on Roster under Waiting for assignment — select them there to assign a court, return them to request again, or correct the account type."
           />
         ) : (
           <div className="space-y-3">
@@ -158,8 +151,8 @@ export function MagistrateCourtRequestReviewPanel() {
                             onClick={() => { setRejectTarget(r); setRejectReason(""); }}
                             disabled={decide.isPending}
                           >
-                            <X className="h-4 w-4" />
-                            Reject
+                            <Undo2 className="h-4 w-4" />
+                            Return to requester
                           </Button>
                         </>
                       ) : canBootstrap ? (
@@ -211,7 +204,7 @@ export function MagistrateCourtRequestReviewPanel() {
                     )}
                   </div>
                   <Badge variant={r.status === "approved" ? "default" : "secondary"}>
-                    {STATUS_LABEL[r.status]}
+                    {courtRequestStatusLabel(r.status)}
                   </Badge>
                 </CardContent>
               </Card>
@@ -223,29 +216,34 @@ export function MagistrateCourtRequestReviewPanel() {
       <AlertDialog
         open={!!rejectTarget}
         onOpenChange={(open) => !open && setRejectTarget(null)}
-        title="Reject this request?"
+        title="Return this request to the requester?"
         description={
           <div className="space-y-2">
             <p>
-              {rejectTarget?.profiles?.full_name} will be notified that their request for{" "}
-              {rejectTarget?.courts?.name} was not approved.
+              {rejectTarget?.profiles?.full_name} will be asked to request again.{" "}
+              {rejectTarget?.courts?.name} will not be assigned. This does not change
+              their account type.
             </p>
             <Textarea
-              placeholder="Optional reason (shown to the requester)"
+              placeholder="Reason (required — shown to the requester)"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />
           </div>
         }
-        confirmLabel="Reject request"
+        confirmLabel="Return to requester"
+        confirmDisabled={!rejectReason.trim()}
         isConfirming={decide.isPending}
         onConfirm={() => {
-          if (rejectTarget) {
-            decide.mutate(
-              { requestId: rejectTarget.id, decision: "rejected", rejectionReason: rejectReason || undefined },
-              { onSuccess: () => setRejectTarget(null) },
-            );
-          }
+          if (!rejectTarget || !rejectReason.trim()) return;
+          decide.mutate(
+            {
+              requestId: rejectTarget.id,
+              decision: "rejected",
+              rejectionReason: rejectReason.trim(),
+            },
+            { onSuccess: () => setRejectTarget(null) },
+          );
         }}
       />
 

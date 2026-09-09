@@ -27,15 +27,11 @@ import {
   useSubmitMagistrateCourtRequest,
   type MyMagistrateCourtAssignment,
 } from "@/hooks/use-magistrate-court-requests";
+import {
+  COURT_REQUEST_RETURN_NEXT_STEP,
+  courtRequestStatusLabel,
+} from "@/lib/court-assignment-roster";
 import { formatDate } from "@/lib/utils";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-  expired: "Expired",
-};
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline",
@@ -78,6 +74,11 @@ export default function CourtAssignmentsPage() {
 
   const pendingRequests = (requests ?? []).filter((r) => r.status === "pending");
   const decidedRequests = (requests ?? []).filter((r) => r.status !== "pending");
+  const latestOutcome = decidedRequests.find(
+    (r) => r.status === "rejected" || r.status === "cancelled",
+  );
+  const latestReturned = latestOutcome?.status === "rejected" ? latestOutcome : undefined;
+  const latestCancelled = latestOutcome?.status === "cancelled" ? latestOutcome : undefined;
   const courtsInDistrict = (courts ?? []).filter(
     (c) => c.district_id === districtId && c.status === "available",
   );
@@ -104,12 +105,29 @@ export default function CourtAssignmentsPage() {
           <CardContent className="flex items-start gap-4 pt-6">
             <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-amber-300" aria-hidden="true" />
             <div>
-              <p className="font-medium text-foreground">Access is limited until a court is approved.</p>
+              <p className="font-medium text-foreground">
+                {pendingRequests.length > 0
+                  ? "Access is limited until a court is approved."
+                  : latestReturned
+                    ? "Your court request was returned."
+                    : latestCancelled
+                      ? "You cancelled this request."
+                      : "Access is limited until a court is approved."}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {pendingRequests.length > 0
                   ? "Your request is awaiting review by a Court Assignment Administrator. Once approved, you'll get full access to that court's Docket and the rest of the application."
-                  : "Request a court below to get started. A Court Assignment Administrator will review your request. This page is all you can access until then."}
+                  : latestReturned
+                    ? COURT_REQUEST_RETURN_NEXT_STEP
+                    : latestCancelled
+                      ? "You cancelled this request. Request again when you are sure of the court."
+                      : "Request a court below to get started. A Court Assignment Administrator will review your request. This page is all you can access until then."}
               </p>
+              {latestReturned?.rejection_reason && pendingRequests.length === 0 && (
+                <p className="mt-2 text-sm text-foreground">
+                  Reason: {latestReturned.rejection_reason}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -166,7 +184,7 @@ export default function CourtAssignmentsPage() {
                   <p className="text-xs text-muted-foreground">Requested {formatDate(r.requested_at)}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                  <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -191,10 +209,12 @@ export default function CourtAssignmentsPage() {
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
                   <p className="text-xs text-muted-foreground">
-                    {r.status === "rejected" && r.rejection_reason ? r.rejection_reason : formatDate(r.requested_at)}
+                    {r.status === "rejected" && r.rejection_reason
+                      ? r.rejection_reason
+                      : formatDate(r.requested_at)}
                   </p>
                 </div>
-                <Badge variant={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
               </CardContent>
             </Card>
           ))}

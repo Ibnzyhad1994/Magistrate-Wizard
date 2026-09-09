@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Undo2, X } from "lucide-react";
+import { Check, Undo2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,47 +13,50 @@ import {
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  useCorrectUnassignedAccountType,
   useDecideMagistrateCourtRequest,
   useMagistrateCourtRequestsToReview,
   useReturnUnassignedMagistrate,
 } from "@/hooks/admin/use-magistrate-court-requests";
 import {
+  canCorrectUnassignedAccountType,
   canSendUnassignedMagistrateBack,
+  courtRequestStatusLabel,
+  oppositeStaffAccountType,
   pendingRequestsForProfile,
   requestsForProfile,
 } from "@/lib/court-assignment-roster";
+import { ROLE_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-  expired: "Expired",
-};
-
 /**
- * Roster-side request actions for one profile. Pending Requests is a
- * queue of open rows; people who cancelled still appear under Waiting
- * for assignment with only Assign unless this panel is shown.
+ * Roster-side recovery for one profile: approve an open request, return
+ * them to request again, or correct magistrate/clerk when they have no
+ * active court. People who cancelled still appear under Waiting for
+ * assignment; this panel is what makes them actionable besides Assign.
  */
 export function RosterProfileRequests({
   profileId,
   role,
-  hasActiveAssignment,
+  hasActiveMagistrateAssignment,
+  hasActiveClerkAssignment,
 }: {
   profileId: string;
   role?: string | null;
-  hasActiveAssignment: boolean;
+  hasActiveMagistrateAssignment: boolean;
+  hasActiveClerkAssignment: boolean;
 }) {
   const { profile } = useAuth();
   const { data: requests } = useMagistrateCourtRequestsToReview();
   const decide = useDecideMagistrateCourtRequest();
   const sendBack = useReturnUnassignedMagistrate();
-  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const correctType = useCorrectUnassignedAccountType();
+  const [returnRequestId, setReturnRequestId] = useState<string | null>(null);
+  const [returnReason, setReturnReason] = useState("");
   const [sendBackOpen, setSendBackOpen] = useState(false);
   const [sendBackReason, setSendBackReason] = useState("");
+  const [correctOpen, setCorrectOpen] = useState(false);
+  const [correctReason, setCorrectReason] = useState("");
 
   const isOwnProfile = profileId === profile?.id;
   const mine = requestsForProfile(requests, profileId);
@@ -61,12 +64,20 @@ export function RosterProfileRequests({
   const decided = mine.filter((request) => request.status !== "pending");
   const canSendBack = canSendUnassignedMagistrateBack({
     role,
-    hasActiveAssignment,
+    hasActiveAssignment: hasActiveMagistrateAssignment,
     isOwnProfile,
   });
-  const rejectTarget = pending.find((request) => request.id === rejectTargetId) ?? null;
+  const canCorrect = canCorrectUnassignedAccountType({
+    role,
+    hasActiveMagistrateAssignment,
+    hasActiveClerkAssignment,
+    isOwnProfile,
+  });
+  const nextRole = oppositeStaffAccountType(role);
+  const returnTarget = pending.find((request) => request.id === returnRequestId) ?? null;
+  const showSendBack = canSendBack && pending.length === 0;
 
-  if (!canSendBack && pending.length === 0 && decided.length === 0) return null;
+  if (!canSendBack && !canCorrect && pending.length === 0 && decided.length === 0) return null;
 
   return (
     <Card>
@@ -74,8 +85,12 @@ export function RosterProfileRequests({
         <CardTitle className="text-base">Court requests</CardTitle>
         <CardDescription>
           {pending.length > 0
-            ? "Reject an open request here, or send them back to pick the correct court."
-            : "No open request. They cancelled or never submitted — send them back so they can request again."}
+            ? "Approve an open request, or return it so they can request again. This does not change account type."
+            : showSendBack
+              ? "No open request. Return them so they can request again, or correct the account type if they signed up as the wrong role."
+              : canCorrect
+                ? "No open magistrate request. If they signed up as the wrong account type, you can correct it here."
+                : "Recent court requests for this profile."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -106,13 +121,13 @@ export function RosterProfileRequests({
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    setRejectTargetId(request.id);
-                    setRejectReason("");
+                    setReturnRequestId(request.id);
+                    setReturnReason("");
                   }}
                   disabled={decide.isPending}
                 >
-                  <X className="h-4 w-4" />
-                  Reject
+                  <Undo2 className="h-4 w-4" />
+                  Return to requester
                 </Button>
               </div>
             )}
@@ -128,12 +143,12 @@ export function RosterProfileRequests({
                 : ""}
             </p>
             <Badge variant={request.status === "approved" ? "default" : "secondary"}>
-              {STATUS_LABEL[request.status] ?? request.status}
+              {courtRequestStatusLabel(request.status)}
             </Badge>
           </div>
         ))}
 
-        {canSendBack && (
+        {showSendBack && (
           <Button
             variant="outline"
             size="sm"
@@ -144,40 +159,56 @@ export function RosterProfileRequests({
             disabled={sendBack.isPending}
           >
             <Undo2 className="h-4 w-4" />
-            Send back to requester
+            Return to requester
+          </Button>
+        )}
+
+        {canCorrect && nextRole && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCorrectOpen(true);
+              setCorrectReason("");
+            }}
+            disabled={correctType.isPending}
+          >
+            <Users className="h-4 w-4" />
+            Correct account type to {ROLE_LABELS[nextRole]}
           </Button>
         )}
       </CardContent>
 
       <AlertDialog
-        open={!!rejectTarget}
-        onOpenChange={(open) => !open && setRejectTargetId(null)}
-        title="Reject this request?"
+        open={!!returnTarget}
+        onOpenChange={(open) => !open && setReturnRequestId(null)}
+        title="Return this request to the requester?"
         description={
           <div className="space-y-2">
             <p>
-              {rejectTarget?.profiles?.full_name} will be notified that{" "}
-              {rejectTarget?.courts?.name} was not approved. They can then request a
-              different court.
+              {returnTarget?.profiles?.full_name} will be asked to request again.{" "}
+              {returnTarget?.courts?.name} will not be assigned. This does not change
+              their account type.
             </p>
             <Textarea
-              placeholder="Optional reason (shown to the requester)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Reason (required — shown to the requester)"
+              value={returnReason}
+              onChange={(e) => setReturnReason(e.target.value)}
             />
           </div>
         }
-        confirmLabel="Reject request"
+        confirmLabel="Return to requester"
+        confirmDisabled={!returnReason.trim()}
         isConfirming={decide.isPending}
         onConfirm={() => {
-          if (!rejectTarget) return;
+          if (!returnTarget || !returnReason.trim()) return;
           decide.mutate(
             {
-              requestId: rejectTarget.id,
+              requestId: returnTarget.id,
               decision: "rejected",
-              rejectionReason: rejectReason || undefined,
+              rejectionReason: returnReason.trim(),
             },
-            { onSuccess: () => setRejectTargetId(null) },
+            { onSuccess: () => setReturnRequestId(null) },
           );
         }}
       />
@@ -185,27 +216,64 @@ export function RosterProfileRequests({
       <AlertDialog
         open={sendBackOpen}
         onOpenChange={(open) => !open && setSendBackOpen(false)}
-        title="Send this person back?"
+        title="Return this person to request again?"
         description={
           <div className="space-y-2">
             <p>
               They stay signed in as a magistrate with no court. Any open request is
-              rejected, and they are notified to request the correct court. This does
-              not turn the account into a clerk.
+              closed, and they are notified to request again. This does not change
+              their account type.
             </p>
             <Textarea
-              placeholder="Reason shown to them (optional)"
+              placeholder="Reason (required — shown to them)"
               value={sendBackReason}
               onChange={(e) => setSendBackReason(e.target.value)}
             />
           </div>
         }
-        confirmLabel="Send back"
+        confirmLabel="Return to requester"
+        confirmDisabled={!sendBackReason.trim()}
         isConfirming={sendBack.isPending}
         onConfirm={() => {
+          if (!sendBackReason.trim()) return;
           sendBack.mutate(
-            { profileId, reason: sendBackReason || undefined },
+            { profileId, reason: sendBackReason.trim() },
             { onSuccess: () => setSendBackOpen(false) },
+          );
+        }}
+      />
+
+      <AlertDialog
+        open={correctOpen}
+        onOpenChange={(open) => !open && setCorrectOpen(false)}
+        title={
+          nextRole
+            ? `Correct account type to ${ROLE_LABELS[nextRole]}?`
+            : "Correct account type?"
+        }
+        description={
+          <div className="space-y-2">
+            <p>
+              This changes them from {role === "magistrate" || role === "clerk" ? ROLE_LABELS[role] : "their current type"}{" "}
+              to {nextRole ? ROLE_LABELS[nextRole] : "the other staff type"}. Open court
+              or clerk-access requests are cancelled. They must refresh or sign in
+              again, then request access on the correct page.
+            </p>
+            <Textarea
+              placeholder="Reason (required — shown to them)"
+              value={correctReason}
+              onChange={(e) => setCorrectReason(e.target.value)}
+            />
+          </div>
+        }
+        confirmLabel={nextRole ? `Correct to ${ROLE_LABELS[nextRole]}` : "Correct account type"}
+        confirmDisabled={!correctReason.trim() || !nextRole}
+        isConfirming={correctType.isPending}
+        onConfirm={() => {
+          if (!nextRole || !correctReason.trim()) return;
+          correctType.mutate(
+            { profileId, newRole: nextRole, reason: correctReason.trim() },
+            { onSuccess: () => setCorrectOpen(false) },
           );
         }}
       />

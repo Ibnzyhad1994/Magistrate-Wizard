@@ -23,15 +23,11 @@ import {
   useMyClerkAccessRequests,
   useSubmitClerkAccessRequest,
 } from "@/hooks/clerk/use-clerk-access";
+import {
+  CLERK_ACCESS_RETURN_NEXT_STEP,
+  courtRequestStatusLabel,
+} from "@/lib/court-assignment-roster";
 import { formatDate } from "@/lib/utils";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-  expired: "Expired",
-};
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline",
@@ -79,6 +75,12 @@ export default function ClerkAccessPage() {
   }, [requests]);
 
   const approvedCount = (requests ?? []).filter((r) => r.status === "approved").length;
+  const pendingRequests = (requests ?? []).filter((r) => r.status === "pending");
+  const latestOutcome = (requests ?? []).find(
+    (r) => r.status === "rejected" || r.status === "cancelled",
+  );
+  const latestReturned = latestOutcome?.status === "rejected" ? latestOutcome : undefined;
+  const latestCancelled = latestOutcome?.status === "cancelled" ? latestOutcome : undefined;
   const requestedCourtIds = new Set((requests ?? []).map((r) => r.court_id));
   const courtsInDistrict = (courts ?? []).filter(
     (c) => c.district_id === districtId && !requestedCourtIds.has(c.id),
@@ -103,13 +105,28 @@ export default function ClerkAccessPage() {
             <Gavel className="mt-0.5 h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div>
               <p className="font-medium text-foreground">
-                Welcome, {profile?.full_name?.trim() || "Clerk"}.
+                {pendingRequests.length > 0
+                  ? `Welcome, ${profile?.full_name?.trim() || "Clerk"}.`
+                  : latestReturned
+                    ? "Your court access request was returned."
+                    : latestCancelled
+                      ? "You cancelled this request."
+                      : `Welcome, ${profile?.full_name?.trim() || "Clerk"}.`}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {(requests ?? []).length > 0
+                {pendingRequests.length > 0
                   ? "Your request is awaiting approval from the assigned magistrate. You'll get full access to that court's docket as soon as it's approved."
-                  : "Request access to a court below to get started. The court's assigned magistrate will review your request."}
+                  : latestReturned
+                    ? CLERK_ACCESS_RETURN_NEXT_STEP
+                    : latestCancelled
+                      ? "You cancelled this request. Request again when you are sure of the court."
+                      : "Request access to a court below to get started. The court's assigned magistrate will review your request."}
               </p>
+              {latestReturned?.rejection_reason && pendingRequests.length === 0 && (
+                <p className="mt-2 text-sm text-foreground">
+                  Reason: {latestReturned.rejection_reason}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -134,7 +151,7 @@ export default function ClerkAccessPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                  <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
                   {r.status === "pending" && (
                     <Button size="icon" variant="ghost" aria-label="Cancel request" onClick={() => setPendingCancelId(r.id)}>
                       <X className="h-4 w-4" />

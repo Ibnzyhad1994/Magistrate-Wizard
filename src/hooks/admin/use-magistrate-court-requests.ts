@@ -106,7 +106,9 @@ export function useDecideMagistrateCourtRequest() {
       return data;
     },
     onSuccess: (_data, variables) => {
-      toast.success(variables.decision === "approved" ? "Request approved." : "Request rejected.");
+      toast.success(
+        variables.decision === "approved" ? "Request approved." : "Returned to requester.",
+      );
       invalidateAfterDecision(queryClient);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -138,29 +140,102 @@ export function useAdminBootstrapSelfApprove() {
   });
 }
 
+function isMissingRpc(error: unknown): boolean {
+  const message = getErrorMessage(error);
+  return /schema cache|could not find the function/i.test(message);
+}
+
+async function rejectPendingRequestsForProfile(profileId: string, reason: string): Promise<number> {
+  const { data: pending, error: listError } = await supabase
+    .from("magistrate_court_requests")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("status", "pending");
+  if (listError) throw listError;
+  const rows = pending ?? [];
+  for (const row of rows) {
+    const { error } = await supabase.rpc("decide_magistrate_court_request", {
+      p_request_id: row.id,
+      p_decision: "rejected",
+      p_rejection_reason: reason,
+    });
+    if (error) throw error;
+  }
+  return rows.length;
+}
+
 /**
  * Roster action: reject any still-open requests for an unassigned
  * magistrate and notify them to request the correct court. Does not
  * change their account role.
+ *
+ * Open requests use decide_magistrate_court_request() (present since
+ * 0107) so returning a pending row still works on a preview database
+ * that has not applied 0135 yet. The dedicated send-back RPC is only
+ * required when there is no open request (notify-only).
  */
 export function useReturnUnassignedMagistrate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { profileId: string; reason?: string }) => {
+    mutationFn: async (input: { profileId: string; reason: string }) => {
+      const closed = await rejectPendingRequestsForProfile(input.profileId, input.reason);
+      if (closed > 0) return closed;
+
       const { data, error } = await supabase.rpc("return_unassigned_magistrate_to_requester", {
         p_profile_id: input.profileId,
-        p_reason: input.reason ?? undefined,
+        p_reason: input.reason,
       });
-      if (error) throw error;
-      return data;
+      if (!error) return data;
+      if (isMissingRpc(error)) {
+        throw new Error(
+          "This database is missing migration 0135 (return_unassigned_magistrate_to_requester). Apply it on the preview Supabase project, then retry.",
+        );
+      }
+      throw error;
     },
     onSuccess: (rejectedCount) => {
       toast.success(
         rejectedCount
-          ? "Sent back. Open requests were rejected and they were notified."
-          : "Sent back. They were notified to request the correct court.",
+          ? "Returned to requester. Open requests were closed and they were notified."
+          : "Returned to requester. They were notified to request again.",
       );
       invalidateAfterDecision(queryClient);
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
+
+/**
+ * Admin recovery for a magistrate/clerk signup mistake. Blocked when the
+ * person already sits a court, when the target is the caller, or when
+ * converting to/from admin — the RPC re-checks all of that.
+ */
+export function useCorrectUnassignedAccountType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      profileId: string;
+      newRole: "magistrate" | "clerk";
+      reason: string;
+    }) => {
+      const { data, error } = await supabase.rpc("correct_unassigned_account_type", {
+        p_profile_id: input.profileId,
+        p_new_role: input.newRole,
+        p_reason: input.reason,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (newRole) => {
+      toast.success(
+        newRole === "clerk"
+          ? "Account type corrected to Court Clerk. They were notified."
+          : "Account type corrected to Magistrate. They were notified.",
+      );
+      invalidateAfterDecision(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "clerk-courts"] });
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

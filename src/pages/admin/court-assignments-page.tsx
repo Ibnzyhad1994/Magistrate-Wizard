@@ -138,7 +138,7 @@ export default function CourtAssignmentsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Court Assignments"
-        description="Review court-assignment requests, or find a profile to assign or end a Court. Ending never deletes history. Acting and relief sit the same files as a primary sitting."
+        description="Open requests are under Pending Requests. People who cancelled or were returned still appear on Roster so you can assign a court, return them to request again, or correct the account type."
       />
 
       <Tabs defaultValue="requests">
@@ -217,8 +217,10 @@ export default function CourtAssignmentsPage() {
             <div className="space-y-2 border-t border-border pt-3">
               <p className="text-sm font-medium text-foreground">Waiting for assignment</p>
               <p className="text-xs text-muted-foreground">
-                Magistrates with no active court. Select one to assign, reject an open
-                request, or send them back to request again.
+                Magistrates with no active court. Open requests are also listed under
+                Pending Requests. Select someone here to assign a court, return them to
+                request again, or correct the account type if they signed up as the wrong
+                role.
               </p>
               {waitingPending ? (
                 <Skeleton className="h-16 w-full" />
@@ -278,7 +280,7 @@ export default function CourtAssignmentsPage() {
               <EmptyState
                 icon={ShieldCheck}
                 title="No profile selected"
-                description="Select someone waiting for assignment, or search by name or email to view or manage Court assignments."
+                description="Select someone waiting for assignment, or search by name or email. Pending Requests is only the open queue — cancelled or returned people are on this roster."
               />
             </CardContent>
           </Card>
@@ -326,11 +328,12 @@ export default function CourtAssignmentsPage() {
               </CardHeader>
             </Card>
 
-            {selectedProfile && !isClerkProfile && !listPending && (
+            {selectedProfile && selectedProfile.role !== "admin" && !assignmentsPending && !clerkAssignmentsPending && (
               <RosterProfileRequests
                 profileId={selectedProfile.id}
                 role={selectedProfile.role}
-                hasActiveAssignment={current.length > 0}
+                hasActiveMagistrateAssignment={(assignments ?? []).some((a) => !a.ended_at)}
+                hasActiveClerkAssignment={(clerkAssignments ?? []).some((a) => !a.ended_at)}
               />
             )}
 

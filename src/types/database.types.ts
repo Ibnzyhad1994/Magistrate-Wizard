@@ -3948,6 +3948,14 @@ export type Database = {
         Args: { p_profile_id: string; p_reason?: string }
         Returns: number
       }
+      correct_unassigned_account_type: {
+        Args: {
+          p_new_role: Database["public"]["Enums"]["user_role"]
+          p_profile_id: string
+          p_reason: string
+        }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       revoke_clerk_court_access: {
         Args: { p_assignment_id: string; p_reason?: string }
         Returns: {

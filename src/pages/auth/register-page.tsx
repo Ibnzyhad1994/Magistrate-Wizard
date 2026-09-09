@@ -43,7 +43,7 @@ export default function RegisterPage() {
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      accountType: "magistrate",
+      accountType: undefined,
       fullName: "",
       email: "",
       password: "",
@@ -114,7 +114,12 @@ export default function RegisterPage() {
                       <button
                         key={type}
                         type="button"
-                        onClick={() => field.onChange(type)}
+                        onClick={() => {
+                          if (field.value !== type) {
+                            form.setValue("courtIds", []);
+                          }
+                          field.onChange(type);
+                        }}
                         className={cn(
                           "rounded-sm border px-4 py-3 text-left text-sm font-medium transition-colors",
                           field.value === type
@@ -124,6 +129,11 @@ export default function RegisterPage() {
                         aria-pressed={field.value === type}
                       >
                         {type === "magistrate" ? "Magistrate" : "Court Clerk"}
+                        <span className="mt-1 block text-xs font-normal text-white/50">
+                          {type === "magistrate"
+                            ? "You sit the court. A Court Assignment Administrator must approve your court."
+                            : "A magistrate at each court you request must approve your access."}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -260,7 +270,7 @@ export default function RegisterPage() {
                   <Select
                     className={cn(fieldClassName, "w-full px-3")}
                     value={field.value ?? ""}
-                    disabled={districtsQuery.isPending || districtsQuery.isError}
+                    disabled={!accountType || districtsQuery.isPending || districtsQuery.isError}
                     aria-label="Magisterial District"
                     onChange={(e) => {
                       field.onChange(e.target.value);
@@ -268,7 +278,9 @@ export default function RegisterPage() {
                     }}
                   >
                     <option value="">
-                      {districtsQuery.isPending
+                      {!accountType
+                        ? "Choose an account type first"
+                        : districtsQuery.isPending
                         ? "Loading districts…"
                         : districtsQuery.isError
                           ? "Districts unavailable"
@@ -298,6 +310,8 @@ export default function RegisterPage() {
                       <p className="text-sm text-white/50">Loading courts…</p>
                     ) : courtsQuery.isError ? (
                       <p className="text-sm text-white/50">Courts could not be loaded.</p>
+                    ) : !accountType ? (
+                      <p className="text-sm text-white/50">Choose Magistrate or Court Clerk first.</p>
                     ) : !districtId ? (
                       <p className="text-sm text-white/50">Select a district first.</p>
                     ) : courtsInDistrict.length === 0 ? (

@@ -25,6 +25,7 @@ export interface AlertDialogProps {
   confirmVariant?: ButtonProps["variant"];
   onConfirm: () => void;
   isConfirming?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export function AlertDialog({
@@ -37,6 +38,7 @@ export function AlertDialog({
   confirmVariant = "destructive",
   onConfirm,
   isConfirming = false,
+  confirmDisabled = false,
 }: AlertDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,7 +60,7 @@ export function AlertDialog({
             type="button"
             variant={confirmVariant}
             onClick={onConfirm}
-            disabled={isConfirming}
+            disabled={isConfirming || confirmDisabled}
           >
             {confirmLabel}
           </Button>

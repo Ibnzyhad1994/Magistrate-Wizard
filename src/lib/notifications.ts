@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = [
   "clerk_request_decided",
   "court_request",
   "court_request_decided",
+  "account_type_corrected",
   "hearing_tomorrow",
   "stale_draft",
 ] as const
@@ -50,6 +51,8 @@ export const notificationTypeLabel = (type: string) => {
       return "Court request"
     case "court_request_decided":
       return "Court request decided"
+    case "account_type_corrected":
+      return "Account type corrected"
     case "hearing_tomorrow":
       return "Hearing reminder"
     case "stale_draft":

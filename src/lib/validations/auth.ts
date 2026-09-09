@@ -17,11 +17,15 @@ export type LoginFormValues = z.infer<typeof loginSchema>;
  * handle_new_user() creates one PENDING request per selected court --
  * clerk_access_requests for a clerk, magistrate_court_requests for a
  * magistrate (0106) -- never an immediate assignment. Selecting a court
- * here is a request, not a grant.
+ * here is a request, not a grant. The form requires an explicit Magistrate
+ * or Court Clerk choice (no pre-selected type) so a clerk is less likely
+ * to request as a magistrate by accident.
  */
 export const registerSchema = z
   .object({
-    accountType: z.enum(["magistrate", "clerk"]),
+    accountType: z.enum(["magistrate", "clerk"], {
+      errorMap: () => ({ message: "Choose Magistrate or Court Clerk" }),
+    }),
     fullName: z
       .string()
       .min(2, "Full name must be at least 2 characters")
