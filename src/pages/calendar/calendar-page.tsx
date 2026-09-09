@@ -63,7 +63,7 @@ export default function CalendarPage() {
 
   const from = monthStart(cursor.year, cursor.month);
   const to = monthEnd(cursor.year, cursor.month);
-  const { data, isPending, isError, error, refetch } = useCalendarEvents(from, to);
+  const { data, isPending, isFetching, isError, error, refetch } = useCalendarEvents(from, to);
   const events = useMemo(() => data ?? [], [data]);
   const byDate = useMemo(() => groupByDate(events), [events]);
   const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor]);
@@ -147,7 +147,17 @@ export default function CalendarPage() {
       ) : null}
 
       {view === "month" && !isPending && !isError ? (
-        <div className="overflow-x-auto rounded-md border border-white/10 bg-[#181818]">
+        <div
+          className={cn(
+            "overflow-x-auto rounded-md border border-white/10 bg-[#181818] transition-opacity duration-150",
+            // Month navigation now holds the previous month's grid while
+            // the next loads (placeholderData) instead of blanking to
+            // skeletons — dimming keeps that legible as "refreshing"
+            // rather than looking like stale data.
+            isFetching && "opacity-60",
+          )}
+          aria-busy={isFetching}
+        >
           <div className="grid grid-cols-7 border-b border-white/10">
             {WEEKDAYS.map((day) => (
               <div
@@ -224,7 +234,13 @@ export default function CalendarPage() {
       ) : null}
 
       {view === "agenda" && !isPending && !isError && events.length > 0 ? (
-        <ol className="divide-y divide-white/10 overflow-hidden rounded-md border border-white/10 bg-[#181818]">
+        <ol
+          className={cn(
+            "divide-y divide-white/10 overflow-hidden rounded-md border border-white/10 bg-[#181818] transition-opacity duration-150",
+            isFetching && "opacity-60",
+          )}
+          aria-busy={isFetching}
+        >
           {events.map((event) => (
             <li key={event.id}>
               <button

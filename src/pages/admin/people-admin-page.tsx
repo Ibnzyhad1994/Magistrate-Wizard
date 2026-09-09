@@ -59,9 +59,14 @@ const matchesQuery = (person: AdminPersonRow, query: string) => {
  */
 export default function PeopleAdminPage() {
   const [query, setQuery] = useState("");
-  const { data: people, isPending, isError, error, refetch } = useAdminPeople();
+  const { data, isPending, isError, error, refetch } = useAdminPeople();
+  const people = data?.rows;
+  const coverage = data?.coverage;
 
-  const visible = useMemo(() => (people ?? []).filter((person) => matchesQuery(person, query)), [people, query]);
+  const visible = useMemo(
+    () => (people ?? []).filter((person) => matchesQuery(person, query)),
+    [people, query],
+  );
 
   return (
     <BrowsePage>
@@ -83,6 +88,19 @@ export default function PeopleAdminPage() {
           className="max-w-xs"
         />
       </div>
+
+      {/* "Last sign-in" and "Latest activity" read the newest N events
+          system-wide, not per person — so past a certain volume of
+          history a genuinely active account would show "Never" and look
+          identical to one that has truly never signed in. Say so rather
+          than quietly misreport. */}
+      {(coverage?.loginsSince || coverage?.activitySince) && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Sign-in and activity columns cover events since{" "}
+          {formatDateTime(coverage.loginsSince ?? coverage.activitySince ?? "")}. Anything
+          older isn&apos;t counted here.
+        </p>
+      )}
 
       {isPending ? (
         <Skeleton className="h-48 w-full" />

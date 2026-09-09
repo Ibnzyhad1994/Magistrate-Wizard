@@ -4,7 +4,7 @@
 import { Buffer } from "node:buffer"
 import { createCanvas, GlobalFonts } from "@napi-rs/canvas"
 import { existsSync } from "node:fs"
-import { makeValidScannedJpegPdf, SCAN_GROUND_TRUTH } from "./scanned-pdf-fixtures.mjs"
+import { makeValidScannedJpegPdf, SCAN_GROUND_TRUTH, seededRandom } from "./scanned-pdf-fixtures.mjs"
 
 const FONT_CANDIDATES = [
   ["C:\\Windows\\Fonts\\times.ttf", "ScanSerif"],
@@ -195,9 +195,14 @@ export const renderDegradedScanCanvas = (opts = {}) => {
     }
     if (opts.noiseRatio) {
       const count = Math.floor((canvas.width * canvas.height * opts.noiseRatio) / 100)
+      // Seeded for the same reason as scanned-pdf-fixtures.mjs: unseeded
+      // speckle makes OCR assertions intermittently fail on an unlucky
+      // pixel rather than on any real quality change. Still noisy — just
+      // reproducibly so.
+      const rand = seededRandom(0x0d15ea5e)
       for (let n = 0; n < count; n++) {
-        const i = Math.floor(Math.random() * canvas.width * canvas.height) * 4
-        const v = Math.random() > 0.5 ? 0 : 255
+        const i = Math.floor(rand() * canvas.width * canvas.height) * 4
+        const v = rand() > 0.5 ? 0 : 255
         data[i] = v
         data[i + 1] = v
         data[i + 2] = v

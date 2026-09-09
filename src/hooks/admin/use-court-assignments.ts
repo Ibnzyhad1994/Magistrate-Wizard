@@ -41,22 +41,38 @@ export const courtAssignmentKeys = {
  * caller reaching it would simply see their own single profile row via
  * the same unmodified RLS, never a directory of others.
  */
+/** Rows returned per search. Exported so the UI can say when it capped. */
+export const PROFILE_SEARCH_LIMIT = 20;
+
+export interface ProfileSearchPage {
+  rows: ProfileSearchResult[];
+  /** True total matching the query, independent of the limit. */
+  totalCount: number;
+  /** True when more people match than are shown — the admin needs to narrow. */
+  truncated: boolean;
+}
+
 export function useProfileSearch(query: string) {
   const trimmed = query.trim();
   return useQuery({
     queryKey: courtAssignmentKeys.search(trimmed),
-    queryFn: async (): Promise<ProfileSearchResult[]> => {
+    queryFn: async (): Promise<ProfileSearchPage> => {
       const escaped = trimmed.replace(/[%,]/g, "");
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("profiles")
-        .select("id, full_name, email, is_active, role")
+        .select("id, full_name, email, is_active, role", { count: "exact" })
         .or(`full_name.ilike.%${escaped}%,email.ilike.%${escaped}%`)
         .order("full_name")
-        .limit(20);
+        .limit(PROFILE_SEARCH_LIMIT);
       if (error) throw error;
-      return data;
+      const rows = data ?? [];
+      const totalCount = count ?? rows.length;
+      return { rows, totalCount, truncated: totalCount > rows.length };
     },
     enabled: trimmed.length >= 2,
+    // Holds the previous matches while a refined query loads, so the
+    // result list doesn't blank between keystrokes.
+    placeholderData: (previousData) => previousData,
   });
 }
 

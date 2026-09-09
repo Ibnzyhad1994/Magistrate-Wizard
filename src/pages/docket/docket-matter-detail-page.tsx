@@ -117,11 +117,10 @@ export default function DocketMatterDetailPage() {
         }
         tourId="matter-header"
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
-        secondaryAction={
-          liveEdit
-            ? { label: "Edit details", onClick: () => setEditOpen(true) }
-            : undefined
-        }
+        // "Edit details" deliberately lives only in the action row below,
+        // next to Bookmark and Move to bin — it was previously rendered
+        // here as well, so the same control appeared twice on screen at
+        // once.
       />
       <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         {isBinned && matter.deleted_at && (

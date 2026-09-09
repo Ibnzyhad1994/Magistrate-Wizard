@@ -10,8 +10,28 @@ import {
 import type { UserRole } from "@/lib/constants";
 import type { Json } from "@/types/database.types";
 
+/**
+ * These windows are GLOBAL — the newest N events across everyone, not per
+ * user. That is fine today, but as history accumulates a genuinely active
+ * person whose last sign-in falls outside the window would render
+ * identically to someone who has never signed in at all. `AdminPeopleCoverage`
+ * below carries the real boundary so the page can say "no sign-in since
+ * <date>" instead of silently claiming "Never".
+ */
 const LOGIN_LOOKBACK = 3000;
 const ACTIVITY_LOOKBACK = 1500;
+
+export interface AdminPeopleCoverage {
+  /** Oldest sign-in actually examined, or null when the window isn't full (all history is covered). */
+  loginsSince: string | null;
+  /** Oldest institutional event actually examined, or null when all history is covered. */
+  activitySince: string | null;
+}
+
+export interface AdminPeopleResult {
+  rows: AdminPersonRow[];
+  coverage: AdminPeopleCoverage;
+}
 
 export const adminPeopleKeys = {
   all: ["admin", "people"] as const,
@@ -179,7 +199,7 @@ export function buildAdminPeopleRows(input: {
 export function useAdminPeople() {
   return useQuery({
     queryKey: adminPeopleKeys.all,
-    queryFn: async (): Promise<AdminPersonRow[]> => {
+    queryFn: async (): Promise<AdminPeopleResult> => {
       const [profilesResult, magistrateResult, clerkResult, loginResult, authResult, auditResult] =
         await Promise.all([
           supabase
@@ -238,7 +258,24 @@ export function useAdminPeople() {
         })),
       ];
 
-      return buildAdminPeopleRows({
+      const loginRows = loginResult.data ?? [];
+      // Only report a boundary when the window actually filled — if fewer
+      // rows came back than we asked for, every event in history was
+      // examined and "Never" is genuinely accurate.
+      const loginsSince =
+        loginRows.length >= LOGIN_LOOKBACK
+          ? (loginRows[loginRows.length - 1]?.created_at ?? null)
+          : null;
+      const activitySince =
+        activityEvents.length >= ACTIVITY_LOOKBACK
+          ? activityEvents.reduce<string | null>(
+              (oldest, event) =>
+                oldest === null || event.createdAt < oldest ? event.createdAt : oldest,
+              null,
+            )
+          : null;
+
+      const rows = buildAdminPeopleRows({
         profiles: (profilesResult.data ?? []) as ProfileRow[],
         magistrateAssignments: (magistrateResult.data ?? []).map((row) => ({
           profile_id: row.profile_id,
@@ -251,9 +288,11 @@ export function useAdminPeople() {
           court_id: row.court_id,
           courts: asCourtJoin(row.courts),
         })),
-        loginEvents: loginResult.data ?? [],
+        loginEvents: loginRows,
         activityEvents,
       });
+
+      return { rows, coverage: { loginsSince, activitySince } };
     },
   });
 }

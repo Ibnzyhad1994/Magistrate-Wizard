@@ -67,6 +67,31 @@ const wrapLines = (ctx, text, maxWidth) => {
   return out
 }
 
+/**
+ * Deterministic PRNG (mulberry32) for the salt-and-pepper noise below.
+ *
+ * The noise was previously drawn from Math.random(), which made
+ * test-ocr-accuracy.mjs genuinely flaky: measured at roughly 1 failure in
+ * 5 runs, always the same assertion ("noisy scan contains citation"), and
+ * with an identical character error rate (~0.004) on both passing and
+ * failing runs — i.e. never a quality regression, just an unlucky pixel
+ * landing on the short "20 WIR 138" substring. A flaky assertion in the
+ * CI fast-suite blocks auto-merge at random, so the fixture is now
+ * reproducible: same seed, same speckle, same OCR result every run.
+ *
+ * Still genuinely noisy — this fixes WHICH pixels are hit, not how many.
+ */
+export const seededRandom = (seed) => {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
 const renderLegalScanCanvas = (text = SCAN_GROUND_TRUTH, fontSize = 42, noiseRatio = 0) => {
   const dpi = 300
   const width = Math.round(8.5 * dpi)
@@ -92,9 +117,12 @@ const renderLegalScanCanvas = (text = SCAN_GROUND_TRUTH, fontSize = 42, noiseRat
     const image = ctx.getImageData(0, 0, width, height)
     const data = image.data
     const count = Math.floor((width * height * noiseRatio) / 100)
+    // Seeded so the same fixture produces the same speckle every run —
+    // see seededRandom's own note on the flake this removes.
+    const rand = seededRandom(0x5ca1ab1e)
     for (let n = 0; n < count; n++) {
-      const i = Math.floor(Math.random() * width * height) * 4
-      const v = Math.random() > 0.5 ? 0 : 255
+      const i = Math.floor(rand() * width * height) * 4
+      const v = rand() > 0.5 ? 0 : 255
       data[i] = v
       data[i + 1] = v
       data[i + 2] = v

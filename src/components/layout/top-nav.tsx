@@ -7,6 +7,7 @@ import { NAV_ITEMS, groupNavItems, navItemLabel, navTourIdForHref, visibleNavIte
 import { AppLogo } from "@/components/brand/app-logo";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ReportIssueButton } from "@/components/feedback/report-issue-button";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { MobileSearchDialog } from "@/components/layout/mobile-search-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,6 +198,10 @@ export function TopNav() {
             <Search className="h-5 w-5" />
           </Button>
         )}
+        {/* Hidden for a pending magistrate for the same reason search is:
+            /notifications sits behind requireApprovedMagistrateCourt, so
+            the bell would be a link that only ever bounces them back. */}
+        {isPendingMagistrate ? null : <NotificationBell />}
         <ReportIssueButton />
         <UserMenu compact />
       </div>

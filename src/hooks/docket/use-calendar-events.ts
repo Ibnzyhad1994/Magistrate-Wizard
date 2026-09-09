@@ -85,6 +85,13 @@ export function useCalendarEvents(from: string, to: string) {
       }
     },
     retry: (failureCount, error) => !isQueueableError(error) && failureCount < 1,
+    // The month's date bounds are part of the query key, so every Prev/
+    // Next click is a brand-new key with no cached data — the grid blanked
+    // to 14 skeleton boxes on every navigation, even returning to a month
+    // just viewed. Holding the previous month's rows while the next loads
+    // keeps the grid stable; calendar-page.tsx dims it via isFetching so
+    // it still reads as refreshing rather than as stale data.
+    placeholderData: (previousData) => previousData,
   })
   const jobs = useOutboxJobs()
   const data = useMemo(

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Lock, LockOpen, Trash2, CheckCircle2, Sparkles, Pencil, FileDown } from "lucide-react";
@@ -825,7 +825,14 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
             <EmptyState
               className="border-0 py-4"
               title="No linked matters"
-              description="Link this judgment from the Docket workspace."
+              description="Judgments are linked to a matter from the Docket workspace."
+              action={
+                // Was a dead end: it named where to go with no way to get
+                // there.
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={ROUTES.docket}>Open the Docket</Link>
+                </Button>
+              }
             />
           ) : (
             <ul className="space-y-2 text-sm">
@@ -863,7 +870,12 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
             <EmptyState
               className="border-0 py-4"
               title="No associated Quick Codes"
-              description="Associate a Quick Code from your Quick Codes workspace."
+              description="Quick Codes are associated from your Quick Codes workspace."
+              action={
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={ROUTES.quickCodes}>Open Quick Codes</Link>
+                </Button>
+              }
             />
           ) : (
             <ul className="space-y-2 text-sm">

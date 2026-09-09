@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Inbox } from "lucide-react"
 import { Link } from "react-router-dom"
 import { BrowseHeader, BrowsePage } from "@/components/browse"
@@ -8,6 +9,7 @@ import { EmptyState } from "@/components/common/empty-state"
 import { InlineError } from "@/components/common/inline-error"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  NOTIFICATIONS_PAGE_SIZE,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
@@ -16,10 +18,12 @@ import { notificationTypeLabel } from "@/lib/notifications"
 import { formatDateTime } from "@/lib/utils"
 
 export default function NotificationsPage() {
-  const { data, isPending, isError, error, refetch } = useNotifications()
+  const [limit, setLimit] = useState(NOTIFICATIONS_PAGE_SIZE)
+  const { data, isPending, isFetching, isError, error, refetch } = useNotifications(limit)
   const markRead = useMarkNotificationRead()
   const markAll = useMarkAllNotificationsRead()
-  const unread = (data ?? []).filter((row) => !row.read_at).length
+  const rows = data?.rows ?? []
+  const unread = rows.filter((row) => !row.read_at).length
 
   return (
     <BrowsePage>
@@ -46,15 +50,20 @@ export default function NotificationsPage() {
         <Skeleton className="h-48 w-full" />
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
-      ) : !data || data.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
           icon={Inbox}
           title="No notices yet"
           description="Nothing waiting right now."
         />
       ) : (
-        <div className="mx-auto max-w-3xl space-y-3">
-          {data.map((row) => {
+        <div
+          className={`mx-auto max-w-3xl space-y-3 transition-opacity duration-150 ${
+            isFetching ? "opacity-60" : ""
+          }`}
+          aria-busy={isFetching}
+        >
+          {rows.map((row) => {
             const unreadRow = !row.read_at
             const body = (
               <Card className={unreadRow ? "border-primary/40" : undefined}>
@@ -83,6 +92,7 @@ export default function NotificationsPage() {
                         event.stopPropagation()
                         markRead.mutate(row.id)
                       }}
+                      disabled={markRead.isPending}
                       aria-label={`Mark ${row.title} as read`}
                     >
                       Mark read
@@ -105,6 +115,25 @@ export default function NotificationsPage() {
               </Link>
             )
           })}
+
+          {/* The list was previously hard-capped with nothing indicating
+              older notices existed — they simply vanished past the limit. */}
+          {data?.hasMore && (
+            <div className="flex flex-col items-center gap-2 pt-2">
+              <p className="text-xs text-white/45">
+                Showing {rows.length} of {data.totalCount} notices.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLimit((current) => current + NOTIFICATIONS_PAGE_SIZE)}
+                disabled={isFetching}
+              >
+                {isFetching ? "Loading…" : "Load older notices"}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </BrowsePage>

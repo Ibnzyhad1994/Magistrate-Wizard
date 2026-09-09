@@ -64,7 +64,11 @@ export function useUpdateFeatureFlag() {
         .eq("key", input.key)
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_result, input) => {
+      // Confirmed explicitly: a flag flip changes behaviour for every
+      // other user in the system, not just this admin's own session, so
+      // silent success is the wrong default here.
+      toast.success(`${input.key} ${input.enabled ? "enabled" : "disabled"}.`)
       void queryClient.invalidateQueries({ queryKey: featureFlagKeys.all })
     },
     onError: (error: Error) => {

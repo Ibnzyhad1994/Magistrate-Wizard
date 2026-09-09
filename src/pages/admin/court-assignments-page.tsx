@@ -30,6 +30,7 @@ import {
   useProfileClerkCourts,
   type ProfileSearchResult,
 } from "@/hooks/admin/use-court-assignments";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-court-request-review-panel";
 import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate-court-requests";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
@@ -61,7 +62,11 @@ export default function CourtAssignmentsPage() {
   const [courtToAssign, setCourtToAssign] = useState("");
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
 
-  const { data: results, isPending: searchPending } = useProfileSearch(query);
+  // Was firing one `ilike` against `profiles` per keystroke — the same
+  // pattern already fixed on the Docket board and the research lists.
+  const debouncedQuery = useDebouncedValue(query);
+  const { data: search, isPending: searchPending } = useProfileSearch(debouncedQuery);
+  const results = search?.rows;
   const {
     data: waiting,
     isPending: waitingPending,
@@ -161,7 +166,7 @@ export default function CourtAssignmentsPage() {
             )}
 
             {query.trim().length >= 2 &&
-              (searchPending ? (
+              (searchPending || query.trim() !== debouncedQuery.trim() ? (
                 <Skeleton className="h-16 w-full" />
               ) : !results || results.length === 0 ? (
                 <p className="px-1 py-2 text-sm text-muted-foreground">
@@ -192,6 +197,15 @@ export default function CourtAssignmentsPage() {
                       </button>
                     </li>
                   ))}
+                  {search?.truncated && (
+                    // Previously capped at 20 with no hint more existed —
+                    // an admin searching a common name silently saw a
+                    // partial list.
+                    <li className="px-3 py-2 text-xs text-muted-foreground">
+                      Showing the first {results.length} of {search.totalCount} matches. Narrow
+                      the search to see the rest.
+                    </li>
+                  )}
                 </ul>
               ))}
 

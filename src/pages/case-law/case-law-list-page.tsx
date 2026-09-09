@@ -110,19 +110,31 @@ export default function CaseLawListPage() {
     };
   }, [data, user?.id, debouncedQuery, matchingIds, categoryId]);
 
-  const canonicalRows =
-    scopeActive && (courtId || jurisdictionId || categoryId)
-      ? (scopedResults ?? []).map((r) => ({
-          id: r.id,
-          case_name: r.case_name,
-          citation: r.citation,
-          court: r.court,
-          jurisdiction: r.jurisdiction,
-          owner_id: null,
-          updated_at: null,
-          category_name: null,
-        }))
-      : canonical;
+  // The Canonical tab switches to the Court/Jurisdiction/Category-scoped
+  // RPC once any of those facets is set, rather than filtering the
+  // already-fetched list client-side.
+  const usingScopedCanonical = scopeActive && !!(courtId || jurisdictionId || categoryId);
+
+  const canonicalRows = usingScopedCanonical
+    ? (scopedResults ?? []).map((r) => ({
+        id: r.id,
+        case_name: r.case_name,
+        citation: r.citation,
+        court: r.court,
+        jurisdiction: r.jurisdiction,
+        owner_id: null,
+        updated_at: null,
+        category_name: null,
+      }))
+    : canonical;
+
+  // The page's own loading gate only watches useCaseLawList(), which is
+  // already resolved by the time a facet is applied — so on the FIRST
+  // scoped fetch (nothing cached for placeholderData to hold) the tab
+  // would render "No canonical authorities match" for a tick before the
+  // real, usually non-empty, results arrived. A false negative on a
+  // legal-research surface is worse than a brief skeleton.
+  const canonicalLoading = usingScopedCanonical && scopedPending && !scopedResults;
 
   return (
     <BrowsePage>
@@ -226,11 +238,15 @@ export default function CaseLawListPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="canonical">
-            <CaseLawTable
-              rows={canonicalRows}
-              emptyTitle="No canonical authorities match"
-              emptyDescription="Canonical Case Law is maintained centrally and will appear here."
-            />
+            {canonicalLoading ? (
+              <Skeleton className="mt-4 h-64 w-full" />
+            ) : (
+              <CaseLawTable
+                rows={canonicalRows}
+                emptyTitle="No canonical authorities match"
+                emptyDescription="Canonical Case Law is maintained centrally and will appear here."
+              />
+            )}
           </TabsContent>
           <TabsContent value="mine">
             <CaseLawTable

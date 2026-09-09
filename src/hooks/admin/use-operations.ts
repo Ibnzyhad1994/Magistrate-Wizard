@@ -50,13 +50,22 @@ export function useUpdateRetentionPolicy() {
   })
 }
 
+/**
+ * Deliberately omits `secret`. The HMAC signing key is only ever needed
+ * when CREATING an endpoint (generated client-side, written once) — it is
+ * never read back or displayed. Selecting it here put a live signing
+ * secret into the React Query cache on every Operations page view for no
+ * benefit at all.
+ */
+export type WebhookEndpointRow = Omit<Tables<"webhook_endpoints">, "secret">
+
 export function useWebhookEndpoints() {
   return useQuery({
     queryKey: operationsKeys.webhooks,
-    queryFn: async (): Promise<Tables<"webhook_endpoints">[]> => {
+    queryFn: async (): Promise<WebhookEndpointRow[]> => {
       const { data, error } = await supabase
         .from("webhook_endpoints")
-        .select("id, url, secret, events, active, court_id, created_at, updated_at, created_by")
+        .select("id, url, events, active, court_id, created_at, updated_at, created_by")
         .order("created_at", { ascending: false })
       if (error) throw error
       return data ?? []

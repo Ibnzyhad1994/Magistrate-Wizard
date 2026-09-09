@@ -69,6 +69,12 @@ export function useCaseLawScopedSearch(params: {
       return data ?? [];
     },
     enabled: active,
+    // Keeps the previous scoped result set on screen while a refined
+    // filter reloads. Without it, changing a facet drops `data` to
+    // undefined for a tick, and the Canonical tab renders a false "no
+    // matches" empty state before the real (usually non-empty) results
+    // land — see case-law-list-page.tsx's own loading gate.
+    placeholderData: (previousData) => previousData,
   });
 }
 
