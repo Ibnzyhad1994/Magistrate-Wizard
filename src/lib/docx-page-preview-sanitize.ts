@@ -69,6 +69,13 @@ export const sanitizeDocxPageBody = (html: string, purify: DOMPurifyInstance): s
         node.removeAttribute("src")
       }
     }
+    // stripNonDataCssUrls (below) already scrubs the generated <style>
+    // block; inline style="" attributes are the same CSS surface and need
+    // the identical treatment, or a crafted external url() here beacons
+    // to an attacker server the moment the preview renders.
+    if (node.hasAttribute("style")) {
+      node.setAttribute("style", stripNonDataCssUrls(node.getAttribute("style") ?? ""))
+    }
   }
   purify.addHook("afterSanitizeAttributes", onAttr)
   try {

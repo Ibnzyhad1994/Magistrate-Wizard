@@ -37,6 +37,27 @@ function check(label, condition) {
 }
 
 {
+  // A crafted .docx with inline paragraph/run styling could otherwise
+  // beacon to an attacker server the instant the preview renders, leaking
+  // the viewer's IP and confirming the document was opened -- the same
+  // exfiltration stripNonDataCssUrls already blocks in the <style> block,
+  // now closed for inline style="" too.
+  const out = sanitizeDocxPageBody(
+    '<p style="background:url(https://evil.example/pixel.png)">hi</p>',
+    purify,
+  );
+  check("an external url() inside an inline style attribute is stripped", !out.includes("evil.example"));
+}
+
+{
+  const out = sanitizeDocxPageBody(
+    '<p style="background:url(data:image/png;base64,AAAA)">hi</p>',
+    purify,
+  );
+  check("a data: url() inside an inline style attribute survives", out.includes("data:image/png"));
+}
+
+{
   const out = sanitizeDocxPageBody('<img src="javascript:alert(1)">', purify);
   check("javascript: image src is stripped", !out.includes("javascript:"));
 }

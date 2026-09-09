@@ -13,6 +13,7 @@ import { useAuthStore } from "@/store/auth-store"
 import { lockCurrentSession } from "@/lib/auth/session-lock"
 import { recoverSessionWork } from "@/lib/auth/session-recovery"
 import { currentProfileId, flushPendingHearings } from "@/lib/offline/runtime"
+import { setCachedProfile, getCachedProfile } from "@/lib/offline/store"
 import { queryClient } from "@/lib/query-client"
 import {
   installSupabaseAuthMock,
@@ -150,6 +151,20 @@ const authenticate = () => {
   check("lockCurrentSession uses scope local", calls[0]?.options, { scope: "local" })
   check("lockCurrentSession leaves status locked", useAuthStore.getState().status, "locked")
   check("lockCurrentSession drops the store session", useAuthStore.getState().session, null)
+  resetSupabaseAuthMock()
+}
+
+{
+  // Security-audit finding: the offline docket cache (case numbers,
+  // matter titles, hearing detail) used to survive an idle-lock, clearing
+  // only on an explicit sign-out -- leaving it readable via DevTools on a
+  // shared terminal with no further authentication required.
+  authenticate()
+  await setCachedProfile("user-a", profile)
+  check("offline cache holds the profile before locking", getCachedProfile("user-a")?.id, "user-a")
+  installSupabaseAuthMock({ signOut: async () => ({ error: null }) })
+  await lockCurrentSession()
+  check("lockCurrentSession clears the offline cache for the locked profile", getCachedProfile("user-a"), null)
   resetSupabaseAuthMock()
 }
 

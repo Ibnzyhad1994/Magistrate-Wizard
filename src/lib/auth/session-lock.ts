@@ -1,3 +1,4 @@
+import { clearOfflineForProfile } from "@/lib/offline/store"
 import { supabase } from "@/lib/supabase"
 import { useAuthStore } from "@/store/auth-store"
 import { toast } from "sonner"
@@ -35,12 +36,21 @@ async function dropLocalTokens(): Promise<void> {
  * If local sign-out fails, stay `locked` (do not bounce back to
  * authenticated while tokens may still be in storage) so a later call
  * retries. Concurrent callers share one in-flight attempt.
+ *
+ * Also clears the offline docket cache (case numbers, matter titles,
+ * hearing detail) -- a security-audit finding: it was previously cleared
+ * only on an explicit sign-out, so a shared terminal that idle-locked
+ * instead left that cached case data readable via DevTools with no
+ * further authentication required. Cleared on the transition into
+ * `locked`, not after every retry, so a flaky first attempt doesn't wipe
+ * the cache repeatedly.
  */
 export async function lockCurrentSession(): Promise<void> {
   const state = useAuthStore.getState()
   if (state.status !== "authenticated" && state.status !== "locked") return
   if (state.status === "authenticated") {
     state.lockSession()
+    if (state.user?.id) void clearOfflineForProfile(state.user.id)
   }
   if (lockInFlight) return lockInFlight
   lockInFlight = dropLocalTokens()

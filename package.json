@@ -20,6 +20,7 @@
     "test:offline-outbox": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-offline-outbox.mjs",
     "test:session-idle": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "test:session-lock": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-session-lock-security.mjs",
+    "test:password-reset": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-password-reset.mjs",
     "test:export-pdf": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-export-pdf.mjs",
     "test:shares": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-shares-item-type.mjs",
     "test:judgment-versions": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-judgment-versions.mjs",
@@ -121,6 +122,11 @@
     "tesseract.js": "^7.0.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.1"
+  },
+  "overrides": {
+    "mammoth": {
+      "@xmldom/xmldom": "0.8.15"
+    }
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.1",
