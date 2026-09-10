@@ -3742,7 +3742,11 @@ export type Database = {
         }[]
       }
       get_docket_capacity_snapshot: {
-        Args: { p_category_id?: string; p_scheduled_date: string }
+        Args: {
+          p_category_id?: string
+          p_court_id?: string
+          p_scheduled_date: string
+        }
         Returns: {
           category_id: string
           category_name: string

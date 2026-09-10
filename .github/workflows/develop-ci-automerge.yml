@@ -122,6 +122,9 @@ jobs:
       - name: Docket board URL params
         run: npm run test:docket-board-params
 
+      - name: Docket capacity matches board
+        run: npm run test:docket-capacity
+
       - name: Callover vocabulary and running-sheet logic
         run: npm run test:callover
 

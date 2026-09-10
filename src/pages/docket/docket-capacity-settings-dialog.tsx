@@ -116,10 +116,11 @@ export function DocketCapacitySettingsDialog({
         <DialogHeader>
           <DialogTitle>Docket Capacity Settings</DialogTitle>
           <DialogDescription>
-            Set a daily limit for every classification, including Other. This is personal to you:
-            it never affects any other magistrate, and applies across every date. Leave a
-            category blank for no limit. You can still add extra matters to a full date using
-            &quot;Add Anyway&quot;; your normal setting here doesn&apos;t change.
+            Set a daily limit per classification, including Other. Limits apply to sittings you
+            preside across every court you sit. The week strip uses that same personal count,
+            not the court in the heading. This is personal to you and never affects another
+            magistrate. Leave a category blank for no limit. You can still add extra matters to
+            a full date using &quot;Add Anyway&quot;; your normal setting here doesn&apos;t change.
           </DialogDescription>
         </DialogHeader>
 

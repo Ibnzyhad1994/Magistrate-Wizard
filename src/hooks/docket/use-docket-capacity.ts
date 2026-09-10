@@ -7,6 +7,7 @@ import type { Database } from "@/types/database.types";
 export const docketCapacityKeys = {
   categories: ["docket-matter-categories"] as const,
   settings: ["docket-capacity-settings"] as const,
+  /** Calendar tiles always count every court the caller sits (p_court_id unset). */
   snapshot: (date: string) => ["docket-capacity-snapshot", date] as const,
 };
 
@@ -91,7 +92,12 @@ export function useDeleteDocketCapacitySetting() {
   });
 }
 
-/** Live utilisation for every category on one date, for the calling magistrate. */
+/**
+ * Live utilisation for every category on one date, for the calling magistrate
+ * across every court they sit. The week strip has no preferred court: a
+ * 1/10 tile can come from Vigilance even while the heading is Kamarang.
+ * Clicking that day switches the board to All My Courts.
+ */
 export function useDocketCapacitySnapshot(date: string | undefined) {
   return useQuery({
     queryKey: docketCapacityKeys.snapshot(date ?? ""),

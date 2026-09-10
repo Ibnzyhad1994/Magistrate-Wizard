@@ -65,6 +65,8 @@
     "test:docket-procedure": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-procedure.mjs",
     "test:docket-week": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-week.mjs",
     "test:docket-board-params": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-board-params.mjs",
+    "test:docket-capacity": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-capacity.mjs",
+    "test:docket-calendar-mismatch": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-calendar-mismatch.mjs",
     "test:walkthrough": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-walkthrough.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-tour-overlay.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-tour-example.mjs && node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-clerk-home.mjs",
     "test:docket-bin-purge": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-matter-bin-purge.mjs",
     "test:case-law-title": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-title.mjs",

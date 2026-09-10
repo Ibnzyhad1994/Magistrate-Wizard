@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search, Plus, ClipboardList, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -145,8 +145,27 @@ export default function DocketListPage() {
     [commitBoardParams],
   );
   const setSelectedDate = useCallback(
-    (value: string | null) => commitBoardParams({ exactDate: value }),
-    [commitBoardParams],
+    (value: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = boardParamsToSearchParams(
+            {
+              ...boardParamsFromSearchParams(prev),
+              exactDate: value,
+              filters: { ...boardParamsFromSearchParams(prev).filters, nextDate: [] },
+            },
+            prev,
+          );
+          // Tiles count every court you sit. Clicking a day therefore
+          // switches the board to All My Courts so the list can show that
+          // file. Clearing the date (All Matters) leaves the heading court.
+          if (value) next.set("court", ALL_COURTS_PARAM);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
   );
 
   // Search is the one control that keeps local state: the input must stay
@@ -176,20 +195,6 @@ export default function DocketListPage() {
     setSearch("");
     commitBoardParams({ query: "", filters: EMPTY_PROCEDURE_FILTERS });
   }, [commitBoardParams]);
-
-  // Switching Docket scope must never leave a stale search/filter/date
-  // combination — or its results — visible from the previously-selected
-  // court. React Query already gives each courtId its own cache entry
-  // (queryKey includes it), so there's no cross-court data leakage; this
-  // just resets the CONTROLS themselves back to a clean slate on switch,
-  // in the URL as well as in the local search input.
-  const previousCourtId = useRef(courtId);
-  useEffect(() => {
-    if (previousCourtId.current === courtId) return;
-    previousCourtId.current = courtId;
-    setSearch("");
-    setSearchParams((prev) => clearBoardParams(prev), { replace: true });
-  }, [courtId, setSearchParams]);
 
   const isDesktop = useIsDesktop();
   const { isActive: tourActive } = useTour();
@@ -221,8 +226,22 @@ export default function DocketListPage() {
   }, [noCourts, searchParams, setSearchParams]);
   const filtersOn = hasActiveProcedureFilters(filters);
   const searchOn = boardParams.query.length > 0;
-  const emptyBecauseFilters = !isPending && !isError && (data?.length ?? 0) === 0 && (searchOn || filtersOn);
-  const emptyBecauseDate = !isPending && !isError && (data?.length ?? 0) === 0 && !!selectedDate && !searchOn && !filtersOn;
+  const emptyBecauseFilters =
+    !isPending && !isError && (data?.length ?? 0) === 0 && (searchOn || filtersOn);
+  const emptyBecauseDate =
+    !isPending &&
+    !isError &&
+    (data?.length ?? 0) === 0 &&
+    !!selectedDate &&
+    !searchOn &&
+    !filtersOn;
+  const emptyBecauseDateAndFilters =
+    !isPending &&
+    !isError &&
+    (data?.length ?? 0) === 0 &&
+    !!selectedDate &&
+    (searchOn || filtersOn);
+  const courtScopeLabel = selectedCourt?.court_name ?? "All My Courts";
   const showTourExample = shouldShowDocketTourExample({
     tourActive,
     matterCount: data?.length ?? 0,
@@ -289,9 +308,18 @@ export default function DocketListPage() {
               aria-label="Docket scope: choose a court"
               value={courtId ?? ALL_COURTS_PARAM}
               onChange={(e) => {
-                const next = new URLSearchParams(searchParams);
-                next.set("court", e.target.value);
-                setSearchParams(next);
+                // Dropdown switches wipe search/filters/date. Day-click
+                // switching to All My Courts must not go through this path,
+                // or the date just written would vanish.
+                setSearch("");
+                setSearchParams(
+                  (prev) => {
+                    const next = clearBoardParams(prev);
+                    next.set("court", e.target.value);
+                    return next;
+                  },
+                  { replace: true },
+                );
               }}
             >
               <option value={ALL_COURTS_PARAM}>All My Courts</option>
@@ -306,16 +334,16 @@ export default function DocketListPage() {
       )}
 
       <DocketCapacityStrip
-        key={courtId ?? "all"}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
+        courtLabel={courtScopeLabel}
         onEditLimits={() => setCapacityOpen(true)}
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-medium text-foreground">
           {selectedDate
-            ? `Matters scheduled for ${formatDate(selectedDate)}`
+            ? `Appearances on ${formatDate(selectedDate)} at ${courtScopeLabel}`
             : "All matters"}
         </h2>
         {selectedDate && (
@@ -363,21 +391,42 @@ export default function DocketListPage() {
             <EmptyState
               icon={ClipboardList}
               title={
-                emptyBecauseFilters
-                  ? "No matters at this stage"
-                  : emptyBecauseDate
-                    ? `No matters scheduled for ${formatDate(selectedDate as string)}.`
-                    : "No docket matters yet"
+                emptyBecauseDateAndFilters
+                  ? `No appearances on ${formatDate(selectedDate as string)} match these filters`
+                  : emptyBecauseFilters
+                    ? "No matters at this stage"
+                    : emptyBecauseDate
+                      ? `No appearances on ${formatDate(selectedDate as string)} at ${courtScopeLabel}`
+                      : "No docket matters yet"
               }
               description={
-                emptyBecauseFilters
-                  ? "Nothing matches these filters. Clear them to see the rest of the list."
-                  : emptyBecauseDate
-                    ? "Set a matter's Next Date to this date to see it here, or switch to All Matters."
-                    : "Matters you create, are assigned, or are shared on will appear here."
+                emptyBecauseDateAndFilters
+                  ? `Nothing on this day at ${courtScopeLabel} matches the current search or stage filters. Clear the filters to see the rest of the day, or switch to All Matters.`
+                  : emptyBecauseFilters
+                    ? "Nothing matches these filters. Clear them to see the rest of the list."
+                    : emptyBecauseDate
+                      ? "No live matter at this court has an appearance on this day. Switch to All Matters to see the rest of the Docket."
+                      : "Matters you create, are assigned, or are shared on will appear here."
               }
               action={
-                emptyBecauseFilters ? (
+                emptyBecauseDateAndFilters ? (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button variant="play" size="sm" onClick={clearRefinements}>
+                      {searchOn && filtersOn
+                        ? "Clear search and filters"
+                        : searchOn
+                          ? "Clear search"
+                          : "Clear filters"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedDate(null)}
+                    >
+                      All Matters
+                    </Button>
+                  </div>
+                ) : emptyBecauseFilters ? (
                   // Clears the search text as well as the stage filters:
                   // this branch fires for either, so clearing only the
                   // filters left the button doing visibly nothing when a

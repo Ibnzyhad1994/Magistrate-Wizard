@@ -173,15 +173,16 @@ export type DocketMatterBoardRow =
 /**
  * Spreadsheet / filtered Docket list. Uses list_docket_matters so stage
  * filters apply server-side (the 100-row cap still shows the right files).
- * `exactDate` (0079) is the calendar's currently-selected date — when set,
- * this is the SAME next_appearance value the capacity calendar counts
- * against, so the list and the calendar can never disagree about which
- * matters belong to a given date. `null` means unfiltered ("All Matters").
- * `courtId` (0097) is the two-level Docket scope -- `null` means "All My
- * Courts" (every court the caller is currently authorized to access, via
- * RLS -- never every court in the database); a specific id restricts to
- * that exact court. Included in the query key so switching scope is a
- * genuinely separate cache entry, never a stale cross-court flash.
+ * `exactDate` is the calendar day on the capacity strip: matters with any
+ * non-error appearance that day (0139 keeps Next-date chips from ANDing
+ * against it). Calendar tiles count every court you sit; clicking a day
+ * switches this list to All My Courts (`courtId` null). `null` exactDate
+ * means "All Matters" and still follows the heading court. `courtId` (0097)
+ * is the two-level Docket scope -- `null` means "All My Courts" (every
+ * court the caller is currently authorized to access, via RLS -- never
+ * every court in the database); a specific id restricts to that exact
+ * court. Included in the query key so switching scope is a genuinely
+ * separate cache entry, never a stale cross-court flash.
  */
 export function useDocketMatterBoard(
   search: string,

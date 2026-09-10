@@ -124,13 +124,47 @@ const populated = {
     trial: ["completed"],
     nextDate: ["today"],
   },
-  exactDate: "2026-09-10",
+  exactDate: null,
 };
 
 check(
-  "a fully-populated board survives serialise → parse unchanged",
+  "a fully-populated board without a calendar day keeps next-date chips",
   parse(serialise(populated)),
   populated,
+);
+
+check(
+  "selecting a calendar day drops next from the URL (date and next cannot fight)",
+  new URLSearchParams(
+    serialise({
+      ...populated,
+      exactDate: "2026-09-10",
+      filters: { ...populated.filters, nextDate: ["today"] },
+    }),
+  ).has("next"),
+  false,
+);
+
+check(
+  "selecting a calendar day keeps stage filters and search",
+  parse(
+    serialise({
+      ...populated,
+      exactDate: "2026-09-10",
+      filters: { ...populated.filters, nextDate: ["today"] },
+    }),
+  ),
+  {
+    query: "smith",
+    filters: {
+      stages: ["trial"],
+      custody: ["remanded"],
+      disclosure: ["partial"],
+      trial: ["completed"],
+      nextDate: [],
+    },
+    exactDate: "2026-09-10",
+  },
 );
 
 // --- coexistence with ?court= (owned by docket-scope.ts) -----------------

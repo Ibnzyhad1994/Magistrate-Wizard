@@ -107,6 +107,10 @@ export function boardParamsFromSearchParams(params: URLSearchParams): DocketBoar
  * param this module doesn't own (notably `court`). Empty values are
  * removed rather than written blank, so the default view stays a clean
  * `/docket` URL and no two URLs describe the same view.
+ *
+ * A selected calendar day and Next-date chips are two date models. When
+ * `exactDate` is set, `next` is dropped so the day list cannot be emptied
+ * by a leftover Today / Upcoming / No date chip.
  */
 export function boardParamsToSearchParams(
   state: DocketBoardParams,
@@ -114,6 +118,7 @@ export function boardParamsToSearchParams(
 ): URLSearchParams {
   const next = new URLSearchParams(base);
   const trimmed = state.query.trim();
+  const nextDateForUrl = state.exactDate ? [] : state.filters.nextDate;
 
   const entries: Array<[(typeof BOARD_PARAM_KEYS)[number], string | null]> = [
     ["q", trimmed || null],
@@ -121,7 +126,7 @@ export function boardParamsToSearchParams(
     ["custody", serialiseList(state.filters.custody)],
     ["disclosure", serialiseList(state.filters.disclosure)],
     ["trial", serialiseList(state.filters.trial)],
-    ["next", serialiseList(state.filters.nextDate)],
+    ["next", serialiseList(nextDateForUrl)],
     ["date", state.exactDate],
   ];
 

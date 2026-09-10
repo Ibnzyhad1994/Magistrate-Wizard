@@ -104,7 +104,7 @@ function DayTile({
     ? getCapacityStyle(worst.scheduled_count, worst.daily_capacity)
     : getCapacityStyle(0, null);
   const hint = worst
-    ? `${capacityStatusLabel(style.band)}. Busiest: ${worst.scheduled_count} of ${worst.daily_capacity}`
+    ? `${capacityStatusLabel(style.band)}. ${worst.category_name} · ${worst.scheduled_count} of ${worst.daily_capacity} files you preside across your courts`
     : null;
   const ariaHint = hint ?? `Select ${date}`;
 
@@ -143,14 +143,18 @@ function DayTile({
 /**
  * Capacity chrome on Docket. Weekly, daily, or monthly tiles, switched
  * from a persistent toggle — not a one-shot Month disclosure.
+ * Tiles count sittings you preside across every court you sit. Clicking a
+ * day switches the board to All My Courts for that date.
  */
 export function DocketCapacityStrip({
   selectedDate,
   onSelectDate,
+  courtLabel,
   onEditLimits,
 }: {
   selectedDate: string | null;
   onSelectDate: (date: string | null) => void;
+  courtLabel: string;
   onEditLimits?: () => void;
 }) {
   const today = getLocalDateOnly();
@@ -357,12 +361,14 @@ export function DocketCapacityStrip({
         {selectedDate ? (
           <>
             <p className="text-xs text-muted-foreground">
+              Appearances on{" "}
               {formatDate(selectedDate, {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
                 year: "numeric",
-              })}
+              })}{" "}
+              across every court you sit
             </p>
             <div className="flex flex-wrap gap-2">
               {(categories ?? []).map((cat) => {
@@ -381,7 +387,10 @@ export function DocketCapacityStrip({
             </div>
           </>
         ) : (
-          <p className="text-xs text-muted-foreground">Showing all matters. Select a date to filter the Docket below.</p>
+          <p className="text-xs text-muted-foreground">
+            Showing all matters at {courtLabel}. Capacity tiles count sittings you preside
+            across every court you sit. Select a date to list those files below.
+          </p>
         )}
       </div>
     </div>
