@@ -40,8 +40,13 @@ jobs:
         with:
           node-version: 24
 
+      # package-lock.json was written with npm 11.6. Current Node 24
+      # bundles 11.16+, whose `npm ci` rejects that lockfile as out of
+      # sync (EUSAGE) and dumps the ci help text. Pin until regenerated.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install -g npm@11.6.2
+          npm ci
 
       # High/critical advisories are reported but do not fail the gate while
       # the tree still carries known transitive findings we are not unblocking
