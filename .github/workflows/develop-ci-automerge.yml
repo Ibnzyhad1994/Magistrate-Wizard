@@ -101,6 +101,12 @@ jobs:
       - name: Document PDF viewer (authenticated pdf.js, not signed-URL iframe)
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-document-pdf-viewer.mjs
 
+      - name: Rasterized PDF redaction
+        run: npm run test:redaction-pdf
+
+      - name: RPC rate-limit helper
+        run: npm run test:rpc-rate-limit
+
       - name: XSS sanitisation probes
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/pentest-xss-probes.mjs
 

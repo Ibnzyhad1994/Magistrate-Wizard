@@ -53,7 +53,7 @@ export function SessionLockDialog() {
           <DialogTitle>Session locked</DialogTitle>
           <DialogDescription>
             You have been inactive for an hour. Enter your password to keep
-            this page — your work is still here.
+            this page. Your work is still here.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void handleContinue(event)} className="space-y-4">

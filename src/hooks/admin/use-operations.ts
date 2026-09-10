@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
+import { getErrorMessage } from "@/lib/utils"
 import type { Json, Tables } from "@/types/database.types"
 
 export const operationsKeys = {
@@ -137,7 +138,7 @@ export function useDownloadMyData() {
       return data as Json
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Could not export your data")
+      toast.error(getErrorMessage(error) || "Could not export your data")
     },
   })
 }

@@ -312,6 +312,9 @@ export function getErrorMessage(error: unknown): string {
     if (code === "PGRST116") {
       return "That record doesn't exist, or you don't have access to it.";
     }
+    if (rawMessage === "rate_limited") {
+      return "Too many requests. Try again in a minute.";
+    }
     if (
       typeof (error as { message?: unknown }).message === "string" &&
       /network|fetch/i.test((error as { message: string }).message) &&

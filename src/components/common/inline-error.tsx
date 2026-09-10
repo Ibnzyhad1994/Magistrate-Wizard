@@ -15,6 +15,9 @@ interface InlineErrorProps {
  * `RouteErrorBoundary`, which stays reserved for render-time crashes.
  */
 export function InlineError({ error, onRetry, className }: InlineErrorProps) {
+  const message = getErrorMessage(error);
+  const rateLimited = message === "Too many requests. Try again in a minute.";
+
   return (
     <div
       className={cn(
@@ -24,12 +27,12 @@ export function InlineError({ error, onRetry, className }: InlineErrorProps) {
     >
       <AlertTriangle className="h-6 w-6 text-destructive" aria-hidden="true" />
       <p className="text-sm font-medium text-foreground">
-        Couldn&apos;t load this data
+        {rateLimited ? "Too many requests" : "Couldn't load this data"}
       </p>
       <p className="max-w-sm text-sm text-muted-foreground">
-        {getErrorMessage(error)}
+        {rateLimited ? "Try again in a minute." : message}
       </p>
-      {onRetry && (
+      {onRetry && !rateLimited && (
         <Button size="sm" variant="outline" onClick={onRetry} className="mt-2">
           <RotateCw className="h-3.5 w-3.5" />
           Retry

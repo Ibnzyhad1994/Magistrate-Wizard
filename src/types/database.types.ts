@@ -17,10 +17,10 @@ export type Database = {
           id: number
           new_data: Json | null
           old_data: Json | null
-          record_id: string | null
-          table_name: string
           prev_hash: string | null
+          record_id: string | null
           row_hash: string | null
+          table_name: string
         }
         Insert: {
           action: Database["public"]["Enums"]["audit_action"]
@@ -29,10 +29,10 @@ export type Database = {
           id?: never
           new_data?: Json | null
           old_data?: Json | null
-          record_id?: string | null
-          table_name: string
           prev_hash?: string | null
+          record_id?: string | null
           row_hash?: string | null
+          table_name: string
         }
         Update: {
           action?: Database["public"]["Enums"]["audit_action"]
@@ -41,10 +41,10 @@ export type Database = {
           id?: never
           new_data?: Json | null
           old_data?: Json | null
-          record_id?: string | null
-          table_name?: string
           prev_hash?: string | null
+          record_id?: string | null
           row_hash?: string | null
+          table_name?: string
         }
         Relationships: [
           {
@@ -851,112 +851,10 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
-      }
-      docket_capacity_overrides: {
-        Row: {
-          category_id: string | null
-          configured_capacity: number
-          created_at: string
-          docket_event_id: string | null
-          docket_matter_id: string
-          id: string
-          magistrate_profile_id: string
-          reason: string | null
-          scheduled_count_at_override: number
-          scheduled_date: string
-        }
-        Insert: {
-          category_id?: string | null
-          configured_capacity: number
-          created_at?: string
-          docket_event_id?: string | null
-          docket_matter_id: string
-          id?: string
-          magistrate_profile_id: string
-          reason?: string | null
-          scheduled_count_at_override: number
-          scheduled_date: string
-        }
-        Update: {
-          category_id?: string | null
-          configured_capacity?: number
-          created_at?: string
-          docket_event_id?: string | null
-          docket_matter_id?: string
-          id?: string
-          magistrate_profile_id?: string
-          reason?: string | null
-          scheduled_count_at_override?: number
-          scheduled_date?: string
-        }
         Relationships: [
           {
-            foreignKeyName: "docket_capacity_overrides_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "docket_matter_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "docket_capacity_overrides_docket_event_id_fkey"
-            columns: ["docket_event_id"]
-            isOneToOne: false
-            referencedRelation: "docket_events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "docket_capacity_overrides_docket_matter_id_fkey"
-            columns: ["docket_matter_id"]
-            isOneToOne: false
-            referencedRelation: "docket_matters"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "docket_capacity_overrides_magistrate_profile_id_fkey"
-            columns: ["magistrate_profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      docket_capacity_settings: {
-        Row: {
-          category_id: string
-          created_at: string
-          daily_capacity: number
-          id: string
-          owner_id: string
-          updated_at: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string
-          daily_capacity: number
-          id?: string
-          owner_id?: string
-          updated_at?: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string
-          daily_capacity?: number
-          id?: string
-          owner_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "docket_capacity_settings_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "docket_matter_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "docket_capacity_settings_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "data_retention_policies_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1092,6 +990,116 @@ export type Database = {
           {
             foreignKeyName: "docket_callovers_last_updated_by_fkey"
             columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docket_capacity_overrides: {
+        Row: {
+          category_id: string | null
+          configured_capacity: number
+          created_at: string
+          docket_event_id: string | null
+          docket_matter_id: string
+          id: string
+          magistrate_profile_id: string
+          reason: string | null
+          scheduled_count_at_override: number
+          scheduled_date: string
+        }
+        Insert: {
+          category_id?: string | null
+          configured_capacity: number
+          created_at?: string
+          docket_event_id?: string | null
+          docket_matter_id: string
+          id?: string
+          magistrate_profile_id: string
+          reason?: string | null
+          scheduled_count_at_override: number
+          scheduled_date: string
+        }
+        Update: {
+          category_id?: string | null
+          configured_capacity?: number
+          created_at?: string
+          docket_event_id?: string | null
+          docket_matter_id?: string
+          id?: string
+          magistrate_profile_id?: string
+          reason?: string | null
+          scheduled_count_at_override?: number
+          scheduled_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_capacity_overrides_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matter_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_docket_event_id_fkey"
+            columns: ["docket_event_id"]
+            isOneToOne: false
+            referencedRelation: "docket_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_docket_matter_id_fkey"
+            columns: ["docket_matter_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_magistrate_profile_id_fkey"
+            columns: ["magistrate_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      docket_capacity_settings: {
+        Row: {
+          category_id: string
+          created_at: string
+          daily_capacity: number
+          id: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          daily_capacity: number
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          daily_capacity?: number
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "docket_capacity_settings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "docket_matter_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_settings_owner_id_fkey"
+            columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1782,7 +1790,15 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       import_batches: {
         Row: {
@@ -2033,6 +2049,66 @@ export type Database = {
           },
         ]
       }
+      judgment_versions: {
+        Row: {
+          case_number: string | null
+          citation: string | null
+          content: Json | null
+          content_text: string | null
+          court_name: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          judgment_date: string | null
+          judgment_id: string
+          title: string
+          version_number: number
+        }
+        Insert: {
+          case_number?: string | null
+          citation?: string | null
+          content?: Json | null
+          content_text?: string | null
+          court_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          judgment_date?: string | null
+          judgment_id: string
+          title: string
+          version_number: number
+        }
+        Update: {
+          case_number?: string | null
+          citation?: string | null
+          content?: Json | null
+          content_text?: string | null
+          court_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          judgment_date?: string | null
+          judgment_id?: string
+          title?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judgment_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judgment_versions_judgment_id_fkey"
+            columns: ["judgment_id"]
+            isOneToOne: false
+            referencedRelation: "judgments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       judgments: {
         Row: {
           case_number: string | null
@@ -2111,66 +2187,6 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      judgment_versions: {
-        Row: {
-          case_number: string | null
-          citation: string | null
-          content: Json | null
-          content_text: string | null
-          court_name: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          judgment_date: string | null
-          judgment_id: string
-          title: string
-          version_number: number
-        }
-        Insert: {
-          case_number?: string | null
-          citation?: string | null
-          content?: Json | null
-          content_text?: string | null
-          court_name?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          judgment_date?: string | null
-          judgment_id: string
-          title: string
-          version_number: number
-        }
-        Update: {
-          case_number?: string | null
-          citation?: string | null
-          content?: Json | null
-          content_text?: string | null
-          court_name?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          judgment_date?: string | null
-          judgment_id?: string
-          title?: string
-          version_number?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "judgment_versions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "judgment_versions_judgment_id_fkey"
-            columns: ["judgment_id"]
-            isOneToOne: false
-            referencedRelation: "judgments"
             referencedColumns: ["id"]
           },
         ]
@@ -2814,6 +2830,27 @@ export type Database = {
           },
         ]
       }
+      rpc_rate_limit_buckets: {
+        Row: {
+          hit_count: number
+          rpc_name: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          hit_count?: number
+          rpc_name: string
+          user_id: string
+          window_start: string
+        }
+        Update: {
+          hit_count?: number
+          rpc_name?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       shares: {
         Row: {
           created_at: string
@@ -3147,6 +3184,7 @@ export type Database = {
         Insert: {
           active?: boolean
           court_id?: string | null
+          created_at?: string
           created_by?: string | null
           events?: string[]
           id?: string
@@ -3157,6 +3195,7 @@ export type Database = {
         Update: {
           active?: boolean
           court_id?: string | null
+          created_at?: string
           created_by?: string | null
           events?: string[]
           id?: string
@@ -3164,7 +3203,22 @@ export type Database = {
           updated_at?: string
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_endpoints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_outbox: {
         Row: {
@@ -3200,7 +3254,15 @@ export type Database = {
           payload?: Json
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "webhook_outbox_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_endpoints"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -3266,15 +3328,33 @@ export type Database = {
         Args: { p_case_law_id: string; p_tag_names: string[] }
         Returns: undefined
       }
+      apply_data_retention: { Args: never; Returns: number }
       apply_statute_tags: {
         Args: { p_statute_id: string; p_tag_names: string[] }
         Returns: undefined
+      }
+      audit_log_digest: { Args: { p_payload: string }; Returns: string }
+      audit_log_payload: {
+        Args: {
+          p_action: Database["public"]["Enums"]["audit_action"]
+          p_actor_id: string
+          p_created_at: string
+          p_id: number
+          p_new_data: Json
+          p_old_data: Json
+          p_prev_hash: string
+          p_record_id: string
+          p_table_name: string
+        }
+        Returns: string
       }
       bin_docket_matter: {
         Args: { p_id: string }
         Returns: {
           appeal_status: string
           arraignment_status: string
+          brought_forward_at: string | null
+          brought_forward_from: string | null
           case_number: string
           category_id: string | null
           category_other: string | null
@@ -3294,7 +3374,7 @@ export type Database = {
           matter_title: string
           orders_summary: string | null
           outcome: string | null
-          outcome_status: string
+          outcome_status: string | null
           procedure_stage: string | null
           ruling_status: string
           search_vector: unknown
@@ -3309,14 +3389,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      download_my_data: { Args: never; Returns: Json }
-      verify_audit_hash_chain: {
-        Args: never
-        Returns: {
-          broken_id: number | null
-          ok: boolean
-        }[]
       }
       can_access_callover: { Args: { p_callover_id: string }; Returns: boolean }
       can_access_court: { Args: { p_court_id: string }; Returns: boolean }
@@ -3462,6 +3534,14 @@ export type Database = {
           id: string
         }[]
       }
+      correct_unassigned_account_type: {
+        Args: {
+          p_new_role: Database["public"]["Enums"]["user_role"]
+          p_profile_id: string
+          p_reason: string
+        }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       court_has_active_primary_magistrate: {
         Args: { p_court_id: string }
         Returns: boolean
@@ -3528,6 +3608,10 @@ export type Database = {
           statute_id: string
         }[]
       }
+      current_profile_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       decide_clerk_access_request: {
         Args: {
           p_decision: Database["public"]["Enums"]["clerk_access_decision"]
@@ -3592,6 +3676,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      dispatch_pending_webhooks: { Args: never; Returns: number }
+      download_my_data: { Args: never; Returns: Json }
+      enforce_rpc_rate_limit: {
+        Args: { p_max: number; p_rpc: string; p_window_seconds: number }
+        Returns: undefined
+      }
+      enqueue_webhook_event: {
+        Args: { p_event: string; p_payload: Json }
+        Returns: number
+      }
       finalize_legislation_document: {
         Args: {
           p_document_id: string
@@ -3609,6 +3703,7 @@ export type Database = {
         }
         Returns: string
       }
+      flag_stale_drafts: { Args: never; Returns: number }
       format_case_law_title: { Args: { p_input: string }; Returns: string }
       format_case_law_title_atom: {
         Args: { p_force_cap: boolean; p_word: string }
@@ -3666,6 +3761,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      guyana_today: { Args: never; Returns: string }
       has_active_clerk_assignment: {
         Args: { p_court_id: string }
         Returns: boolean
@@ -3677,6 +3773,18 @@ export type Database = {
       }
       has_docket_share: {
         Args: { p_docket_matter_id: string; p_required_permission?: string }
+        Returns: boolean
+      }
+      has_item_share: {
+        Args: {
+          p_item_id: string
+          p_item_type: string
+          p_required_permission?: string
+        }
+        Returns: boolean
+      }
+      has_item_share_authority: {
+        Args: { p_item_id: string; p_item_type: string }
         Returns: boolean
       }
       has_retained_assignment: {
@@ -3820,11 +3928,42 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: boolean
       }
+      mark_past_hearings: { Args: never; Returns: number }
       matter_current_stage_label: {
         Args: { p_docket_matter_id: string }
         Returns: string
       }
       my_court_id: { Args: never; Returns: string }
+      notify_admins: {
+        Args: {
+          p_body: string
+          p_link: string
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
+      }
+      notify_court_staff: {
+        Args: {
+          p_body: string
+          p_court_id: string
+          p_link: string
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
+      }
+      notify_tomorrows_hearings: { Args: never; Returns: number }
+      notify_user: {
+        Args: {
+          p_body?: string
+          p_link?: string
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       populate_callover_from_date: {
         Args: { p_callover_id: string; p_date?: string }
         Returns: number
@@ -3909,6 +4048,8 @@ export type Database = {
         Returns: {
           appeal_status: string
           arraignment_status: string
+          brought_forward_at: string | null
+          brought_forward_from: string | null
           case_number: string
           category_id: string | null
           category_other: string | null
@@ -3928,7 +4069,7 @@ export type Database = {
           matter_title: string
           orders_summary: string | null
           outcome: string | null
-          outcome_status: string
+          outcome_status: string | null
           procedure_stage: string | null
           ruling_status: string
           search_vector: unknown
@@ -3947,14 +4088,6 @@ export type Database = {
       return_unassigned_magistrate_to_requester: {
         Args: { p_profile_id: string; p_reason?: string }
         Returns: number
-      }
-      correct_unassigned_account_type: {
-        Args: {
-          p_new_role: Database["public"]["Enums"]["user_role"]
-          p_profile_id: string
-          p_reason: string
-        }
-        Returns: Database["public"]["Enums"]["user_role"]
       }
       revoke_clerk_court_access: {
         Args: { p_assignment_id: string; p_reason?: string }
@@ -3977,6 +4110,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      run_scheduled_maintenance: { Args: never; Returns: undefined }
       schedule_docket_event_with_capacity: {
         Args: {
           p_acknowledge_override?: boolean
@@ -4202,6 +4336,17 @@ export type Database = {
         Returns: boolean
       }
       user_can_access_case: { Args: { p_case_id: string }; Returns: boolean }
+      verify_audit_hash_chain: {
+        Args: never
+        Returns: {
+          broken_id: number
+          ok: boolean
+        }[]
+      }
+      webhook_signature: {
+        Args: { p_body: string; p_secret: string }
+        Returns: string
+      }
     }
     Enums: {
       audit_action: "insert" | "update" | "delete"
@@ -4227,7 +4372,12 @@ export type Database = {
         | "rejected"
         | "cancelled"
         | "expired"
-      docket_matter_status: "active" | "stayed" | "completed" | "archived" | "dismissed"
+      docket_matter_status:
+        | "active"
+        | "stayed"
+        | "completed"
+        | "archived"
+        | "dismissed"
       magistrate_court_decision: "approved" | "rejected"
       magistrate_court_request_status:
         | "pending"
@@ -4268,12 +4418,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4297,11 +4447,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4322,11 +4472,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4347,11 +4497,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4364,11 +4514,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4406,7 +4556,13 @@ export const Constants = {
         "cancelled",
         "expired",
       ],
-      docket_matter_status: ["active", "stayed", "completed", "archived", "dismissed"],
+      docket_matter_status: [
+        "active",
+        "stayed",
+        "completed",
+        "archived",
+        "dismissed",
+      ],
       magistrate_court_decision: ["approved", "rejected"],
       magistrate_court_request_status: [
         "pending",
@@ -4430,6 +4586,7 @@ export const Constants = {
     },
   },
 } as const
+
 
 export type Profile = Tables<"profiles">;
 export type Court = Tables<"courts">;

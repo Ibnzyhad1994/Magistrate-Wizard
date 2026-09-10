@@ -8,11 +8,14 @@ import {
   Printer,
   RotateCw,
   Search,
+  Square,
+  Undo2,
   X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { InlineError } from "@/components/common/inline-error";
@@ -23,38 +26,42 @@ import { downloadDocumentBlob, getDocumentViewUrl } from "@/hooks/use-documents"
 import { PdfViewerPage, type PageHighlight } from "@/components/legislation/pdf-viewer-page";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { undoRedaction, type RedactionBox } from "@/lib/redaction";
+import { burnRedactedPdf, redactedPdfFileName } from "@/lib/redaction-pdf";
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
 const ZOOM_STEP = 0.15;
 
 /**
- * Core Legislation PDF viewer — READ-ONLY, and deliberately presentation-
- * agnostic (no Dialog/route assumptions of its own) so it can be embedded
- * directly as a page's main content (LegislationViewerPage, the default
- * `/legislation/:id` experience) or wrapped in a modal
- * (LegislationPdfViewerDialog, used by the admin edit page for a
- * PDF preview) without duplicating the pdfjs/search/render machinery.
+ * Core PDF viewer — presentation-agnostic (no Dialog/route assumptions of
+ * its own) so it can be embedded as a page's main content or wrapped in a
+ * modal without duplicating the pdfjs/search/render machinery.
  *
- * This component has NO knowledge of editing: no form state, no
+ * This component has no knowledge of editing: no form state, no
  * replace-file control, no mutation calls of any kind — only
  * downloadDocumentBlob/getDocumentViewUrl (read paths) and
- * usePrimaryLegislationDocument (a read-only query). Nothing here can be
- * escalated into a write operation, by construction, regardless of the
- * caller's role — the actual write boundary is enforced independently by
- * RLS and the edit-only RPCs this file never imports.
+ * usePrimaryLegislationDocument (a read-only query). Optional `allowRedact`
+ * draws black boxes and downloads a locally rasterized copy; that file is
+ * never uploaded and does not write back to Storage or RLS.
  */
 export function LegislationPdfViewer({
   documentId,
   title,
   className,
   toolbarClassName,
+  allowRedact = false,
+  onRedactionDirtyChange,
 }: {
   documentId: string | null;
   title: string;
   className?: string;
   /** Dialog wrapper passes extra right-padding here to clear its own fixed-position close button — an embedded page usage has no such button and leaves this unset. */
   toolbarClassName?: string;
+  /** Docket/judgment attachments only. Legislation canonical viewer leaves this unset. */
+  allowRedact?: boolean;
+  /** True while at least one box is on the page. The dialog uses this to confirm close. */
+  onRedactionDirtyChange?: (dirty: boolean) => void;
 }) {
   const { data: doc, isPending: docRowPending } = usePrimaryLegislationDocument(documentId);
   const pdf = usePdfDocument(doc?.file_path ?? null);
@@ -66,6 +73,9 @@ export function LegislationPdfViewer({
   const [fullscreen, setFullscreen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [redactMode, setRedactMode] = useState(false);
+  const [redactionBoxes, setRedactionBoxes] = useState<RedactionBox[]>([]);
+  const [burning, setBurning] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -86,11 +96,21 @@ export function LegislationPdfViewer({
     setCurrentPage(1);
     setPageInput("1");
     setSearchOpen(false);
+    setRedactMode(false);
+    setRedactionBoxes([]);
     naturalWidthRef.current = null;
     naturalHeightRef.current = null;
   }, [documentId]);
 
   useEffect(() => setPageInput(String(currentPage)), [currentPage]);
+
+  useEffect(() => {
+    onRedactionDirtyChange?.(redactionBoxes.length > 0);
+  }, [redactionBoxes.length, onRedactionDirtyChange]);
+
+  useEffect(() => {
+    return () => onRedactionDirtyChange?.(false);
+  }, [onRedactionDirtyChange]);
 
   // Track which page is most visible for the page-count indicator.
   useEffect(() => {
@@ -141,12 +161,15 @@ export function LegislationPdfViewer({
         setSearchOpen(false);
         search.clear();
       }
+      if (e.key === "Escape" && redactMode) {
+        setRedactMode(false);
+      }
     }
     const el = containerRef.current;
     el?.addEventListener("keydown", onKeyDown);
     return () => el?.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchOpen]);
+  }, [searchOpen, redactMode]);
 
   const goToPage = useCallback((n: number) => {
     const root = scrollRef.current;
@@ -203,6 +226,48 @@ export function LegislationPdfViewer({
     }
   }
 
+  async function handleDownloadRedacted() {
+    if (!doc) return;
+    if (redactionBoxes.length === 0) {
+      toast.error("Draw at least one redaction box first.");
+      return;
+    }
+    setBurning(true);
+    try {
+      const blob = await downloadDocumentBlob(doc.file_path);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const burned = await burnRedactedPdf({
+        bytes,
+        boxes: redactionBoxes,
+        title: doc.file_name,
+      });
+      const url = URL.createObjectURL(
+        new Blob([burned as unknown as BlobPart], { type: "application/pdf" }),
+      );
+      const a = window.document.createElement("a");
+      a.href = url;
+      a.download = redactedPdfFileName(doc.file_name);
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Saved a redacted copy. The original file is unchanged.");
+    } catch {
+      toast.error("Could not build a redacted PDF.");
+    } finally {
+      setBurning(false);
+    }
+  }
+
+  const handleToggleRedact = () => {
+    setRedactMode((on) => {
+      if (!on && rotation !== 0) setRotation(0);
+      return !on;
+    });
+  };
+
+  const handleRedactBlockedByRotation = () => {
+    toast.error("Reset rotation before drawing redaction boxes.");
+  };
+
   async function handlePrint() {
     if (!doc) return;
     // A synthetic <a target="_blank"> click, not window.open(): opening a
@@ -255,9 +320,11 @@ export function LegislationPdfViewer({
 
         {numPages > 0 && (
           <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            <HintTooltip label="Previous page">
+              <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </HintTooltip>
             <Input
               value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
@@ -267,53 +334,131 @@ export function LegislationPdfViewer({
               aria-label="Page number"
             />
             <span className="text-xs text-white/60">/ {numPages}</span>
-            <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages} aria-label="Next page">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <HintTooltip label="Next page">
+              <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages} aria-label="Next page">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </HintTooltip>
           </div>
         )}
 
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.max(MIN_SCALE, s - ZOOM_STEP))} aria-label="Zoom out">
-            <ZoomOut className="h-4 w-4" />
-          </Button>
+          <HintTooltip label="Zoom out">
+            <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.max(MIN_SCALE, s - ZOOM_STEP))} aria-label="Zoom out">
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+          </HintTooltip>
           <span className="w-10 text-center text-xs text-white/60">{Math.round(scale * 100)}%</span>
-          <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.min(MAX_SCALE, s + ZOOM_STEP))} aria-label="Zoom in">
-            <ZoomIn className="h-4 w-4" />
-          </Button>
+          <HintTooltip label="Zoom in">
+            <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.min(MAX_SCALE, s + ZOOM_STEP))} aria-label="Zoom in">
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+          </HintTooltip>
           <Button size="sm" variant="ghost" onClick={() => void computeFit("width")}>
             Fit width
           </Button>
           <Button size="sm" variant="ghost" onClick={() => void computeFit("page")}>
             Fit page
           </Button>
-          <Button size="icon" variant="ghost" onClick={() => setRotation((r) => (r + 90) % 360)} aria-label="Rotate">
-            <RotateCw className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="ghost" onClick={() => void toggleFullscreen()} aria-label="Toggle fullscreen">
-            {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-          </Button>
+          <HintTooltip label={redactMode ? "Turn off Redact to rotate" : "Rotate"}>
+            <span className="inline-flex">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setRotation((r) => (r + 90) % 360)}
+                disabled={redactMode}
+                aria-label="Rotate"
+              >
+                <RotateCw className="h-4 w-4" />
+              </Button>
+            </span>
+          </HintTooltip>
+          <HintTooltip label={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            <Button size="icon" variant="ghost" onClick={() => void toggleFullscreen()} aria-label="Toggle fullscreen">
+              {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+          </HintTooltip>
         </div>
 
-        <Button
-          size="icon"
-          variant={searchOpen ? "secondary" : "ghost"}
-          onClick={() => {
-            setSearchOpen((s) => !s);
-            if (!searchOpen) requestAnimationFrame(() => searchInputRef.current?.focus());
-            else search.clear();
-          }}
-          aria-label="Search in document"
-        >
-          <Search className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="ghost" onClick={() => void handleDownload()} disabled={!doc || downloading} aria-label="Download">
-          <Download className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="ghost" onClick={() => void handlePrint()} disabled={!doc} aria-label="Print">
-          <Printer className="h-4 w-4" />
-        </Button>
+        <HintTooltip label="Search in document">
+          <Button
+            size="icon"
+            variant={searchOpen ? "secondary" : "ghost"}
+            onClick={() => {
+              setSearchOpen((s) => !s);
+              if (!searchOpen) requestAnimationFrame(() => searchInputRef.current?.focus());
+              else search.clear();
+            }}
+            aria-label="Search in document"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        </HintTooltip>
+        <HintTooltip label="Download original">
+          <span className="inline-flex">
+            <Button size="icon" variant="ghost" onClick={() => void handleDownload()} disabled={!doc || downloading} aria-label="Download">
+              <Download className="h-4 w-4" />
+            </Button>
+          </span>
+        </HintTooltip>
+        <HintTooltip label="Print">
+          <span className="inline-flex">
+            <Button size="icon" variant="ghost" onClick={() => void handlePrint()} disabled={!doc} aria-label="Print">
+              <Printer className="h-4 w-4" />
+            </Button>
+          </span>
+        </HintTooltip>
       </div>
+
+      {allowRedact ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#141414] px-3 py-2">
+          <Button
+            size="sm"
+            variant={redactMode ? "secondary" : "ghost"}
+            className="shrink-0"
+            onClick={handleToggleRedact}
+            disabled={!doc}
+            aria-label="Redact"
+            aria-pressed={redactMode}
+          >
+            <Square className="h-4 w-4" />
+            Redact
+          </Button>
+          <HintTooltip label="Undo last box">
+            <span className="inline-flex shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setRedactionBoxes((boxes) => undoRedaction(boxes))}
+                disabled={redactionBoxes.length === 0}
+                aria-label="Undo redaction"
+              >
+                <Undo2 className="h-4 w-4" />
+              </Button>
+            </span>
+          </HintTooltip>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => void handleDownloadRedacted()}
+            disabled={!doc || burning || redactionBoxes.length === 0}
+            aria-label="Download redacted PDF"
+          >
+            {burning ? <LoadingSpinner className="text-current" size={14} /> : null}
+            Download redacted PDF
+          </Button>
+          <p className="min-w-[12rem] flex-1 text-xs text-white/60">
+            {redactMode
+              ? redactionBoxes.length === 0
+                ? "Draw a box over text to hide it. The original file is not changed."
+                : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} on this document. Draw more or download a copy. The original is unchanged.`
+              : redactionBoxes.length === 0
+                ? "Turn on Redact, draw boxes, then download a copy."
+                : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} ready. Download a copy. The original is unchanged.`}
+          </p>
+        </div>
+      ) : null}
 
       {searchOpen && (
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#181818] px-3 py-2">
@@ -390,6 +535,10 @@ export function LegislationPdfViewer({
               pageItems={search.pagesText?.[n - 1] ?? null}
               highlights={highlightsByPage.get(n - 1) ?? []}
               scrollToActive={false}
+              redactMode={allowRedact && redactMode}
+              redactionBoxes={redactionBoxes.filter((box) => box.pageNumber === n)}
+              onRedactionBox={(box) => setRedactionBoxes((prev) => [...prev, box])}
+              onRedactBlockedByRotation={handleRedactBlockedByRotation}
             />
           ))
         ) : null}

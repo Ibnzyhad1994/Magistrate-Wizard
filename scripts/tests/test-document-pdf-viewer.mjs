@@ -13,6 +13,14 @@ import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..")
 const viewer = readFileSync(join(root, "src/components/common/document-viewer-dialog.tsx"), "utf8")
+const legislationPage = readFileSync(
+  join(root, "src/pages/legislation/legislation-viewer-page.tsx"),
+  "utf8",
+)
+const legislationDialog = readFileSync(
+  join(root, "src/components/legislation/legislation-pdf-viewer-dialog.tsx"),
+  "utf8",
+)
 
 let failures = 0
 const check = (label, pass) => {
@@ -23,6 +31,18 @@ const check = (label, pass) => {
 check(
   "PDF preview mounts the authenticated pdf.js viewer",
   viewer.includes("LegislationPdfViewer"),
+)
+check(
+  "document PDFs enable redaction",
+  /allowRedact/.test(viewer),
+)
+check(
+  "legislation page does not enable redaction",
+  !/allowRedact/.test(legislationPage),
+)
+check(
+  "legislation dialog does not enable redaction",
+  !/allowRedact/.test(legislationDialog),
 )
 check(
   "PDF preview does not iframe a signed Storage URL",

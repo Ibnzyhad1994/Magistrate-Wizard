@@ -1,6 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { PdfjsDocument, PdfjsTextItem } from "@/lib/legislation-pdf";
+import {
+  isUsableRedactionBox,
+  normalizedToPixelRect,
+  pixelRectToNormalized,
+  type RedactionBox,
+} from "@/lib/redaction";
 
 export interface PageHighlight {
   itemIndex: number;
@@ -49,6 +55,10 @@ export function PdfViewerPage({
   highlights,
   scrollToActive,
   onSize,
+  redactMode = false,
+  redactionBoxes = [],
+  onRedactionBox,
+  onRedactBlockedByRotation,
 }: {
   doc: PdfjsDocument;
   pageNumber: number;
@@ -59,12 +69,24 @@ export function PdfViewerPage({
   highlights: PageHighlight[];
   scrollToActive: boolean;
   onSize?: (size: { width: number; height: number }) => void;
+  redactMode?: boolean;
+  redactionBoxes?: RedactionBox[];
+  onRedactionBox?: (box: RedactionBox) => void;
+  onRedactBlockedByRotation?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [rects, setRects] = useState<{ left: number; top: number; width: number; height: number; active: boolean }[]>([]);
+  const [draft, setDraft] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const drawingRef = useRef(false);
+  const draftRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  const updateDraft = (next: { x: number; y: number; width: number; height: number } | null) => {
+    draftRef.current = next;
+    setDraft(next);
+  };
 
   useEffect(() => {
     const el = containerRef.current;
@@ -125,6 +147,49 @@ export function PdfViewerPage({
     }
   }, [scrollToActive]);
 
+  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!redactMode) return;
+    if (rotation !== 0) {
+      onRedactBlockedByRotation?.();
+      return;
+    }
+    const bounds = e.currentTarget.getBoundingClientRect();
+    drawingRef.current = true;
+    updateDraft({ x: e.clientX - bounds.left, y: e.clientY - bounds.top, width: 0, height: 0 });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drawingRef.current || !draftRef.current) return;
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const prev = draftRef.current;
+    updateDraft({
+      ...prev,
+      width: e.clientX - bounds.left - prev.x,
+      height: e.clientY - bounds.top - prev.y,
+    });
+  };
+
+  const handlePointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    const pageSize = size ?? e.currentTarget.getBoundingClientRect();
+    const finalDraft = draftRef.current;
+    updateDraft(null);
+    if (!finalDraft || !onRedactionBox) return;
+    const box = pixelRectToNormalized(finalDraft, pageSize, pageNumber);
+    if (isUsableRedactionBox(box)) onRedactionBox(box);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape" && drawingRef.current) {
+      e.preventDefault();
+      drawingRef.current = false;
+      updateDraft(null);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -149,7 +214,42 @@ export function PdfViewerPage({
           style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
         />
       ))}
-      <div className="absolute bottom-1 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80">
+      {redactionBoxes.map((box, i) => {
+        const px = size
+          ? normalizedToPixelRect(box, size)
+          : { x: 0, y: 0, width: 0, height: 0 };
+        return (
+          <div
+            key={`redact-${i}`}
+            className="pointer-events-none absolute bg-black"
+            style={{ left: px.x, top: px.y, width: px.width, height: px.height }}
+          />
+        );
+      })}
+      {draft && (
+        <div
+          className="pointer-events-none absolute bg-black/80"
+          style={{
+            left: Math.min(draft.x, draft.x + draft.width),
+            top: Math.min(draft.y, draft.y + draft.height),
+            width: Math.abs(draft.width),
+            height: Math.abs(draft.height),
+          }}
+        />
+      )}
+      {redactMode ? (
+        <div
+          className="absolute inset-0 cursor-crosshair"
+          role="application"
+          tabIndex={0}
+          aria-label={`Draw a redaction box on page ${pageNumber}`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onKeyDown={handleKeyDown}
+        />
+      ) : null}
+      <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80">
         {pageNumber}
       </div>
     </div>

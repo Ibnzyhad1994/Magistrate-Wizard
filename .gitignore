@@ -87,3 +87,9 @@ scripts/seed-legal-library/raw/_tmp_gy/
 supabase/dumps/
 .vercel
 .env*
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

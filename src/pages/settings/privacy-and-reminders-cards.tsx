@@ -162,6 +162,7 @@ export function DownloadMyDataCard() {
     anchor.download = `magistrate-wizard-data-${new Date().toISOString().slice(0, 10)}.json`
     anchor.click()
     URL.revokeObjectURL(url)
+    toast.success("Download started")
   }
 
   return (

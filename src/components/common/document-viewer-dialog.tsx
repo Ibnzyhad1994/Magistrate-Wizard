@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Download, FileQuestion } from "lucide-react"
 import {
   Dialog,
@@ -53,6 +53,12 @@ export const DocumentViewerDialog = ({
   // derivative is just a normal fetch and uses the ordinary loading state.
   const [preparing, setPreparing] = useState(false)
   const [loadError, setLoadError] = useState<unknown>(null)
+  const redactDirtyRef = useRef(false)
+  const [confirmClose, setConfirmClose] = useState(false)
+
+  const handleRedactionDirtyChange = useCallback((dirty: boolean) => {
+    redactDirtyRef.current = dirty
+  }, [])
 
   const kind = doc ? getDocumentPreviewKind(doc.mime_type, doc.file_name) : "unsupported"
   const isLegacyWord = doc ? isLegacyWordDocument(doc.mime_type, doc.file_name) : false
@@ -147,8 +153,26 @@ export const DocumentViewerDialog = ({
       .finally(() => setLoading(false))
   }
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next && redactDirtyRef.current) {
+      setConfirmClose(true)
+      return
+    }
+    if (!next) {
+      redactDirtyRef.current = false
+      setConfirmClose(false)
+    }
+    onOpenChange(next)
+  }
+
+  const handleConfirmClose = () => {
+    setConfirmClose(false)
+    redactDirtyRef.current = false
+    onOpenChange(false)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="flex h-[85vh] w-full max-w-4xl flex-col gap-3 overflow-hidden sm:max-w-4xl">
         <DialogHeader className={kind === "pdf" ? "sr-only" : undefined}>
           <DialogTitle className="truncate pr-8">{doc?.file_name ?? "Document"}</DialogTitle>
@@ -190,6 +214,8 @@ export const DocumentViewerDialog = ({
               title={doc.file_name}
               className="h-full min-h-0"
               toolbarClassName="pr-12"
+              allowRedact
+              onRedactionDirtyChange={handleRedactionDirtyChange}
             />
           ) : loadError ? (
             <div className="p-6">
@@ -224,6 +250,24 @@ export const DocumentViewerDialog = ({
             </ScrollArea>
           ) : null}
         </div>
+
+        {confirmClose ? (
+          <div className="rounded-md border border-white/15 bg-[#141414] px-4 py-3">
+            <p className="text-sm font-medium text-white">Close without downloading?</p>
+            <p className="mt-1 text-xs text-white/60">
+              Redaction boxes live only in this window. Download a redacted PDF first if you still
+              need a copy. The original file is unchanged.
+            </p>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => setConfirmClose(false)}>
+                Keep drawing
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={handleConfirmClose}>
+                Close anyway
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {doc && kind !== "unsupported" && kind !== "pdf" && (
           <div className="flex justify-end">

@@ -61,7 +61,7 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
             ? "Anyone sitting this Court already has the file. Share only for another Court. Recipients cannot re-share; revoke to change view or edit."
             : `Sharing grants another magistrate or clerk access to this ${noun}. Recipients cannot re-share it further. Permission is fixed when the share is created. To change view into edit (or the reverse), revoke it and share again.`}
         </p>
-        {canManage && (
+        {canManage && activeShares.length > 0 && (
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New share
