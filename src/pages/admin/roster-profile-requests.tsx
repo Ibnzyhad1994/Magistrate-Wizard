@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Undo2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -10,7 +12,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertDialog } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useCorrectUnassignedAccountType,
@@ -30,6 +40,83 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 
 /**
+ * Confirmation dialog that collects a required reason.
+ *
+ * Deliberately built on the Dialog primitives rather than the shared
+ * AlertDialog: that component renders whatever it is handed into
+ * `DialogDescription`, which Radix emits as a real `<p>`. A `<textarea>`
+ * (or the `<div>` wrapping it) inside a `<p>` is invalid nesting, so the
+ * browser closes the paragraph early — the element `aria-describedby`
+ * points at ends up empty and screen readers announce the dialog with no
+ * description at all. Here the description stays phrasing content and the
+ * Textarea is a sibling of the header, which is both valid and audible.
+ */
+function ReasonDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  placeholder,
+  value,
+  onValueChange,
+  confirmLabel,
+  onConfirm,
+  isConfirming,
+  confirmDisabled,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  placeholder: string;
+  value: string;
+  onValueChange: (next: string) => void;
+  confirmLabel: string;
+  onConfirm: () => void;
+  isConfirming: boolean;
+  confirmDisabled: boolean;
+}) {
+  const reasonId = useId();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor={reasonId}>Reason</Label>
+          <Textarea
+            id={reasonId}
+            placeholder={placeholder}
+            value={value}
+            onChange={(event) => onValueChange(event.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isConfirming}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isConfirming || confirmDisabled}
+          >
+            {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
  * Roster-side recovery for one profile: approve an open request, return
  * them to request again, or correct magistrate/clerk when they have no
  * active court. People who cancelled still appear under Waiting for
@@ -47,7 +134,13 @@ export function RosterProfileRequests({
   hasActiveClerkAssignment: boolean;
 }) {
   const { profile } = useAuth();
-  const { data: requests } = useMagistrateCourtRequestsToReview();
+  const {
+    data: requests,
+    isPending: requestsPending,
+    isError: requestsError,
+    error: requestsErr,
+    refetch: refetchRequests,
+  } = useMagistrateCourtRequestsToReview();
   const decide = useDecideMagistrateCourtRequest();
   const sendBack = useReturnUnassignedMagistrate();
   const correctType = useCorrectUnassignedAccountType();
@@ -62,6 +155,16 @@ export function RosterProfileRequests({
   const mine = requestsForProfile(requests, profileId);
   const pending = pendingRequestsForProfile(requests, profileId);
   const decided = mine.filter((request) => request.status !== "pending");
+
+  /**
+   * Both actions below are destructive and both are gated on "this person
+   * has no open request" — a claim that comes entirely from this query. If
+   * it is still loading or failed, `pending` is an empty array for the same
+   * reason it would be if there genuinely were none, so offering the action
+   * would mean acting on unknown state. Only offer once the data is
+   * actually known.
+   */
+  const requestsKnown = !requestsPending && !requestsError;
   const canSendBack = canSendUnassignedMagistrateBack({
     role,
     hasActiveAssignment: hasActiveMagistrateAssignment,
@@ -75,9 +178,45 @@ export function RosterProfileRequests({
   });
   const nextRole = oppositeStaffAccountType(role);
   const returnTarget = pending.find((request) => request.id === returnRequestId) ?? null;
-  const showSendBack = canSendBack && pending.length === 0;
+  const showSendBack = canSendBack && requestsKnown && pending.length === 0;
+  const showCorrect = canCorrect && requestsKnown && !!nextRole;
 
-  if (!canSendBack && !canCorrect && pending.length === 0 && decided.length === 0) return null;
+  // Nothing actionable and nothing to report, once we actually know.
+  if (requestsKnown && !canSendBack && !canCorrect && pending.length === 0 && decided.length === 0) {
+    return null;
+  }
+
+  if (requestsPending) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Court requests</CardTitle>
+          <CardDescription>Loading this profile&apos;s court requests…</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-2/3" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (requestsError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Court requests</CardTitle>
+          <CardDescription>
+            Their court requests could not be loaded, so returning them or correcting their
+            account type is unavailable until this succeeds.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InlineError error={requestsErr} onRetry={() => void refetchRequests()} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -88,7 +227,7 @@ export function RosterProfileRequests({
             ? "Approve an open request, or return it so they can request again. This does not change account type."
             : showSendBack
               ? "No open request. Return them so they can request again, or correct the account type if they signed up as the wrong role."
-              : canCorrect
+              : showCorrect
                 ? "No open magistrate request. If they signed up as the wrong account type, you can correct it here."
                 : "Recent court requests for this profile."}
         </CardDescription>
@@ -163,7 +302,7 @@ export function RosterProfileRequests({
           </Button>
         )}
 
-        {canCorrect && nextRole && (
+        {showCorrect && nextRole && (
           <Button
             variant="outline"
             size="sm"
@@ -179,24 +318,16 @@ export function RosterProfileRequests({
         )}
       </CardContent>
 
-      <AlertDialog
+      <ReasonDialog
         open={!!returnTarget}
         onOpenChange={(open) => !open && setReturnRequestId(null)}
         title="Return this request to the requester?"
-        description={
-          <div className="space-y-2">
-            <p>
-              {returnTarget?.profiles?.full_name} will be asked to request again.{" "}
-              {returnTarget?.courts?.name} will not be assigned. This does not change
-              their account type.
-            </p>
-            <Textarea
-              placeholder="Reason (required — shown to the requester)"
-              value={returnReason}
-              onChange={(e) => setReturnReason(e.target.value)}
-            />
-          </div>
-        }
+        description={`${returnTarget?.profiles?.full_name ?? "This person"} will be asked to request again. ${
+          returnTarget?.courts?.name ?? "The court"
+        } will not be assigned. This does not change their account type.`}
+        placeholder="Required — shown to the requester"
+        value={returnReason}
+        onValueChange={setReturnReason}
         confirmLabel="Return to requester"
         confirmDisabled={!returnReason.trim()}
         isConfirming={decide.isPending}
@@ -213,24 +344,14 @@ export function RosterProfileRequests({
         }}
       />
 
-      <AlertDialog
+      <ReasonDialog
         open={sendBackOpen}
         onOpenChange={(open) => !open && setSendBackOpen(false)}
         title="Return this person to request again?"
-        description={
-          <div className="space-y-2">
-            <p>
-              They stay signed in as a magistrate with no court. Any open request is
-              closed, and they are notified to request again. This does not change
-              their account type.
-            </p>
-            <Textarea
-              placeholder="Reason (required — shown to them)"
-              value={sendBackReason}
-              onChange={(e) => setSendBackReason(e.target.value)}
-            />
-          </div>
-        }
+        description="They stay signed in as a magistrate with no court. Any open request is closed, and they are notified to request again. This does not change their account type."
+        placeholder="Required — shown to them"
+        value={sendBackReason}
+        onValueChange={setSendBackReason}
         confirmLabel="Return to requester"
         confirmDisabled={!sendBackReason.trim()}
         isConfirming={sendBack.isPending}
@@ -243,7 +364,7 @@ export function RosterProfileRequests({
         }}
       />
 
-      <AlertDialog
+      <ReasonDialog
         open={correctOpen}
         onOpenChange={(open) => !open && setCorrectOpen(false)}
         title={
@@ -251,21 +372,14 @@ export function RosterProfileRequests({
             ? `Correct account type to ${ROLE_LABELS[nextRole]}?`
             : "Correct account type?"
         }
-        description={
-          <div className="space-y-2">
-            <p>
-              This changes them from {role === "magistrate" || role === "clerk" ? ROLE_LABELS[role] : "their current type"}{" "}
-              to {nextRole ? ROLE_LABELS[nextRole] : "the other staff type"}. Open court
-              or clerk-access requests are cancelled. They must refresh or sign in
-              again, then request access on the correct page.
-            </p>
-            <Textarea
-              placeholder="Reason (required — shown to them)"
-              value={correctReason}
-              onChange={(e) => setCorrectReason(e.target.value)}
-            />
-          </div>
-        }
+        description={`This changes them from ${
+          role === "magistrate" || role === "clerk" ? ROLE_LABELS[role] : "their current type"
+        } to ${
+          nextRole ? ROLE_LABELS[nextRole] : "the other staff type"
+        }. Open court or clerk-access requests are cancelled. They must refresh or sign in again, then request access on the correct page.`}
+        placeholder="Required — shown to them"
+        value={correctReason}
+        onValueChange={setCorrectReason}
         confirmLabel={nextRole ? `Correct to ${ROLE_LABELS[nextRole]}` : "Correct account type"}
         confirmDisabled={!correctReason.trim() || !nextRole}
         isConfirming={correctType.isPending}

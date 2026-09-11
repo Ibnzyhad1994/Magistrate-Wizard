@@ -328,7 +328,18 @@ export default function CourtAssignmentsPage() {
               </CardHeader>
             </Card>
 
-            {selectedProfile && selectedProfile.role !== "admin" && !assignmentsPending && !clerkAssignmentsPending && (
+            {/* isError as well as isPending: on a failed assignments query
+                `(undefined ?? []).some(...)` is false, which would tell
+                RosterProfileRequests nobody holds an active court and let it
+                offer "Correct account type" for someone who may well hold one.
+                The RPC refuses that at the DB, but the UI should not offer an
+                action it cannot validate. */}
+            {selectedProfile &&
+              selectedProfile.role !== "admin" &&
+              !assignmentsPending &&
+              !clerkAssignmentsPending &&
+              !assignmentsError &&
+              !clerkAssignmentsError && (
               <RosterProfileRequests
                 profileId={selectedProfile.id}
                 role={selectedProfile.role}

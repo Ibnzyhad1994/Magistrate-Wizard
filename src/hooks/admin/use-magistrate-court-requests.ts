@@ -145,42 +145,30 @@ function isMissingRpc(error: unknown): boolean {
   return /schema cache|could not find the function/i.test(message);
 }
 
-async function rejectPendingRequestsForProfile(profileId: string, reason: string): Promise<number> {
-  const { data: pending, error: listError } = await supabase
-    .from("magistrate_court_requests")
-    .select("id")
-    .eq("profile_id", profileId)
-    .eq("status", "pending");
-  if (listError) throw listError;
-  const rows = pending ?? [];
-  for (const row of rows) {
-    const { error } = await supabase.rpc("decide_magistrate_court_request", {
-      p_request_id: row.id,
-      p_decision: "rejected",
-      p_rejection_reason: reason,
-    });
-    if (error) throw error;
-  }
-  return rows.length;
-}
-
 /**
  * Roster action: reject any still-open requests for an unassigned
  * magistrate and notify them to request the correct court. Does not
  * change their account role.
  *
- * Open requests use decide_magistrate_court_request() (present since
- * 0107) so returning a pending row still works on a preview database
- * that has not applied 0135 yet. The dedicated send-back RPC is only
- * required when there is no open request (notify-only).
+ * One atomic RPC call. This previously listed pending rows client-side and
+ * rejected them one at a time via decide_magistrate_court_request(), so
+ * that returning a pending row still worked on a preview database without
+ * 0135. That shim is now strictly worse than the thing it stood in for:
+ * 0135 is deployed everywhere, a failure partway through the loop left
+ * some rows rejected and others open with no notice sent, and it bypassed
+ * the RPC's deliberate ordering — return_unassigned_magistrate_to_requester()
+ * notifies BEFORE rejecting precisely so the per-row rejection trigger is
+ * deduped (notify_user matches type+link within 20 hours) and the person
+ * reads "your request was returned" rather than a bare rejection.
+ *
+ * The RPC already covers both cases in one statement: it rejects every
+ * pending row for the profile and returns how many, so a notify-only
+ * send-back is just the zero case.
  */
 export function useReturnUnassignedMagistrate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { profileId: string; reason: string }) => {
-      const closed = await rejectPendingRequestsForProfile(input.profileId, input.reason);
-      if (closed > 0) return closed;
-
       const { data, error } = await supabase.rpc("return_unassigned_magistrate_to_requester", {
         p_profile_id: input.profileId,
         p_reason: input.reason,

@@ -24,6 +24,22 @@ const registerPage = readFileSync(
   join(__dirname, "../../src/pages/auth/register-page.tsx"),
   "utf8",
 );
+const sql0142 = readFileSync(
+  join(__dirname, "../../supabase/migrations/0142_lock_profile_row_in_recovery_rpcs.sql"),
+  "utf8",
+);
+const rosterPanel = readFileSync(
+  join(__dirname, "../../src/pages/admin/roster-profile-requests.tsx"),
+  "utf8",
+);
+const adminCourtAssignmentsPage = readFileSync(
+  join(__dirname, "../../src/pages/admin/court-assignments-page.tsx"),
+  "utf8",
+);
+const requestsHook = readFileSync(
+  join(__dirname, "../../src/hooks/admin/use-magistrate-court-requests.ts"),
+  "utf8",
+);
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -239,6 +255,152 @@ check(
   "signup requires an explicit Magistrate vs Court Clerk choice",
   registerPage.includes("Choose Magistrate or Court Clerk first") &&
     registerPage.includes("You sit the court. A Court Assignment Administrator must approve your court."),
+  true,
+);
+
+// --- destructive actions are never offered on unknown state ----------------
+// Both roster actions are gated on "this person has no open request", which
+// is read entirely from useMagistrateCourtRequestsToReview(). While that query
+// is loading or has failed, `pending` is an empty array for the same reason it
+// would be if there genuinely were none — so the card used to assert "No open
+// request" and offer the button either way, letting an admin return someone
+// whose request had merely failed to load.
+
+check(
+  "roster panel reads the request query's loading and error state",
+  rosterPanel.includes("isPending: requestsPending") &&
+    rosterPanel.includes("isError: requestsError"),
+  true,
+);
+check(
+  "roster panel derives a single requests-known gate",
+  rosterPanel.includes("const requestsKnown = !requestsPending && !requestsError"),
+  true,
+);
+check(
+  "send-back is gated on the request list actually being known",
+  rosterPanel.includes("canSendBack && requestsKnown && pending.length === 0"),
+  true,
+);
+check(
+  "account-type correction is gated on the same known state",
+  rosterPanel.includes("canCorrect && requestsKnown"),
+  true,
+);
+check(
+  "a failed request load renders an error with retry, not an empty card",
+  rosterPanel.includes("if (requestsError)") &&
+    rosterPanel.includes("<InlineError") &&
+    rosterPanel.includes("refetchRequests()"),
+  true,
+);
+check(
+  "a loading request list renders a skeleton rather than popping in",
+  rosterPanel.includes("if (requestsPending)") && rosterPanel.includes("<Skeleton"),
+  true,
+);
+check(
+  "the early return only fires once the request list is known",
+  rosterPanel.includes("if (requestsKnown && !canSendBack && !canCorrect"),
+  true,
+);
+check(
+  "the roster panel is not rendered while assignments are loading or errored",
+  adminCourtAssignmentsPage.includes("!assignmentsPending") &&
+    adminCourtAssignmentsPage.includes("!clerkAssignmentsPending") &&
+    adminCourtAssignmentsPage.includes("!assignmentsError") &&
+    adminCourtAssignmentsPage.includes("!clerkAssignmentsError"),
+  true,
+);
+
+// --- dialog accessibility ---------------------------------------------------
+// Radix renders DialogDescription as a real <p>. A <textarea> inside <p> is
+// invalid nesting: the browser closes the paragraph early, so the element
+// aria-describedby points at ends up empty and the dialog is announced with no
+// description. The reason field must be a sibling of the header, not part of
+// the description.
+
+// Matches the IMPORT, not any mention: the ReasonDialog doc comment names
+// AlertDialog to explain why it is deliberately not used here.
+check(
+  "the reason dialog no longer routes a Textarea through AlertDialog's description",
+  /import \{[^}]*AlertDialog[^}]*\} from/.test(rosterPanel),
+  false,
+);
+check(
+  "the reason dialog's description is plain phrasing content",
+  /description=\{?["`]/.test(rosterPanel) || rosterPanel.includes("description: string"),
+  true,
+);
+check(
+  "the reason Textarea sits outside DialogDescription",
+  /<DialogDescription>\{description\}<\/DialogDescription>/.test(rosterPanel) &&
+    rosterPanel.indexOf("</DialogHeader>") < rosterPanel.indexOf("<Textarea"),
+  true,
+);
+check(
+  "the reason field is labelled rather than placeholder-only",
+  rosterPanel.includes("<Label htmlFor={reasonId}>") && rosterPanel.includes("id={reasonId}"),
+  true,
+);
+check(
+  "confirm still requires a typed reason on all three dialogs",
+  (rosterPanel.match(/confirmDisabled=\{!\w+Reason\.trim\(\)/g) ?? []).length,
+  3,
+);
+
+// --- send-back uses the atomic RPC -----------------------------------------
+// return_unassigned_magistrate_to_requester() already rejects every pending
+// row for the profile and returns the count, and it notifies BEFORE rejecting
+// so the per-row trigger is deduped. The old client-side loop rejected rows one
+// at a time, so a failure partway left some closed and some open with no notice.
+
+check(
+  "send-back calls the atomic RPC",
+  requestsHook.includes('supabase.rpc("return_unassigned_magistrate_to_requester"'),
+  true,
+);
+check(
+  "the per-row client-side reject loop is gone",
+  requestsHook.includes("rejectPendingRequestsForProfile"),
+  false,
+);
+check(
+  "send-back no longer rejects requests one at a time from the client",
+  /for \(const row of rows\)/.test(requestsHook),
+  false,
+);
+
+// --- 0142 row locking -------------------------------------------------------
+// Both recovery RPCs check magistrate_courts/clerk_courts for emptiness and
+// then write. Without a lock two administrators can both pass the same check.
+// decide_magistrate_court_request() (0107) already established `for update`.
+
+check(
+  "0142 locks the profiles row in both recovery RPCs",
+  sql0142.includes("return_unassigned_magistrate_to_requester") &&
+    sql0142.includes("correct_unassigned_account_type") &&
+    sql0142.includes("for update"),
+  true,
+);
+check(
+  "0142 takes the lock on the same select that reads the role",
+  sql0142.includes("where id = p_profile_id\\n  for update;"),
+  true,
+);
+check(
+  "0142 asserts the statement it replaces appears exactly once",
+  sql0142.includes("found % -- aborting") && sql0142.includes("v_hits <> 1"),
+  true,
+);
+check(
+  "0142 verifies the lock landed rather than assuming",
+  sql0142.includes("still not locking the profiles row"),
+  true,
+);
+check(
+  "0142 records that the decide-approval race is NOT closed by this alone",
+  sql0142.includes("does NOT close the race") && sql0142.includes("ABBA deadlock"),
   true,
 );
 
