@@ -12,7 +12,7 @@ import {
   CALLOVER_OUTCOME_VALUES,
   outcomeSuggestsCompletion,
 } from "@/lib/callover";
-import { PROCEDURE_STAGE_LABELS, type ProcedureStage } from "@/lib/docket-procedure";
+import { procedureStageLabel } from "@/lib/docket-procedure";
 import { NOT_SET } from "@/lib/empty-display";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
@@ -74,7 +74,7 @@ export function CalloverRow({
   const [freeText, setFreeText] = useState(isKnown ? "" : (row.outcome ?? ""));
   const [showFreeText, setShowFreeText] = useState(!isKnown);
 
-  const stage = (matter?.procedure_stage ?? null) as ProcedureStage | null;
+  const stage = matter?.procedure_stage ?? null;
   const called = row.called_at !== null;
 
   function handleOutcome(value: string) {
@@ -118,7 +118,7 @@ export function CalloverRow({
         </TableCell>
 
         <TableCell className="whitespace-nowrap text-xs text-white/70">
-          {stage ? PROCEDURE_STAGE_LABELS[stage] : NOT_SET}
+          {stage ? procedureStageLabel(stage) : NOT_SET}
         </TableCell>
 
         <TableCell className="min-w-[10rem] p-1.5">

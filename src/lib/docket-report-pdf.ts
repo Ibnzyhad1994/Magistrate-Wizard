@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import type { DailyDocketReportRow } from "@/hooks/docket/use-daily-docket-report";
-import { PROCEDURE_VALUE_LABELS } from "@/lib/docket-procedure";
+import { PROCEDURE_VALUE_LABELS, procedureStageLabel } from "@/lib/docket-procedure";
 import { toTitleCase } from "@/lib/utils";
 
 /**
@@ -194,7 +194,7 @@ export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta:
     if (row.charge_or_issue) w.text(`Charge / issue: ${row.charge_or_issue}`, { size: 10 });
     if (partiesLine) w.text(partiesLine, { size: 10 });
     w.text(
-      `Stage: ${row.appearance_stage ?? toTitleCase(row.procedure_stage)}    Status: ${toTitleCase(row.status)}    Appearance: ${appearanceStatusLabel(row.appearance_status)}`,
+      `Stage: ${row.appearance_stage ?? procedureStageLabel(row.procedure_stage)}    Status: ${toTitleCase(row.status)}    Appearance: ${appearanceStatusLabel(row.appearance_status)}`,
       { size: 10 },
     );
     w.text(

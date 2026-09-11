@@ -36,25 +36,34 @@ export function notifyProcedureLogged(args: {
   });
 }
 
+export type ProcedurePatchValues = Record<
+  string,
+  string | number | boolean | null | Record<string, unknown>
+>;
+
 export async function logProcedurePatch(args: {
   column: ProcedureColumnKey;
   previous: string;
   next: string;
   expectedUpdatedAt: string | null;
   patch: (
-    values: Record<string, string>,
+    values: ProcedurePatchValues,
     expectedUpdatedAt: string | null,
   ) => Promise<unknown>;
   onLogAppearance: (hint: ProcedureAppearanceHint) => void;
+  patchValues?: ProcedurePatchValues;
+  undoValues?: ProcedurePatchValues;
 }): Promise<void> {
+  const forward = args.patchValues ?? { [args.column]: args.next };
+  const backward = args.undoValues ?? { [args.column]: args.previous };
   try {
-    const result = await args.patch({ [args.column]: args.next }, args.expectedUpdatedAt);
+    const result = await args.patch(forward, args.expectedUpdatedAt);
     const undoAt = patchedUpdatedAt(result);
     notifyProcedureLogged({
       column: args.column,
       next: args.next,
       onUndo: () => {
-        void args.patch({ [args.column]: args.previous }, undoAt).catch(() => {
+        void args.patch(backward, undoAt).catch(() => {
           // Mutation cache already toasts. Do not retry.
         });
       },

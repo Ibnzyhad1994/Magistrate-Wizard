@@ -11,45 +11,43 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NOT_SET } from "@/lib/empty-display";
 import {
-  OUTCOME_STATUSES,
-  OUTCOME_VALUE_LABELS,
+  CIVIL_OUTCOME_ADJOURNED,
   outcomeLabel,
+  outcomeOptionsForProtocol,
   outcomeTone,
   type OutcomeTone,
 } from "@/lib/docket-outcome";
+import type { WorkflowProtocol } from "@/lib/docket-procedure";
 
 const TONE_CLASS: Record<OutcomeTone, string> = {
   muted: "text-white/40",
   dismissed: "bg-[hsl(var(--stage-dismissed)/0.15)] text-[hsl(var(--stage-dismissed))]",
   complete: "bg-[hsl(var(--stage-outcome-complete)/0.15)] text-[hsl(var(--stage-outcome-complete))]",
+  adjourned: "bg-[hsl(var(--stage-progress)/0.15)] text-[hsl(var(--stage-progress))]",
 };
 
 /**
- * The board's Outcome cell — a matter's disposition (Dismissed / Completed),
- * settable at any procedure stage. A dedicated component rather than a
- * `DocketStageCell` extension: that component is tightly typed to the
- * eight-key `ProcedureColumnKey` set (`docket-procedure.ts`), and Outcome
- * has a genuinely different, much smaller vocabulary (two values + clear)
- * and its own red/blue tone system rather than the stage cells' muted/
- * progress/done/remand palette.
- *
- * Setting a value writes through the ordinary board `onPatch`
- * (`docket-list-page.tsx` -> `usePatchDocketProcedure`, already generically
- * typed to `TablesUpdate<"docket_matters">`) and forces the matter's
- * `status` server-side via the `docket_matters_outcome_sync` trigger
- * (0131) — this component never touches `status` directly.
+ * The board's Outcome cell. Criminal Trial: Dismissed / Completed (0131).
+ * Paper Committal: Completed only. Civil summons: Completed / Adjourned,
+ * where Adjourned is not stored on outcome_status.
  */
 export function DocketOutcomeCell({
   value,
   canEdit,
   onChange,
+  protocol = "criminal_trial",
+  outcomeAdjourned = false,
 }: {
   value: string | null;
   canEdit: boolean;
   onChange: (next: string | null) => void;
+  protocol?: WorkflowProtocol;
+  outcomeAdjourned?: boolean;
 }) {
-  const tone = outcomeTone(value);
-  const label = outcomeLabel(value);
+  const options = outcomeOptionsForProtocol(protocol);
+  const displayValue = outcomeAdjourned && !value ? CIVIL_OUTCOME_ADJOURNED : value;
+  const tone = outcomeTone(value, outcomeAdjourned);
+  const label = outcomeLabel(value, outcomeAdjourned);
   const cellClassName = cn(
     "inline-flex max-w-full touch-manipulation items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
@@ -60,35 +58,38 @@ export function DocketOutcomeCell({
   if (!canEdit) {
     return (
       <HintTooltip label={label}>
-        <span className={cellClassName} aria-label={`Outcome: ${value ? label : NOT_SET}`}>
-          {value ? label : NOT_SET}
+        <span className={cellClassName} aria-label={`Outcome: ${displayValue ? label : NOT_SET}`}>
+          {displayValue ? label : NOT_SET}
         </span>
       </HintTooltip>
     );
   }
 
-  const hint = value ? "Click to change the outcome" : "Click to record an outcome";
+  const hint = displayValue ? "Click to change the outcome" : "Click to record an outcome";
 
   return (
     <DropdownMenu>
       <HintTooltip label={hint}>
         <span className="inline-flex max-w-full">
           <DropdownMenuTrigger asChild>
-            <button type="button" className={cellClassName} aria-label={`Outcome: ${value ? label : NOT_SET}`}>
-              {value ? label : NOT_SET}
+            <button type="button" className={cellClassName} aria-label={`Outcome: ${displayValue ? label : NOT_SET}`}>
+              {displayValue ? label : NOT_SET}
             </button>
           </DropdownMenuTrigger>
         </span>
       </HintTooltip>
       <DropdownMenuContent align="start" collisionPadding={16} className="min-w-[11rem]">
-        <DropdownMenuRadioGroup value={value ?? ""} onValueChange={(next) => onChange(next || null)}>
-          {OUTCOME_STATUSES.map((status) => (
-            <DropdownMenuRadioItem key={status} value={status} className="min-h-10">
-              {OUTCOME_VALUE_LABELS[status]}
+        <DropdownMenuRadioGroup
+          value={displayValue ?? ""}
+          onValueChange={(next) => onChange(next || null)}
+        >
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value} className="min-h-10">
+              {option.label}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-        {value && (
+        {displayValue && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="min-h-10" onSelect={() => onChange(null)}>

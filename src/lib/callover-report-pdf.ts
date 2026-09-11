@@ -1,6 +1,6 @@
 import type jsPDF from "jspdf";
 import { CONTENT_WIDTH, LINE, MARGIN, ReportWriter } from "@/lib/docket-report-pdf";
-import { PROCEDURE_STAGE_LABELS, type ProcedureStage } from "@/lib/docket-procedure";
+import { procedureStageLabel } from "@/lib/docket-procedure";
 
 /**
  * The callover record: what was called, in what order, and what was
@@ -87,13 +87,13 @@ export function generateCalloverReportPdf(
 
   rows.forEach((row, index) => {
     const matter = row.docket_matters;
-    const stage = (matter?.procedure_stage ?? null) as ProcedureStage | null;
+    const stage = matter?.procedure_stage ?? null;
 
     const cells = [
       String(row.sort_order || index + 1),
       matter?.case_number ?? "—",
       matter?.matter_title ?? "—",
-      stage ? PROCEDURE_STAGE_LABELS[stage] : "—",
+      stage ? procedureStageLabel(stage) : "—",
       row.outcome ?? (row.called_at ? "Called" : "Not called"),
       fmtDate(row.next_date),
     ];

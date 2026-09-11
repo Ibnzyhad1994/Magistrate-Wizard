@@ -42,7 +42,8 @@ import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog"
 import { Select } from "@/components/ui/select";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { EVENT_STAGES } from "@/lib/validations/docket";
-import { matterCurrentStage, PROCEDURE_STAGE_LABELS } from "@/lib/docket-procedure";
+import { procedureStageLabel } from "@/lib/docket-procedure";
+import { matterProtocolStage } from "@/lib/docket-protocols";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
 import type { DocketEvent, DocketMatter } from "@/types/database.types";
@@ -274,7 +275,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
           matterId={matter.id}
           entry={dialogEntry === "new" ? null : dialogEntry}
           defaultDate={nextDate ?? getLocalDateOnly()}
-          defaultStage={PROCEDURE_STAGE_LABELS[matterCurrentStage(matter)]}
+          defaultStage={procedureStageLabel(matterProtocolStage(matter))}
           defaultNextDateCategoryId={lastCategoryId}
           onClose={() => setDialogEntry(null)}
         />

@@ -37,12 +37,18 @@ import {
 import { ROUTES } from "@/routes/paths";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import {
-  PROCEDURE_COLUMNS,
-  PROCEDURE_STAGE_LABELS,
   PROCEDURE_VALUE_LABELS,
-  matterCurrentStage,
+  protocolColumns,
+  procedureStageLabel,
+  type ProcedureColumnKey,
 } from "@/lib/docket-procedure";
 import { broughtForwardStageNotice } from "@/lib/callover";
+import {
+  boardColumnPatch,
+  isProtectionCategory,
+  matterProtocolStage,
+  protocolFromCategoryName,
+} from "@/lib/docket-protocols";
 
 interface CreateDocketMatterDialogProps {
   open: boolean;
@@ -136,6 +142,9 @@ export function CreateDocketMatterDialog({
   const selectedCourtId = form.watch("court_id");
   const selectedCategoryId = form.watch("category_id");
   const selectedCourt = myCourts?.find((c) => c.court_id === selectedCourtId);
+  const selectedCategoryName = categories?.find((c) => c.id === selectedCategoryId)?.name;
+  const createProtocol = protocolFromCategoryName(selectedCategoryName);
+  const createColumns = protocolColumns(createProtocol);
   const isOtherClassification = !!otherCategoryId && selectedCategoryId === otherCategoryId;
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
   const missingDistrict = !!selectedCourtId && !!selectedCourt && !selectedCourt.district_id;
@@ -144,30 +153,14 @@ export function CreateDocketMatterDialog({
   // creation flow is unchanged: a matter with none of these set takes the
   // column defaults and lands at Arraignment exactly as before.
   const [broughtForward, setBroughtForward] = useState(defaultBroughtForward);
-  const seeded = form.watch([
-    "arraignment_status",
-    "custody_status",
-    "disclosure_status",
-    "trial_status",
-    "ruling_status",
-    "judgment_status",
-    "sentence_status",
-    "appeal_status",
-  ]);
-
-  // Previewed with the SAME function the generated procedure_stage column
-  // mirrors (0070), so what the magistrate is told here is what the board
-  // will actually show. Falls back to each column's own empty value for
-  // anything left untouched.
-  const previewStage = matterCurrentStage({
-    arraignment_status: seeded[0] ?? "not_started",
-    custody_status: seeded[1] ?? "unset",
-    disclosure_status: seeded[2] ?? "none",
-    trial_status: seeded[3] ?? "not_commenced",
-    ruling_status: seeded[4] ?? "not_started",
-    judgment_status: seeded[5] ?? "not_started",
-    sentence_status: seeded[6] ?? "not_started",
-    appeal_status: seeded[7] ?? "not_started",
+  const seededValues = form.watch();
+  const previewStage = matterProtocolStage({
+    ...seededValues,
+    workflow_protocol: createProtocol,
+    category_name: selectedCategoryName,
+    decision_amount: seededValues.decision_amount
+      ? Number(seededValues.decision_amount)
+      : null,
   });
 
   function handleCourtChange(courtId: string) {
@@ -182,6 +175,26 @@ export function CreateDocketMatterDialog({
       return
     }
     try {
+      const categoryName = categories?.find((c) => c.id === values.category_id)?.name;
+      const protocolFields = broughtForward
+        ? Object.fromEntries(
+            createColumns.flatMap((column) => {
+              if (column.key === "decision") {
+                return Object.entries(
+                  boardColumnPatch(
+                    "decision",
+                    isProtectionCategory(categoryName)
+                      ? values.decision_granted ?? ""
+                      : values.decision_amount ?? "",
+                    categoryName,
+                  ),
+                );
+              }
+              const raw = values[column.key as keyof DocketMatterFormValues];
+              return raw ? [[column.key, raw]] : [];
+            }),
+          )
+        : {};
       const created = await createMatter.mutateAsync({
         court_id: values.court_id,
         district_id: values.district_id,
@@ -194,20 +207,9 @@ export function CreateDocketMatterDialog({
           otherCategoryId && values.category_id === otherCategoryId
             ? values.category_other?.trim() || null
             : null,
-        // Seeding the eight status columns IS the whole brought-forward
-        // mechanism: procedure_stage is generated from them (0070). Only
-        // sent when the disclosure was actually opened, so an ordinary
-        // matter still takes the column defaults untouched.
         ...(broughtForward
           ? {
-              arraignment_status: values.arraignment_status,
-              custody_status: values.custody_status,
-              disclosure_status: values.disclosure_status,
-              trial_status: values.trial_status,
-              ruling_status: values.ruling_status,
-              judgment_status: values.judgment_status,
-              sentence_status: values.sentence_status,
-              appeal_status: values.appeal_status,
+              ...protocolFields,
               brought_forward_from: values.brought_forward_from?.trim() || null,
               brought_forward_at: values.brought_forward_at || null,
             }
@@ -431,37 +433,86 @@ export function CreateDocketMatterDialog({
                     </p>
 
                     <div className="grid grid-cols-2 gap-3">
-                      {PROCEDURE_COLUMNS.map((column) => (
-                        <FormField
-                          key={column.key}
-                          control={form.control}
-                          name={column.key}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">{column.label}</FormLabel>
-                              <FormControl>
-                                <Select
-                                  {...field}
-                                  value={field.value ?? column.emptyValue}
-                                  aria-label={column.label}
-                                >
-                                  {column.values.map((value) => (
-                                    <option key={value} value={value}>
-                                      {PROCEDURE_VALUE_LABELS[value] ?? value}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      ))}
+                      {createColumns.map((column) => {
+                        if (column.key === "decision") {
+                          if (isProtectionCategory(selectedCategoryName)) {
+                            return (
+                              <FormField
+                                key={column.key}
+                                control={form.control}
+                                name="decision_granted"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">{column.label}</FormLabel>
+                                    <FormControl>
+                                      <Select {...field} value={field.value ?? ""} aria-label={column.label}>
+                                        <option value="">Not recorded</option>
+                                        {column.values.map((value) => (
+                                          <option key={value} value={value}>
+                                            {PROCEDURE_VALUE_LABELS[value] ?? value}
+                                          </option>
+                                        ))}
+                                      </Select>
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            );
+                          }
+                          return (
+                            <FormField
+                              key={column.key}
+                              control={form.control}
+                              name="decision_amount"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">{column.label}</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      inputMode="decimal"
+                                      {...field}
+                                      value={field.value ?? ""}
+                                      aria-label={column.label}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          );
+                        }
+                        return (
+                          <FormField
+                            key={column.key}
+                            control={form.control}
+                            name={column.key as Exclude<ProcedureColumnKey, "decision">}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">{column.label}</FormLabel>
+                                <FormControl>
+                                  <Select
+                                    {...field}
+                                    value={field.value ?? column.emptyValue}
+                                    aria-label={column.label}
+                                  >
+                                    {column.values.map((value) => (
+                                      <option key={value} value={value}>
+                                        {PROCEDURE_VALUE_LABELS[value] ?? value}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        );
+                      })}
                     </div>
 
                     <p className="rounded-sm bg-muted px-2.5 py-2 text-xs text-foreground">
                       {broughtForwardStageNotice(
                         previewStage,
-                        PROCEDURE_STAGE_LABELS[previewStage],
+                        procedureStageLabel(previewStage),
                       )}
                     </p>
 

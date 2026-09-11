@@ -42,11 +42,15 @@ You can bookmark the matter from the header.
 
 ## Procedure board
 
-The sheet (and the strip on Overview) is the live record of where the file is:
+The sheet (and the strip on Overview) is the live record of where the file is. Classification at create picks the board:
 
-Arraignment → Custody (on bail **or** remanded) → Disclosure → Trial → Ruling → Judgment → Sentence → Appeal.
+- **Criminal trial** (and **Other**): Arraignment → Custody (on bail **or** remanded) → Disclosure → Trial → Ruling → Judgment → Sentence → Appeal → Outcome (Dismissed / Completed).
+- **Paper Committal**: Arraignment → Custody (Bail **or** Remanded) → Disclosure → Paper Committal (Commenced / Partial / Completed) → Ruling → Judgment → Appeal → Outcome (Completed). There is no Sentence column, and Paper Committal is not a renamed Trial.
+- **Protection / Maintenance / Liability**: Information Sworn → Summons Served (Yes/No) → Returns of Summons (Yes/No) → Trial (Yes/No) → Decision (Granted/Not Granted, or amount ordered, or amount paid) → Outcome (Completed / Adjourned). Adjournment is a state on a stage (with a reason such as awaiting documentation), not a column of its own.
 
-Click a cell to set the result. That does **not** create an Event. After a change you can optionally **Log appearance** to record the date. Completing the board does not mark the matter Completed — that status is still separate.
+Click a cell to set the result. That does **not** create an Event. After a change you can optionally **Log appearance** to record the date. Completing the board does not mark the matter Completed — that status is still separate. Next date still records the return date.
+
+On a mixed list (All My Courts) a cell that does not belong to that file's board reads **N/A**, never under the wrong stage name.
 
 Setting **Judgment** to Delivered does not pin a written ruling. Pin your reasons on the **Judgments** tab.
 

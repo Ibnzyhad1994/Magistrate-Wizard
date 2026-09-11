@@ -85,7 +85,7 @@ export const walkthroughStepsFor = (
     {
       id: "board",
       title: "Procedure board",
-      body: "Each column is one stage; click a cell on a real file to record it. Arraignment also takes Not Found — To Be Summoned, so a file where service failed reads as stalled rather than untouched.",
+      body: "Each column is one stage; click a cell on a real file to record it. Arraignment also takes Not Found, To Be Summoned, so a file where service failed reads as stalled rather than untouched.",
       target: "docket-board",
       route: ROUTES.docket,
       chapter: "sitting",

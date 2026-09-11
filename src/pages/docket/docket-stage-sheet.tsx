@@ -12,16 +12,25 @@ import { DocketStageCell } from "@/pages/docket/docket-stage-cell";
 import { DocketOutcomeCell } from "@/pages/docket/docket-outcome-cell";
 import { NextDateCell } from "@/pages/docket/next-date-cell";
 import {
-  currentStage,
-  PROCEDURE_COLUMNS,
+  columnApplies,
+  visibleBoardColumns,
+  type BoardColumn,
   type ProcedureColumnKey,
-  type ProcedureSnapshot,
 } from "@/lib/docket-procedure";
 import { logProcedurePatch } from "@/lib/docket-procedure-log";
+import {
+  adjournmentForStage,
+  boardCellValue,
+  boardColumnPatch,
+  matterProtocol,
+  matterProtocolStage,
+  mergeStageAdjournment,
+  outcomeBoardPatch,
+} from "@/lib/docket-protocols";
 import { ROUTES } from "@/routes/paths";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
-import type { TablesUpdate } from "@/types/database.types";
+import type { Json, TablesUpdate } from "@/types/database.types";
 import { matterClassificationLabel } from "@/lib/validations/docket";
 import { ProcedureColumnHeading } from "@/pages/docket/procedure-column-heading";
 
@@ -32,29 +41,14 @@ export type LogAppearanceRequest = {
   notes: string;
 };
 
-function snapshotOf(row: DocketMatterBoardRow): ProcedureSnapshot {
-  return {
-    arraignment_status: row.arraignment_status as ProcedureSnapshot["arraignment_status"],
-    custody_status: row.custody_status as ProcedureSnapshot["custody_status"],
-    disclosure_status: row.disclosure_status as ProcedureSnapshot["disclosure_status"],
-    trial_status: row.trial_status as ProcedureSnapshot["trial_status"],
-    ruling_status: row.ruling_status as ProcedureSnapshot["ruling_status"],
-    judgment_status: row.judgment_status as ProcedureSnapshot["judgment_status"],
-    sentence_status: row.sentence_status as ProcedureSnapshot["sentence_status"],
-    appeal_status: row.appeal_status as ProcedureSnapshot["appeal_status"],
-  };
-}
-
-/** purpose isn't a ProcedureColumnKey property — this maps the two columns that carry a file attachment to the `documents.purpose` value that tags it (0074). */
 const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgment">> = {
   ruling_status: "ruling",
   judgment_status: "judgment",
 };
 
-/** One board row — a real component (not inlined in .map()) so each matter gets its own `useUploadDocument` mutation instance for its Ruling/Judgment "Attach file…" action. */
 function DocketStageRow({
   row,
-  stage,
+  columns,
   showCourt,
   isTourNextDate,
   isTourOutcome,
@@ -63,8 +57,7 @@ function DocketStageRow({
   onLogAppearance,
 }: {
   row: DocketMatterBoardRow;
-  stage: ReturnType<typeof currentStage>;
-  /** True in the All My Courts combined view — every matter needs a visible, readable court identifier there, never colour alone (0097). False when already scoped to one court, where repeating it on every row would be redundant noise. */
+  columns: BoardColumn[];
   showCourt: boolean;
   isTourNextDate?: boolean;
   isTourOutcome?: boolean;
@@ -76,29 +69,40 @@ function DocketStageRow({
   const uploadJudgment = useUploadDocument("docket_matter", row.id);
   const caseColBase =
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
-
+  const protocol = matterProtocol(row);
+  const stage = matterProtocolStage(row);
   const classification = matterClassificationLabel(row.category_name, row.category_other);
 
   async function handleChange(column: ProcedureColumnKey, next: string) {
-    const meta = PROCEDURE_COLUMNS.find((item) => item.key === column);
-    const previous = String(row[column] ?? meta?.emptyValue ?? "");
+    const previous = boardCellValue(row, column);
+    const patchValues = boardColumnPatch(column, next, row.category_name);
+    const undoValues = boardColumnPatch(column, previous, row.category_name);
     await logProcedurePatch({
       column,
       previous,
       next,
       expectedUpdatedAt: row.updated_at,
-      patch: (values, expectedUpdatedAt) => onPatch(row.id, values, expectedUpdatedAt),
+      patchValues,
+      undoValues,
+      patch: (values, expectedUpdatedAt) =>
+        onPatch(row.id, values as TablesUpdate<"docket_matters">, expectedUpdatedAt),
       onLogAppearance: (hint) => onLogAppearance({ matterId: row.id, ...hint }),
     });
   }
 
-  // Not routed through logProcedurePatch's "Log appearance" prompt — that's
-  // specifically about scheduling the next hearing and doesn't apply to a
-  // disposition change. Errors already surface via the shared mutation
-  // cache's toast subscriber; this only adds the success confirmation.
+  async function handleAdjournment(column: BoardColumn, adjourned: boolean, reason: string) {
+    try {
+      const next = mergeStageAdjournment(row.stage_adjournments, column.stage, adjourned, reason);
+      await onPatch(row.id, { stage_adjournments: next as Json }, row.updated_at);
+      toast.success(adjourned ? "Stage adjourned." : "Adjournment cleared.");
+    } catch {
+      // Mutation cache toast subscriber.
+    }
+  }
+
   async function handleOutcomeChange(next: string | null) {
     try {
-      await onPatch(row.id, { outcome_status: next }, row.updated_at);
+      await onPatch(row.id, outcomeBoardPatch(next), row.updated_at);
       toast.success(next ? "Outcome updated." : "Outcome cleared.");
     } catch {
       // Surfaced globally via the mutation cache toast subscriber.
@@ -128,10 +132,6 @@ function DocketStageRow({
               {row.court_name}
             </span>
           )}
-          {/* Only populated when a date filter is active (0080) — this
-              date's own appearance status, e.g. this matter was heard and
-              adjourned FROM this date, not necessarily its current
-              overall status. */}
           {row.appearance_status && (
             <span
               className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
@@ -151,19 +151,33 @@ function DocketStageRow({
           )}
         </Link>
       </TableCell>
-      {PROCEDURE_COLUMNS.map((column) => {
+      {columns.map((column) => {
+        const applicable = columnApplies(column, protocol);
         const purpose = ATTACHMENT_PURPOSE[column.key];
         const uploadMutation = purpose === "ruling" ? uploadRuling : purpose === "judgment" ? uploadJudgment : null;
+        const adjournment = adjournmentForStage(row.stage_adjournments, column.stage);
         return (
           <TableCell key={column.key} className="p-1.5">
             <DocketStageCell
               column={column.key}
-              value={String(row[column.key] ?? column.emptyValue)}
-              canEdit={row.can_edit}
-              isCurrent={stage === column.stage}
+              value={boardCellValue(row, column.key)}
+              canEdit={row.can_edit && applicable}
+              isCurrent={applicable && stage === column.stage}
+              applicable={applicable}
+              protocol={protocol}
+              categoryName={row.category_name}
               onChange={(next) => void handleChange(column.key, next)}
+              adjournment={
+                applicable && protocol === "civil_summons"
+                  ? {
+                      ...adjournment,
+                      onSave: (nextAdjourned, reason) =>
+                        void handleAdjournment(column, nextAdjourned, reason),
+                    }
+                  : undefined
+              }
               attachments={
-                purpose && uploadMutation && row.can_edit
+                applicable && purpose && uploadMutation && row.can_edit
                   ? {
                       hasFile: purpose === "ruling" ? row.has_ruling_document : row.has_judgment_document,
                       isUploading: uploadMutation.isPending,
@@ -178,6 +192,8 @@ function DocketStageRow({
       <TableCell className="p-1.5" data-tour-join={isTourOutcome ? "docket-outcome" : undefined}>
         <DocketOutcomeCell
           value={row.outcome_status}
+          outcomeAdjourned={row.outcome_adjourned}
+          protocol={protocol}
           canEdit={row.can_edit}
           onChange={(next) => void handleOutcomeChange(next)}
         />
@@ -204,13 +220,13 @@ export function DocketStageSheet({
   onLogAppearance,
 }: {
   rows: DocketMatterBoardRow[];
-  /** True in the All My Courts combined view (see DocketStageRow). */
   showCourt?: boolean;
   onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
   const caseColBase =
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+  const columns = visibleBoardColumns(rows);
 
   return (
     <div className="relative" data-tour="docket-board">
@@ -219,7 +235,7 @@ export function DocketStageSheet({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={`${caseColBase} z-30`}>Case</TableHead>
-              {PROCEDURE_COLUMNS.map((column) => (
+              {columns.map((column) => (
                 <TableHead
                   key={column.key}
                   className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
@@ -247,7 +263,7 @@ export function DocketStageSheet({
               <DocketStageRow
                 key={row.id}
                 row={row}
-                stage={currentStage(snapshotOf(row))}
+                columns={columns}
                 showCourt={showCourt}
                 isTourNextDate={index === 0}
                 isTourOutcome={index === 0}

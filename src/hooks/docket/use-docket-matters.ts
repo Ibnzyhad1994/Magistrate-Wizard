@@ -3,11 +3,10 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
 import {
-  currentStage,
   filtersToRpcArgs,
   type ProcedureFilters,
-  type ProcedureSnapshot,
 } from "@/lib/docket-procedure";
+import { matterProtocolStage } from "@/lib/docket-protocols";
 import { isQueueableError, MATTER_UNAVAILABLE_OFFLINE } from "@/lib/offline/is-queueable-error";
 import { currentProfileId } from "@/lib/offline/runtime";
 import { getProfileCache } from "@/lib/offline/store";
@@ -267,17 +266,11 @@ export function usePatchDocketProcedure() {
           return old.map((row): DocketMatterBoardRow => {
             if (row.id !== id) return row;
             const next = { ...row, ...values };
-            const snapshot: ProcedureSnapshot = {
-              arraignment_status: next.arraignment_status as ProcedureSnapshot["arraignment_status"],
-              custody_status: next.custody_status as ProcedureSnapshot["custody_status"],
-              disclosure_status: next.disclosure_status as ProcedureSnapshot["disclosure_status"],
-              trial_status: next.trial_status as ProcedureSnapshot["trial_status"],
-              ruling_status: next.ruling_status as ProcedureSnapshot["ruling_status"],
-              judgment_status: next.judgment_status as ProcedureSnapshot["judgment_status"],
-              sentence_status: next.sentence_status as ProcedureSnapshot["sentence_status"],
-              appeal_status: next.appeal_status as ProcedureSnapshot["appeal_status"],
-            };
-            return { ...row, ...values, procedure_stage: currentStage(snapshot) } as DocketMatterBoardRow;
+            return {
+              ...row,
+              ...values,
+              procedure_stage: matterProtocolStage(next),
+            } as DocketMatterBoardRow;
           });
         },
       );

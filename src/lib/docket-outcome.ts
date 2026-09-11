@@ -13,6 +13,8 @@
  * `docket_matters_outcome_sync` trigger, 0131).
  */
 
+import type { WorkflowProtocol } from "@/lib/docket-procedure";
+
 export const OUTCOME_STATUSES = ["dismissed", "completed"] as const;
 export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
 
@@ -21,19 +23,48 @@ export const OUTCOME_VALUE_LABELS: Record<OutcomeStatus, string> = {
   completed: "Completed",
 };
 
+export const CIVIL_OUTCOME_ADJOURNED = "adjourned";
+
 export function isOutcomeStatus(value: unknown): value is OutcomeStatus {
   return typeof value === "string" && (OUTCOME_STATUSES as readonly string[]).includes(value);
 }
 
-export type OutcomeTone = "muted" | "dismissed" | "complete";
+export type OutcomeTone = "muted" | "dismissed" | "complete" | "adjourned";
 
-/** Red for dismissed, blue for completed, muted for no outcome recorded. */
-export function outcomeTone(value: string | null | undefined): OutcomeTone {
+/** Red for dismissed, blue for completed, amber for civil adjourned, muted for no outcome recorded. */
+export function outcomeTone(
+  value: string | null | undefined,
+  outcomeAdjourned = false,
+): OutcomeTone {
   if (value === "dismissed") return "dismissed";
   if (value === "completed") return "complete";
+  if (outcomeAdjourned || value === CIVIL_OUTCOME_ADJOURNED) return "adjourned";
   return "muted";
 }
 
-export function outcomeLabel(value: string | null | undefined): string {
-  return isOutcomeStatus(value) ? OUTCOME_VALUE_LABELS[value] : "Not recorded";
+export function outcomeLabel(
+  value: string | null | undefined,
+  outcomeAdjourned = false,
+): string {
+  if (isOutcomeStatus(value)) return OUTCOME_VALUE_LABELS[value];
+  if (outcomeAdjourned || value === CIVIL_OUTCOME_ADJOURNED) return "Adjourned";
+  return "Not recorded";
+}
+
+export function outcomeOptionsForProtocol(
+  protocol: WorkflowProtocol,
+): { value: string; label: string }[] {
+  if (protocol === "paper_committal") {
+    return [{ value: "completed", label: "Completed" }];
+  }
+  if (protocol === "civil_summons") {
+    return [
+      { value: "completed", label: "Completed" },
+      { value: CIVIL_OUTCOME_ADJOURNED, label: "Adjourned" },
+    ];
+  }
+  return OUTCOME_STATUSES.map((status) => ({
+    value: status,
+    label: OUTCOME_VALUE_LABELS[status],
+  }));
 }

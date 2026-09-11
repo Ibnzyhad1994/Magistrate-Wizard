@@ -1,6 +1,7 @@
 /**
- * Criminal-procedure board vocabulary for the Docket spreadsheet.
- * CHECK constraints on docket_matters (migration 0070) must stay in sync.
+ * Procedure-board vocabulary for the Docket spreadsheet.
+ * Criminal Trial CHECKs (0070/0131) and protocol columns (0140) must stay
+ * in sync with this file and `currentStageForProtocol()` in docket-protocols.ts.
  */
 
 import { NOT_SET } from "@/lib/empty-display";
@@ -19,16 +20,37 @@ export const RULING_STATUSES = ["not_started", "reserved", "delivered"] as const
 export const JUDGMENT_STATUSES = ["not_started", "reserved", "delivered"] as const;
 export const SENTENCE_STATUSES = ["not_started", "passed"] as const;
 export const APPEAL_STATUSES = ["not_started", "noted", "disposed"] as const;
+export const PAPER_COMMITTAL_STATUSES = [
+  "not_commenced",
+  "commenced",
+  "partial",
+  "completed",
+] as const;
+export const YES_NO_STATUSES = ["unset", "yes", "no"] as const;
+export const INFORMATION_SWORN_STATUSES = ["not_started", "done"] as const;
+export const DECISION_GRANTED_STATUSES = ["granted", "not_granted"] as const;
+
+export const WORKFLOW_PROTOCOLS = [
+  "criminal_trial",
+  "paper_committal",
+  "civil_summons",
+] as const;
 
 export const PROCEDURE_STAGES = [
   "arraignment",
   "custody",
   "disclosure",
   "trial",
+  "paper_committal",
   "ruling",
   "judgment",
   "sentence",
   "appeal",
+  "information_sworn",
+  "summons_served",
+  "returns_of_summons",
+  "civil_trial",
+  "decision",
 ] as const;
 
 export const NEXT_DATE_FILTERS = ["today", "upcoming", "no_date"] as const;
@@ -41,6 +63,11 @@ export type RulingStatus = (typeof RULING_STATUSES)[number];
 export type JudgmentStatus = (typeof JUDGMENT_STATUSES)[number];
 export type SentenceStatus = (typeof SENTENCE_STATUSES)[number];
 export type AppealStatus = (typeof APPEAL_STATUSES)[number];
+export type PaperCommittalStatus = (typeof PAPER_COMMITTAL_STATUSES)[number];
+export type YesNoStatus = (typeof YES_NO_STATUSES)[number];
+export type InformationSwornStatus = (typeof INFORMATION_SWORN_STATUSES)[number];
+export type DecisionGrantedStatus = (typeof DECISION_GRANTED_STATUSES)[number];
+export type WorkflowProtocol = (typeof WORKFLOW_PROTOCOLS)[number];
 export type ProcedureStage = (typeof PROCEDURE_STAGES)[number];
 export type NextDateFilter = (typeof NEXT_DATE_FILTERS)[number];
 
@@ -49,10 +76,16 @@ export type ProcedureColumnKey =
   | "custody_status"
   | "disclosure_status"
   | "trial_status"
+  | "paper_committal_status"
   | "ruling_status"
   | "judgment_status"
   | "sentence_status"
-  | "appeal_status";
+  | "appeal_status"
+  | "information_sworn_status"
+  | "summons_served"
+  | "returns_of_summons"
+  | "civil_trial_held"
+  | "decision";
 
 export type ProcedureSnapshot = {
   arraignment_status: ArraignmentStatus;
@@ -86,11 +119,22 @@ export const PROCEDURE_STAGE_LABELS: Record<ProcedureStage, string> = {
   custody: "Custody",
   disclosure: "Disclosure",
   trial: "Trial",
+  paper_committal: "Paper Committal",
   ruling: "Ruling",
   judgment: "Judgment",
   sentence: "Sentence",
   appeal: "Appeal",
+  information_sworn: "Information Sworn",
+  summons_served: "Summons Served",
+  returns_of_summons: "Returns of Summons",
+  civil_trial: "Trial (Yes/No)",
+  decision: "Decision",
 };
+
+export function procedureStageLabel(stage: string | null | undefined): string {
+  if (!stage) return NOT_SET;
+  return PROCEDURE_STAGE_LABELS[stage as ProcedureStage] ?? stage.replace(/_/g, " ");
+}
 
 export const NEXT_DATE_LABELS: Record<NextDateFilter, string> = {
   today: "Today",
@@ -101,7 +145,7 @@ export const NEXT_DATE_LABELS: Record<NextDateFilter, string> = {
 export const PROCEDURE_VALUE_LABELS: Record<string, string> = {
   not_started: "Not started",
   done: "Done",
-  not_found: "Not Found — To Be Summoned",
+  not_found: "Not Found, To Be Summoned",
   unset: NOT_SET,
   on_bail: "On bail",
   remanded: "Remanded",
@@ -109,27 +153,40 @@ export const PROCEDURE_VALUE_LABELS: Record<string, string> = {
   partial: "Partial",
   full: "Full",
   not_commenced: "Not commenced",
+  commenced: "Commenced",
   completed: "Completed",
   reserved: "Reserved",
   delivered: "Delivered",
   passed: "Passed",
   noted: "Noted",
   disposed: "Disposed",
+  yes: "Yes",
+  no: "No",
+  granted: "Granted",
+  not_granted: "Not granted",
 };
 
-export const PROCEDURE_COLUMNS: ReadonlyArray<{
+export type BoardColumnKind = "status" | "yesno" | "amount" | "decision";
+
+export type BoardColumn = {
   key: ProcedureColumnKey;
   stage: ProcedureStage;
   label: string;
   values: readonly string[];
   emptyValue: string;
-}> = [
+  protocols: readonly WorkflowProtocol[];
+  kind: BoardColumnKind;
+};
+
+export const BOARD_COLUMNS: ReadonlyArray<BoardColumn> = [
   {
     key: "arraignment_status",
     stage: "arraignment",
     label: "Arraignment",
     values: ARRAIGNMENT_STATUSES,
     emptyValue: "not_started",
+    protocols: ["criminal_trial", "paper_committal"],
+    kind: "status",
   },
   {
     key: "custody_status",
@@ -137,6 +194,8 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Custody",
     values: CUSTODY_STATUSES,
     emptyValue: "unset",
+    protocols: ["criminal_trial", "paper_committal"],
+    kind: "status",
   },
   {
     key: "disclosure_status",
@@ -144,6 +203,8 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Disclosure",
     values: DISCLOSURE_STATUSES,
     emptyValue: "none",
+    protocols: ["criminal_trial", "paper_committal"],
+    kind: "status",
   },
   {
     key: "trial_status",
@@ -151,6 +212,17 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Trial",
     values: TRIAL_STATUSES,
     emptyValue: "not_commenced",
+    protocols: ["criminal_trial"],
+    kind: "status",
+  },
+  {
+    key: "paper_committal_status",
+    stage: "paper_committal",
+    label: "Paper Committal",
+    values: PAPER_COMMITTAL_STATUSES,
+    emptyValue: "not_commenced",
+    protocols: ["paper_committal"],
+    kind: "status",
   },
   {
     key: "ruling_status",
@@ -158,6 +230,8 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Ruling",
     values: RULING_STATUSES,
     emptyValue: "not_started",
+    protocols: ["criminal_trial", "paper_committal"],
+    kind: "status",
   },
   {
     key: "judgment_status",
@@ -165,6 +239,8 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Judgment",
     values: JUDGMENT_STATUSES,
     emptyValue: "not_started",
+    protocols: ["criminal_trial", "paper_committal"],
+    kind: "status",
   },
   {
     key: "sentence_status",
@@ -172,6 +248,8 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Sentence",
     values: SENTENCE_STATUSES,
     emptyValue: "not_started",
+    protocols: ["criminal_trial"],
+    kind: "status",
   },
   {
     key: "appeal_status",
@@ -179,10 +257,91 @@ export const PROCEDURE_COLUMNS: ReadonlyArray<{
     label: "Appeal",
     values: APPEAL_STATUSES,
     emptyValue: "not_started",
+    protocols: ["criminal_trial", "paper_committal"],
+    kind: "status",
+  },
+  {
+    key: "information_sworn_status",
+    stage: "information_sworn",
+    label: "Information Sworn",
+    values: INFORMATION_SWORN_STATUSES,
+    emptyValue: "not_started",
+    protocols: ["civil_summons"],
+    kind: "status",
+  },
+  {
+    key: "summons_served",
+    stage: "summons_served",
+    label: "Summons Served",
+    values: YES_NO_STATUSES,
+    emptyValue: "unset",
+    protocols: ["civil_summons"],
+    kind: "yesno",
+  },
+  {
+    key: "returns_of_summons",
+    stage: "returns_of_summons",
+    label: "Returns of Summons",
+    values: YES_NO_STATUSES,
+    emptyValue: "unset",
+    protocols: ["civil_summons"],
+    kind: "yesno",
+  },
+  {
+    key: "civil_trial_held",
+    stage: "civil_trial",
+    label: "Trial",
+    values: YES_NO_STATUSES,
+    emptyValue: "unset",
+    protocols: ["civil_summons"],
+    kind: "yesno",
+  },
+  {
+    key: "decision",
+    stage: "decision",
+    label: "Decision",
+    values: DECISION_GRANTED_STATUSES,
+    emptyValue: "",
+    protocols: ["civil_summons"],
+    kind: "decision",
   },
 ];
 
-/** Walks left to right. Keep in sync with the generated procedure_stage column. */
+/** Criminal Trial columns only. Tour example and brought-forward default. */
+export const PROCEDURE_COLUMNS: ReadonlyArray<BoardColumn> = BOARD_COLUMNS.filter((column) =>
+  column.protocols.includes("criminal_trial"),
+);
+
+export function protocolColumns(protocol: WorkflowProtocol): BoardColumn[] {
+  return BOARD_COLUMNS.filter((column) => column.protocols.includes(protocol));
+}
+
+export function columnApplies(column: BoardColumn, protocol: WorkflowProtocol): boolean {
+  return column.protocols.includes(protocol);
+}
+
+export function isWorkflowProtocol(value: unknown): value is WorkflowProtocol {
+  return typeof value === "string" && (WORKFLOW_PROTOCOLS as readonly string[]).includes(value);
+}
+
+export function visibleBoardColumns(
+  rows: Array<{ workflow_protocol?: string | null }>,
+): BoardColumn[] {
+  const protocols = new Set<WorkflowProtocol>();
+  for (const row of rows) {
+    protocols.add(isWorkflowProtocol(row.workflow_protocol) ? row.workflow_protocol : "criminal_trial");
+  }
+  if (protocols.size === 0) protocols.add("criminal_trial");
+  return BOARD_COLUMNS.filter((column) =>
+    column.protocols.some((protocol) => protocols.has(protocol)),
+  );
+}
+
+function findColumn(key: ProcedureColumnKey): BoardColumn | undefined {
+  return BOARD_COLUMNS.find((column) => column.key === key);
+}
+
+/** Walks left to right on the Criminal Trial board. Keep in sync with 0140. */
 export function currentStage(row: ProcedureSnapshot): ProcedureStage {
   if (row.arraignment_status !== "done") return "arraignment";
   if (row.custody_status === "unset") return "custody";
@@ -195,11 +354,8 @@ export function currentStage(row: ProcedureSnapshot): ProcedureStage {
 }
 
 /**
- * `currentStage()` for a raw `docket_matters` row — the procedure-status
- * columns are plain `text` in the database (not enums, see 0070), so
- * every caller needs the same cast-to-ProcedureSnapshot adapter. Shared
- * here rather than re-written per call site (docket-stage-strip.tsx,
- * overview-section.tsx, hearing-progress-section.tsx).
+ * Criminal-only walk for a raw row. Protocol-aware callers should use
+ * `matterCurrentStage` from docket-protocols.ts.
  */
 export function matterCurrentStage(matter: {
   arraignment_status: string;
@@ -269,7 +425,7 @@ export function matchesProcedureFilters(
   return true;
 }
 
-const MUTED_VALUES = new Set(["not_started", "unset"]);
+const MUTED_VALUES = new Set(["not_started", "unset", ""]);
 
 export function isProcedureEmptyValue(value: string): boolean {
   return MUTED_VALUES.has(value);
@@ -278,14 +434,16 @@ export function isProcedureEmptyValue(value: string): boolean {
 export type ProcedureCellLabelOpts = {
   column?: ProcedureColumnKey;
   canEdit?: boolean;
+  protocol?: WorkflowProtocol;
 };
 
 export const procedureSetLabel = (column: ProcedureColumnKey): string => {
-  const name = PROCEDURE_COLUMNS.find((c) => c.key === column)?.label ?? "status";
+  const name = findColumn(column)?.label ?? "status";
   return `+ Set ${name.toLowerCase()}`;
 };
 
 export function procedureCellLabel(value: string, opts?: ProcedureCellLabelOpts): string {
+  if (opts?.protocol === "paper_committal" && value === "on_bail") return "Bail";
   if (isProcedureEmptyValue(value)) {
     if (opts?.canEdit && opts.column) return procedureSetLabel(opts.column);
     return NOT_SET;
@@ -304,7 +462,10 @@ export function procedureCellTone(column: ProcedureColumnKey, value: string): Pr
     value === "completed" ||
     value === "delivered" ||
     value === "passed" ||
-    value === "disposed"
+    value === "disposed" ||
+    value === "yes" ||
+    value === "granted" ||
+    value === "not_granted"
   ) {
     return "done";
   }
@@ -316,22 +477,47 @@ export function procedureCellMode(canEdit: boolean): "edit" | "read" {
   return canEdit ? "edit" : "read";
 }
 
-/** Values shown in the cell popover. Empty defaults are reached via Clear, except Disclosure/Trial where every state is a real result. */
-export function procedureSelectableValues(key: ProcedureColumnKey): { value: string; label: string }[] {
-  const column = PROCEDURE_COLUMNS.find((c) => c.key === key);
+/** Values shown in the cell popover. Empty defaults are reached via Clear, except Disclosure/Trial/Yes-No/Paper Committal where every listed state is a real result. */
+export function procedureSelectableValues(
+  key: ProcedureColumnKey,
+  protocol?: WorkflowProtocol,
+): { value: string; label: string }[] {
+  const column = findColumn(key);
   if (!column) return [];
-  const includeEmpty = key === "disclosure_status" || key === "trial_status";
+  if (column.kind === "decision" || column.kind === "amount") return [];
+  const includeEmpty =
+    key === "disclosure_status" ||
+    key === "trial_status" ||
+    key === "paper_committal_status" ||
+    column.kind === "yesno";
   return column.values
-    .filter((value) => includeEmpty || value !== column.emptyValue)
-    .map((value) => ({ value, label: procedureCellLabel(value) }));
+    .filter((value) => {
+      if (includeEmpty) {
+        if (key === "paper_committal_status" && value === "not_commenced") return false;
+        if (column.kind === "yesno" && value === "unset") return false;
+        return true;
+      }
+      return value !== column.emptyValue;
+    })
+    .map((value) => ({
+      value,
+      label: procedureCellLabel(value, { column: key, protocol }),
+    }));
 }
 
 export function procedureHasClear(key: ProcedureColumnKey): boolean {
-  return key !== "disclosure_status" && key !== "trial_status";
+  const column = findColumn(key);
+  if (!column) return true;
+  return (
+    key !== "disclosure_status" &&
+    key !== "trial_status" &&
+    column.kind !== "yesno" &&
+    key !== "paper_committal_status"
+  );
 }
 
 export function procedureEmptyValue(key: ProcedureColumnKey): string {
-  return PROCEDURE_COLUMNS.find((c) => c.key === key)?.emptyValue ?? "not_started";
+  return findColumn(key)?.emptyValue ?? "not_started";
 }
 
 export function appearanceHintForColumn(
@@ -348,6 +534,8 @@ export function appearanceHintForColumn(
       return { event_type: "Disclosure", stage_at_event: "Case Management", notes: `Disclosure: ${label}` };
     case "trial_status":
       return { event_type: "Trial", stage_at_event: "Trial", notes: `Trial: ${label}` };
+    case "paper_committal_status":
+      return { event_type: "Paper Committal", stage_at_event: "Paper Committal", notes: `Paper Committal: ${label}` };
     case "ruling_status":
       return { event_type: "Decision/Judgment", stage_at_event: "Decision", notes: `Ruling: ${label}` };
     case "judgment_status":
@@ -356,6 +544,16 @@ export function appearanceHintForColumn(
       return { event_type: "Sentencing", stage_at_event: "Sentencing", notes: `Sentence: ${label}` };
     case "appeal_status":
       return { event_type: "Review", stage_at_event: "Enforcement", notes: `Appeal: ${label}` };
+    case "information_sworn_status":
+      return { event_type: "First Appearance", stage_at_event: "Information Sworn", notes: `Information Sworn: ${label}` };
+    case "summons_served":
+      return { event_type: "Service", stage_at_event: "Summons Served", notes: `Summons Served: ${label}` };
+    case "returns_of_summons":
+      return { event_type: "Service", stage_at_event: "Returns of Summons", notes: `Returns of Summons: ${label}` };
+    case "civil_trial_held":
+      return { event_type: "Trial", stage_at_event: "Trial", notes: `Trial: ${label}` };
+    case "decision":
+      return { event_type: "Decision/Judgment", stage_at_event: "Decision", notes: `Decision: ${label}` };
   }
 }
 

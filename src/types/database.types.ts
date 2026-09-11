@@ -1567,29 +1567,39 @@ export type Database = {
           category_id: string | null
           category_other: string | null
           charge_or_issue: string | null
+          civil_trial_held: string
           court_id: string
           cover_image_path: string | null
           created_at: string
           created_by: string
           custody_status: string
+          decision_amount: number | null
+          decision_granted: string | null
           deleted_at: string | null
           deleted_by: string | null
           disclosure_status: string
           district_id: string
           id: string
+          information_sworn_status: string
           judgment_status: string
           last_updated_by: string | null
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          outcome_adjourned: boolean
           outcome_status: string | null
-          procedure_stage: string | null
+          paper_committal_status: string
+          procedure_stage: string
+          returns_of_summons: string
           ruling_status: string
           search_vector: unknown
           sentence_status: string
+          stage_adjournments: Json
           status: Database["public"]["Enums"]["docket_matter_status"]
+          summons_served: string
           trial_status: string
           updated_at: string
+          workflow_protocol: string
         }
         Insert: {
           appeal_status?: string
@@ -1600,29 +1610,39 @@ export type Database = {
           category_id?: string | null
           category_other?: string | null
           charge_or_issue?: string | null
+          civil_trial_held?: string
           court_id: string
           cover_image_path?: string | null
           created_at?: string
           created_by?: string
           custody_status?: string
+          decision_amount?: number | null
+          decision_granted?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           disclosure_status?: string
           district_id: string
           id?: string
+          information_sworn_status?: string
           judgment_status?: string
           last_updated_by?: string | null
           matter_title: string
           orders_summary?: string | null
           outcome?: string | null
+          outcome_adjourned?: boolean
           outcome_status?: string | null
-          procedure_stage?: string | null
+          paper_committal_status?: string
+          procedure_stage?: string
+          returns_of_summons?: string
           ruling_status?: string
           search_vector?: unknown
           sentence_status?: string
+          stage_adjournments?: Json
           status?: Database["public"]["Enums"]["docket_matter_status"]
+          summons_served?: string
           trial_status?: string
           updated_at?: string
+          workflow_protocol?: string
         }
         Update: {
           appeal_status?: string
@@ -1633,29 +1653,39 @@ export type Database = {
           category_id?: string | null
           category_other?: string | null
           charge_or_issue?: string | null
+          civil_trial_held?: string
           court_id?: string
           cover_image_path?: string | null
           created_at?: string
           created_by?: string
           custody_status?: string
+          decision_amount?: number | null
+          decision_granted?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           disclosure_status?: string
           district_id?: string
           id?: string
+          information_sworn_status?: string
           judgment_status?: string
           last_updated_by?: string | null
           matter_title?: string
           orders_summary?: string | null
           outcome?: string | null
+          outcome_adjourned?: boolean
           outcome_status?: string | null
-          procedure_stage?: string | null
+          paper_committal_status?: string
+          procedure_stage?: string
+          returns_of_summons?: string
           ruling_status?: string
           search_vector?: unknown
           sentence_status?: string
+          stage_adjournments?: Json
           status?: Database["public"]["Enums"]["docket_matter_status"]
+          summons_served?: string
           trial_status?: string
           updated_at?: string
+          workflow_protocol?: string
         }
         Relationships: [
           {
@@ -3897,28 +3927,38 @@ export type Database = {
           category_name: string
           category_other: string
           charge_or_issue: string
+          civil_trial_held: string
           court_id: string
           court_name: string
           cover_image_path: string
           created_at: string
           custody_status: string
+          decision_amount: number | null
+          decision_granted: string | null
           disclosure_status: string
           district_id: string
           has_judgment_document: boolean
           has_ruling_document: boolean
           headline: string
           id: string
+          information_sworn_status: string
           judgment_status: string
           matter_title: string
           next_appearance: string
+          outcome_adjourned: boolean
           outcome_status: string
+          paper_committal_status: string
           procedure_stage: string
           rank: number
+          returns_of_summons: string
           ruling_status: string
           sentence_status: string
+          stage_adjournments: Json
           status: Database["public"]["Enums"]["docket_matter_status"]
+          summons_served: string
           trial_status: string
           updated_at: string
+          workflow_protocol: string
         }[]
       }
       list_magistrate_court_request_email_confirmation: {

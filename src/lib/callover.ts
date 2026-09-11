@@ -161,7 +161,7 @@ export function defaultCalloverTitle(isoDate: string): string {
  * computed, keeping the single source of truth in docket-procedure.ts.
  */
 export function broughtForwardStageNotice(stage: ProcedureStage, stageLabel: string): string {
-  return stage === "arraignment"
+  return stage === "arraignment" || stage === "information_sworn"
     ? `This matter will appear at ${stageLabel}, the start of the board.`
     : `This matter will appear at ${stageLabel}, not at the start of the board.`;
 }

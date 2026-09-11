@@ -3,17 +3,21 @@ import { toast } from "sonner";
 import { NextDateCell } from "@/pages/docket/next-date-cell";
 import { DocketOutcomeCell } from "@/pages/docket/docket-outcome-cell";
 import { ProcedureStageGrid } from "@/pages/docket/procedure-stage-grid";
-import {
-  currentStage,
-  PROCEDURE_COLUMNS,
-  type ProcedureColumnKey,
-  type ProcedureSnapshot,
-} from "@/lib/docket-procedure";
+import { protocolColumns, type ProcedureColumnKey } from "@/lib/docket-procedure";
 import { logProcedurePatch } from "@/lib/docket-procedure-log";
+import {
+  adjournmentForStage,
+  boardCellValue,
+  boardColumnPatch,
+  matterProtocol,
+  matterProtocolStage,
+  mergeStageAdjournment,
+  outcomeBoardPatch,
+} from "@/lib/docket-protocols";
 import { ROUTES } from "@/routes/paths";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
-import type { TablesUpdate } from "@/types/database.types";
+import type { Json, TablesUpdate } from "@/types/database.types";
 import { matterClassificationLabel } from "@/lib/validations/docket";
 import type { LogAppearanceRequest } from "@/pages/docket/docket-stage-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,19 +26,6 @@ const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgmen
   ruling_status: "ruling",
   judgment_status: "judgment",
 };
-
-function snapshotOf(row: DocketMatterBoardRow): ProcedureSnapshot {
-  return {
-    arraignment_status: row.arraignment_status as ProcedureSnapshot["arraignment_status"],
-    custody_status: row.custody_status as ProcedureSnapshot["custody_status"],
-    disclosure_status: row.disclosure_status as ProcedureSnapshot["disclosure_status"],
-    trial_status: row.trial_status as ProcedureSnapshot["trial_status"],
-    ruling_status: row.ruling_status as ProcedureSnapshot["ruling_status"],
-    judgment_status: row.judgment_status as ProcedureSnapshot["judgment_status"],
-    sentence_status: row.sentence_status as ProcedureSnapshot["sentence_status"],
-    appeal_status: row.appeal_status as ProcedureSnapshot["appeal_status"],
-  };
-}
 
 function AppearanceChip({ status, outcome }: { status: string; outcome: string | null }) {
   return (
@@ -94,27 +85,28 @@ export function DocketMatterCard({
   const uploadRuling = useUploadDocument("docket_matter", row.id);
   const uploadJudgment = useUploadDocument("docket_matter", row.id);
   const classification = matterClassificationLabel(row.category_name, row.category_other);
-  const stage = currentStage(snapshotOf(row));
+  const protocol = matterProtocol(row);
+  const stage = matterProtocolStage(row);
+  const columns = protocolColumns(protocol);
 
   const handleChange = (column: ProcedureColumnKey, next: string) => {
-    const meta = PROCEDURE_COLUMNS.find((item) => item.key === column);
-    const previous = String(row[column] ?? meta?.emptyValue ?? "");
+    const previous = boardCellValue(row, column);
     void logProcedurePatch({
       column,
       previous,
       next,
       expectedUpdatedAt: row.updated_at,
-      patch: (values, expectedUpdatedAt) => onPatch(row.id, values, expectedUpdatedAt),
+      patchValues: boardColumnPatch(column, next, row.category_name),
+      undoValues: boardColumnPatch(column, previous, row.category_name),
+      patch: (values, expectedUpdatedAt) =>
+        onPatch(row.id, values as TablesUpdate<"docket_matters">, expectedUpdatedAt),
       onLogAppearance: (hint) => onLogAppearance({ matterId: row.id, ...hint }),
     });
   };
 
-  // See docket-stage-sheet.tsx's own handleOutcomeChange for why this
-  // bypasses logProcedurePatch (no "Log appearance" prompt) and toasts
-  // directly instead.
   async function handleOutcomeChange(next: string | null) {
     try {
-      await onPatch(row.id, { outcome_status: next }, row.updated_at);
+      await onPatch(row.id, outcomeBoardPatch(next), row.updated_at);
       toast.success(next ? "Outcome updated." : "Outcome cleared.");
     } catch {
       // Surfaced globally via the mutation cache toast subscriber.
@@ -162,11 +154,26 @@ export function DocketMatterCard({
         layout="board-card"
         compact
         cellClassName="min-h-11"
+        columns={columns}
+        protocol={protocol}
+        categoryName={row.category_name}
         currentStage={stage}
         canEdit={row.can_edit}
-        getValue={(column) => {
-          const meta = PROCEDURE_COLUMNS.find((item) => item.key === column);
-          return String(row[column] ?? meta?.emptyValue ?? "");
+        getValue={(column) => boardCellValue(row, column)}
+        adjournmentFor={(column) => {
+          const current = adjournmentForStage(row.stage_adjournments, column.stage);
+          return {
+            ...current,
+            onSave: (adjourned, reason) => {
+              const next = mergeStageAdjournment(
+                row.stage_adjournments,
+                column.stage,
+                adjourned,
+                reason,
+              );
+              void onPatch(row.id, { stage_adjournments: next as Json }, row.updated_at);
+            },
+          };
         }}
         attachmentsFor={(column) => {
           const purpose = ATTACHMENT_PURPOSE[column];
@@ -187,6 +194,8 @@ export function DocketMatterCard({
         <span className="text-[11px] font-medium text-white/45">Outcome</span>
         <DocketOutcomeCell
           value={row.outcome_status}
+          outcomeAdjourned={row.outcome_adjourned}
+          protocol={protocol}
           canEdit={row.can_edit}
           onChange={(next) => void handleOutcomeChange(next)}
         />

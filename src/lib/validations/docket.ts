@@ -3,11 +3,15 @@ import {
   APPEAL_STATUSES,
   ARRAIGNMENT_STATUSES,
   CUSTODY_STATUSES,
+  DECISION_GRANTED_STATUSES,
   DISCLOSURE_STATUSES,
+  INFORMATION_SWORN_STATUSES,
   JUDGMENT_STATUSES,
+  PAPER_COMMITTAL_STATUSES,
   RULING_STATUSES,
   SENTENCE_STATUSES,
   TRIAL_STATUSES,
+  YES_NO_STATUSES,
 } from "@/lib/docket-procedure";
 
 /**
@@ -119,12 +123,10 @@ export function matterClassificationLabel(
 /**
  * Brought-forward intake (0129). A matter inherited from a predecessor,
  * transferred in, or pre-dating this docket has usually already passed
- * some stages. `procedure_stage` is a generated column (0070) computed
- * from the eight status columns, so seeding them at INSERT is the whole
- * mechanism — there is no separate "stage" field to set, and no RPC is
- * needed. Every value is validated against the same const arrays the
- * board itself uses, so an intake can never introduce a status the
- * procedure columns' own CHECK constraints would reject.
+ * some stages. `procedure_stage` is maintained from the protocol's status
+ * columns (0140), so seeding them at INSERT is the whole mechanism — there
+ * is no separate "stage" field to set. Every value is validated against
+ * the same const arrays the board itself uses.
  *
  * All optional: left alone, a matter is created exactly as before and
  * lands at Arraignment.
@@ -134,10 +136,17 @@ const broughtForwardFields = {
   custody_status: z.enum(CUSTODY_STATUSES).optional(),
   disclosure_status: z.enum(DISCLOSURE_STATUSES).optional(),
   trial_status: z.enum(TRIAL_STATUSES).optional(),
+  paper_committal_status: z.enum(PAPER_COMMITTAL_STATUSES).optional(),
   ruling_status: z.enum(RULING_STATUSES).optional(),
   judgment_status: z.enum(JUDGMENT_STATUSES).optional(),
   sentence_status: z.enum(SENTENCE_STATUSES).optional(),
   appeal_status: z.enum(APPEAL_STATUSES).optional(),
+  information_sworn_status: z.enum(INFORMATION_SWORN_STATUSES).optional(),
+  summons_served: z.enum(YES_NO_STATUSES).optional(),
+  returns_of_summons: z.enum(YES_NO_STATUSES).optional(),
+  civil_trial_held: z.enum(YES_NO_STATUSES).optional(),
+  decision_granted: z.enum(DECISION_GRANTED_STATUSES).optional().or(z.literal("")),
+  decision_amount: z.string().optional().or(z.literal("")),
   brought_forward_from: z.string().max(500).optional().or(z.literal("")),
   brought_forward_at: z.string().optional().or(z.literal("")),
 };

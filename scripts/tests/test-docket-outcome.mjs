@@ -34,7 +34,7 @@ check("arraignment_status gained 'not_found' alongside the existing two, matchin
 check("docket_matter_status gained 'dismissed', matching the live enum",
   [...DOCKET_MATTER_STATUSES], ["active", "stayed", "completed", "archived", "dismissed"]);
 
-check("'not_found' has a board label", typeof PROCEDURE_VALUE_LABELS.not_found, "string");
+check("'not_found' has a board label", PROCEDURE_VALUE_LABELS.not_found, "Not Found, To Be Summoned");
 check("every outcome value has a label", OUTCOME_STATUSES.every((v) => typeof OUTCOME_VALUE_LABELS[v] === "string"), true);
 
 // --- isOutcomeStatus ---
@@ -59,6 +59,8 @@ check("an unrecognised value tones muted, not a false positive", outcomeTone("so
 check("dismissed label", outcomeLabel("dismissed"), "Dismissed");
 check("completed label", outcomeLabel("completed"), "Completed");
 check("no outcome reads as not recorded", outcomeLabel(null), "Not recorded");
+check("civil adjourned label", outcomeLabel(null, true), "Adjourned");
+check("civil adjourned tones progress-like", outcomeTone(null, true), "adjourned");
 
 // --- the core promise: 'not_found' keeps a matter at the Arraignment
 // stage, exactly like 'not_started' does, distinguishing "never

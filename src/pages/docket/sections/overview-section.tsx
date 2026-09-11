@@ -48,7 +48,9 @@ import {
   type DocketMatterClassificationFormValues,
   type DocketMatterOutcomeFormValues,
 } from "@/lib/validations/docket";
-import { matterCurrentStage, PROCEDURE_STAGE_LABELS, PROCEDURE_VALUE_LABELS } from "@/lib/docket-procedure";
+import { PROCEDURE_VALUE_LABELS, procedureStageLabel } from "@/lib/docket-procedure";
+import { outcomeLabel } from "@/lib/docket-outcome";
+import { matterProtocol, matterProtocolStage } from "@/lib/docket-protocols";
 import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import { isConcurrentEditError } from "@/lib/concurrency";
 import type { DocketMatter } from "@/types/database.types";
@@ -93,8 +95,9 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
 
   const { data: events } = useDocketEvents(matter.id);
   const { data: categories } = useDocketMatterCategories();
+  const categoryName = categories?.find((c) => c.id === matter.category_id)?.name;
   const classificationLabel = matterClassificationLabel(
-    categories?.find((c) => c.id === matter.category_id)?.name,
+    categoryName,
     matter.category_other,
   );
   const nextDate = useMemo(() => {
@@ -104,7 +107,14 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
     return upcoming[0]?.scheduled_date ?? null;
   }, [events]);
-  const stage = matterCurrentStage(matter);
+  const protocol = matterProtocol({
+    workflow_protocol: matter.workflow_protocol,
+    category_name: categoryName,
+  });
+  const stage = matterProtocolStage({
+    ...matter,
+    category_name: categoryName,
+  });
 
   const form = useForm<DocketMatterOutcomeFormValues>({
     resolver: zodResolver(docketMatterOutcomeSchema),
@@ -167,8 +177,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         ) : (
           <Badge>{toTitleCase(matter.status)}</Badge>
         )}
-        <Badge variant="outline">{PROCEDURE_STAGE_LABELS[stage]}</Badge>
-        {matter.custody_status !== "unset" && (
+        <Badge variant="outline">{procedureStageLabel(stage)}</Badge>
+        {protocol !== "civil_summons" && matter.custody_status !== "unset" && (
           <Badge variant="outline">
             {PROCEDURE_VALUE_LABELS[matter.custody_status] ?? toTitleCase(matter.custody_status)}
           </Badge>
@@ -244,6 +254,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       <DocketStageStrip
         matter={matter}
         canEdit={liveEdit}
+        categoryName={categoryName}
         onPatch={(values, expectedUpdatedAt) =>
           patchProcedure.mutateAsync({ id: matter.id, values, expectedUpdatedAt })
         }
@@ -291,10 +302,14 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                   name="outcome"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Outcome</FormLabel>
+                      <FormLabel>Outcome notes</FormLabel>
                       <FormControl>
                         <Textarea rows={3} {...field} />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Dismissed, Completed, or Adjourned is set on Procedure
+                        above. These notes are extra narrative for the file.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -321,6 +336,12 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           ) : (
             <div className="space-y-3 text-sm">
               <div>
+                <p className="font-medium text-foreground">Board outcome</p>
+                <p className="text-muted-foreground">
+                  {outcomeLabel(matter.outcome_status, matter.outcome_adjourned)}
+                </p>
+              </div>
+              <div>
                 <p className="font-medium text-foreground">Orders summary</p>
                 <p className="text-muted-foreground">
                   {matter.orders_summary || (
@@ -329,7 +350,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                 </p>
               </div>
               <div>
-                <p className="font-medium text-foreground">Outcome</p>
+                <p className="font-medium text-foreground">Outcome notes</p>
                 <p className="text-muted-foreground">
                   {matter.outcome || <span className="italic">None recorded.</span>}
                 </p>
