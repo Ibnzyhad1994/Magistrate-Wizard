@@ -55,7 +55,23 @@ export function outcomeOptionsForProtocol(
   protocol: WorkflowProtocol,
 ): { value: string; label: string }[] {
   if (protocol === "paper_committal") {
-    return [{ value: "completed", label: "Completed" }];
+    // Dismissed belongs here for the same reason 0131 added the Outcome
+    // column at all: a paper-committal board carries an Arraignment
+    // column that accepts "Not Found, To Be Summoned", so the exact
+    // situation Outcome exists to record — accused never found, matter
+    // dismissed as wasting the court's time — is reachable on this board.
+    // It previously offered "Completed" only, leaving that file with no
+    // disposition to record and no way off the sheet. The 0131 CHECK
+    // constraint already permits `dismissed` for every protocol; this was
+    // a UI-only gap.
+    //
+    // Civil summons is deliberately NOT given Dismissed here: it has no
+    // Arraignment column, so `not_found` is unreachable and the same
+    // argument does not apply. Verified per protocol rather than assumed.
+    return [
+      { value: "completed", label: "Completed" },
+      { value: "dismissed", label: "Dismissed" },
+    ];
   }
   if (protocol === "civil_summons") {
     return [

@@ -112,10 +112,19 @@ check(
 
 const civilOutcomes = outcomeOptionsForProtocol("civil_summons").map((o) => o.value);
 check("civil outcome options are Completed and Adjourned", civilOutcomes, ["completed", "adjourned"]);
+// Was "Completed only". That assertion encoded a real gap rather than a
+// rule: a paper-committal board carries an Arraignment column that accepts
+// "Not Found, To Be Summoned", so the exact situation the Outcome column was
+// added for (0131) was reachable on this board with no disposition to record
+// against it. The 0131 CHECK constraint always permitted `dismissed` for
+// every protocol — the restriction was UI-only. Civil stays as it was: no
+// Arraignment column, so not_found is unreachable there and the same
+// argument does not apply. The cross-check that ties these together lives in
+// test-docket-outcome.mjs.
 check(
-  "paper outcome options are Completed only",
+  "paper outcome options are Completed and Dismissed",
   outcomeOptionsForProtocol("paper_committal").map((o) => o.value),
-  ["completed"],
+  ["completed", "dismissed"],
 );
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

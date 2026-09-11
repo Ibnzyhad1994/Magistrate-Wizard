@@ -505,15 +505,30 @@ export function procedureSelectableValues(
     }));
 }
 
+/**
+ * Whether the cell offers a "Clear" item.
+ *
+ * Disclosure and Trial are excluded because they already list their own
+ * empty state as a selectable value — offering Clear as well would be two
+ * controls for one outcome.
+ *
+ * Yes/No columns and Paper Committal are NOT excluded, despite deliberately
+ * keeping their empty value out of the menu (procedureSelectableValues,
+ * above). Those two rules used to be the same rule, which made four columns
+ * one-way doors: set Summons Served to "Yes" by mistake and there was no
+ * path back except the Undo on a 10-second toast. Dismiss it, switch tabs,
+ * or notice the next morning and the value was permanent.
+ *
+ * They are different questions. Leaving "unset" out of the menu says it
+ * isn't a real result worth choosing — which is right. Offering Clear says
+ * the entry can be withdrawn — which must always be true for a value a
+ * human typed in. Clear is already hidden when the cell is empty (see
+ * DocketStageCell), so this adds nothing to an untouched cell.
+ */
 export function procedureHasClear(key: ProcedureColumnKey): boolean {
   const column = findColumn(key);
   if (!column) return true;
-  return (
-    key !== "disclosure_status" &&
-    key !== "trial_status" &&
-    column.kind !== "yesno" &&
-    key !== "paper_committal_status"
-  );
+  return key !== "disclosure_status" && key !== "trial_status";
 }
 
 export function procedureEmptyValue(key: ProcedureColumnKey): string {

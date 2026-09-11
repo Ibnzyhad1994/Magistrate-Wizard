@@ -50,7 +50,12 @@ import {
 } from "@/lib/validations/docket";
 import { PROCEDURE_VALUE_LABELS, procedureStageLabel } from "@/lib/docket-procedure";
 import { outcomeLabel } from "@/lib/docket-outcome";
-import { matterProtocol, matterProtocolStage } from "@/lib/docket-protocols";
+import {
+  matterProtocol,
+  matterProtocolStage,
+  protocolFromCategoryName,
+  protocolLabel,
+} from "@/lib/docket-protocols";
 import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import { isConcurrentEditError } from "@/lib/concurrency";
 import type { DocketMatter } from "@/types/database.types";
@@ -479,6 +484,22 @@ function ClassificationDialog({
   const watchedCategoryId = form.watch("category_id")
   const isOther = !!otherCategoryId && watchedCategoryId === otherCategoryId
 
+  // Classification silently selects which of the three boards this matter
+  // uses: a trigger (0140) recomputes workflow_protocol and procedure_stage
+  // on every update. Reclassifying a matter that has reached Sentence sends
+  // it back to the first stage of the new board with the old columns
+  // showing N/A -- which is indistinguishable, on screen, from having lost
+  // the work. It is actually recoverable (the trigger only reassigns those
+  // two fields; the other columns keep their values and reappear if you
+  // switch back), but nothing said so. Warn at the point of decision, and
+  // only when the board would genuinely change -- correcting "Liability" to
+  // "Maintenance" stays on the civil board and needs no warning.
+  const currentProtocol = matterProtocol(matter)
+  const nextProtocol = protocolFromCategoryName(
+    (categories ?? []).find((c) => c.id === watchedCategoryId)?.name,
+  )
+  const protocolWillChange = Boolean(watchedCategoryId) && nextProtocol !== currentProtocol
+
   async function handleSubmit(values: DocketMatterClassificationFormValues) {
     if (otherCategoryId && values.category_id === otherCategoryId && !values.category_other?.trim()) {
       form.setError("category_other", { type: "manual", message: "Describe the matter type" })
@@ -558,6 +579,22 @@ function ClassificationDialog({
                   </FormItem>
                 )}
               />
+            )}
+            {protocolWillChange && (
+              <div
+                role="status"
+                className="rounded-sm border border-[hsl(var(--stage-progress))]/40 bg-[hsl(var(--stage-progress))]/10 px-3 py-2 text-xs leading-relaxed text-foreground"
+              >
+                <p className="font-semibold">
+                  This moves the matter from the {protocolLabel(currentProtocol)} board to the{" "}
+                  {protocolLabel(nextProtocol)} board.
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  Its stage is recalculated for the new board, so it may appear to move
+                  backwards. Stages already recorded are kept, not deleted — switch the
+                  classification back and they reappear.
+                </p>
+              </div>
             )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose} disabled={updateMatter.isPending}>

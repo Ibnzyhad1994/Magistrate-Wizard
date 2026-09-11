@@ -48,6 +48,17 @@ export function protocolFromCategoryName(
   return "criminal_trial";
 }
 
+/** Plain-language name for a protocol's board, for copy that has to name one. */
+export const PROTOCOL_LABELS: Record<WorkflowProtocol, string> = {
+  criminal_trial: "Criminal trial",
+  paper_committal: "Paper Committal",
+  civil_summons: "Civil summons",
+};
+
+export function protocolLabel(protocol: WorkflowProtocol): string {
+  return PROTOCOL_LABELS[protocol];
+}
+
 export type StageAdjournment = {
   adjourned: boolean;
   reason: string;
