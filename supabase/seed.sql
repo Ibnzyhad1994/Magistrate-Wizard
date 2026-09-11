@@ -208,8 +208,22 @@ limit 1;
 -- Login: calendar@magistrate-wizard.local / password123
 -- ---------------------------------------------------------------------------
 
+-- 'relief', not 'regular': only ONE active regular magistrate is allowed
+-- per court (0105), and that slot at Vigilance 1 is already taken on any
+-- machine that also has the gitignored seed.local.sql (real data pulled
+-- from the cloud project). Seeding aborted there with "This court already
+-- has an active primary magistrate assignment" -- and the `on conflict do
+-- nothing` below could not save it, because the exclusivity is enforced by
+-- a BEFORE-INSERT trigger that raises before conflict handling is ever
+-- reached. CI never saw this (seed.local.sql is gitignored), so it only
+-- broke `npm run db:reset` for developers holding local data.
+--
+-- Access is identical either way: can_access_court() (0020) keys only on
+-- court_id/profile_id/ended_at and never reads assignment_type. Same
+-- substitution 8c0921e already made in the pentest harness for this exact
+-- constraint.
 insert into public.magistrate_courts (profile_id, court_id, assignment_type)
-select 'c2aade11-9e2d-4ef8-bb6d-6bb9bd380a33'::uuid, c.id, 'regular'
+select 'c2aade11-9e2d-4ef8-bb6d-6bb9bd380a33'::uuid, c.id, 'relief'
 from public.courts c
 where c.name in (
   'Vigilance Magistrates'' Court 1',
