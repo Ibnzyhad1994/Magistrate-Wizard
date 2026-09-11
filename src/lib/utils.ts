@@ -86,6 +86,39 @@ export function formatDate(
   return new Intl.DateTimeFormat("en-GB", options).format(d);
 }
 
+/**
+ * "just now" / "5 hours ago" / "3 days ago", falling back to an absolute
+ * date once something is older than a week.
+ *
+ * Relative time is the right default for a notification list, where what
+ * matters is "is this fresh?" rather than the exact instant. It stops
+ * being the right answer past a few days — "23 days ago" is harder to
+ * place than "19 Aug 2026" — so the absolute date takes over there. The
+ * exact timestamp always stays available via the element's `title`.
+ *
+ * `now` is a parameter so this is testable without freezing the clock.
+ */
+export function formatRelativeTime(date: string | Date, now: Date = new Date()): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "";
+
+  const seconds = Math.round((now.getTime() - d.getTime()) / 1000);
+  // A clock skewed slightly ahead of the server shouldn't read "in 3 seconds".
+  if (seconds < 45) return "just now";
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.round(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  return formatDate(d, { year: "numeric", month: "short", day: "numeric" });
+}
+
 export function formatDateTime(date: string | Date): string {
   return formatDate(date, {
     year: "numeric",

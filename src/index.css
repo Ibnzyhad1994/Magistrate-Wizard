@@ -51,6 +51,15 @@
        palette, so it's a deliberately new hue, not a reuse. */
     --stage-dismissed: 357 92% 47%;
     --stage-outcome-complete: 210 90% 58%;
+    /* Notification tones (notificationTone()). Reused rather than
+       reinvented: these are the same four hues the docket already uses
+       for progress/done/dismissed/complete, so a magistrate reads amber
+       as "needs you" everywhere in the product, not just on the board. */
+    --notice-action: 38 92% 50%;
+    --notice-granted: 160 84% 39%;
+    --notice-revoked: 357 92% 47%;
+    --notice-outcome: 210 90% 58%;
+
     --capacity-available: 142 71% 45%;
     --capacity-filling: 38 92% 50%;
     --capacity-full: 0 72% 51%;

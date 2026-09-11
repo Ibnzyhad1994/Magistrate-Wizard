@@ -14,8 +14,32 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/hooks/use-notifications"
-import { notificationTypeLabel } from "@/lib/notifications"
-import { formatDateTime } from "@/lib/utils"
+import { notificationTone, notificationTypeLabel, type NotificationTone } from "@/lib/notifications"
+import { formatDateTime, formatRelativeTime } from "@/lib/utils"
+
+/**
+ * Unread carries the tone colour; read is deliberately drained of it.
+ * The colour is doing two jobs at once — what kind of notice this is, and
+ * whether it still wants attention — so a read item keeps its shape but
+ * loses its urgency.
+ */
+const TONE_ACCENT: Record<NotificationTone, string> = {
+  action: "bg-[hsl(var(--notice-action))]",
+  granted: "bg-[hsl(var(--notice-granted))]",
+  revoked: "bg-[hsl(var(--notice-revoked))]",
+  outcome: "bg-[hsl(var(--notice-outcome))]",
+}
+
+const TONE_BADGE: Record<NotificationTone, string> = {
+  action:
+    "border-[hsl(var(--notice-action))]/40 bg-[hsl(var(--notice-action))]/15 text-[hsl(var(--notice-action))]",
+  granted:
+    "border-[hsl(var(--notice-granted))]/40 bg-[hsl(var(--notice-granted))]/15 text-[hsl(var(--notice-granted))]",
+  revoked:
+    "border-[hsl(var(--notice-revoked))]/40 bg-[hsl(var(--notice-revoked))]/15 text-[hsl(var(--notice-revoked))]",
+  outcome:
+    "border-[hsl(var(--notice-outcome))]/40 bg-[hsl(var(--notice-outcome))]/15 text-[hsl(var(--notice-outcome))]",
+}
 
 export default function NotificationsPage() {
   const [limit, setLimit] = useState(NOTIFICATIONS_PAGE_SIZE)
@@ -65,21 +89,61 @@ export default function NotificationsPage() {
         >
           {rows.map((row) => {
             const unreadRow = !row.read_at
+            const tone = notificationTone(row.type)
             const body = (
-              <Card className={unreadRow ? "border-primary/40" : undefined}>
-                <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+              <Card
+                className={`relative overflow-hidden transition-colors ${
+                  unreadRow
+                    ? "border-white/15 bg-card"
+                    : "border-white/5 bg-card/40"
+                }`}
+              >
+                {/* Unread gets a tone-coloured spine; read gets nothing, so
+                    the two are distinguishable at a glance down the list
+                    rather than by reading each row. */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-y-0 left-0 w-1 ${
+                    unreadRow ? TONE_ACCENT[tone] : "bg-transparent"
+                  }`}
+                />
+                <CardContent className="flex flex-col gap-2 py-4 pl-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-white">{row.title}</p>
-                      <Badge variant={unreadRow ? "default" : "outline"}>
+                      <p
+                        className={`text-sm ${
+                          unreadRow
+                            ? "font-semibold text-foreground"
+                            : "font-normal text-muted-foreground"
+                        }`}
+                      >
+                        {row.title}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className={unreadRow ? TONE_BADGE[tone] : "border-white/10 text-white/40"}
+                      >
                         {notificationTypeLabel(row.type)}
                       </Badge>
+                      {unreadRow && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                          New
+                        </span>
+                      )}
                     </div>
                     {row.body && (
-                      <p className="mt-1 text-sm text-white/65">{row.body}</p>
+                      <p className={`mt-1 text-sm ${unreadRow ? "text-white/70" : "text-white/40"}`}>
+                        {row.body}
+                      </p>
                     )}
-                    <p className="mt-2 text-[11px] text-white/45">
-                      {formatDateTime(row.created_at)}
+                    {/* Relative for recency at a glance; the exact
+                        timestamp stays one hover away rather than being
+                        lost. */}
+                    <p
+                      className={`mt-2 text-[11px] ${unreadRow ? "text-white/50" : "text-white/35"}`}
+                      title={formatDateTime(row.created_at)}
+                    >
+                      {formatRelativeTime(row.created_at)}
                     </p>
                   </div>
                   {unreadRow && (

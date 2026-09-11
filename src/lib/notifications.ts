@@ -33,6 +33,41 @@ export const shareItemNoun = (itemType: string) => {
   return "item"
 }
 
+/**
+ * What a notice means for the reader, which is what its colour should
+ * encode — not which subsystem raised it.
+ *
+ *   action   something is waiting on YOU to decide or turn up
+ *   granted  access or a milestone you gained
+ *   revoked  access you lost
+ *   outcome  a decision about you that needs no action
+ *
+ * Deliberately four tones, not eleven: a list where every row is a
+ * different colour communicates nothing. `outcome` is intentionally the
+ * neutral one — "request decided" covers both approval and refusal, and
+ * colouring it green or red would assert a result the type alone doesn't
+ * carry.
+ */
+export type NotificationTone = "action" | "granted" | "revoked" | "outcome"
+
+export const notificationTone = (type: string): NotificationTone => {
+  switch (type) {
+    case "clerk_request":
+    case "court_request":
+    case "hearing_tomorrow":
+    case "stale_draft":
+      return "action"
+    case "share_granted":
+    case "court_assigned":
+    case "judgment_final":
+      return "granted"
+    case "share_revoked":
+      return "revoked"
+    default:
+      return "outcome"
+  }
+}
+
 export const notificationTypeLabel = (type: string) => {
   switch (type) {
     case "share_granted":

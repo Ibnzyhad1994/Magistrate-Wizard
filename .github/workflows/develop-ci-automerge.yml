@@ -82,6 +82,9 @@ jobs:
       - name: Password reset flow
         run: npm run test:password-reset
 
+      - name: Notification list presentation
+        run: npm run test:notifications-ui
+
       - name: Judgment and bench-note PDF export
         run: npm run test:export-pdf
 
@@ -129,6 +132,16 @@ jobs:
 
       - name: Docket capacity matches board
         run: npm run test:docket-capacity
+
+      # Paper-committal and civil-summons stage walks, column derivation, and
+      # the outcome_adjourned/outcome_status split (0140). Both are pure-logic
+      # and need no database, but were landing untested on every push -- they
+      # are the only automated coverage the workflow-protocol boards have.
+      - name: Docket protocol (paper committal)
+        run: npm run test:docket-protocol-paper
+
+      - name: Docket protocol (civil summons)
+        run: npm run test:docket-protocol-civil
 
       - name: Callover vocabulary and running-sheet logic
         run: npm run test:callover
