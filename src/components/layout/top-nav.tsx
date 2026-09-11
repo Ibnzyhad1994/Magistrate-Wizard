@@ -97,14 +97,14 @@ export function TopNav() {
         "fixed inset-x-0 top-0 z-50 flex h-[calc(68px+env(safe-area-inset-top,0px))] items-center gap-2 overflow-hidden pt-[env(safe-area-inset-top,0px)] transition-colors duration-300 sm:gap-3 lg:gap-6",
         "browse-gutter",
         scrolled
-          ? "bg-[#141414]"
+          ? "bg-background"
           : "bg-gradient-to-b from-black/80 to-transparent",
       )}
     >
       <Button
         variant="ghost"
         size="icon"
-        className="min-h-11 min-w-11 shrink-0 touch-manipulation text-white hover:bg-white/10 lg:hidden"
+        className="min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10 lg:hidden"
         onClick={handleOpenMobileNav}
         aria-label="Open navigation"
         aria-expanded={mobileNavOpen}
@@ -121,15 +121,15 @@ export function TopNav() {
         <AppLogo size="md" markOnly={!showWordmark} />
       </Link>
 
-      <nav className="hidden items-center gap-5 text-sm font-medium text-white/80 lg:flex">
+      <nav className="hidden items-center gap-5 text-sm font-medium text-foreground/80 lg:flex">
         {primary.map((item) => (
           <NavLink
             key={item.href}
             to={item.href}
             className={({ isActive }) =>
               cn(
-                "transition-colors hover:text-white",
-                isActive && "font-semibold text-white",
+                "transition-colors hover:text-foreground",
+                isActive && "font-semibold text-foreground",
               )
             }
             end={item.href === ROUTES.dashboard}
@@ -141,16 +141,16 @@ export function TopNav() {
         {more.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="text-sm font-medium text-white/80 outline-none hover:text-white"
+              className="text-sm font-medium text-foreground/80 outline-none hover:text-foreground"
               data-tour="nav-more"
             >
               More
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[12rem] border-white/10 bg-[#181818]">
+            <DropdownMenuContent align="start" className="min-w-[12rem] border-foreground/10 bg-card">
               {moreGroups.map((section, index) => (
                 <DropdownMenuGroup key={section.id}>
-                  {index > 0 ? <DropdownMenuSeparator className="bg-white/10" /> : null}
-                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">
+                  {index > 0 ? <DropdownMenuSeparator className="bg-foreground/10" /> : null}
+                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/40">
                     {section.label}
                   </DropdownMenuLabel>
                   {section.items.map((item) => (
@@ -170,7 +170,7 @@ export function TopNav() {
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
         {isPendingMagistrate ? null : isDesktop && searchOpen ? (
           <form onSubmit={handleSearchSubmit} className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/60" />
             <Input
               autoFocus
               value={query}
@@ -179,7 +179,7 @@ export function TopNav() {
                 if (!query) setSearchOpen(false);
               }}
               placeholder="Titles, notes, legislation…"
-              className="h-9 w-48 border-white/40 bg-black/70 pl-8 text-sm text-white placeholder:text-white/50 sm:w-64"
+              className="h-9 w-48 border-foreground/40 bg-black/70 pl-8 text-sm text-foreground placeholder:text-foreground/50 sm:w-64"
               aria-label="Search"
               data-tour="nav-search"
             />
@@ -188,7 +188,7 @@ export function TopNav() {
           <Button
             variant="ghost"
             size="icon"
-            className="min-h-11 min-w-11 shrink-0 touch-manipulation text-white hover:bg-white/10"
+            className="min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10"
             onClick={handleOpenSearch}
             aria-label="Search"
             aria-haspopup={isDesktop ? undefined : "dialog"}

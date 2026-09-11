@@ -70,7 +70,7 @@ export function SaveState({
       aria-live="polite"
       className={cn(
         "inline-flex items-center gap-1.5 text-[11px] font-medium tabular-nums",
-        isDirty && !isSaving ? "text-[hsl(var(--stage-progress))]" : "text-white/45",
+        isDirty && !isSaving ? "text-[hsl(var(--stage-progress))]" : "text-foreground/45",
         className,
       )}
     >

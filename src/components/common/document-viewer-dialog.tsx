@@ -252,9 +252,9 @@ export const DocumentViewerDialog = ({
         </div>
 
         {confirmClose ? (
-          <div className="rounded-md border border-white/15 bg-[#141414] px-4 py-3">
-            <p className="text-sm font-medium text-white">Close without downloading?</p>
-            <p className="mt-1 text-xs text-white/60">
+          <div className="rounded-md border border-foreground/15 bg-background px-4 py-3">
+            <p className="text-sm font-medium text-foreground">Close without downloading?</p>
+            <p className="mt-1 text-xs text-foreground/60">
               Redaction boxes live only in this window. Download a redacted PDF first if you still
               need a copy. The original file is unchanged.
             </p>

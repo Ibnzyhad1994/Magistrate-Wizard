@@ -42,7 +42,7 @@ export function AppLogo({ size = "md", markOnly = false, className }: AppLogoPro
             scale.type,
           )}
         >
-          <span className="text-white">Magistrate</span>
+          <span className="text-foreground">Magistrate</span>
           <span className="text-primary"> Wizard</span>
         </span>
       )}

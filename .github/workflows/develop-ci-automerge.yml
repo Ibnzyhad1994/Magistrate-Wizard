@@ -85,6 +85,9 @@ jobs:
       - name: Notification list presentation
         run: npm run test:notifications-ui
 
+      - name: Light/dark theming
+        run: npm run test:theme
+
       - name: Judgment and bench-note PDF export
         run: npm run test:export-pdf
 

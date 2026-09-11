@@ -26,13 +26,13 @@ export function BrowseHeader({
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1
-          className="w-fit text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
+          className="w-fit text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl"
           data-tour={dataTour}
         >
           {title}
         </h1>
         {description && (
-          <p className="mt-2 max-w-2xl text-sm text-white/65">{description}</p>
+          <p className="mt-2 max-w-2xl text-sm text-foreground/65">{description}</p>
         )}
       </div>
       {(showViewSelect || action) && (

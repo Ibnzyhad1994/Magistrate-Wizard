@@ -309,7 +309,7 @@ function LifecycleBar({
   const isDraft = judgment.status === "draft";
 
   return (
-    <div className="sticky top-[68px] z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-[#141414] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
+    <div className="sticky top-[68px] z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
       {isDraft ? (
         <>
           <Button

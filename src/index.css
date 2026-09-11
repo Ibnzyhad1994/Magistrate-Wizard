@@ -4,11 +4,91 @@
 
 @layer base {
   /*
+   * LIGHT — "chambers" to the dark theme's "theater".
+   *
+   * Ground is a warm near-white rather than #fff: a courtroom product is
+   * read for hours at a time, and paper-white is easier on the eye than
+   * pure white while still reading as a document surface. Cards sit at
+   * true white ON that warm ground, which is what gives them edge without
+   * needing heavy borders — the same figure/ground trick the dark theme
+   * plays with #181818 tiles on a #141414 canvas, inverted.
+   *
+   * The brand red is darkened a little here (47% -> 42% lightness). The
+   * dark theme's #E50914 is tuned to glow against near-black; unchanged on
+   * white it reads as hot and fails contrast on small text.
+   *
+   * Every status hue (stage/capacity/notice) is darkened for the same
+   * reason: amber and green tuned for a black canvas are close to
+   * illegible on paper. They keep their hue so a colour still means the
+   * same thing in both themes.
+   */
+  :root {
+    --background: 40 20% 97%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 357 80% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 12% 92%;
+    --secondary-foreground: 0 0% 12%;
+
+    --muted: 40 12% 94%;
+    --muted-foreground: 0 0% 38%;
+
+    --accent: 40 12% 90%;
+    --accent-foreground: 0 0% 12%;
+
+    --destructive: 357 80% 42%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 10% 85%;
+    --input: 40 10% 85%;
+    --ring: 357 80% 42%;
+
+    --brass: 42 60% 34%;
+    --brass-foreground: 42 70% 24%;
+
+    --match: 137 50% 30%;
+
+    --stage-progress: 38 92% 36%;
+    --stage-done: 160 84% 26%;
+    --stage-remand: 347 70% 44%;
+    --stage-dismissed: 357 80% 44%;
+    --stage-outcome-complete: 210 90% 40%;
+
+    --notice-action: 38 92% 36%;
+    --notice-granted: 160 84% 26%;
+    --notice-revoked: 357 80% 44%;
+    --notice-outcome: 210 90% 40%;
+
+    --capacity-available: 142 65% 30%;
+    --capacity-filling: 38 92% 36%;
+    --capacity-full: 0 72% 44%;
+    --capacity-over: 0 63% 32%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 12%;
+    --sidebar-primary: 357 80% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 12% 92%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 40 10% 85%;
+    --sidebar-ring: 357 80% 42%;
+  }
+
+  /*
    * Cinematic "theater" palette — Netflix web app translation.
    * Canvas is near-black so content tiles read as luminous. Brand red is
    * reserved for the wordmark and primary CTAs, never a page wash.
    */
-  :root,
   .dark {
     --background: 0 0% 8%; /* #141414 */
     --foreground: 0 0% 100%;

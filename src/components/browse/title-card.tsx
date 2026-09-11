@@ -60,10 +60,10 @@ export function TitleCard({
     />
   ) : (
     <>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.12),transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--foreground)/0.12),transparent_55%)]" />
       <Icon
         className={cn(
-          "absolute text-white/15",
+          "absolute text-foreground/15",
           layout === "list"
             ? "right-[-18%] top-[12%] h-[70%] w-[70%] rotate-[-16deg]"
             : "right-[-6%] top-[18%] h-[46%] w-[46%] rotate-[-16deg]",
@@ -78,7 +78,7 @@ export function TitleCard({
     layout === "list" ? (
       <article
         className={cn(
-          "group relative flex w-full min-w-0 items-stretch overflow-hidden rounded-sm bg-white/[0.04] transition-colors hover:bg-white/[0.09]",
+          "group relative flex w-full min-w-0 items-stretch overflow-hidden rounded-sm bg-foreground/[0.04] transition-colors hover:bg-foreground/[0.09]",
           className,
         )}
       >
@@ -95,23 +95,23 @@ export function TitleCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               {eyebrow && (
-                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70">
                   {eyebrow}
                 </p>
               )}
-              <h3 className="line-clamp-1 text-sm font-bold leading-snug text-white">{title}</h3>
+              <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground">{title}</h3>
             </div>
             {badge && (
-              <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground">
                 {badge}
               </span>
             )}
           </div>
           {subtitle && (
-            <p className="line-clamp-2 text-[12px] leading-snug text-white/75">{subtitle}</p>
+            <p className="line-clamp-2 text-[12px] leading-snug text-foreground/75">{subtitle}</p>
           )}
           {meta && meta.length > 0 && (
-            <p className="truncate text-[11px] text-white/50">{meta.join(" · ")}</p>
+            <p className="truncate text-[11px] text-foreground/50">{meta.join(" · ")}</p>
           )}
           {children}
         </div>
@@ -134,28 +134,28 @@ export function TitleCard({
           {artwork}
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/45 to-transparent" />
 
-          <span className="absolute right-2 top-2 text-[9px] font-bold uppercase tracking-[0.18em] text-white/55">
+          <span className="absolute right-2 top-2 text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/55">
             {TONE_LABEL[tone]}
           </span>
 
           {badge && (
-            <span className="absolute left-2 top-2 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="absolute left-2 top-2 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground">
               {badge}
             </span>
           )}
 
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-2">
             {eyebrow && (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/75">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/75">
                 {eyebrow}
               </p>
             )}
-            <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-white">{title}</h3>
+            <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-foreground">{title}</h3>
             {subtitle && (
-              <p className="line-clamp-3 text-[11px] leading-snug text-white/80">{subtitle}</p>
+              <p className="line-clamp-3 text-[11px] leading-snug text-foreground/80">{subtitle}</p>
             )}
             {meta && meta.length > 0 && (
-              <p className="truncate text-[10px] text-white/55">{meta.join(" · ")}</p>
+              <p className="truncate text-[10px] text-foreground/55">{meta.join(" · ")}</p>
             )}
             {children}
           </div>

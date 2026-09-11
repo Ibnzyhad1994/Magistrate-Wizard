@@ -283,7 +283,7 @@ export function DocketCapacityStrip({
         <div
           role="radiogroup"
           aria-label="Capacity calendar view"
-          className="grid w-full grid-cols-3 rounded-md border border-white/15 p-0.5"
+          className="grid w-full grid-cols-3 rounded-md border border-foreground/15 p-0.5"
         >
           {CAPACITY_VIEWS.map((view) => {
             const selected = calendarView === view.id;

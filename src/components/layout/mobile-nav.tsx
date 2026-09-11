@@ -42,13 +42,13 @@ const MobileNavLink = ({
         cn(
           "flex min-h-11 items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
           isActive
-            ? "bg-white/10 text-white"
-            : "text-white/75 hover:bg-white/5 hover:text-white",
+            ? "bg-foreground/10 text-foreground"
+            : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground",
         )
       }
       end={item.href === ROUTES.dashboard}
     >
-      <Icon className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true" />
+      <Icon className="h-4 w-4 shrink-0 text-foreground/55" aria-hidden="true" />
       <span className="truncate">{label}</span>
     </NavLink>
   );
@@ -69,7 +69,7 @@ export function MobileNav() {
     <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
       <SheetContent
         side="left"
-        className="flex w-[min(20rem,88vw)] flex-col border-white/10 bg-[#141414] p-0 pt-[env(safe-area-inset-top,0px)] text-white"
+        className="flex w-[min(20rem,88vw)] flex-col border-foreground/10 bg-background p-0 pt-[env(safe-area-inset-top,0px)] text-foreground"
       >
         <SheetHeader className="px-4 pb-3 pt-4 text-left">
           <SheetTitle className="text-left font-normal">
@@ -104,7 +104,7 @@ export function MobileNav() {
             >
               <h2
                 id={`mobile-nav-${section.id}`}
-                className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40"
+                className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/40"
               >
                 {section.label}
               </h2>
@@ -121,7 +121,7 @@ export function MobileNav() {
           ))}
         </nav>
 
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-foreground/10 p-3">
           <UserMenu />
         </div>
       </SheetContent>

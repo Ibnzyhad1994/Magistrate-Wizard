@@ -56,7 +56,7 @@ export default function IssueReportsAdminPage() {
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               filter === s
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-white/15 text-white/70 hover:bg-white/5"
+                : "border-foreground/15 text-foreground/70 hover:bg-foreground/5"
             }`}
           >
             {s === "all" ? "All" : STATUS_LABELS[s as IssueReportStatus]}

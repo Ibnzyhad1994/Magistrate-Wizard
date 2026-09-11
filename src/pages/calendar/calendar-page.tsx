@@ -120,7 +120,7 @@ export default function CalendarPage() {
             <Button variant="ghost" size="icon" onClick={handlePrev} aria-label="Previous month">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <p className="min-w-[9rem] text-center text-sm font-semibold text-white">{monthLabel}</p>
+            <p className="min-w-[9rem] text-center text-sm font-semibold text-foreground">{monthLabel}</p>
             <Button variant="ghost" size="icon" onClick={handleNext} aria-label="Next month">
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -149,7 +149,7 @@ export default function CalendarPage() {
       {view === "month" && !isPending && !isError ? (
         <div
           className={cn(
-            "overflow-x-auto rounded-md border border-white/10 bg-[#181818] transition-opacity duration-150",
+            "overflow-x-auto rounded-md border border-foreground/10 bg-card transition-opacity duration-150",
             // Month navigation now holds the previous month's grid while
             // the next loads (placeholderData) instead of blanking to
             // skeletons — dimming keeps that legible as "refreshing"
@@ -158,11 +158,11 @@ export default function CalendarPage() {
           )}
           aria-busy={isFetching}
         >
-          <div className="grid grid-cols-7 border-b border-white/10">
+          <div className="grid grid-cols-7 border-b border-foreground/10">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="px-0.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-white/50 sm:px-2 sm:text-[11px]"
+                className="px-0.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-foreground/50 sm:px-2 sm:text-[11px]"
               >
                 {day}
               </div>
@@ -177,14 +177,14 @@ export default function CalendarPage() {
                 <div
                   key={date}
                   className={cn(
-                    "min-h-[3.25rem] border-b border-r border-white/5 p-1 sm:min-h-[6.5rem] sm:p-1.5",
-                    !inMonth && "bg-black/20 text-white/35",
+                    "min-h-[3.25rem] border-b border-r border-foreground/5 p-1 sm:min-h-[6.5rem] sm:p-1.5",
+                    !inMonth && "bg-black/20 text-foreground/35",
                   )}
                 >
                   <div
                     className={cn(
                       "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                      isToday && "bg-primary font-semibold text-white",
+                      isToday && "bg-primary font-semibold text-foreground",
                     )}
                   >
                     {Number(date.slice(8))}
@@ -196,7 +196,7 @@ export default function CalendarPage() {
                         className={cn(
                           "h-1.5 w-1.5 rounded-full bg-primary",
                           event.pending && "bg-amber-300",
-                          isInactiveEventStatus(event.event_status) && "bg-white/30",
+                          isInactiveEventStatus(event.event_status) && "bg-foreground/30",
                         )}
                       />
                     ))}
@@ -208,8 +208,8 @@ export default function CalendarPage() {
                           type="button"
                           onClick={() => handleOpenEvent(event)}
                           className={cn(
-                            "block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-white/90 hover:bg-white/10",
-                            isInactiveEventStatus(event.event_status) && "text-white/40 line-through",
+                            "block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-foreground/90 hover:bg-foreground/10",
+                            isInactiveEventStatus(event.event_status) && "text-foreground/40 line-through",
                             event.pending && "text-amber-200/90",
                           )}
                           title={event.court_name ?? undefined}
@@ -223,7 +223,7 @@ export default function CalendarPage() {
                       </li>
                     ))}
                     {dayEvents.length > 3 ? (
-                      <li className="px-1 text-[10px] text-white/45">+{dayEvents.length - 3} more</li>
+                      <li className="px-1 text-[10px] text-foreground/45">+{dayEvents.length - 3} more</li>
                     ) : null}
                   </ul>
                 </div>
@@ -236,7 +236,7 @@ export default function CalendarPage() {
       {view === "agenda" && !isPending && !isError && events.length > 0 ? (
         <ol
           className={cn(
-            "divide-y divide-white/10 overflow-hidden rounded-md border border-white/10 bg-[#181818] transition-opacity duration-150",
+            "divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10 bg-card transition-opacity duration-150",
             isFetching && "opacity-60",
           )}
           aria-busy={isFetching}
@@ -247,21 +247,21 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => handleOpenEvent(event)}
                 className={cn(
-                  "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between",
+                  "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-foreground/5 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
                   event.pending && "text-amber-100",
                 )}
               >
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-foreground">
                     {event.case_number} · {event.matter_title}
                   </p>
                   {event.court_name && (
-                    <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+                    <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
                       {event.court_name}
                     </span>
                   )}
-                  <p className="text-xs text-white/60">
+                  <p className="text-xs text-foreground/60">
                     {toTitleCase(event.event_type || "Hearing")}
                     {event.location ? ` · ${event.location}` : ""}
                     {event.pending ? " · On this device" : ""}
@@ -270,7 +270,7 @@ export default function CalendarPage() {
                       : ""}
                   </p>
                 </div>
-                <p className="text-xs text-white/70">
+                <p className="text-xs text-foreground/70">
                   {formatDate(event.scheduled_date)}
                   {event.scheduled_time ? ` · ${formatTimeOnly(event.scheduled_time)}` : " · All day"}
                 </p>

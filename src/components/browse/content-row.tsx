@@ -43,7 +43,7 @@ export function ContentRow({
         {href ? (
           <Link
             to={href}
-            className="text-lg font-semibold tracking-tight text-foreground hover:text-white/80"
+            className="text-lg font-semibold tracking-tight text-foreground hover:text-foreground/80"
           >
             {title}
           </Link>
@@ -55,7 +55,7 @@ export function ContentRow({
         {href && (
           <Link
             to={href}
-            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-white"
+            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
           >
             See all
           </Link>
@@ -69,7 +69,7 @@ export function ContentRow({
           onClick={() => handleScroll(-1)}
           disabled={!canScrollLeft}
           className={cn(
-            "absolute left-0 top-0 z-10 flex h-full w-9 items-center justify-center bg-gradient-to-r from-black/85 to-transparent text-white transition-opacity",
+            "absolute left-0 top-0 z-10 flex h-full w-9 items-center justify-center bg-gradient-to-r from-black/85 to-transparent text-foreground transition-opacity",
             canScrollLeft
               ? "opacity-100 md:opacity-0 md:group-hover/row:opacity-100"
               : "pointer-events-none opacity-0",
@@ -93,7 +93,7 @@ export function ContentRow({
           onClick={() => handleScroll(1)}
           disabled={!canScrollRight}
           className={cn(
-            "absolute right-0 top-0 z-10 flex h-full w-9 items-center justify-center bg-gradient-to-l from-black/85 to-transparent text-white transition-opacity",
+            "absolute right-0 top-0 z-10 flex h-full w-9 items-center justify-center bg-gradient-to-l from-black/85 to-transparent text-foreground transition-opacity",
             canScrollRight
               ? "opacity-100 md:opacity-0 md:group-hover/row:opacity-100"
               : "pointer-events-none opacity-0",

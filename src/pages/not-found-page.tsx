@@ -7,7 +7,7 @@ export default function NotFoundPage() {
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-black">
       <div
-        className="pointer-events-none absolute inset-0 overflow-hidden bg-[#141414]"
+        className="pointer-events-none absolute inset-0 overflow-hidden bg-background"
         aria-hidden="true"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a2a2a_0%,_#141414_50%,_#000_100%)]" />
@@ -25,10 +25,10 @@ export default function NotFoundPage() {
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-16 text-center">
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
             Lost your way?
           </h1>
-          <p className="max-w-md text-base text-white/70">
+          <p className="max-w-md text-base text-foreground/70">
             The page you&apos;re looking for doesn&apos;t exist or may have
             been moved. You&apos;ll find plenty to explore on the home page.
           </p>

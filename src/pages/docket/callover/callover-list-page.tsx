@@ -148,7 +148,7 @@ export default function CalloverListPage() {
                 key={co.id}
                 type="button"
                 onClick={() => navigate(ROUTES.callover(co.id))}
-                className="flex flex-col gap-1 rounded-sm border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.06]"
+                className="flex flex-col gap-1 rounded-sm border border-foreground/10 bg-foreground/[0.03] px-4 py-3 text-left transition-colors hover:bg-foreground/[0.06]"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">

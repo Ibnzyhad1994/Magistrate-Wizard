@@ -176,7 +176,7 @@ export default function DashboardPage() {
         )}
 
         {!sittingPending && sittingNames.length > 0 && (
-          <p className="browse-gutter text-sm text-white/55">
+          <p className="browse-gutter text-sm text-foreground/55">
             Sitting at {sittingNames.join(" · ")}
           </p>
         )}

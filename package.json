@@ -20,6 +20,7 @@
     "test:offline-outbox": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-offline-outbox.mjs",
     "test:session-idle": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "test:session-lock": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-session-lock-security.mjs",
+    "test:theme": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-theme.mjs",
     "test:notifications-ui": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-ui.mjs",
     "test:password-reset": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-password-reset.mjs",
     "test:export-pdf": "node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-export-pdf.mjs",

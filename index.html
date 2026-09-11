@@ -2,6 +2,28 @@
 <html lang="en" class="dark" style="color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Resolve the theme BEFORE first paint. Without this the document
+      // ships with class="dark" (above) and React only corrects it after
+      // the bundle boots, so anyone who chose Light sees a full dark flash
+      // on every single load -- which reads as the setting not working.
+      // Deliberately tiny, synchronous, and dependency-free so it runs
+      // ahead of the stylesheet. Allowed under the CSP by a sha256 hash
+      // that vite.config.ts computes from this exact text at build time.
+      try {
+        var stored = localStorage.getItem("magistrate-wizard-theme");
+        var dark =
+          stored === "dark" ||
+          ((!stored || stored === "system") &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        root.classList.toggle("dark", dark);
+        root.classList.toggle("light", !dark);
+        root.style.colorScheme = dark ? "dark" : "light";
+      } catch (e) {
+        /* Private mode or blocked storage: keep the dark default. */
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta

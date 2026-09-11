@@ -59,7 +59,7 @@ function Headline({ text }: { text: string | null }) {
   const parts = text.split(/(<b>|<\/b>)/);
   let bold = false;
   return (
-    <p className="line-clamp-2 text-[11px] leading-snug text-white/60">
+    <p className="line-clamp-2 text-[11px] leading-snug text-foreground/60">
       {parts.map((part, i) => {
         if (part === "<b>") {
           bold = true;
@@ -70,7 +70,7 @@ function Headline({ text }: { text: string | null }) {
           return null;
         }
         return bold ? (
-          <mark key={i} className="bg-primary/40 text-white">
+          <mark key={i} className="bg-primary/40 text-foreground">
             {part}
           </mark>
         ) : (
@@ -171,9 +171,9 @@ export default function SearchPage() {
         >
           {Array.from(grouped.entries()).map(([type, results]) => (
             <section key={type}>
-              <h2 className="mb-4 text-xl font-bold text-white">
+              <h2 className="mb-4 text-xl font-bold text-foreground">
                 {TYPE_LABELS[type] ?? type}
-                <span className="ml-2 text-sm font-normal text-white/50">({results.length})</span>
+                <span className="ml-2 text-sm font-normal text-foreground/50">({results.length})</span>
               </h2>
               <TitleGallery>
                 {results.map((r) => {

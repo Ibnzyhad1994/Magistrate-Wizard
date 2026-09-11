@@ -33,8 +33,8 @@ function Chip({
       className={cn(
         "min-h-8 touch-manipulation rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         selected
-          ? "border-white/40 bg-white text-black"
-          : "border-white/15 bg-white/5 text-white/75 hover:bg-white/10",
+          ? "border-foreground/40 bg-foreground text-background"
+          : "border-foreground/15 bg-foreground/5 text-foreground/75 hover:bg-foreground/10",
       )}
     >
       {children}
@@ -45,7 +45,7 @@ function Chip({
 function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+      <span className="mr-0.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/45">
         {label}
       </span>
       {children}
@@ -69,7 +69,7 @@ export function DocketStageFilters({
       type="button"
       variant="ghost"
       size="sm"
-      className="h-8 text-xs text-white/70"
+      className="h-8 text-xs text-foreground/70"
       onClick={() =>
         onChange({
           stages: [],
@@ -89,13 +89,13 @@ export function DocketStageFilters({
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
-          className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-white/80"
+          className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-foreground/80"
           aria-expanded={expanded}
           onClick={() => setExpanded((open) => !open)}
         >
           Filters
           {count > 0 && (
-            <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[11px] text-white">
+            <span className="rounded-full bg-foreground/15 px-1.5 py-0.5 text-[11px] text-foreground">
               {count}
             </span>
           )}

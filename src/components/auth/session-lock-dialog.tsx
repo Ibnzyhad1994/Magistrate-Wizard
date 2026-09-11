@@ -65,7 +65,7 @@ export function SessionLockDialog() {
               value={email}
               readOnly
               autoComplete="username"
-              className="h-11 border-white/15 bg-[#333] text-white"
+              className="h-11 border-foreground/15 bg-secondary text-foreground"
             />
           </div>
           <div className="space-y-2">
@@ -77,7 +77,7 @@ export function SessionLockDialog() {
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               autoFocus
-              className="h-11 border-white/15 bg-[#333] text-white"
+              className="h-11 border-foreground/15 bg-secondary text-foreground"
             />
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
@@ -94,13 +94,13 @@ export function SessionLockDialog() {
             <Button
               type="button"
               variant="ghost"
-              className="h-11 w-full text-white/70"
+              className="h-11 w-full text-foreground/70"
               disabled={isSigningOut}
               onClick={() => void signOut()}
             >
               Sign out
             </Button>
-            <p className="text-center text-xs text-white/50">
+            <p className="text-center text-xs text-foreground/50">
               Signing out leaves this page and unsaved work will be lost.
             </p>
           </DialogFooter>

@@ -29,7 +29,7 @@ export function NotificationBell() {
       asChild
       variant="ghost"
       size="icon"
-      className="relative min-h-11 min-w-11 shrink-0 touch-manipulation text-white hover:bg-white/10"
+      className="relative min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10"
     >
       <Link
         to={ROUTES.notifications}

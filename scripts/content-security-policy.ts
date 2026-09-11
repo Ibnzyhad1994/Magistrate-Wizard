@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 /**
  * Production CSP for the Vite HTML meta tag / preview headers.
  *
@@ -34,4 +36,31 @@ export function buildCsp(supabaseUrl: string): string {
     "base-uri 'self'",
     "form-action 'self'",
   ].join("; ")
+}
+
+/**
+ * Returns `csp` with a sha256 hash added to `script-src` for every INLINE
+ * script in `html` (scripts with a `src` attribute are untouched — they are
+ * already covered by 'self').
+ *
+ * index.html carries one inline script: the pre-paint theme bootstrap.
+ * script-src deliberately has no 'unsafe-inline' and must not gain one, so
+ * the script is allowed by hash.
+ *
+ * Derived from the file at build time rather than written down. A
+ * hand-maintained hash stops matching the moment anyone edits the script by
+ * a single byte, and the only symptom is the browser silently blocking it —
+ * i.e. the theme flash quietly returning with nothing failing loudly. This
+ * is exported (rather than living inside vite.config.ts) so the test suite
+ * can assert the real index.html against the real CSP.
+ */
+export function cspWithInlineScriptHashes(csp: string, html: string): string {
+  const inline = [
+    ...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
+  ].map((match) => match[1] ?? "")
+  if (inline.length === 0) return csp
+  const hashes = inline.map(
+    (source) => `'sha256-${createHash("sha256").update(source, "utf8").digest("base64")}'`,
+  )
+  return csp.replace("script-src 'self'", `script-src 'self' ${hashes.join(" ")}`)
 }

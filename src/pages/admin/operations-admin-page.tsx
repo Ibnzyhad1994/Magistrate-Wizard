@@ -62,7 +62,7 @@ export default function OperationsAdminPage() {
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               tab === id
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-white/15 text-white/70 hover:bg-white/5"
+                : "border-foreground/15 text-foreground/70 hover:bg-foreground/5"
             }`}
           >
             {label}
@@ -192,7 +192,7 @@ const RetentionPanel = () => {
           </CardContent>
         </Card>
       ))}
-      <p className="text-xs text-white/45">
+      <p className="text-xs text-foreground/45">
         Only notifications can be purged automatically. Audit log and docket rows stay flagged for review.
       </p>
     </div>
@@ -296,10 +296,10 @@ const WebhooksPanel = () => {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {(outbox.data ?? []).length === 0 ? (
-            <p className="text-white/55">No outbound events yet.</p>
+            <p className="text-foreground/55">No outbound events yet.</p>
           ) : (
             (outbox.data ?? []).map((row) => (
-              <div key={row.id} className="rounded-md border border-white/10 px-3 py-2">
+              <div key={row.id} className="rounded-md border border-foreground/10 px-3 py-2">
                 <p>
                   {row.event} · {row.status} · {row.attempts} attempt(s)
                 </p>

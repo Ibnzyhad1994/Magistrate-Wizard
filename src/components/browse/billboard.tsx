@@ -69,10 +69,10 @@ export function Billboard({
         />
       ) : (
         <>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,rgba(255,255,255,0.14),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--foreground)/0.14),transparent_55%)]" />
           <Icon
             className={cn(
-              "absolute right-[6%] top-[18%] rotate-[-12deg] text-white/10",
+              "absolute right-[6%] top-[18%] rotate-[-12deg] text-foreground/10",
               isDetail
                 ? "h-[18vh] w-[18vh] max-w-[32vw]"
                 : "h-[55vh] w-[55vh] max-w-[46vw]",
@@ -83,7 +83,7 @@ export function Billboard({
         </>
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#141414] to-transparent sm:h-40" />
+      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent sm:h-40" />
 
       <div
         className={cn(
@@ -94,14 +94,14 @@ export function Billboard({
         )}
       >
         {eyebrow && (
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-white/70">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground/70">
             {eyebrow}
           </p>
         )}
         <h1
           data-tour-focus={isDetail ? "" : undefined}
           className={cn(
-            "w-fit font-extrabold tracking-tight text-white drop-shadow-lg",
+            "w-fit font-extrabold tracking-tight text-foreground drop-shadow-lg",
             isDetail
               ? "text-2xl sm:text-3xl lg:text-4xl"
               : "text-4xl sm:text-5xl lg:text-6xl",
@@ -114,7 +114,7 @@ export function Billboard({
             {badges.map((badge) => (
               <span
                 key={badge}
-                className="rounded-[2px] border border-white/30 bg-black/30 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-white"
+                className="rounded-[2px] border border-foreground/30 bg-black/30 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-foreground"
               >
                 {badge}
               </span>
@@ -124,7 +124,7 @@ export function Billboard({
         {description && (
           <p
             className={cn(
-              "max-w-xl leading-relaxed text-white/85",
+              "max-w-xl leading-relaxed text-foreground/85",
               isDetail
                 ? "mt-2 line-clamp-2 text-sm"
                 : "mt-4 line-clamp-3 text-sm sm:text-base",

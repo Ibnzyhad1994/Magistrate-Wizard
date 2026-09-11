@@ -34,7 +34,7 @@ import {
 } from "@/lib/docket-protocols";
 
 const TONE_CLASS: Record<ReturnType<typeof procedureCellTone>, string> = {
-  muted: "text-white/40",
+  muted: "text-foreground/40",
   progress: "bg-[hsl(var(--stage-progress)/0.15)] text-[hsl(var(--stage-progress))]",
   done: "bg-[hsl(var(--stage-done)/0.15)] text-[hsl(var(--stage-done))]",
   remand: "bg-[hsl(var(--stage-remand)/0.20)] text-[hsl(var(--stage-remand))]",
@@ -102,7 +102,7 @@ export function DocketStageCell({
     isCurrent && applicable && "ring-2 ring-[hsl(var(--match))]",
     compact ? "min-h-8" : "min-h-9 min-w-[5.5rem] sm:min-h-7",
     mode === "edit" && "cursor-pointer hover:brightness-110",
-    !applicable && "cursor-default text-white/25",
+    !applicable && "cursor-default text-foreground/25",
     className,
   );
   const hint = !applicable

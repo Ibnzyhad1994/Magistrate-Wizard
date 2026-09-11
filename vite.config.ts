@@ -3,7 +3,7 @@ import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { googleOAuthTokenProxyPlugin } from "./scripts/google-oauth-token-proxy.mjs";
-import { buildCsp } from "./scripts/content-security-policy";
+import { buildCsp, cspWithInlineScriptHashes } from "./scripts/content-security-policy";
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf8")) as {
   version: string;
@@ -27,9 +27,13 @@ export default defineConfig(({ mode }) => {
         name: "csp-html",
         transformIndexHtml(html: string) {
           if (mode === "development") return html;
+          // Allows index.html's inline theme bootstrap by hash rather than
+          // widening script-src with 'unsafe-inline'. See the helper's own
+          // comment for why the hash is derived, not written down.
+          const withHashes = cspWithInlineScriptHashes(csp, html);
           return html.replace(
             "<head>",
-            `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp.replace(/"/g, "&quot;")}" />`,
+            `<head>\n    <meta http-equiv="Content-Security-Policy" content="${withHashes.replace(/"/g, "&quot;")}" />`,
           );
         },
       },

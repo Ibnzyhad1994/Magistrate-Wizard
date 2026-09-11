@@ -24,7 +24,7 @@ const TabsList = React.forwardRef<
       ref={setRef}
       style={maskImage ? { WebkitMaskImage: maskImage, maskImage } : undefined}
       className={cn(
-        "flex h-auto min-h-10 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none rounded-sm border border-white/10 bg-[#181818] p-0.5 text-white/60",
+        "flex h-auto min-h-10 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none rounded-sm border border-foreground/10 bg-card p-0.5 text-foreground/60",
         className,
       )}
       {...props}
@@ -61,7 +61,7 @@ const TabsTrigger = React.forwardRef<
       onClick={handleClick}
       onFocus={handleFocus}
       className={cn(
-        "inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none",
+        "inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground data-[state=active]:shadow-none",
         className,
       )}
       {...props}

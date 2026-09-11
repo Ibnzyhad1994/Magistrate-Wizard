@@ -227,7 +227,7 @@ export default function LegislationViewerPage() {
           <LegislationPdfViewer
             documentId={statute.primary_document_id}
             title={statute.title}
-            className="h-[78dvh] min-h-[520px] overflow-hidden rounded-lg border border-white/10"
+            className="h-[78dvh] min-h-[520px] overflow-hidden rounded-lg border border-foreground/10"
           />
         ) : !hasLegacyContent ? (
           <Card>

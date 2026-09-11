@@ -39,7 +39,7 @@ export function NextDateCell({
   const [open, setOpen] = useState(false);
 
   if (!canEdit) {
-    return <span className="whitespace-nowrap text-xs text-white/70">{nextDate ? formatDate(nextDate) : NOT_SET}</span>;
+    return <span className="whitespace-nowrap text-xs text-foreground/70">{nextDate ? formatDate(nextDate) : NOT_SET}</span>;
   }
 
   return (
@@ -48,7 +48,7 @@ export function NextDateCell({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-white/70 underline decoration-dotted underline-offset-2 hover:bg-white/10 hover:text-white"
+          className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
           aria-label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"}
         >
           {nextDate ? formatDate(nextDate) : "+ Set date"}

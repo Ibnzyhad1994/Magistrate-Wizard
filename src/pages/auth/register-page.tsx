@@ -29,7 +29,7 @@ import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-white/15 bg-[#333] text-white placeholder:text-white/50 focus-visible:border-white/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function RegisterPage() {
   const { signUp, isSigningUp } = useAuth();
@@ -92,10 +92,10 @@ export default function RegisterPage() {
   return (
     <Card className="border-0 bg-black/75 shadow-none">
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <CardTitle className="text-3xl font-bold tracking-tight text-white">
+        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
           Sign Up
         </CardTitle>
-        <CardDescription className="text-white/70">
+        <CardDescription className="text-foreground/70">
           Set up your {APP_NAME} account to start building your knowledge
           base.
         </CardDescription>
@@ -108,7 +108,7 @@ export default function RegisterPage() {
               name="accountType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Account type</FormLabel>
+                  <FormLabel className="text-foreground/80">Account type</FormLabel>
                   <div className="grid grid-cols-2 gap-2">
                     {(["magistrate", "clerk"] as const).map((type) => (
                       <button
@@ -123,13 +123,13 @@ export default function RegisterPage() {
                         className={cn(
                           "rounded-sm border px-4 py-3 text-left text-sm font-medium transition-colors",
                           field.value === type
-                            ? "border-primary bg-primary/10 text-white"
-                            : "border-white/15 bg-[#333] text-white/70 hover:border-white/30",
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-foreground/15 bg-secondary text-foreground/70 hover:border-foreground/30",
                         )}
                         aria-pressed={field.value === type}
                       >
                         {type === "magistrate" ? "Magistrate" : "Court Clerk"}
-                        <span className="mt-1 block text-xs font-normal text-white/50">
+                        <span className="mt-1 block text-xs font-normal text-foreground/50">
                           {type === "magistrate"
                             ? "You sit the court. A Court Assignment Administrator must approve your court."
                             : "A magistrate at each court you request must approve your access."}
@@ -143,7 +143,7 @@ export default function RegisterPage() {
             />
 
             {accountType === "clerk" && (
-              <p className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">
+              <p className="rounded-sm border border-foreground/10 bg-foreground/5 px-3 py-2 text-xs text-foreground/60">
                 Court access must be approved by the magistrate assigned to each
                 court you request. You'll be able to sign in and check your
                 request status once your email is verified, even before approval.
@@ -155,7 +155,7 @@ export default function RegisterPage() {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Full name</FormLabel>
+                  <FormLabel className="text-foreground/80">Full name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Jane Doe"
@@ -174,7 +174,7 @@ export default function RegisterPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Email</FormLabel>
+                  <FormLabel className="text-foreground/80">Email</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
@@ -194,7 +194,7 @@ export default function RegisterPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Password</FormLabel>
+                  <FormLabel className="text-foreground/80">Password</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
@@ -213,7 +213,7 @@ export default function RegisterPage() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Confirm password</FormLabel>
+                  <FormLabel className="text-foreground/80">Confirm password</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
@@ -228,7 +228,7 @@ export default function RegisterPage() {
             />
 
             {accountType === "magistrate" && (
-              <p className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">
+              <p className="rounded-sm border border-foreground/10 bg-foreground/5 px-3 py-2 text-xs text-foreground/60">
                 Selecting a court submits a request, not an immediate assignment. A Court
                 Assignment Administrator reviews each requested court independently. You'll be
                 able to sign in and check your request status once your email is verified, even
@@ -241,7 +241,7 @@ export default function RegisterPage() {
               name="staffId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Staff / employee ID (optional)</FormLabel>
+                  <FormLabel className="text-foreground/80">Staff / employee ID (optional)</FormLabel>
                   <FormControl>
                     <Input className={fieldClassName} {...field} />
                   </FormControl>
@@ -257,7 +257,7 @@ export default function RegisterPage() {
                   void districtsQuery.refetch();
                   void courtsQuery.refetch();
                 }}
-                className="border-white/15 bg-white/5 py-4"
+                className="border-foreground/15 bg-foreground/5 py-4"
               />
             )}
 
@@ -266,7 +266,7 @@ export default function RegisterPage() {
               name="districtId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Magisterial District</FormLabel>
+                  <FormLabel className="text-foreground/80">Magisterial District</FormLabel>
                   <Select
                     className={cn(fieldClassName, "w-full px-3")}
                     value={field.value ?? ""}
@@ -302,20 +302,20 @@ export default function RegisterPage() {
               name="courtIds"
               render={() => (
                 <FormItem>
-                  <FormLabel className="text-white/80">
+                  <FormLabel className="text-foreground/80">
                     {accountType === "clerk" ? "Court(s) you need access to" : "Court(s) you are requesting"}
                   </FormLabel>
-                  <div className="space-y-2 rounded-sm border border-white/15 bg-[#333] p-3">
+                  <div className="space-y-2 rounded-sm border border-foreground/15 bg-secondary p-3">
                     {courtsQuery.isPending ? (
-                      <p className="text-sm text-white/50">Loading courts…</p>
+                      <p className="text-sm text-foreground/50">Loading courts…</p>
                     ) : courtsQuery.isError ? (
-                      <p className="text-sm text-white/50">Courts could not be loaded.</p>
+                      <p className="text-sm text-foreground/50">Courts could not be loaded.</p>
                     ) : !accountType ? (
-                      <p className="text-sm text-white/50">Choose Magistrate or Court Clerk first.</p>
+                      <p className="text-sm text-foreground/50">Choose Magistrate or Court Clerk first.</p>
                     ) : !districtId ? (
-                      <p className="text-sm text-white/50">Select a district first.</p>
+                      <p className="text-sm text-foreground/50">Select a district first.</p>
                     ) : courtsInDistrict.length === 0 ? (
-                      <p className="text-sm text-white/50">No courts found in this district.</p>
+                      <p className="text-sm text-foreground/50">No courts found in this district.</p>
                     ) : (
                       <>
                         {allCourtsAssigned && (
@@ -334,7 +334,7 @@ export default function RegisterPage() {
                                 key={court.id}
                                 className={cn(
                                   "flex items-center justify-between gap-2 text-sm",
-                                  isAssigned ? "text-white/35" : "text-white/80",
+                                  isAssigned ? "text-foreground/35" : "text-foreground/80",
                                 )}
                               >
                                 <span className="flex items-center gap-2">
@@ -351,7 +351,7 @@ export default function RegisterPage() {
                                   {court.name}
                                 </span>
                                 {isAssigned && (
-                                  <span className="text-[11px] uppercase tracking-wide text-white/40">
+                                  <span className="text-[11px] uppercase tracking-wide text-foreground/40">
                                     Assigned
                                   </span>
                                 )}
@@ -372,7 +372,7 @@ export default function RegisterPage() {
               name="note"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">
+                  <FormLabel className="text-foreground/80">
                     {accountType === "clerk"
                       ? "Note for the magistrate (optional)"
                       : "Note for the Court Assignment Administrator (optional)"}
@@ -384,7 +384,7 @@ export default function RegisterPage() {
                           ? "e.g. your clerk's office, or the magistrate you work with"
                           : "e.g. context for your request"
                       }
-                      className="border border-white/15 bg-[#333] text-white placeholder:text-white/50"
+                      className="border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50"
                       {...field}
                     />
                   </FormControl>
@@ -404,11 +404,11 @@ export default function RegisterPage() {
           </form>
         </Form>
 
-        <p className="mt-6 text-sm text-white/70">
+        <p className="mt-6 text-sm text-foreground/70">
           Already have an account?{" "}
           <Link
             to={ROUTES.login}
-            className="font-medium text-white hover:underline"
+            className="font-medium text-foreground hover:underline"
           >
             Sign In
           </Link>

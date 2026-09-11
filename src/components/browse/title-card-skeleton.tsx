@@ -10,13 +10,13 @@ export function TitleCardSkeleton({ layout }: { layout?: "tiles" | "list" }) {
   const view = layout ?? storedView;
 
   if (view === "list") {
-    return <Skeleton className="h-[4.5rem] w-full rounded-sm bg-white/10" />;
+    return <Skeleton className="h-[4.5rem] w-full rounded-sm bg-foreground/10" />;
   }
 
   return (
     <Skeleton
       className={cn(
-        "aspect-[2/3] shrink-0 snap-start rounded-sm bg-white/10",
+        "aspect-[2/3] shrink-0 snap-start rounded-sm bg-foreground/10",
         TILE_WIDTH_CLASS[tileSize],
       )}
     />

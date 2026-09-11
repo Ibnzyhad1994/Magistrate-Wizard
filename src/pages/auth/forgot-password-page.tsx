@@ -23,7 +23,7 @@ import {
 import { ROUTES } from "@/routes/paths";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-white/15 bg-[#333] text-white placeholder:text-white/50 focus-visible:border-white/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 const panelClassName = "border-0 bg-black/75 shadow-none";
 const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";
@@ -54,10 +54,10 @@ export default function ForgotPasswordPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight text-white">
+          <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
             Check your email
           </CardTitle>
-          <CardDescription className="text-white/70">
+          <CardDescription className="text-foreground/70">
             If an account exists for that email, we&apos;ve sent a link to
             reset your password.
           </CardDescription>
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
         <CardContent className={contentClassName}>
           <Link
             to={ROUTES.login}
-            className="text-sm font-medium text-white/70 hover:underline"
+            className="text-sm font-medium text-foreground/70 hover:underline"
           >
             Back to Sign In
           </Link>
@@ -77,10 +77,10 @@ export default function ForgotPasswordPage() {
   return (
     <Card className={panelClassName}>
       <CardHeader className={headerClassName}>
-        <CardTitle className="text-3xl font-bold tracking-tight text-white">
+        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
           Forgot Password
         </CardTitle>
-        <CardDescription className="text-white/70">
+        <CardDescription className="text-foreground/70">
           Enter your account email and we&apos;ll send you a reset link.
         </CardDescription>
       </CardHeader>
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Email</FormLabel>
+                  <FormLabel className="text-foreground/80">Email</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
@@ -120,11 +120,11 @@ export default function ForgotPasswordPage() {
           </form>
         </Form>
 
-        <p className="mt-6 text-sm text-white/70">
+        <p className="mt-6 text-sm text-foreground/70">
           Remembered it after all?{" "}
           <Link
             to={ROUTES.login}
-            className="font-medium text-white hover:underline"
+            className="font-medium text-foreground hover:underline"
           >
             Sign In
           </Link>

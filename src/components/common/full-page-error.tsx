@@ -22,7 +22,7 @@ export function FullPageError({
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-black">
       <div
-        className="pointer-events-none absolute inset-0 overflow-hidden bg-[#141414]"
+        className="pointer-events-none absolute inset-0 overflow-hidden bg-background"
         aria-hidden="true"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a2a2a_0%,_#141414_50%,_#000_100%)]" />
@@ -35,10 +35,10 @@ export function FullPageError({
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-16 text-center">
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
             {title}
           </h1>
-          <p className="max-w-md text-base text-white/70">{message}</p>
+          <p className="max-w-md text-base text-foreground/70">{message}</p>
         </div>
         {onRetry && (
           <Button

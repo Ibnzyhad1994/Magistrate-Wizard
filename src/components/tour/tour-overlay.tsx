@@ -256,18 +256,18 @@ export function TourOverlay({
       )}
       <div
         ref={cardRef}
-        className="absolute z-[82] w-[min(20rem,calc(100vw-2rem))] rounded-md border border-white/15 bg-[#181818] p-4 text-white shadow-xl"
+        className="absolute z-[82] w-[min(20rem,calc(100vw-2rem))] rounded-md border border-foreground/15 bg-card p-4 text-foreground shadow-xl"
         style={{ top: cardPos.top, left: cardPos.left }}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/45">
           {stepIndex + 1} of {stepCount}
         </p>
         <h2 id="walkthrough-title" className="mt-1 text-base font-semibold">
           {step.title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-white/80">{step.body}</p>
+        <p className="mt-2 text-sm leading-relaxed text-foreground/80">{step.body}</p>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onSkip} className="text-white/70 hover:text-white">
+          <Button type="button" variant="ghost" size="sm" onClick={onSkip} className="text-foreground/70 hover:text-foreground">
             Skip
           </Button>
           <div className="flex gap-2">

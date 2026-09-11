@@ -68,7 +68,7 @@ export default function ClerkAccessRequestsPage() {
             ) : (
               <div className="mt-4 space-y-3">
                 {pending.map((r) => (
-                  <Card key={r.id} className="border-white/10 bg-white/5">
+                  <Card key={r.id} className="border-foreground/10 bg-foreground/5">
                     <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                       <div>
                         <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed clerk"}</p>
@@ -112,7 +112,7 @@ export default function ClerkAccessRequestsPage() {
             ) : (
               <div className="mt-4 space-y-3">
                 {activeRoster.map((row) => (
-                  <Card key={row.id} className="border-white/10 bg-white/5">
+                  <Card key={row.id} className="border-foreground/10 bg-foreground/5">
                     <CardContent className="flex items-center justify-between gap-4 py-4">
                       <div>
                         <p className="font-medium text-foreground">{row.profiles?.full_name || "Unnamed clerk"}</p>
@@ -138,7 +138,7 @@ export default function ClerkAccessRequestsPage() {
           <TabsContent value="history">
             <div className="mt-4 space-y-3">
               {decided.map((r) => (
-                <Card key={r.id} className="border-white/10 bg-white/5">
+                <Card key={r.id} className="border-foreground/10 bg-foreground/5">
                   <CardContent className="flex items-center justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed clerk"}</p>
@@ -152,7 +152,7 @@ export default function ClerkAccessRequestsPage() {
                 </Card>
               ))}
               {revokedRoster.map((row) => (
-                <Card key={row.id} className="border-white/10 bg-white/5">
+                <Card key={row.id} className="border-foreground/10 bg-foreground/5">
                   <CardContent className="flex items-center justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">{row.profiles?.full_name || "Unnamed clerk"}</p>

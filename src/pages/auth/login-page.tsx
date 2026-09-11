@@ -22,7 +22,7 @@ import { APP_NAME } from "@/lib/constants";
 import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-white/15 bg-[#333] text-white placeholder:text-white/50 focus-visible:border-white/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function LoginPage() {
   const { signIn, isSigningIn } = useAuth();
@@ -49,10 +49,10 @@ export default function LoginPage() {
   return (
     <Card className="border-0 bg-black/75 shadow-none">
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <CardTitle className="text-3xl font-bold tracking-tight text-white">
+        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
           Sign In
         </CardTitle>
-        <CardDescription className="text-white/70">
+        <CardDescription className="text-foreground/70">
           Enter your credentials to access your {APP_NAME} workspace.
         </CardDescription>
       </CardHeader>
@@ -64,7 +64,7 @@ export default function LoginPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Email</FormLabel>
+                  <FormLabel className="text-foreground/80">Email</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
@@ -85,10 +85,10 @@ export default function LoginPage() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center justify-between">
-                    <FormLabel className="text-white/80">Password</FormLabel>
+                    <FormLabel className="text-foreground/80">Password</FormLabel>
                     <Link
                       to={ROUTES.forgotPassword}
-                      className="text-xs font-medium text-white/70 hover:underline"
+                      className="text-xs font-medium text-foreground/70 hover:underline"
                     >
                       Forgot password?
                     </Link>
@@ -116,13 +116,13 @@ export default function LoginPage() {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={(checked) => field.onChange(checked === true)}
-                        className="mt-0.5 border-white/40"
+                        className="mt-0.5 border-foreground/40"
                         aria-label="Remember me"
                       />
                     </FormControl>
                     <div className="space-y-1">
-                      <FormLabel className="text-white/80">Remember me</FormLabel>
-                      <FormDescription className="text-white/50">
+                      <FormLabel className="text-foreground/80">Remember me</FormLabel>
+                      <FormDescription className="text-foreground/50">
                         Stay signed in on this browser for 14 days. Still locks after
                         1 hour idle. Do not use on a shared bench computer.
                       </FormDescription>
@@ -143,11 +143,11 @@ export default function LoginPage() {
           </form>
         </Form>
 
-        <p className="mt-6 text-sm text-white/70">
+        <p className="mt-6 text-sm text-foreground/70">
           Don&apos;t have an account?{" "}
           <Link
             to={ROUTES.register}
-            className="font-medium text-white hover:underline"
+            className="font-medium text-foreground hover:underline"
           >
             Create one
           </Link>

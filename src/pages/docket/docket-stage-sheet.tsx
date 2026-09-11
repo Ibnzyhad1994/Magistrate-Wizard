@@ -68,7 +68,7 @@ function DocketStageRow({
   const uploadRuling = useUploadDocument("docket_matter", row.id);
   const uploadJudgment = useUploadDocument("docket_matter", row.id);
   const caseColBase =
-    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
   const protocol = matterProtocol(row);
   const stage = matterProtocolStage(row);
   const classification = matterClassificationLabel(row.category_name, row.category_other);
@@ -117,18 +117,18 @@ function DocketStageRow({
           className="block min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
-          <p className="truncate text-sm text-white">{row.matter_title}</p>
+          <p className="truncate text-xs font-semibold text-foreground/55">{row.case_number}</p>
+          <p className="truncate text-sm text-foreground">{row.matter_title}</p>
           {row.charge_or_issue && (
-            <p className="hidden truncate text-xs text-white/45 sm:block">{row.charge_or_issue}</p>
+            <p className="hidden truncate text-xs text-foreground/45 sm:block">{row.charge_or_issue}</p>
           )}
           {classification && (
-            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
               {classification}
             </span>
           )}
           {showCourt && row.court_name && (
-            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
               {row.court_name}
             </span>
           )}
@@ -138,8 +138,8 @@ function DocketStageRow({
                 row.appearance_status === "scheduled"
                   ? "bg-primary/20 text-primary"
                   : row.appearance_status === "completed"
-                    ? "bg-white/10 text-white/60"
-                    : "bg-white/5 text-white/40"
+                    ? "bg-foreground/10 text-foreground/60"
+                    : "bg-foreground/5 text-foreground/40"
               }`}
             >
               {row.appearance_status === "scheduled"
@@ -225,12 +225,12 @@ export function DocketStageSheet({
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
   const caseColBase =
-    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
   const columns = visibleBoardColumns(rows);
 
   return (
     <div className="relative" data-tour="docket-board">
-      <div className="relative rounded-sm border border-white/10">
+      <div className="relative rounded-sm border border-foreground/10">
         <Table className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -238,20 +238,20 @@ export function DocketStageSheet({
               {columns.map((column) => (
                 <TableHead
                   key={column.key}
-                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
+                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-card sm:min-w-[7rem]"
                   data-tour-focus={column.key === "arraignment_status" ? "" : undefined}
                 >
                   <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
               ))}
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7rem]"
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-card sm:min-w-[7rem]"
                 data-tour="docket-outcome"
               >
                 Outcome
               </TableHead>
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-[#181818] sm:min-w-[7.5rem]"
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-card sm:min-w-[7.5rem]"
                 data-tour="docket-next-date"
               >
                 Next date

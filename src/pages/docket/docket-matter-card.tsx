@@ -34,8 +34,8 @@ function AppearanceChip({ status, outcome }: { status: string; outcome: string |
         status === "scheduled"
           ? "bg-primary/20 text-primary"
           : status === "completed"
-            ? "bg-white/10 text-white/60"
-            : "bg-white/5 text-white/40"
+            ? "bg-foreground/10 text-foreground/60"
+            : "bg-foreground/5 text-foreground/40"
       }`}
     >
       {status === "scheduled"
@@ -49,7 +49,7 @@ function AppearanceChip({ status, outcome }: { status: string; outcome: string |
 
 export function DocketMatterCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-sm border border-white/10 bg-[#181818] p-3">
+    <div className="space-y-3 rounded-sm border border-foreground/10 bg-card p-3">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-5 w-3/4" />
       <div className="grid grid-cols-2 gap-3">
@@ -123,22 +123,22 @@ export function DocketMatterCard({
   );
 
   return (
-    <article className="rounded-sm border border-white/10 bg-[#181818] p-3">
+    <article className="rounded-sm border border-foreground/10 bg-card p-3">
       <div className="mb-3 flex items-start justify-between gap-3">
         <Link
           to={ROUTES.docketMatter(row.id)}
           className="min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-white/55">{row.case_number}</p>
-          <p className="text-sm text-white">{row.matter_title}</p>
+          <p className="truncate text-xs font-semibold text-foreground/55">{row.case_number}</p>
+          <p className="text-sm text-foreground">{row.matter_title}</p>
           {classification && (
-            <span className="mt-0.5 mr-1 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+            <span className="mt-0.5 mr-1 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
               {classification}
             </span>
           )}
           {showCourt && row.court_name && (
-            <span className="mt-0.5 mr-1 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+            <span className="mt-0.5 mr-1 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
               {row.court_name}
             </span>
           )}
@@ -188,10 +188,10 @@ export function DocketMatterCard({
         onChange={handleChange}
       />
       <div
-        className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2"
+        className="mt-2 flex items-center justify-between gap-2 border-t border-foreground/10 pt-2"
         data-tour={isTourOutcome ? "docket-outcome" : undefined}
       >
-        <span className="text-[11px] font-medium text-white/45">Outcome</span>
+        <span className="text-[11px] font-medium text-foreground/45">Outcome</span>
         <DocketOutcomeCell
           value={row.outcome_status}
           outcomeAdjourned={row.outcome_adjourned}

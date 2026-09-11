@@ -24,7 +24,7 @@ import {
 import { ROUTES } from "@/routes/paths";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-white/15 bg-[#333] text-white placeholder:text-white/50 focus-visible:border-white/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 const panelClassName = "border-0 bg-black/75 shadow-none";
 const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";
@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
     return (
       <Card className={panelClassName}>
         <CardContent className={`${contentClassName} flex items-center justify-center py-16`}>
-          <LoadingSpinner className="text-white/70" size={24} />
+          <LoadingSpinner className="text-foreground/70" size={24} />
         </CardContent>
       </Card>
     );
@@ -85,10 +85,10 @@ export default function ResetPasswordPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive">
             <AlertTriangle className="h-5 w-5" aria-hidden="true" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight text-white">
+          <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
             Link expired
           </CardTitle>
-          <CardDescription className="text-white/70">
+          <CardDescription className="text-foreground/70">
             This password reset link is invalid or has already been used. Request a new one to
             continue.
           </CardDescription>
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
         <CardContent className={contentClassName}>
           <Link
             to={ROUTES.forgotPassword}
-            className="text-sm font-medium text-white/70 hover:underline"
+            className="text-sm font-medium text-foreground/70 hover:underline"
           >
             Request a new link
           </Link>
@@ -108,10 +108,10 @@ export default function ResetPasswordPage() {
   return (
     <Card className={panelClassName}>
       <CardHeader className={headerClassName}>
-        <CardTitle className="text-3xl font-bold tracking-tight text-white">
+        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
           Set a new password
         </CardTitle>
-        <CardDescription className="text-white/70">
+        <CardDescription className="text-foreground/70">
           Choose a new password for your account.
         </CardDescription>
       </CardHeader>
@@ -123,7 +123,7 @@ export default function ResetPasswordPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">New password</FormLabel>
+                  <FormLabel className="text-foreground/80">New password</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
@@ -142,7 +142,7 @@ export default function ResetPasswordPage() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white/80">Confirm new password</FormLabel>
+                  <FormLabel className="text-foreground/80">Confirm new password</FormLabel>
                   <FormControl>
                     <Input
                       type="password"

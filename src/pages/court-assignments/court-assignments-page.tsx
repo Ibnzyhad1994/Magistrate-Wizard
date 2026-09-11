@@ -146,7 +146,7 @@ export default function CourtAssignmentsPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(assignments ?? []).map((a) => (
-            <Card key={a.id} className="border-white/10 bg-white/5">
+            <Card key={a.id} className="border-foreground/10 bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{a.courts?.name ?? "Unknown court"}</p>
@@ -177,7 +177,7 @@ export default function CourtAssignmentsPage() {
         <div className="max-w-2xl space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Pending requests</h2>
           {pendingRequests.map((r) => (
-            <Card key={r.id} className="border-white/10 bg-white/5">
+            <Card key={r.id} className="border-foreground/10 bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
@@ -204,7 +204,7 @@ export default function CourtAssignmentsPage() {
         <div className="max-w-2xl space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Request history</h2>
           {decidedRequests.map((r) => (
-            <Card key={r.id} className="border-white/10 bg-white/5">
+            <Card key={r.id} className="border-foreground/10 bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
@@ -228,7 +228,7 @@ export default function CourtAssignmentsPage() {
           </Button>
         )
       ) : (
-        <Card className="max-w-lg border-white/10 bg-white/5">
+        <Card className="max-w-lg border-foreground/10 bg-foreground/5">
           <CardHeader>
             <CardTitle className="text-base">Request a court assignment</CardTitle>
             <CardDescription>

@@ -20,7 +20,7 @@ import {
 import type { WorkflowProtocol } from "@/lib/docket-procedure";
 
 const TONE_CLASS: Record<OutcomeTone, string> = {
-  muted: "text-white/40",
+  muted: "text-foreground/40",
   dismissed: "bg-[hsl(var(--stage-dismissed)/0.15)] text-[hsl(var(--stage-dismissed))]",
   complete: "bg-[hsl(var(--stage-outcome-complete)/0.15)] text-[hsl(var(--stage-outcome-complete))]",
   adjourned: "bg-[hsl(var(--stage-progress)/0.15)] text-[hsl(var(--stage-progress))]",

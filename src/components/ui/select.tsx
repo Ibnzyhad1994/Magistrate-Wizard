@@ -104,7 +104,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="pointer-events-auto z-[70] max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-white/10 bg-[#181818] p-1 text-white"
+            className="pointer-events-auto z-[70] max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-foreground/10 bg-card p-1 text-foreground"
           >
             {options.map((opt, index) => (
               <DropdownMenuItem
@@ -113,8 +113,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 onSelect={() => emit(opt.value)}
                 className={cn(
                   "cursor-pointer",
-                  opt.value === current && "bg-white/10",
-                  !opt.value && "text-white/55",
+                  opt.value === current && "bg-foreground/10",
+                  !opt.value && "text-foreground/55",
                 )}
               >
                 {opt.label}

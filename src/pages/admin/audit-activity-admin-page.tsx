@@ -120,7 +120,7 @@ const AuditActivityAdminPage = () => {
       />
 
       {hashChain.data && (
-        <p className="text-xs text-white/45">
+        <p className="text-xs text-foreground/45">
           Audit hash chain:{" "}
           {hashChain.data.ok
             ? "intact"
@@ -129,7 +129,7 @@ const AuditActivityAdminPage = () => {
       )}
 
       {data?.truncated && (
-        <p className="text-xs text-white/45">
+        <p className="text-xs text-foreground/45">
           Showing the newest {data.rows.length} of {data.totalCount} events for this filter.
           Older events aren&apos;t shown here or included in the export — narrow the filter to
           reach them.
@@ -147,7 +147,7 @@ const AuditActivityAdminPage = () => {
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 filter === item.id
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-white/15 text-white/70 hover:bg-white/5"
+                  : "border-foreground/15 text-foreground/70 hover:bg-foreground/5"
               }`}
             >
               {item.label}
@@ -194,7 +194,7 @@ const AuditActivityAdminPage = () => {
                     <div className="flex items-start gap-3">
                       <time
                         dateTime={row.createdAt}
-                        className="w-[7.5rem] shrink-0 pt-0.5 font-mono text-[11px] leading-4 text-white/45"
+                        className="w-[7.5rem] shrink-0 pt-0.5 font-mono text-[11px] leading-4 text-foreground/45"
                       >
                         {formatDateTime(row.createdAt)}
                       </time>
@@ -219,7 +219,7 @@ const AuditActivityAdminPage = () => {
                             onClick={() => handleToggleExpanded(row.id)}
                             aria-expanded={expanded}
                             aria-label={expanded ? "Hide details" : "Show details"}
-                            className="inline-flex items-center gap-1 text-[11px] text-white/55 hover:text-white"
+                            className="inline-flex items-center gap-1 text-[11px] text-foreground/55 hover:text-foreground"
                           >
                             <ChevronDown
                               className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -229,14 +229,14 @@ const AuditActivityAdminPage = () => {
                           </button>
                         ) : null}
                         {expanded && row.kind === "change" ? (
-                          <dl className="grid grid-cols-[minmax(0,8rem)_1fr_1fr] gap-x-3 gap-y-1 border-t border-white/10 pt-2 text-[11px]">
-                            <div className="contents text-white/40">
+                          <dl className="grid grid-cols-[minmax(0,8rem)_1fr_1fr] gap-x-3 gap-y-1 border-t border-foreground/10 pt-2 text-[11px]">
+                            <div className="contents text-foreground/40">
                               <span>Field</span>
                               <span>Before</span>
                               <span>After</span>
                             </div>
                             {details.map((field) => (
-                              <div key={field.label} className="contents text-white/75">
+                              <div key={field.label} className="contents text-foreground/75">
                                 <dt className="truncate capitalize">{field.label}</dt>
                                 <dd className="truncate">{field.from}</dd>
                                 <dd className="truncate">{field.to}</dd>
@@ -245,7 +245,7 @@ const AuditActivityAdminPage = () => {
                           </dl>
                         ) : null}
                         {expanded && row.kind === "auth" && row.userAgent ? (
-                          <p className="border-t border-white/10 pt-2 text-[11px] text-white/50">
+                          <p className="border-t border-foreground/10 pt-2 text-[11px] text-foreground/50">
                             {row.userAgent}
                           </p>
                         ) : null}

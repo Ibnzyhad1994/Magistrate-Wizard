@@ -108,7 +108,7 @@ export function MagistrateCourtRequestReviewPanel() {
               const isOwnRequest = r.profile_id === profile?.id;
               const canBootstrap = isOwnRequest && !!bootstrapAvailable;
               return (
-                <Card key={r.id} className="border-white/10 bg-white/5">
+                <Card key={r.id} className="border-foreground/10 bg-foreground/5">
                   <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">
@@ -188,7 +188,7 @@ export function MagistrateCourtRequestReviewPanel() {
           <h2 className="mb-3 text-sm font-semibold text-foreground">History</h2>
           <div className="space-y-3">
             {decided.map((r) => (
-              <Card key={r.id} className="border-white/10 bg-white/5">
+              <Card key={r.id} className="border-foreground/10 bg-foreground/5">
                 <CardContent className="flex items-center justify-between gap-4 py-4">
                   <div>
                     <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed"}</p>

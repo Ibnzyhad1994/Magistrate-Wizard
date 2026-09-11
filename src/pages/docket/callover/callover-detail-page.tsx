@@ -161,7 +161,7 @@ export default function CalloverDetailPage() {
         </div>
 
         {!editable && (
-          <p className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-muted-foreground">
+          <p className="rounded-md border border-foreground/10 bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
             This callover is completed and is now a record of the sitting. Reopen it
             to make further changes.
           </p>
@@ -189,11 +189,11 @@ export default function CalloverDetailPage() {
             }
           />
         ) : (
-          <div className="relative rounded-sm border border-white/10">
+          <div className="relative rounded-sm border border-foreground/10">
             <Table className="min-w-[52rem] border-separate border-spacing-0">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="sticky left-0 z-30 w-[9rem] max-w-[9rem] bg-[#181818] sm:w-56 sm:max-w-56">
+                  <TableHead className="sticky left-0 z-30 w-[9rem] max-w-[9rem] bg-card sm:w-56 sm:max-w-56">
                     Case
                   </TableHead>
                   <TableHead className="whitespace-nowrap">Stage</TableHead>

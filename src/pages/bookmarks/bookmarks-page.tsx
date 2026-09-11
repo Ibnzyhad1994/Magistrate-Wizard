@@ -116,7 +116,7 @@ export default function BookmarksPage() {
                     });
                   }}
                 >
-                  <Trash2 className="h-4 w-4 text-white" />
+                  <Trash2 className="h-4 w-4 text-foreground" />
                 </Button>
               </div>
             );

@@ -31,7 +31,7 @@ export function MobileSearchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName="z-[70] bg-black/55 backdrop-blur-md"
-        className="z-[70] top-[16%] w-[calc(100%-1.25rem)] max-w-lg translate-y-0 gap-5 rounded-2xl border-white/25 bg-black/45 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl backdrop-saturate-150 sm:rounded-2xl data-[state=closed]:slide-out-to-top-4 data-[state=open]:slide-in-from-top-4"
+        className="z-[70] top-[16%] w-[calc(100%-1.25rem)] max-w-lg translate-y-0 gap-5 rounded-2xl border-foreground/25 bg-black/45 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl backdrop-saturate-150 sm:rounded-2xl data-[state=closed]:slide-out-to-top-4 data-[state=open]:slide-in-from-top-4"
       >
         <div
           aria-hidden="true"
@@ -45,7 +45,7 @@ export function MobileSearchDialog({
           <DialogTitle className="font-brand text-xl font-semibold tracking-[0.08em]">
             Search
           </DialogTitle>
-          <DialogDescription className="text-white/70">
+          <DialogDescription className="text-foreground/70">
             Find docket matters, judgments, notes, case law, and legislation.
           </DialogDescription>
         </DialogHeader>
@@ -55,7 +55,7 @@ export function MobileSearchDialog({
           </label>
           <div className="relative">
             <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/55"
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/55"
               aria-hidden="true"
             />
             <Input
@@ -64,13 +64,13 @@ export function MobileSearchDialog({
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               placeholder="Titles, notes, legislation…"
-              className="h-12 rounded-lg border-white/25 bg-black/25 pl-10 text-base text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] placeholder:text-white/45 focus-visible:border-white/40 focus-visible:ring-white/30"
+              className="h-12 rounded-lg border-foreground/25 bg-black/25 pl-10 text-base text-foreground shadow-[inset_0_1px_0_hsl(var(--foreground)/0.14)] placeholder:text-foreground/45 focus-visible:border-foreground/40 focus-visible:ring-foreground/30"
               autoComplete="off"
               enterKeyHint="search"
             />
           </div>
         </form>
-        <DialogFooter className="relative border-white/10 bg-transparent">
+        <DialogFooter className="relative border-foreground/10 bg-transparent">
           <Button type="button" variant="more" onClick={handleCancel}>
             Cancel
           </Button>

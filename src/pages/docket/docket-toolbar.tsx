@@ -17,7 +17,7 @@ export function DocketToolbar({
   const handleNewMatter = () => onNewMatter();
 
   return (
-    <div className="sticky top-[calc(68px+env(safe-area-inset-top))] z-40 -mx-1 mb-4 bg-[#141414] px-1 py-2">
+    <div className="sticky top-[calc(68px+env(safe-area-inset-top))] z-40 -mx-1 mb-4 bg-background px-1 py-2">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" className="min-h-11 lg:min-h-9" asChild>
           <Link to={ROUTES.docketBin}>

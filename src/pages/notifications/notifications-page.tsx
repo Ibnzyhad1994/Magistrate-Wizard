@@ -94,8 +94,8 @@ export default function NotificationsPage() {
               <Card
                 className={`relative overflow-hidden transition-colors ${
                   unreadRow
-                    ? "border-white/15 bg-card"
-                    : "border-white/5 bg-card/40"
+                    ? "border-foreground/15 bg-card"
+                    : "border-foreground/5 bg-card/40"
                 }`}
               >
                 {/* Unread gets a tone-coloured spine; read gets nothing, so
@@ -121,7 +121,7 @@ export default function NotificationsPage() {
                       </p>
                       <Badge
                         variant="outline"
-                        className={unreadRow ? TONE_BADGE[tone] : "border-white/10 text-white/40"}
+                        className={unreadRow ? TONE_BADGE[tone] : "border-foreground/10 text-foreground/40"}
                       >
                         {notificationTypeLabel(row.type)}
                       </Badge>
@@ -132,7 +132,7 @@ export default function NotificationsPage() {
                       )}
                     </div>
                     {row.body && (
-                      <p className={`mt-1 text-sm ${unreadRow ? "text-white/70" : "text-white/40"}`}>
+                      <p className={`mt-1 text-sm ${unreadRow ? "text-foreground/70" : "text-foreground/40"}`}>
                         {row.body}
                       </p>
                     )}
@@ -140,7 +140,7 @@ export default function NotificationsPage() {
                         timestamp stays one hover away rather than being
                         lost. */}
                     <p
-                      className={`mt-2 text-[11px] ${unreadRow ? "text-white/50" : "text-white/35"}`}
+                      className={`mt-2 text-[11px] ${unreadRow ? "text-foreground/50" : "text-foreground/35"}`}
                       title={formatDateTime(row.created_at)}
                     >
                       {formatRelativeTime(row.created_at)}
@@ -184,7 +184,7 @@ export default function NotificationsPage() {
               older notices existed — they simply vanished past the limit. */}
           {data?.hasMore && (
             <div className="flex flex-col items-center gap-2 pt-2">
-              <p className="text-xs text-white/45">
+              <p className="text-xs text-foreground/45">
                 Showing {rows.length} of {data.totalCount} notices.
               </p>
               <Button

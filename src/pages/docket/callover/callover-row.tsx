@@ -95,29 +95,29 @@ export function CalloverRow({
   return (
     <>
       <TableRow className={called ? "opacity-70" : undefined}>
-        <TableCell className="sticky left-0 z-20 w-[9rem] max-w-[9rem] overflow-hidden bg-[#181818] shadow-[2px_0_0_0_rgba(255,255,255,0.08)] sm:w-56 sm:max-w-56">
+        <TableCell className="sticky left-0 z-20 w-[9rem] max-w-[9rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56">
           <Link
             to={ROUTES.docketMatter(row.docket_matter_id)}
             className="block min-w-0 hover:underline"
           >
-            <p className="truncate text-xs font-semibold text-white/55">
+            <p className="truncate text-xs font-semibold text-foreground/55">
               {matter?.case_number ?? "—"}
             </p>
-            <p className="truncate text-sm text-white">{matter?.matter_title ?? "Matter"}</p>
+            <p className="truncate text-sm text-foreground">{matter?.matter_title ?? "Matter"}</p>
             {matter?.charge_or_issue && (
-              <p className="hidden truncate text-xs text-white/45 sm:block">
+              <p className="hidden truncate text-xs text-foreground/45 sm:block">
                 {matter.charge_or_issue}
               </p>
             )}
             {matter?.brought_forward_from && (
-              <span className="mt-0.5 inline-block truncate rounded-[2px] border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
+              <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
                 Brought forward
               </span>
             )}
           </Link>
         </TableCell>
 
-        <TableCell className="whitespace-nowrap text-xs text-white/70">
+        <TableCell className="whitespace-nowrap text-xs text-foreground/70">
           {stage ? procedureStageLabel(stage) : NOT_SET}
         </TableCell>
 
@@ -182,13 +182,13 @@ export function CalloverRow({
               <button
                 type="button"
                 onClick={() => setDateOpen(true)}
-                className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-white/70 underline decoration-dotted underline-offset-2 hover:bg-white/10 hover:text-white"
+                className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
               >
                 {row.next_date ? formatDate(row.next_date) : "+ Set date"}
               </button>
             </HintTooltip>
           ) : (
-            <span className="text-xs text-white/70">
+            <span className="text-xs text-foreground/70">
               {row.next_date ? formatDate(row.next_date) : NOT_SET}
             </span>
           )}
@@ -223,7 +223,7 @@ export function CalloverRow({
             </HintTooltip>
           )}
           {called && (
-            <span className="text-[11px] text-white/45">
+            <span className="text-[11px] text-foreground/45">
               {/* Once called, the row is part of the sitting's record and
                   the database refuses to delete it (0129). */}
               Called
