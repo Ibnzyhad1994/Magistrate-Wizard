@@ -8,30 +8,20 @@
  *
  *   npm run test:docket-calendar-mismatch
  */
-import { readFileSync } from "node:fs"
 import { createClient } from "@supabase/supabase-js"
+import { assertLocalSupabase } from "../test-support/assert-local-supabase.mjs"
 
-function loadEnv() {
-  try {
-    const text = readFileSync(new URL("../../.env", import.meta.url), "utf8")
-    const env = {}
-    for (const line of text.split(/\r?\n/)) {
-      const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
-      if (!m) continue
-      env[m[1]] = m[2].replace(/^["']|["']$/g, "")
-    }
-    return env
-  } catch {
-    return {}
-  }
-}
-
-const fileEnv = loadEnv()
-const URL_ = process.env.VITE_SUPABASE_URL ?? fileEnv.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321"
+// Deliberately NO fallback to the .env FILE. That file holds the PRODUCTION
+// project URL, so reading it here meant `npm run test:docket-calendar-mismatch`
+// quietly sent a password login for a fixture account to production Auth and
+// then reported "confirm local Supabase is running" — pointing the reader at
+// their laptop while the request went to the live system. Env var, then local.
+const URL_ = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321"
 const ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ??
-  fileEnv.VITE_SUPABASE_ANON_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+
+assertLocalSupabase(URL_, "test:docket-calendar-mismatch")
 
 const EMAIL = "calendar@magistrate-wizard.local"
 const PASSWORD = "password123"

@@ -76,6 +76,40 @@ export function boxesForPage(boxes: RedactionBox[], pageNumber: number): Redacti
   return boxes.filter((box) => box.pageNumber === pageNumber)
 }
 
+/**
+ * One page's boxes, each carrying its index in the FULL list.
+ *
+ * The viewer holds every page's boxes in one array but renders a page at
+ * a time, so a box's position within its page is not its position in that
+ * array. Removing "the second box on page 4" needs the index the list
+ * actually uses, and recovering it by value would be ambiguous the moment
+ * two identical rectangles exist. Pairing the index at filter time keeps
+ * removal unambiguous without giving RedactionBox an identity field that
+ * the burn step has no use for.
+ */
+export function pageBoxEntries(
+  boxes: RedactionBox[],
+  pageNumber: number,
+): { box: RedactionBox; index: number }[] {
+  return boxes
+    .map((box, index) => ({ box, index }))
+    .filter((entry) => entry.box.pageNumber === pageNumber)
+}
+
+/**
+ * Drop one box by index. Undo only ever removes the most recent box, which
+ * makes correcting an earlier mistake cost every good box drawn after it —
+ * on a document where a misplaced box means leaked text, that pushes people
+ * toward redrawing rather than fixing.
+ *
+ * Out-of-range indices return the list unchanged rather than throwing: the
+ * caller is a click handler on a list that can re-render underneath it.
+ */
+export function removeRedactionBoxAt(boxes: RedactionBox[], index: number): RedactionBox[] {
+  if (!Number.isInteger(index) || index < 0 || index >= boxes.length) return boxes
+  return [...boxes.slice(0, index), ...boxes.slice(index + 1)]
+}
+
 export function isUsableRedactionBox(box: RedactionBox): boolean {
   return box.width >= 0.004 && box.height >= 0.004
 }

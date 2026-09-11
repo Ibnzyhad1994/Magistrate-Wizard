@@ -322,6 +322,26 @@ export function isCanonicalCitationUniqueViolation(error: unknown): boolean {
   return haystack.includes("case_law_citation_canonical_unique_idx")
 }
 
+/**
+ * True when an RPC was refused by the rate limiter (0137), which raises the
+ * bare sentinel `rate_limited`.
+ *
+ * Callers need this to suppress a Retry affordance — retrying immediately is
+ * the one action guaranteed to fail again. Exported as a predicate over the
+ * ERROR rather than letting callers match on `getErrorMessage`'s output: that
+ * made the behaviour depend on display copy staying character-identical, so
+ * rewording the sentence silently restored the Retry button.
+ */
+export function isRateLimitedError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  if (!("message" in error)) return false
+  const raw = (error as { message: unknown }).message
+  return typeof raw === "string" && raw === RATE_LIMITED_SENTINEL
+}
+
+/** What the database raises; never shown to a user (see getErrorMessage). */
+const RATE_LIMITED_SENTINEL = "rate_limited"
+
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const code = "code" in error ? String((error as { code: unknown }).code) : undefined;
@@ -345,7 +365,7 @@ export function getErrorMessage(error: unknown): string {
     if (code === "PGRST116") {
       return "That record doesn't exist, or you don't have access to it.";
     }
-    if (rawMessage === "rate_limited") {
+    if (rawMessage === RATE_LIMITED_SENTINEL) {
       return "Too many requests. Try again in a minute.";
     }
     if (

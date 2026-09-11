@@ -114,11 +114,18 @@ const paintBoxes = (
 /**
  * Rasterize each page, fill redaction boxes black, and embed the images in a
  * new PDF so the original text layer cannot be copied. Does not mutate `bytes`.
+ *
+ * `onProgress` fires once per page, before that page is rasterized. Rasterizing
+ * is slow and scales with page count — a 20-page text PDF measures ~8.5s (and
+ * grows ~53x in size, 149 KB to 7.7 MB), so a long Act runs close to a minute
+ * with nothing else on screen to say the tab has not hung. Optional so the Node
+ * test and any other caller stay unaffected.
  */
 export async function burnRedactedPdf(opts: {
   bytes: Uint8Array
   boxes: RedactionBox[]
   title?: string
+  onProgress?: (progress: { page: number; total: number }) => void
 }): Promise<Uint8Array> {
   const data = opts.bytes.slice()
   const pdfjs = await loadPdfjs()
@@ -136,6 +143,7 @@ export async function burnRedactedPdf(opts: {
   try {
     let doc: InstanceType<JsPdfCtor> | null = null
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      opts.onProgress?.({ page: pageNumber, total: pdf.numPages })
       const page = await pdf.getPage(pageNumber)
       const viewport = page.getViewport({ scale: BURN_SCALE, rotation: 0 })
       const width = Math.ceil(viewport.width)

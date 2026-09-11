@@ -3,6 +3,7 @@
  * Creates a disposable magistrate, then tears them down.
  */
 import { createClient } from "@supabase/supabase-js";
+import { assertLocalSupabase } from "../test-support/assert-local-supabase.mjs";
 
 const URL = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321";
 const ANON =
@@ -11,6 +12,10 @@ const ANON =
 const SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+// Creates and tears down a real magistrate account, so it must never be
+// pointed at a live project by a stray VITE_SUPABASE_URL in the shell.
+assertLocalSupabase(URL, "test:court-request-recovery-rpc");
+
 const ADMIN_EMAIL = "admin@magistrate-wizard.local";
 const PASSWORD = "password123";
 const STAMP = Date.now().toString(36);

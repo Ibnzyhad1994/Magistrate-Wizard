@@ -1,6 +1,6 @@
 import { AlertTriangle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, isRateLimitedError } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 interface InlineErrorProps {
@@ -16,7 +16,9 @@ interface InlineErrorProps {
  */
 export function InlineError({ error, onRetry, className }: InlineErrorProps) {
   const message = getErrorMessage(error);
-  const rateLimited = message === "Too many requests. Try again in a minute.";
+  // Retry is deliberately withheld here: the limiter refuses on a window, so
+  // an immediate retry only re-trips it.
+  const rateLimited = isRateLimitedError(error);
 
   return (
     <div

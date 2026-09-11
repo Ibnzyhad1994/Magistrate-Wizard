@@ -26,7 +26,12 @@ import { downloadDocumentBlob, getDocumentViewUrl } from "@/hooks/use-documents"
 import { PdfViewerPage, type PageHighlight } from "@/components/legislation/pdf-viewer-page";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { undoRedaction, type RedactionBox } from "@/lib/redaction";
+import {
+  pageBoxEntries,
+  removeRedactionBoxAt,
+  undoRedaction,
+  type RedactionBox,
+} from "@/lib/redaction";
 import { burnRedactedPdf, redactedPdfFileName } from "@/lib/redaction-pdf";
 
 const MIN_SCALE = 0.4;
@@ -76,6 +81,7 @@ export function LegislationPdfViewer({
   const [redactMode, setRedactMode] = useState(false);
   const [redactionBoxes, setRedactionBoxes] = useState<RedactionBox[]>([]);
   const [burning, setBurning] = useState(false);
+  const [burnProgress, setBurnProgress] = useState<{ page: number; total: number } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -221,6 +227,12 @@ export function LegislationPdfViewer({
       a.download = doc.file_name;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      // downloadDocumentBlob throws on an expired signed URL, an offline
+      // client, or an RLS denial. Without this the rejection was unhandled:
+      // the spinner cleared and nothing else happened, so a failed download
+      // was indistinguishable from a download that silently did nothing.
+      toast.error("Could not download this document.");
     } finally {
       setDownloading(false);
     }
@@ -233,6 +245,7 @@ export function LegislationPdfViewer({
       return;
     }
     setBurning(true);
+    setBurnProgress(null);
     try {
       const blob = await downloadDocumentBlob(doc.file_path);
       const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -240,6 +253,7 @@ export function LegislationPdfViewer({
         bytes,
         boxes: redactionBoxes,
         title: doc.file_name,
+        onProgress: setBurnProgress,
       });
       const url = URL.createObjectURL(
         new Blob([burned as unknown as BlobPart], { type: "application/pdf" }),
@@ -254,6 +268,7 @@ export function LegislationPdfViewer({
       toast.error("Could not build a redacted PDF.");
     } finally {
       setBurning(false);
+      setBurnProgress(null);
     }
   }
 
@@ -312,9 +327,9 @@ export function LegislationPdfViewer({
   const showScannedNotice = search.hasTextLayer === false;
 
   return (
-    <div ref={containerRef} className={cn("flex min-h-0 flex-col bg-[#181818]", className)}>
-      <div className={cn("flex flex-wrap items-center gap-1.5 border-b border-white/10 bg-[#181818] py-2 pl-3 pr-3", toolbarClassName)}>
-        <p className="mr-2 min-w-0 flex-1 truncate text-sm font-medium text-white" title={title}>
+    <div ref={containerRef} className={cn("flex min-h-0 flex-col bg-card", className)}>
+      <div className={cn("flex flex-wrap items-center gap-1.5 border-b border-foreground/10 bg-card py-2 pl-3 pr-3", toolbarClassName)}>
+        <p className="mr-2 min-w-0 flex-1 truncate text-sm font-medium text-foreground" title={title}>
           {title}
         </p>
 
@@ -333,7 +348,7 @@ export function LegislationPdfViewer({
               className="h-8 w-12 text-center"
               aria-label="Page number"
             />
-            <span className="text-xs text-white/60">/ {numPages}</span>
+            <span className="text-xs text-foreground/60">/ {numPages}</span>
             <HintTooltip label="Next page">
               <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages} aria-label="Next page">
                 <ChevronRight className="h-4 w-4" />
@@ -348,7 +363,7 @@ export function LegislationPdfViewer({
               <ZoomOut className="h-4 w-4" />
             </Button>
           </HintTooltip>
-          <span className="w-10 text-center text-xs text-white/60">{Math.round(scale * 100)}%</span>
+          <span className="w-10 text-center text-xs text-foreground/60">{Math.round(scale * 100)}%</span>
           <HintTooltip label="Zoom in">
             <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.min(MAX_SCALE, s + ZOOM_STEP))} aria-label="Zoom in">
               <ZoomIn className="h-4 w-4" />
@@ -411,7 +426,7 @@ export function LegislationPdfViewer({
       </div>
 
       {allowRedact ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#141414] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-foreground/10 bg-background px-3 py-2">
           <Button
             size="sm"
             variant={redactMode ? "secondary" : "ghost"}
@@ -446,10 +461,20 @@ export function LegislationPdfViewer({
             aria-label="Download redacted PDF"
           >
             {burning ? <LoadingSpinner className="text-current" size={14} /> : null}
-            Download redacted PDF
+            {/* Stays "Redacting…" rather than counting pages: a label that
+                rewrites itself 100 times would thrash the button's width and
+                double up on the live region below. */}
+            {burning ? "Redacting…" : "Download redacted PDF"}
           </Button>
-          <p className="min-w-[12rem] flex-1 text-xs text-white/60">
-            {redactMode
+          <p className="min-w-[12rem] flex-1 text-xs text-foreground/60" aria-live="polite">
+            {/* Rasterizing is slow on a long Act — roughly 8.5s for 20 pages,
+                so a 100-page statute runs close to a minute. Naming the page
+                being worked on is what separates "busy" from "hung". */}
+            {burning
+              ? burnProgress
+                ? `Redacting page ${burnProgress.page} of ${burnProgress.total}. Large documents take a moment.`
+                : "Fetching the document…"
+              : redactMode
               ? redactionBoxes.length === 0
                 ? "Draw a box over text to hide it. The original file is not changed."
                 : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} on this document. Draw more or download a copy. The original is unchanged.`
@@ -461,8 +486,8 @@ export function LegislationPdfViewer({
       ) : null}
 
       {searchOpen && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#181818] px-3 py-2">
-          <Search className="h-4 w-4 text-white/50" />
+        <div className="flex flex-wrap items-center gap-2 border-b border-foreground/10 bg-card px-3 py-2">
+          <Search className="h-4 w-4 text-foreground/50" />
           <Input
             ref={searchInputRef}
             value={search.query}
@@ -476,7 +501,7 @@ export function LegislationPdfViewer({
           />
           {search.loadingText && <LoadingSpinner size={14} />}
           {!search.loadingText && search.query.trim() && search.hasTextLayer !== false && (
-            <span className="text-xs text-white/60">
+            <span className="text-xs text-foreground/60">
               {search.matches.length === 0
                 ? "No matches"
                 : `${search.currentIndex + 1} of ${search.matches.length}`}
@@ -503,7 +528,7 @@ export function LegislationPdfViewer({
       )}
 
       {searchOpen && showScannedNotice && (
-        <div className="border-b border-white/10 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+        <div className="border-b border-foreground/10 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
           This PDF does not contain searchable text. You may still view and scroll through the document.
         </div>
       )}
@@ -521,7 +546,7 @@ export function LegislationPdfViewer({
             />
           </div>
         ) : !doc ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-white/70">
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-foreground/70">
             <p className="text-sm">This document could not be found.</p>
           </div>
         ) : pdfDoc && numPages > 0 ? (
@@ -536,8 +561,11 @@ export function LegislationPdfViewer({
               highlights={highlightsByPage.get(n - 1) ?? []}
               scrollToActive={false}
               redactMode={allowRedact && redactMode}
-              redactionBoxes={redactionBoxes.filter((box) => box.pageNumber === n)}
+              redactionBoxes={pageBoxEntries(redactionBoxes, n)}
               onRedactionBox={(box) => setRedactionBoxes((prev) => [...prev, box])}
+              onRemoveRedactionBox={(index) =>
+                setRedactionBoxes((prev) => removeRedactionBoxAt(prev, index))
+              }
               onRedactBlockedByRotation={handleRedactBlockedByRotation}
             />
           ))

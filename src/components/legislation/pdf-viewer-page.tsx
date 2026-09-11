@@ -8,6 +8,9 @@ import {
   type RedactionBox,
 } from "@/lib/redaction";
 
+/** A box on this page, paired with its index in the viewer's full list. */
+export type PageRedactionEntry = { box: RedactionBox; index: number };
+
 export interface PageHighlight {
   itemIndex: number;
   charStart: number;
@@ -58,6 +61,7 @@ export function PdfViewerPage({
   redactMode = false,
   redactionBoxes = [],
   onRedactionBox,
+  onRemoveRedactionBox,
   onRedactBlockedByRotation,
 }: {
   doc: PdfjsDocument;
@@ -70,8 +74,10 @@ export function PdfViewerPage({
   scrollToActive: boolean;
   onSize?: (size: { width: number; height: number }) => void;
   redactMode?: boolean;
-  redactionBoxes?: RedactionBox[];
+  redactionBoxes?: PageRedactionEntry[];
   onRedactionBox?: (box: RedactionBox) => void;
+  /** Index is into the viewer's full box list, not this page's slice. */
+  onRemoveRedactionBox?: (index: number) => void;
   onRedactBlockedByRotation?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -194,6 +200,10 @@ export function PdfViewerPage({
     <div
       ref={containerRef}
       data-page-number={pageNumber}
+      // Deliberately literal bg-white, not a theme token: this is the sheet
+      // of paper the PDF renders onto. A page of an Act is white in both
+      // themes — theming it would tint the document itself and misrepresent
+      // what the file actually looks like.
       className="relative mx-auto mb-4 bg-white shadow-md"
       style={size ? { width: size.width, height: size.height } : { minHeight: 400, width: "100%" }}
     >
@@ -214,14 +224,19 @@ export function PdfViewerPage({
           style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
         />
       ))}
-      {redactionBoxes.map((box, i) => {
+      {redactionBoxes.map(({ box, index }) => {
         const px = size
           ? normalizedToPixelRect(box, size)
           : { x: 0, y: 0, width: 0, height: 0 };
         return (
           <div
-            key={`redact-${i}`}
-            className="pointer-events-none absolute bg-black"
+            key={`redact-${index}`}
+            className={cn(
+              "pointer-events-none absolute bg-black",
+              // A hairline only while editing, so it reads as an object you
+              // can act on rather than part of the page.
+              redactMode && "outline outline-1 outline-offset-1 outline-white/70",
+            )}
             style={{ left: px.x, top: px.y, width: px.width, height: px.height }}
           />
         );
@@ -249,7 +264,44 @@ export function PdfViewerPage({
           onKeyDown={handleKeyDown}
         />
       ) : null}
-      <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80">
+      {/* Deliberately after the drawing surface: that surface covers the whole
+          page, so anything meant to be clickable has to sit above it. Removal
+          is an explicit control rather than a click on the box itself — the
+          box is a drag target, and making it also a delete target would turn
+          a slightly-missed drag into silent data loss. */}
+      {redactMode && onRemoveRedactionBox
+        ? redactionBoxes.map(({ box, index }, i) => {
+            const px = size
+              ? normalizedToPixelRect(box, size)
+              : { x: 0, y: 0, width: 0, height: 0 };
+            return (
+              <button
+                key={`remove-redact-${index}`}
+                type="button"
+                className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-full border border-foreground/80 bg-black text-foreground shadow-sm transition-colors hover:bg-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                style={{ left: px.x + px.width - 12, top: px.y - 12 }}
+                // The drawing surface below listens on pointerdown; without
+                // stopping here, pressing this button also starts a drag.
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRemoveRedactionBox(index);
+                }}
+                aria-label={`Remove redaction box ${i + 1} on page ${pageNumber}`}
+                title="Remove this box"
+              >
+                <span aria-hidden="true" className="text-sm leading-none">
+                  &times;
+                </span>
+              </button>
+            );
+          })
+        : null}
+      <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-foreground/80">
         {pageNumber}
       </div>
     </div>
