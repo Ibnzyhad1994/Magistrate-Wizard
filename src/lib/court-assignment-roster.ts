@@ -96,6 +96,12 @@ export const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+/** Display name for a magistrate_courts.assignment_type, or undefined if missing. */
+export function assignmentTypeLabel(type: unknown): string | undefined {
+  if (typeof type !== "string" || !type) return undefined;
+  return ASSIGNMENT_TYPE_LABEL[type] ?? type;
+}
+
 /**
  * Courts a clerk must not pick again: still-pending requests, plus courts
  * they already sit. Rejected / cancelled / expired rows (and an approved

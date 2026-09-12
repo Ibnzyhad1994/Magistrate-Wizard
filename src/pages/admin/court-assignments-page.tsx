@@ -37,6 +37,7 @@ import { RosterProfileRequests } from "@/pages/admin/roster-profile-requests";
 import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate-court-requests";
 import {
   ASSIGNMENT_TYPE_LABEL,
+  assignmentTypeLabel,
   pendingRequestsForProfile,
   waitingListRequestLabel,
 } from "@/lib/court-assignment-roster";
@@ -383,18 +384,20 @@ export default function CourtAssignmentsPage() {
                   />
                 ) : (
                   <ul className="divide-y divide-border">
-                    {current.map((a) => (
+                    {current.map((a) => {
+                      const sittingKind = isClerkProfile
+                        ? "Clerk"
+                        : assignmentTypeLabel(
+                            "assignment_type" in a ? a.assignment_type : undefined,
+                          );
+                      return (
                       <li key={a.id} className="flex items-center justify-between gap-2 py-2">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">
                             {a.courts?.name ?? "Unknown court"}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {isClerkProfile
-                              ? "Clerk · "
-                              : "assignment_type" in a && a.assignment_type
-                                ? `${ASSIGNMENT_TYPE_LABEL[a.assignment_type] ?? a.assignment_type} · `
-                                : ""}
+                            {sittingKind ? `${sittingKind} · ` : ""}
                             {a.courts?.jurisdiction} · Since {formatDate(a.started_at)}
                           </p>
                         </div>
@@ -410,7 +413,8 @@ export default function CourtAssignmentsPage() {
                           </Button>
                         )}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
 

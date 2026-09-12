@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ASSIGNMENT_TYPE_LABEL,
+  assignmentTypeLabel,
   canCorrectUnassignedAccountType,
   canSendUnassignedMagistrateBack,
   clerkCourtsUnavailableForNewRequest,
@@ -440,6 +441,8 @@ check(
   0,
 );
 check("assignment type labels use Primary not regular", ASSIGNMENT_TYPE_LABEL.regular, "Primary");
+check("assignmentTypeLabel maps regular to Primary", assignmentTypeLabel("regular"), "Primary");
+check("assignmentTypeLabel ignores a non-string index (the CI typecheck case)", assignmentTypeLabel({}), undefined);
 
 check(
   "0144 unique primary may review clerks while covering sits",
