@@ -11,6 +11,14 @@ import {
   notificationTone,
   notificationTypeLabel,
 } from "../../src/lib/notifications.ts";
+import {
+  isNotificationFilterActive,
+  notificationFilterKey,
+} from "../../src/lib/notification-filter.ts";
+import {
+  NOTIFICATION_TONE_ACCENT,
+  NOTIFICATION_TONE_BADGE,
+} from "../../src/lib/notification-tone-classes.ts";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -89,6 +97,81 @@ check(
 check(
   "every notification type has a real label, not the generic fallback",
   NOTIFICATION_TYPES.filter((t) => notificationTypeLabel(t) === "Notice"),
+  [],
+);
+
+
+// --- filter cache keys ------------------------------------------------------
+// Two chip orders that select the same notices must share one cache entry,
+// or toggling chips off and on in a different order silently refetches rows
+// already in hand.
+
+check(
+  "type order does not change the key",
+  notificationFilterKey({ types: ["court_request", "clerk_request"] }),
+  notificationFilterKey({ types: ["clerk_request", "court_request"] }),
+);
+check(
+  "an omitted filter and an explicitly empty one are the same key",
+  notificationFilterKey(undefined),
+  notificationFilterKey({ types: [] }),
+);
+check(
+  "unreadOnly defaults to false rather than undefined, so the key is stable",
+  notificationFilterKey(undefined),
+  { unreadOnly: false, types: [] },
+);
+check(
+  "unreadOnly genuinely changes the key",
+  notificationFilterKey({ unreadOnly: true }).unreadOnly !==
+    notificationFilterKey({ unreadOnly: false }).unreadOnly,
+  true,
+);
+check(
+  "the key does not alias different type sets together",
+  notificationFilterKey({ types: ["clerk_request"] }).types,
+  ["clerk_request"],
+);
+// Callers pass state arrays straight in; normalizing must not sort in place.
+{
+  const caller = ["court_request", "clerk_request"];
+  notificationFilterKey({ types: caller });
+  check("normalizing does not mutate the caller's array", caller, ["court_request", "clerk_request"]);
+}
+
+check("no filter is not active", isNotificationFilterActive(undefined), false);
+check("unread-only is active", isNotificationFilterActive({ unreadOnly: true }), true);
+check("a chosen type is active", isNotificationFilterActive({ types: ["clerk_request"] }), true);
+check("an empty type list is not active", isNotificationFilterActive({ types: [] }), false);
+
+// --- tone classes -----------------------------------------------------------
+// The bell peek and the full list read from these same maps, so a tone
+// without an entry renders with no colour in one place and not the other.
+// Reuses the TONES list declared above, so the two sections cannot disagree
+// about what the full set of tones is.
+
+check(
+  "every tone has an accent class",
+  TONES.filter((t) => !NOTIFICATION_TONE_ACCENT[t]),
+  [],
+);
+check(
+  "every tone has a badge class",
+  TONES.filter((t) => !NOTIFICATION_TONE_BADGE[t]),
+  [],
+);
+check(
+  "tone classes go through theme tokens, not literal colours",
+  TONES.filter(
+    (t) =>
+      !NOTIFICATION_TONE_ACCENT[t].includes("var(--notice-") ||
+      !NOTIFICATION_TONE_BADGE[t].includes("var(--notice-"),
+  ),
+  [],
+);
+check(
+  "every notification type resolves to a tone that has classes",
+  NOTIFICATION_TYPES.filter((type) => !NOTIFICATION_TONE_ACCENT[notificationTone(type)]),
   [],
 );
 
