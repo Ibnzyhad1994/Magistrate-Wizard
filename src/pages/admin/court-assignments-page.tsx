@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search, Landmark, Plus, X, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import {
   useEndCourtAssignment,
   useUnassignedMagistrates,
   useProfileClerkCourts,
+  type CourtAssignmentType,
   type ProfileSearchResult,
 } from "@/hooks/admin/use-court-assignments";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -35,6 +36,7 @@ import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-cour
 import { RosterProfileRequests } from "@/pages/admin/roster-profile-requests";
 import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate-court-requests";
 import {
+  ASSIGNMENT_TYPE_LABEL,
   pendingRequestsForProfile,
   waitingListRequestLabel,
 } from "@/lib/court-assignment-roster";
@@ -62,10 +64,13 @@ import { ROUTES } from "@/routes/paths";
  */
 export default function CourtAssignmentsPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [courtToAssign, setCourtToAssign] = useState("");
+  const [assignmentType, setAssignmentType] = useState<CourtAssignmentType>("regular");
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
+  const rosterTab = searchParams.get("tab") === "roster" ? "roster" : "requests";
 
   // Was firing one `ilike` against `profiles` per keystroke — the same
   // pattern already fixed on the Docket board and the research lists.
@@ -125,13 +130,20 @@ export default function CourtAssignmentsPage() {
     setSelectedProfileId(id);
     setQuery("");
     setCourtToAssign("");
+    setAssignmentType("regular");
   };
 
   function handleAssign() {
     if (!courtToAssign) return;
-    createAssignment.mutate(courtToAssign, {
-      onSuccess: () => setCourtToAssign(""),
-    });
+    createAssignment.mutate(
+      { courtId: courtToAssign, assignmentType },
+      {
+        onSuccess: () => {
+          setCourtToAssign("");
+          setAssignmentType("regular");
+        },
+      },
+    );
   }
 
   return (
@@ -141,7 +153,7 @@ export default function CourtAssignmentsPage() {
         description="Open requests are under Pending Requests. People who cancelled or were returned still appear on Roster so you can assign a court, return them to request again, or correct the account type."
       />
 
-      <Tabs defaultValue="requests">
+      <Tabs defaultValue={rosterTab}>
         <TabsList>
           <TabsTrigger value="requests">Pending Requests ({pendingRequestCount})</TabsTrigger>
           <TabsTrigger value="roster">Roster</TabsTrigger>
@@ -378,10 +390,10 @@ export default function CourtAssignmentsPage() {
                             {a.courts?.name ?? "Unknown court"}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {"assignment_type" in a && a.assignment_type && a.assignment_type !== "regular"
-                              ? `${a.assignment_type} · `
-                              : isClerkProfile
-                                ? "Clerk · "
+                            {isClerkProfile
+                              ? "Clerk · "
+                              : "assignment_type" in a && a.assignment_type
+                                ? `${ASSIGNMENT_TYPE_LABEL[a.assignment_type] ?? a.assignment_type} · `
                                 : ""}
                             {a.courts?.jurisdiction} · Since {formatDate(a.started_at)}
                           </p>
@@ -418,33 +430,52 @@ export default function CourtAssignmentsPage() {
                     , not this roster.
                   </p>
                 ) : (
-                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                  <Select
-                    value={courtToAssign}
-                    onChange={(e) => setCourtToAssign(e.target.value)}
-                    disabled={courtsPending || availableCourts.length === 0}
-                    aria-label="Court to assign"
-                    className="max-w-xs"
-                  >
-                    <option value="">
-                      {!courtsPending && availableCourts.length === 0
-                        ? "No further active Courts"
-                        : "Select a Court…"}
-                    </option>
-                    {availableCourts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
+                <div className="space-y-2 border-t border-border pt-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      value={courtToAssign}
+                      onChange={(e) => setCourtToAssign(e.target.value)}
+                      disabled={courtsPending || availableCourts.length === 0}
+                      aria-label="Court to assign"
+                      className="max-w-xs"
+                    >
+                      <option value="">
+                        {!courtsPending && availableCourts.length === 0
+                          ? "No further active Courts"
+                          : "Select a Court…"}
                       </option>
-                    ))}
-                  </Select>
-                  <Button
-                    size="sm"
-                    onClick={handleAssign}
-                    disabled={!courtToAssign || createAssignment.isPending}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Assign
-                  </Button>
+                      {availableCourts.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={assignmentType}
+                      onChange={(e) => setAssignmentType(e.target.value as CourtAssignmentType)}
+                      aria-label="Assignment type"
+                      className="w-36"
+                    >
+                      {(["regular", "acting", "relief"] as const).map((type) => (
+                        <option key={type} value={type}>
+                          {ASSIGNMENT_TYPE_LABEL[type]}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={handleAssign}
+                      disabled={!courtToAssign || createAssignment.isPending}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Assign
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Primary is the sitting magistrate for that court. Acting and Relief cover
+                    alongside them and do not replace the primary, or block that primary from
+                    reviewing clerk access.
+                  </p>
                 </div>
                 )}
               </CardContent>

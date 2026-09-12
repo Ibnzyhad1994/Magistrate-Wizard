@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  ASSIGNMENT_TYPE_LABEL,
   canCorrectUnassignedAccountType,
   canSendUnassignedMagistrateBack,
+  clerkCourtsUnavailableForNewRequest,
   courtRequestStatusLabel,
   oppositeStaffAccountType,
   pendingRequestsForProfile,
@@ -38,6 +40,18 @@ const adminCourtAssignmentsPage = readFileSync(
 );
 const requestsHook = readFileSync(
   join(__dirname, "../../src/hooks/admin/use-magistrate-court-requests.ts"),
+  "utf8",
+);
+const sql0144 = readFileSync(
+  join(__dirname, "../../supabase/migrations/0144_clerk_approver_primary_sitting.sql"),
+  "utf8",
+);
+const clerkAccessPage = readFileSync(
+  join(__dirname, "../../src/pages/clerk/clerk-access-page.tsx"),
+  "utf8",
+);
+const clerkNotify = readFileSync(
+  join(__dirname, "../../supabase/functions/clerk-access-notify/index.ts"),
   "utf8",
 );
 
@@ -401,6 +415,58 @@ check(
 check(
   "0142 records that the decide-approval race is NOT closed by this alone",
   sql0142.includes("does NOT close the race") && sql0142.includes("ABBA deadlock"),
+  true,
+);
+
+check(
+  "rejected court is available to request again",
+  [...clerkCourtsUnavailableForNewRequest(
+    [
+      { court_id: "acquero", status: "rejected" },
+      { court_id: "pending-court", status: "pending" },
+    ],
+    ["sitting-court"],
+  )].sort(),
+  ["pending-court", "sitting-court"].sort(),
+);
+check(
+  "cancelled court is available to request again",
+  [...clerkCourtsUnavailableForNewRequest([{ court_id: "acquero", status: "cancelled" }])].length,
+  0,
+);
+check(
+  "approved court with no active sitting is available after revoke",
+  [...clerkCourtsUnavailableForNewRequest([{ court_id: "acquero", status: "approved" }])].length,
+  0,
+);
+check("assignment type labels use Primary not regular", ASSIGNMENT_TYPE_LABEL.regular, "Primary");
+
+check(
+  "0144 unique primary may review clerks while covering sits",
+  sql0144.includes("mc.assignment_type = 'regular'") &&
+    sql0144.includes("and mc3.assignment_type = 'regular'") &&
+    sql0144.includes("create or replace function public.can_manage_clerk_access") &&
+    sql0144.includes("create or replace function public.court_has_no_clerk_approver"),
+  true,
+);
+check(
+  "clerk picker uses the unavailable-court helper, not every historical court",
+  clerkAccessPage.includes("clerkCourtsUnavailableForNewRequest") &&
+    !clerkAccessPage.includes("requestedCourtIds"),
+  true,
+);
+check(
+  "roster Assign passes an explicit assignment type",
+  adminCourtAssignmentsPage.includes("assignmentType") &&
+    adminCourtAssignmentsPage.includes("createAssignment.mutate") &&
+    adminCourtAssignmentsPage.includes("Acting and Relief"),
+  true,
+);
+check(
+  "clerk notify treats unique primary as authorized even with covering",
+  clerkNotify.includes("assignment_type") &&
+    clerkNotify.includes('a.assignment_type === "regular"') &&
+    clerkNotify.includes("regularCount === 1"),
   true,
 );
 

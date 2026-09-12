@@ -126,20 +126,29 @@ Deno.serve(async (req) => {
     }
 
     // Resolve the authorized magistrate(s) exactly like
-    // can_manage_clerk_access() does in Postgres, using the service role
-    // (this function's own privileged context, not the caller's).
+    // can_manage_clerk_access() does in Postgres (0144): sole sitting,
+    // unique current primary, or can_manage_clerks. Service role, not
+    // the caller's JWT.
     const { data: assignments } = await admin
       .from("magistrate_courts")
-      .select("profile_id, can_manage_clerks")
+      .select("profile_id, can_manage_clerks, assignment_type")
       .eq("court_id", request.court_id)
       .is("ended_at", null);
 
-    const authorizedProfileIds =
-      !assignments || assignments.length === 0
-        ? []
-        : assignments.length === 1
-          ? [assignments[0].profile_id]
-          : assignments.filter((a) => a.can_manage_clerks).map((a) => a.profile_id);
+    const current = assignments ?? [];
+    const regularCount = current.filter((a) => a.assignment_type === "regular").length;
+    const authorizedProfileIds = [
+      ...new Set(
+        current
+          .filter(
+            (a) =>
+              a.can_manage_clerks ||
+              current.length === 1 ||
+              (a.assignment_type === "regular" && regularCount === 1),
+          )
+          .map((a) => a.profile_id),
+      ),
+    ];
 
     if (authorizedProfileIds.length === 0) {
       // Orphaned — surfaced to admins via list_clerk_access_requests_needing_admin_attention()

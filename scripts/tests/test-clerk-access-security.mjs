@@ -18,24 +18,28 @@ import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
 function loadEnvLocal() {
-  const text = readFileSync(new URL("../../.env", import.meta.url), "utf8");
-  const env = {};
-  for (const line of text.split("\n")) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m) env[m[1]] = m[2];
+  try {
+    const text = readFileSync(new URL("../../.env", import.meta.url), "utf8");
+    const env = {};
+    for (const line of text.split(/\r?\n/)) {
+      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (m) env[m[1]] = m[2];
+    }
+    return env;
+  } catch {
+    return {};
   }
-  return env;
 }
 
 const env = loadEnvLocal();
-const URL_ = env.VITE_SUPABASE_URL;
-const ANON_KEY = env.VITE_SUPABASE_ANON_KEY;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SERVICE_KEY) {
-  console.error("SUPABASE_SERVICE_ROLE_KEY is required (see file header). Get it via `npx supabase status -o env`.");
-  process.exit(1);
-}
+const URL_ = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || "http://127.0.0.1:56321";
+const ANON_KEY =
+  env.VITE_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+const SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
 const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
@@ -98,7 +102,8 @@ async function main() {
   const beta = await makeCourt("TEST Court Beta");
   const gamma = await makeCourt("TEST Court Gamma (no magistrate)");
   const epsilon = await makeCourt("TEST Court Epsilon");
-  const delta = await makeCourt("TEST Court Delta (two magistrates)");
+  const delta = await makeCourt("TEST Court Delta (primary + acting)");
+  const zeta = await makeCourt("TEST Court Zeta (two acting)");
 
   const password = "Test-Password-123!";
 
@@ -108,13 +113,16 @@ async function main() {
   await admin.auth.admin.updateUserById(m1.id, { email_confirm: true });
   await admin.auth.admin.updateUserById(m2.id, { email_confirm: true });
 
-  // M1 -> Alpha, Epsilon, Delta. M2 -> Beta, Delta. Gamma has nobody.
+  // M1 -> Alpha, Epsilon, Delta (primary). M2 -> Beta, Delta (acting).
+  // Zeta has two acting sittings and no primary. Gamma has nobody.
   for (const [profileId, courtId, assignmentType] of [
     [m1.id, alpha.id, "regular"],
     [m1.id, epsilon.id, "regular"],
     [m1.id, delta.id, "regular"],
     [m2.id, beta.id, "regular"],
     [m2.id, delta.id, "acting"],
+    [m1.id, zeta.id, "acting"],
+    [m2.id, zeta.id, "acting"],
   ]) {
     const { error } = await admin.from("magistrate_courts").insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType });
     if (error) throw error;
@@ -227,7 +235,12 @@ async function main() {
     // Delta has two current magistrates, neither flagged can_manage_clerks.
     const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: delta.id });
     if (error) throw error;
-    check("15. Delta (two magistrates, none flagged can_manage_clerks) has no resolvable approver", data === true);
+    check("15. Delta (unique primary M1 + acting M2) HAS a clerk approver — covering does not freeze the primary", data === false);
+  }
+  {
+    const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: zeta.id });
+    if (error) throw error;
+    check("15b. Zeta (two acting, no primary, none flagged) has no resolvable approver", data === true);
   }
   {
     // Done via a genuine authenticated admin session (not the service-role
@@ -244,11 +257,40 @@ async function main() {
       .from("magistrate_courts")
       .update({ can_manage_clerks: true })
       .eq("profile_id", m1.id)
-      .eq("court_id", delta.id);
+      .eq("court_id", zeta.id);
     if (flagErr) throw flagErr;
-    const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: delta.id });
+    const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: zeta.id });
     if (error) throw error;
-    check("16. Flagging M1 can_manage_clerks=true at Delta resolves the approver ambiguity", data === false);
+    check("16. Flagging M1 can_manage_clerks=true at Zeta (two coverings, no primary) resolves the approver", data === false);
+  }
+  {
+    const { data, error } = await c1Client.rpc("submit_clerk_access_request", { p_court_id: delta.id });
+    if (error) throw error;
+    check("16b. Clerk can request Delta (primary + covering)", data.status === "pending");
+    var deltaRequestId = data.id;
+    {
+      const { data: seen } = await m1Client.from("clerk_access_requests").select("id, court_id").eq("id", deltaRequestId);
+      check("16c. Unique primary M1 sees the Delta clerk request even with acting seated", (seen ?? []).length === 1);
+    }
+    {
+      const { data: seen } = await m2Client.from("clerk_access_requests").select("id").eq("id", deltaRequestId);
+      check("16d. Acting M2 does NOT see the Delta clerk request (primary still reviews)", (seen ?? []).length === 0);
+    }
+    {
+      const { error: denyErr } = await m2Client.rpc("decide_clerk_access_request", {
+        p_request_id: deltaRequestId,
+        p_decision: "approved",
+      });
+      checkErr("16e. Acting M2 cannot decide the Delta request", denyErr, true);
+    }
+    {
+      const { data: decided, error: decideErr } = await m1Client.rpc("decide_clerk_access_request", {
+        p_request_id: deltaRequestId,
+        p_decision: "approved",
+      });
+      if (decideErr) throw decideErr;
+      check("16f. Unique primary M1 can approve the Delta request while acting is seated", decided.status === "approved");
+    }
   }
 
   // --- Cross-court approval must be rejected -----------------------------
@@ -301,6 +343,13 @@ async function main() {
   {
     const { data } = await admin.from("clerk_courts").select("id").eq("profile_id", c1.id).eq("court_id", beta.id);
     check("23. Rejection created NO clerk_courts row for Beta", (data ?? []).length === 0);
+  }
+  {
+    const { data, error } = await c1Client.rpc("submit_clerk_access_request", { p_court_id: beta.id });
+    if (error) throw error;
+    check("23b. Clerk can re-request the same court after rejection (RPC)", data.status === "pending");
+    const { error: cancelErr } = await c1Client.rpc("cancel_clerk_access_request", { p_request_id: data.id });
+    if (cancelErr) throw cancelErr;
   }
 
   // --- Docket access now scoped exactly to the approved court -------------

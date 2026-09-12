@@ -88,3 +88,27 @@ export function waitingListRequestLabel(pendingCount: number): string | null {
   if (pendingCount <= 0) return null;
   return pendingCount === 1 ? "Open request" : `${pendingCount} open requests`;
 }
+
+export const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
+  regular: "Primary",
+  acting: "Acting",
+  relief: "Relief",
+  other: "Other",
+};
+
+/**
+ * Courts a clerk must not pick again: still-pending requests, plus courts
+ * they already sit. Rejected / cancelled / expired rows (and an approved
+ * request whose assignment has since ended) stay available — the RPC
+ * already accepts a new pending row in those cases.
+ */
+export function clerkCourtsUnavailableForNewRequest(
+  requests: Array<{ court_id: string; status: string }>,
+  activeCourtIds: Iterable<string> = [],
+): Set<string> {
+  const blocked = new Set<string>(activeCourtIds);
+  for (const request of requests) {
+    if (request.status === "pending") blocked.add(request.court_id);
+  }
+  return blocked;
+}

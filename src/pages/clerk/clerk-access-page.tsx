@@ -21,10 +21,12 @@ import {
   notifyClerkAccess,
   useCancelClerkAccessRequest,
   useMyClerkAccessRequests,
+  useMyClerkCourts,
   useSubmitClerkAccessRequest,
 } from "@/hooks/clerk/use-clerk-access";
 import {
   CLERK_ACCESS_RETURN_NEXT_STEP,
+  clerkCourtsUnavailableForNewRequest,
   courtRequestStatusLabel,
 } from "@/lib/court-assignment-roster";
 import { formatDate } from "@/lib/utils";
@@ -48,6 +50,7 @@ const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "out
 export default function ClerkAccessPage() {
   const { profile } = useAuth();
   const { data: requests, isPending, isError, error, refetch } = useMyClerkAccessRequests();
+  const { data: myCourts } = useMyClerkCourts();
   const { data: districts } = useMagisterialDistricts();
   const { data: courts } = useCourts();
   const submit = useSubmitClerkAccessRequest();
@@ -81,9 +84,12 @@ export default function ClerkAccessPage() {
   );
   const latestReturned = latestOutcome?.status === "rejected" ? latestOutcome : undefined;
   const latestCancelled = latestOutcome?.status === "cancelled" ? latestOutcome : undefined;
-  const requestedCourtIds = new Set((requests ?? []).map((r) => r.court_id));
+  const unavailableCourtIds = clerkCourtsUnavailableForNewRequest(
+    requests ?? [],
+    (myCourts ?? []).map((c) => c.court_id),
+  );
   const courtsInDistrict = (courts ?? []).filter(
-    (c) => c.district_id === districtId && !requestedCourtIds.has(c.id),
+    (c) => c.district_id === districtId && !unavailableCourtIds.has(c.id),
   );
 
   function resetRequestForm() {
@@ -188,9 +194,15 @@ export default function ClerkAccessPage() {
               <label className="text-sm font-medium text-foreground">Court</label>
               <Select value={courtId} onChange={(e) => setCourtId(e.target.value)} disabled={!districtId}>
                 <option value="">{districtId ? "Select a court…" : "Select a district first"}</option>
-                {courtsInDistrict.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {courtsInDistrict.length === 0 && districtId ? (
+                  <option value="" disabled>
+                    No courts left to request in this district
+                  </option>
+                ) : (
+                  courtsInDistrict.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))
+                )}
               </Select>
             </div>
             <div className="flex justify-end gap-2">
