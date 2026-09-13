@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Play, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useRegisterCinematicNav } from "@/components/layout/cinematic-nav";
+import { useRegisterCinematicNav } from "@/components/layout/use-cinematic-nav";
 import { useTheme } from "@/providers/use-theme";
 import { isDarkPalette } from "@/lib/theme";
 import { TONE_GRADIENT_HERO, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";

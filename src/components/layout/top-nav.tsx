@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
-import { useCinematicNav } from "@/components/layout/cinematic-nav";
+import { useCinematicNav } from "@/components/layout/use-cinematic-nav";
 import { useTheme } from "@/providers/use-theme";
 import { isDarkPalette } from "@/lib/theme";
 import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
