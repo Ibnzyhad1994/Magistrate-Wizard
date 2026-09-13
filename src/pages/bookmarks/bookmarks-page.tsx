@@ -104,7 +104,7 @@ export default function BookmarksPage() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="absolute right-1 top-1 z-10 h-8 w-8 bg-black/60 hover:bg-black/80"
+                  className="absolute right-1 top-1 z-10 h-8 w-8 bg-background/90 text-foreground hover:bg-destructive hover:text-destructive-foreground"
                   aria-label="Remove bookmark"
                   disabled={removeBookmark.isPending}
                   onClick={(e) => {

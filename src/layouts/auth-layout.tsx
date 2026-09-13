@@ -1,23 +1,16 @@
 import { Outlet } from "react-router-dom";
 import { AppLogo } from "@/components/brand/app-logo";
+import { AppCanvas } from "@/components/theme/app-canvas";
 
 /**
  * Public/unauthenticated shell (login, register, forgot password).
- * Netflix web login: full-bleed cinematic canvas, red wordmark top-left,
- * no sidebar, no chrome. The form panel itself lives in the page.
+ * Logo top-left, no chrome. Theme follows the saved choice; the picker
+ * lives in Settings and the account menu after sign-in. The form panel
+ * itself lives in the page.
  */
 export function AuthLayout() {
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-black">
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden bg-[#141414]"
-        aria-hidden="true"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a2a2a_0%,_#141414_50%,_#000_100%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/80" />
-      </div>
-
+    <AppCanvas>
       <header className="relative z-10 px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-5 sm:px-12 sm:pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sm:pb-6">
         <AppLogo size="lg" />
       </header>
@@ -27,6 +20,6 @@ export function AuthLayout() {
           <Outlet />
         </div>
       </main>
-    </div>
+    </AppCanvas>
   );
 }

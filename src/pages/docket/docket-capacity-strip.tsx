@@ -117,7 +117,7 @@ function DayTile({
       className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors ${
         size === "day" ? "h-20 sm:h-24" : "h-12 sm:h-14"
       } ${style.textClass} ${
-        today ? "border-2 border-blue-500" : "border-black/10"
+        today ? "border-2 border-[hsl(var(--stage-outcome-complete))]" : "border-border"
       } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
       style={{ backgroundColor: style.bg }}
     >

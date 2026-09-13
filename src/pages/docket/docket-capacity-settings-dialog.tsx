@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { DetailsHint } from "@/components/common/details-hint";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -113,14 +114,16 @@ export function DocketCapacitySettingsDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Docket Capacity Settings</DialogTitle>
+        <DialogHeader className="text-left">
+          <div className="flex items-center gap-0.5 pr-8">
+            <DialogTitle>Docket Capacity Settings</DialogTitle>
+            <DetailsHint
+              label="More about capacity limits"
+              details="Limits apply to sittings you preside across every court you sit. The week strip uses that same personal count, not the court in the heading. This is personal to you and never affects another magistrate. You can still add extra matters to a full date using “Add Anyway”; your normal setting here doesn’t change."
+            />
+          </div>
           <DialogDescription>
-            Set a daily limit per classification, including Other. Limits apply to sittings you
-            preside across every court you sit. The week strip uses that same personal count,
-            not the court in the heading. This is personal to you and never affects another
-            magistrate. Leave a category blank for no limit. You can still add extra matters to
-            a full date using &quot;Add Anyway&quot;; your normal setting here doesn&apos;t change.
+            Set a daily limit per classification, including Other. Leave blank for no limit.
           </DialogDescription>
         </DialogHeader>
 

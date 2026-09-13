@@ -41,7 +41,7 @@ export default function ClerkAccessAdminPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(requests ?? []).map((r) => (
-            <Card key={r.id} className="border-amber-500/30 bg-amber-500/5">
+            <Card key={r.id} className="border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]">
               <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed clerk"}</p>

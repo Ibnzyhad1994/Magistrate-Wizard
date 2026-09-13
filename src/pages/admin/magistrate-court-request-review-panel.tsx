@@ -128,7 +128,7 @@ export function MagistrateCourtRequestReviewPanel() {
                       </p>
                       {r.note && <p className="mt-1 text-xs italic text-muted-foreground">"{r.note}"</p>}
                       {isOwnRequest && (
-                        <p className="mt-2 flex items-center gap-1 text-xs text-amber-300">
+                        <p className="mt-2 flex items-center gap-1 text-xs text-[hsl(var(--notice-action))]">
                           <ShieldAlert className="h-3.5 w-3.5" />
                           You cannot approve your own request through the ordinary review flow.
                         </p>
@@ -159,7 +159,7 @@ export function MagistrateCourtRequestReviewPanel() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-amber-500/40 text-amber-200 hover:bg-amber-500/10"
+                          className="border-[hsl(var(--notice-action)/0.4)] text-[hsl(var(--notice-action))] hover:bg-[hsl(var(--notice-action)/0.1)]"
                           onClick={() => {
                             setBootstrapTarget(r);
                             setBootstrapReason("");
@@ -197,7 +197,7 @@ export function MagistrateCourtRequestReviewPanel() {
                       <p className="mt-1 text-xs text-muted-foreground">{r.rejection_reason}</p>
                     )}
                     {r.approval_kind === "bootstrap_self_approval" && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-amber-300">
+                      <p className="mt-1 flex items-center gap-1 text-xs text-[hsl(var(--notice-action))]">
                         <ShieldAlert className="h-3.5 w-3.5" />
                         Sole-administrator self-approval exception
                       </p>

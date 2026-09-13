@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -15,7 +16,7 @@ import {
  */
 export type SelectProps = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size">;
 
-type OptionItem = { value: string; label: string; disabled: boolean };
+type OptionItem = { value: string; label: string; disabled: boolean; group?: string };
 
 function childText(node: React.ReactNode): string {
   if (node == null || typeof node === "boolean") return "";
@@ -27,16 +28,36 @@ function childText(node: React.ReactNode): string {
   return "";
 }
 
+function pushOption(
+  items: OptionItem[],
+  child: React.ReactElement,
+  group?: string,
+) {
+  if (child.type !== "option") return;
+  const props = child.props as React.OptionHTMLAttributes<HTMLOptionElement>;
+  items.push({
+    value: String(props.value ?? childText(props.children)),
+    label: childText(props.children),
+    disabled: Boolean(props.disabled),
+    group,
+  });
+}
+
 function optionsFromChildren(children: React.ReactNode): OptionItem[] {
   const items: OptionItem[] = [];
   React.Children.forEach(children, (child) => {
-    if (!React.isValidElement(child) || child.type !== "option") return;
-    const props = child.props as React.OptionHTMLAttributes<HTMLOptionElement>;
-    items.push({
-      value: String(props.value ?? childText(props.children)),
-      label: childText(props.children),
-      disabled: Boolean(props.disabled),
-    });
+    if (!React.isValidElement(child)) return;
+    if (child.type === "optgroup") {
+      const groupProps = child.props as React.OptgroupHTMLAttributes<HTMLOptGroupElement> & {
+        children?: React.ReactNode;
+      };
+      const group = String(groupProps.label ?? "");
+      React.Children.forEach(groupProps.children, (option) => {
+        if (React.isValidElement(option)) pushOption(items, option, group);
+      });
+      return;
+    }
+    pushOption(items, child);
   });
   return items;
 }
@@ -104,22 +125,32 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="pointer-events-auto z-[70] max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-foreground/10 bg-card p-1 text-foreground"
+            className="pointer-events-auto z-[70] max-h-80 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-foreground/10 bg-card p-1 text-foreground"
           >
-            {options.map((opt, index) => (
-              <DropdownMenuItem
-                key={opt.value || `__empty-${index}`}
-                disabled={opt.disabled}
-                onSelect={() => emit(opt.value)}
-                className={cn(
-                  "cursor-pointer",
-                  opt.value === current && "bg-foreground/10",
-                  !opt.value && "text-foreground/55",
-                )}
-              >
-                {opt.label}
-              </DropdownMenuItem>
-            ))}
+            {options.map((opt, index) => {
+              const prevGroup = index > 0 ? options[index - 1]?.group : undefined;
+              const showGroup = Boolean(opt.group) && opt.group !== prevGroup;
+              return (
+                <React.Fragment key={opt.value || `__empty-${index}`}>
+                  {showGroup ? (
+                    <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      {opt.group}
+                    </DropdownMenuLabel>
+                  ) : null}
+                  <DropdownMenuItem
+                    disabled={opt.disabled}
+                    onSelect={() => emit(opt.value)}
+                    className={cn(
+                      "cursor-pointer",
+                      opt.value === current && "bg-foreground/10",
+                      !opt.value && "text-foreground/55",
+                    )}
+                  >
+                    {opt.label}
+                  </DropdownMenuItem>
+                </React.Fragment>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </>

@@ -278,7 +278,7 @@ export function PdfViewerPage({
               <button
                 key={`remove-redact-${index}`}
                 type="button"
-                className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-full border border-foreground/80 bg-black text-foreground shadow-sm transition-colors hover:bg-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-full border border-foreground/80 bg-foreground text-background shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 style={{ left: px.x + px.width - 12, top: px.y - 12 }}
                 // The drawing surface below listens on pointerdown; without
                 // stopping here, pressing this button also starts a drag.
@@ -301,7 +301,7 @@ export function PdfViewerPage({
             );
           })
         : null}
-      <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-foreground/80">
+      <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] text-background">
         {pageNumber}
       </div>
     </div>

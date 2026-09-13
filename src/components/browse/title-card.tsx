@@ -63,10 +63,9 @@ export function TitleCard({
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--foreground)/0.12),transparent_55%)]" />
       <Icon
         className={cn(
-          "absolute text-foreground/15",
           layout === "list"
-            ? "right-[-18%] top-[12%] h-[70%] w-[70%] rotate-[-16deg]"
-            : "right-[-6%] top-[18%] h-[46%] w-[46%] rotate-[-16deg]",
+            ? "right-[-18%] top-[12%] h-[70%] w-[70%] rotate-[-16deg] text-foreground/15"
+            : "right-[-6%] top-[18%] h-[46%] w-[46%] rotate-[-16deg] text-primary-foreground/20",
         )}
         strokeWidth={1.25}
         aria-hidden="true"
@@ -102,7 +101,7 @@ export function TitleCard({
               <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground">{title}</h3>
             </div>
             {badge && (
-              <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground">
+              <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
                 {badge}
               </span>
             )}
@@ -127,35 +126,35 @@ export function TitleCard({
         <div
           className={cn(
             "relative aspect-[2/3] overflow-hidden rounded-sm bg-gradient-to-br transition-transform duration-300 ease-out",
-            "group-hover:z-20 group-hover:scale-110 group-hover:shadow-[0_16px_32px_rgba(0,0,0,0.75)]",
+            "group-hover:z-20 group-hover:scale-110 group-hover:shadow-lg dark:group-hover:shadow-[0_16px_32px_rgba(0,0,0,0.75)]",
             TONE_GRADIENT[tone],
           )}
         >
           {artwork}
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/45 to-transparent" />
 
-          <span className="absolute right-2 top-2 text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/55">
+          <span className="absolute right-2 top-2 text-[9px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">
             {TONE_LABEL[tone]}
           </span>
 
           {badge && (
-            <span className="absolute left-2 top-2 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground">
+            <span className="absolute left-2 top-2 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
               {badge}
             </span>
           )}
 
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-2">
             {eyebrow && (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/75">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/80">
                 {eyebrow}
               </p>
             )}
-            <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-foreground">{title}</h3>
+            <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-primary-foreground">{title}</h3>
             {subtitle && (
-              <p className="line-clamp-3 text-[11px] leading-snug text-foreground/80">{subtitle}</p>
+              <p className="line-clamp-3 text-[11px] leading-snug text-primary-foreground/85">{subtitle}</p>
             )}
             {meta && meta.length > 0 && (
-              <p className="truncate text-[10px] text-foreground/55">{meta.join(" · ")}</p>
+              <p className="truncate text-[10px] text-primary-foreground/70">{meta.join(" · ")}</p>
             )}
             {children}
           </div>

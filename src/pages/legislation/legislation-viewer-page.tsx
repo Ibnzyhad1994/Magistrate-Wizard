@@ -172,7 +172,7 @@ export default function LegislationViewerPage() {
         </div>
 
         {statute.is_current_version === false && supersedingStatute && (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-sm text-amber-200">
+          <div className="rounded-lg border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] p-3 text-sm text-[hsl(var(--notice-action))]">
             This is a superseded version.{" "}
             <button
               type="button"

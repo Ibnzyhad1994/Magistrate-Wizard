@@ -15,6 +15,7 @@ import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requ
 import { getInitials } from "@/lib/utils";
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
+import { ThemeMenuSub } from "@/components/theme/theme-menu-sub";
 import { useTour } from "@/components/tour/use-tour";
 
 interface UserMenuProps {
@@ -45,7 +46,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
         >
           <Avatar className={compact ? "h-8 w-8 rounded-sm" : "h-7 w-7"}>
             <AvatarImage src={profile?.avatar_url ?? undefined} alt={displayName} />
-            <AvatarFallback className="rounded-sm bg-primary text-xs font-bold text-foreground">
+            <AvatarFallback className="rounded-sm bg-primary text-xs font-bold text-primary-foreground">
               {getInitials(displayName)}
             </AvatarFallback>
           </Avatar>
@@ -71,6 +72,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <ThemeMenuSub />
         {!isPendingMagistrate && (
           <DropdownMenuItem asChild>
             <Link to={ROUTES.notifications}>

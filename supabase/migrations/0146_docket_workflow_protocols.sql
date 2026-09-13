@@ -1,6 +1,12 @@
--- 0140_docket_workflow_protocols.sql
+-- 0146_docket_workflow_protocols.sql
 --
 -- Classification-specific Docket boards (case-workflow-protocol-spec).
+-- Originally written as 0140, but that version was already taken locally
+-- by clerk_approver_primary_sitting (now 0144). Databases that recorded
+-- 0140 as the clerk fix never received outcome_adjourned / workflow_protocol
+-- / the civil board columns, so setting an Outcome failed with a PostgREST
+-- schema-cache miss. This file is that schema under a free version.
+--
 -- Criminal Trial walk is unchanged. Paper Committal is a new category.
 -- Protection / Maintenance / Liability share a civil summons board.
 --
@@ -109,10 +115,10 @@ alter table public.docket_matters
       'civil_trial', 'decision'
     ));
 
-create index docket_matters_procedure_stage_idx
+create index if not exists docket_matters_procedure_stage_idx
   on public.docket_matters (procedure_stage);
 
-create index docket_matters_workflow_protocol_idx
+create index if not exists docket_matters_workflow_protocol_idx
   on public.docket_matters (workflow_protocol);
 
 comment on column public.docket_matters.procedure_stage is
@@ -349,13 +355,13 @@ as $$
       dm.category_other,
       case
         when btrim(coalesce(p_query, '')) = '' then 0::real
-        else ts_rank(dm.search_vector, websearch_to_tsquery('english', p_query))
+        else public.docket_matter_search_rank(dm.case_number, dm.matter_title, dm.search_vector, dm.id, p_query)
       end as rank,
       case
         when btrim(coalesce(p_query, '')) = '' then null::text
         else ts_headline(
           'english',
-          coalesce(dm.orders_summary, dm.charge_or_issue, ''),
+          concat_ws(' ', dm.case_number, dm.matter_title, coalesce(dm.charge_or_issue, ''), coalesce(dm.orders_summary, '')),
           websearch_to_tsquery('english', p_query),
           'MaxFragments=2, MaxWords=30, MinWords=10'
         )
@@ -376,7 +382,7 @@ as $$
     where dm.deleted_at is null
       and (
         btrim(coalesce(p_query, '')) = ''
-        or dm.search_vector @@ websearch_to_tsquery('english', p_query)
+        or public.docket_matter_matches_query(dm.case_number, dm.matter_title, dm.charge_or_issue, dm.search_vector, dm.id, p_query)
       )
       and (p_court_id is null or dm.court_id = p_court_id)
       and (
@@ -448,4 +454,6 @@ grant execute on function public.list_docket_matters(text, integer, text[], text
 revoke execute on function public.list_docket_matters(text, integer, text[], text[], text[], text[], text[], date, uuid) from public;
 
 comment on function public.list_docket_matters(text, integer, text[], text[], text[], text[], text[], date, uuid) is
-  'Docket spreadsheet/tiles list. SECURITY INVOKER. 0140 adds workflow_protocol columns; custody/disclosure/trial chips only match protocols that own those columns.';
+  'Docket spreadsheet/tiles list. SECURITY INVOKER. 0146 adds workflow_protocol columns; search uses docket_matter_matches_query (0145).';
+
+notify pgrst, 'reload schema';

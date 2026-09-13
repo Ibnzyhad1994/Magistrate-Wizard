@@ -134,20 +134,35 @@ export const sanitizePreviewHtml = (html: string): string => {
   )
 }
 
-const PREVIEW_SRCDOC_STYLES = [
-  "html{color-scheme:dark;background:transparent}",
-  "body{margin:0;padding:1.5rem;font:14px/1.6 system-ui,sans-serif;color:CanvasText;background:transparent}",
-  "a{color:#93c5fd}",
-  "blockquote{border-left:2px solid #444;padding-left:0.75rem;font-style:italic}",
-  "code{background:#222;padding:0.1em 0.3em;border-radius:3px}",
-  "pre{overflow:auto;background:#222;padding:0.75rem;border-radius:6px}",
-  "table{width:100%;border-collapse:collapse}",
-  "th,td{border:1px solid #444;padding:0.4rem;text-align:left}",
-].join("")
+const PREVIEW_SRCDOC_STYLES = {
+  dark: [
+    "html{color-scheme:dark;background:transparent}",
+    "body{margin:0;padding:1.5rem;font:14px/1.6 system-ui,sans-serif;color:#f5f5f5;background:transparent}",
+    "a{color:#93c5fd}",
+    "blockquote{border-left:2px solid #444;padding-left:0.75rem;font-style:italic}",
+    "code{background:#222;padding:0.1em 0.3em;border-radius:3px}",
+    "pre{overflow:auto;background:#222;padding:0.75rem;border-radius:6px}",
+    "table{width:100%;border-collapse:collapse}",
+    "th,td{border:1px solid #444;padding:0.4rem;text-align:left}",
+  ].join(""),
+  light: [
+    "html{color-scheme:light;background:transparent}",
+    "body{margin:0;padding:1.5rem;font:14px/1.6 system-ui,sans-serif;color:#1a1a1a;background:transparent}",
+    "a{color:#1d4ed8}",
+    "blockquote{border-left:2px solid #ccc;padding-left:0.75rem;font-style:italic}",
+    "code{background:#eee;padding:0.1em 0.3em;border-radius:3px}",
+    "pre{overflow:auto;background:#eee;padding:0.75rem;border-radius:6px}",
+    "table{width:100%;border-collapse:collapse}",
+    "th,td{border:1px solid #ccc;padding:0.4rem;text-align:left}",
+  ].join(""),
+} as const
 
 /** Sandboxed iframe document for HTML previews — scripts cannot run. */
-export const wrapSanitizedPreviewSrcDoc = (sanitizedHtml: string): string => {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PREVIEW_SRCDOC_STYLES}</style></head><body>${sanitizedHtml}</body></html>`
+export const wrapSanitizedPreviewSrcDoc = (
+  sanitizedHtml: string,
+  scheme: "light" | "dark" = "dark",
+): string => {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PREVIEW_SRCDOC_STYLES[scheme]}</style></head><body>${sanitizedHtml}</body></html>`
 }
 
 /**

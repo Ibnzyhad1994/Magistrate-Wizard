@@ -23,6 +23,8 @@ import {
 import { sanitizePreviewHtml, wrapDocxPagePreviewSrcDoc, wrapSanitizedPreviewSrcDoc } from "@/lib/html-sanitize"
 import { markdownToSafeHtml } from "@/lib/markdown-preview"
 import { LegislationPdfViewer } from "@/components/legislation/legislation-pdf-viewer"
+import { canvasScheme } from "@/lib/theme"
+import { useTheme } from "@/providers/use-theme"
 import type { Document } from "@/types/database.types"
 
 interface DocumentViewerDialogProps {
@@ -44,6 +46,7 @@ export const DocumentViewerDialog = ({
   onOpenChange,
   onDownload,
 }: DocumentViewerDialogProps) => {
+  const { resolvedTheme } = useTheme()
   const [url, setUrl] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewContent | null>(null)
   const [loading, setLoading] = useState(false)
@@ -236,7 +239,7 @@ export const DocumentViewerDialog = ({
             <iframe
               title={`Preview of ${doc.file_name}`}
               sandbox="allow-popups allow-popups-to-escape-sandbox"
-              srcDoc={wrapSanitizedPreviewSrcDoc(preview.html)}
+              srcDoc={wrapSanitizedPreviewSrcDoc(preview.html, canvasScheme(resolvedTheme))}
               className="h-full w-full border-0 bg-transparent"
             />
           ) : preview?.mode === "text" ? (

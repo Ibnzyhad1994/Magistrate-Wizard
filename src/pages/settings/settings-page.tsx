@@ -4,6 +4,7 @@ import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ThemeSelect } from "@/components/theme/theme-select";
 import {
   Card,
   CardContent,
@@ -11,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useTheme, type Theme } from "@/providers/use-theme";
 import {
   BROWSE_VIEW_LABELS,
   TILE_SIZE_LABELS,
@@ -38,7 +38,6 @@ export default function SettingsPage() {
   const setBrowseView = useUiStore((s) => s.setBrowseView);
   const tileSize = useUiStore((s) => s.tileSize);
   const setTileSize = useUiStore((s) => s.setTileSize);
-  const { theme, setTheme } = useTheme();
   const { profile } = useAuth();
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const { canWalkthrough, startWalkthrough } = useTour();
@@ -97,20 +96,7 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="theme">Theme</Label>
-            <Select
-              id="theme"
-              className="max-w-xs"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as Theme)}
-              aria-label="Theme"
-            >
-              <option value="system">System</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </Select>
-          </div>
+          <ThemeSelect id="theme" />
         </CardContent>
       </Card>
 

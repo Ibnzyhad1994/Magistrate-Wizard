@@ -1,19 +1,12 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/brand/app-logo";
+import { AppCanvas } from "@/components/theme/app-canvas";
 import { ROUTES } from "@/routes/paths";
 
 export default function UnauthorizedPage() {
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-black">
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden bg-background"
-        aria-hidden="true"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a2a2a_0%,_#141414_50%,_#000_100%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-      </div>
-
+    <AppCanvas>
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
         <Link
           to={ROUTES.dashboard}
@@ -38,6 +31,6 @@ export default function UnauthorizedPage() {
           <Link to={ROUTES.dashboard}>Back to dashboard</Link>
         </Button>
       </main>
-    </div>
+    </AppCanvas>
   );
 }

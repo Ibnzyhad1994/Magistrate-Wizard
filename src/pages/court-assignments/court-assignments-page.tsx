@@ -101,9 +101,9 @@ export default function CourtAssignmentsPage() {
       />
 
       {profile?.role === "magistrate" && !isPending && (assignments ?? []).length === 0 && (
-        <Card className="max-w-2xl border-amber-500/30 bg-amber-500/5">
+        <Card className="max-w-2xl border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]">
           <CardContent className="flex items-start gap-4 pt-6">
-            <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-amber-300" aria-hidden="true" />
+            <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-[hsl(var(--notice-action))]" aria-hidden="true" />
             <div>
               <p className="font-medium text-foreground">
                 {pendingRequests.length > 0
@@ -308,7 +308,7 @@ export default function CourtAssignmentsPage() {
                   {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ?? relinquishTarget.assignment_type}
                 </p>
               </div>
-              <p className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <p className="rounded-sm border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-[hsl(var(--notice-action))]">
                 Relinquishing this court will end your whole-court Docket access. The court's Docket
                 and history will remain with the court and will become available to the successor
                 magistrate.

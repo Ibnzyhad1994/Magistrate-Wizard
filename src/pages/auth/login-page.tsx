@@ -20,6 +20,7 @@ import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
 import { APP_NAME } from "@/lib/constants";
 import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
+import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 
 const fieldClassName =
   "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
@@ -47,7 +48,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="border-0 bg-black/75 shadow-none">
+    <Card className={AUTH_PANEL_CLASS}>
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
         <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
           Sign In

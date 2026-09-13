@@ -178,13 +178,13 @@ export default function CalendarPage() {
                   key={date}
                   className={cn(
                     "min-h-[3.25rem] border-b border-r border-foreground/5 p-1 sm:min-h-[6.5rem] sm:p-1.5",
-                    !inMonth && "bg-black/20 text-foreground/35",
+                    !inMonth && "bg-muted/60 text-muted-foreground",
                   )}
                 >
                   <div
                     className={cn(
                       "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                      isToday && "bg-primary font-semibold text-foreground",
+                      isToday && "bg-primary font-semibold text-primary-foreground",
                     )}
                   >
                     {Number(date.slice(8))}
@@ -195,7 +195,7 @@ export default function CalendarPage() {
                         key={event.id}
                         className={cn(
                           "h-1.5 w-1.5 rounded-full bg-primary",
-                          event.pending && "bg-amber-300",
+                          event.pending && "bg-[hsl(var(--notice-action))]",
                           isInactiveEventStatus(event.event_status) && "bg-foreground/30",
                         )}
                       />
@@ -210,7 +210,7 @@ export default function CalendarPage() {
                           className={cn(
                             "block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-foreground/90 hover:bg-foreground/10",
                             isInactiveEventStatus(event.event_status) && "text-foreground/40 line-through",
-                            event.pending && "text-amber-200/90",
+                            event.pending && "text-[hsl(var(--notice-action))]",
                           )}
                           title={event.court_name ?? undefined}
                           aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
@@ -249,7 +249,7 @@ export default function CalendarPage() {
                 className={cn(
                   "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-foreground/5 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
-                  event.pending && "text-amber-100",
+                  event.pending && "text-[hsl(var(--notice-action))]",
                 )}
               >
                 <div>

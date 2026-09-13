@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import { Toaster as Sonner } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { canvasScheme } from "@/lib/theme";
 import { useTheme } from "@/providers/use-theme";
 
 type ToasterProps = ComponentProps<typeof Sonner>;
@@ -11,7 +12,7 @@ function Toaster({ ...props }: ToasterProps) {
 
   return (
     <Sonner
-      theme={resolvedTheme}
+      theme={canvasScheme(resolvedTheme)}
       className="toaster group"
       position={isPhone ? "bottom-center" : "top-right"}
       offset={isPhone ? 24 : 76}

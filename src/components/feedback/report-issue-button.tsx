@@ -25,7 +25,7 @@ import { APP_VERSION } from "@/lib/app-version";
  * `issue_reports` (see 0103_issue_reports.sql) — no external service, so
  * it works the same in dev and production with nothing extra to configure.
  */
-export function ReportIssueButton() {
+export function ReportIssueButton({ className }: { className?: string }) {
   const location = useLocation();
   const { profile } = useAuth();
   const createReport = useCreateIssueReport();
@@ -67,7 +67,10 @@ export function ReportIssueButton() {
       <Button
         variant="ghost"
         size="icon"
-        className="min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10"
+        className={cn(
+          "min-h-11 min-w-11 shrink-0 touch-manipulation text-current hover:bg-foreground/10 hover:text-current",
+          className,
+        )}
         onClick={() => setOpen(true)}
         aria-label="Report a bug or suggestion"
       >

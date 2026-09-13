@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { TopNav } from "@/components/layout/top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { CinematicNavProvider } from "@/components/layout/cinematic-nav";
 import { OfflineSyncBanner } from "@/components/layout/offline-sync-banner";
 import { TourProvider } from "@/components/tour/tour-provider";
 import { SessionLifecycle } from "@/components/auth/session-lifecycle";
@@ -23,6 +24,7 @@ export function AppLayout() {
       >
         Skip to content
       </a>
+      <CinematicNavProvider>
       <TopNav />
       <SessionLifecycle />
       <HearingReminderHost />
@@ -31,6 +33,7 @@ export function AppLayout() {
       <main id="main-content" tabIndex={-1} className="min-h-dvh">
         <Outlet />
       </main>
+      </CinematicNavProvider>
     </div>
     </TourProvider>
   );

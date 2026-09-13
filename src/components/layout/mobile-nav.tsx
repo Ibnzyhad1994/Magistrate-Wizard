@@ -48,7 +48,7 @@ const MobileNavLink = ({
       }
       end={item.href === ROUTES.dashboard}
     >
-      <Icon className="h-4 w-4 shrink-0 text-foreground/55" aria-hidden="true" />
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="truncate">{label}</span>
     </NavLink>
   );
@@ -104,7 +104,7 @@ export function MobileNav() {
             >
               <h2
                 id={`mobile-nav-${section.id}`}
-                className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/40"
+                className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
               >
                 {section.label}
               </h2>

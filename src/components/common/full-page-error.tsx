@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/brand/app-logo";
+import { AppCanvas } from "@/components/theme/app-canvas";
 
 interface FullPageErrorProps {
   title?: string;
@@ -20,15 +21,7 @@ export function FullPageError({
   retryLabel = "Try again",
 }: FullPageErrorProps) {
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-black">
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden bg-background"
-        aria-hidden="true"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a2a2a_0%,_#141414_50%,_#000_100%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-      </div>
-
+    <AppCanvas>
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
         <AppLogo size="lg" />
       </header>
@@ -50,6 +43,6 @@ export function FullPageError({
           </Button>
         )}
       </main>
-    </div>
+    </AppCanvas>
   );
 }

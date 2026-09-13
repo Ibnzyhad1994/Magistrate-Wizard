@@ -11,8 +11,8 @@
  *
  *   npm run test:theme
  */
-import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -30,12 +30,17 @@ const css = readFileSync("src/index.css", "utf8");
 // --- the two palettes are genuinely separate --------------------------------
 
 const blockFor = (selector) => {
-  const re = new RegExp(`(^|\\n)\\s*${selector.replace(".", "\\.")}\\s*\\{([\\s\\S]*?)\\n  \\}`, "m");
+  const escaped = selector.replace(/\./g, "\\.");
+  const re = new RegExp(`(^|\\n)\\s*${escaped}\\s*\\{([\\s\\S]*?)\\n  \\}`, "m");
   const m = re.exec(css);
   return m ? m[2] : null;
 };
 const rootBlock = blockFor(":root");
 const darkBlock = blockFor(".dark");
+const hcLightBlock = blockFor(".theme-high-contrast");
+const hcDarkBlock = blockFor(".dark.theme-high-contrast");
+const cbLightBlock = blockFor(".theme-colourblind");
+const cbDarkBlock = blockFor(".dark.theme-colourblind");
 
 check("index.css defines a :root (light) palette", rootBlock !== null, true);
 check("index.css defines a .dark palette", darkBlock !== null, true);
@@ -89,19 +94,50 @@ check(
   [],
 );
 
-// --- components go through tokens, not literals -----------------------------
-// One deliberate exception: the auth shell is a committed single-theme
-// cinematic surface, like a marketing hero. Modal scrims (bg-black/80) are
-// intentionally dark in both themes and are not matched here.
+for (const [label, block] of [
+  ["high-contrast light", hcLightBlock],
+  ["high-contrast dark", hcDarkBlock],
+  ["colourblind-safe light", cbLightBlock],
+  ["colourblind-safe dark", cbDarkBlock],
+]) {
+  check(`index.css defines a ${label} palette`, block !== null, true);
+  check(
+    `every token is defined in ${label}`,
+    TOKENS.filter((t) => tokenValue(block, t) === null),
+    [],
+  );
+}
 
-const LITERAL = String.raw`(bg|text|border|ring|divide)-white|bg-\[#(181818|141414|333)\]|rgba\(255,\s*255,\s*255,`;
-const offenders = execSync(
-  `grep -rlE "${LITERAL}" src --include="*.tsx" || true`,
-  { encoding: "utf8" },
-).trim().split("\n").filter(Boolean);
+check("high-contrast light canvas is white", lightness(tokenValue(hcLightBlock, "background")) > 95, true);
+check("high-contrast light ink is black", lightness(tokenValue(hcLightBlock, "foreground")) < 5, true);
+check("high-contrast dark canvas is black", lightness(tokenValue(hcDarkBlock, "background")) < 5, true);
+check("high-contrast dark muted ink stays bright", lightness(tokenValue(hcDarkBlock, "muted-foreground")) >= 90, true);
+check(
+  "colourblind-safe does not use green for dismissed",
+  tokenValue(cbDarkBlock, "stage-dismissed") !== tokenValue(darkBlock, "stage-dismissed"),
+  true,
+);
+
+// --- components go through tokens, not literals -----------------------------
+// Modal scrims (bg-black/80) are intentionally dark in both themes and
+// are not matched here. A PDF page is real paper, so that viewer may
+// keep literal black.
+
+const LITERAL = /(bg|text|border|ring|divide)-white|bg-\[#(181818|141414|333)\]|rgba\(255,\s*255,\s*255,/;
+
+function tsxFiles(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...tsxFiles(path));
+    else if (entry.name.endsWith(".tsx")) out.push(path.replaceAll("\\", "/"));
+  }
+  return out;
+}
+
+const offenders = tsxFiles("src").filter((file) => LITERAL.test(readFileSync(file, "utf8")));
 
 const ALLOWED = [
-  "src/layouts/auth-layout.tsx",             // deliberate single-theme shell
   "src/components/legislation/pdf-viewer-page.tsx", // a PDF page is real paper
 ];
 check(
@@ -131,6 +167,60 @@ check(
   html.indexOf("magistrate-wizard-theme") < html.indexOf('type="module"'),
   true,
 );
+check(
+  "missing or invalid storage defaults to dark, not the OS",
+  html.includes('var palette = "dark"'),
+  true,
+);
+check(
+  "the bootstrap still follows the OS when the stored value is system",
+  html.includes('stored === "system"'),
+  true,
+);
+check("the bootstrap maps high-contrast storage values", html.includes('stored === "high-contrast"'), true);
+check("the bootstrap maps colourblind-safe storage values", html.includes('stored === "colourblind"'), true);
+check("the bootstrap honours prefers-contrast for System", html.includes("prefers-contrast: more"), true);
+check(
+  "the bootstrap toggles accessible modifier classes",
+  html.includes('classList.toggle("theme-high-contrast"') && html.includes('classList.toggle("theme-colourblind"'),
+  true,
+);
+
+// --- default + reachability -------------------------------------------------
+const themeLib = readFileSync("src/lib/theme.ts", "utf8");
+const provider = readFileSync("src/providers/theme-provider.tsx", "utf8");
+const userMenu = readFileSync("src/components/layout/user-menu.tsx", "utf8");
+const authLayout = readFileSync("src/layouts/auth-layout.tsx", "utf8");
+const settings = readFileSync("src/pages/settings/settings-page.tsx", "utf8");
+
+check("product default theme is dark", themeLib.includes('DEFAULT_THEME: Theme = "dark"'), true);
+check("theme options list Dark first", /THEMES = \[\s*"dark"/.test(themeLib), true);
+check("theme options include high-contrast and colourblind-safe", themeLib.includes('"high-contrast"') && themeLib.includes('"colourblind"'), true);
+check("ThemeProvider defaults to DEFAULT_THEME", provider.includes("defaultTheme = DEFAULT_THEME"), true);
+check("ThemeProvider listens for prefers-contrast", provider.includes("prefers-contrast: more"), true);
+check("account menu includes the theme picker", userMenu.includes("ThemeMenuSub"), true);
+check("sign-in shell has no theme select", authLayout.includes("ThemeSelect"), false);
+check("settings uses the shared ThemeSelect", settings.includes("<ThemeSelect"), true);
+
+const topNav = readFileSync("src/components/layout/top-nav.tsx", "utf8");
+const titleCard = readFileSync("src/components/browse/title-card.tsx", "utf8");
+const calendar = readFileSync("src/pages/calendar/calendar-page.tsx", "utf8");
+const navSearch = readFileSync("src/components/layout/nav-search.tsx", "utf8");
+const billboard = readFileSync("src/components/browse/billboard.tsx", "utf8");
+const dashboard = readFileSync("src/pages/dashboard-page.tsx", "utf8");
+check("hero overlay nav uses a black fade over dark art", topNav.includes("from-black/80"), true);
+check("hero overlay nav is only used on dark-family palettes", topNav.includes("isDarkPalette(resolvedTheme)"), true);
+check("billboard cinematic chrome follows dark-family palettes", billboard.includes("isDarkPalette(resolvedTheme)"), true);
+check("paper and scrolled nav use the canvas token", topNav.includes("bg-background"), true);
+check("billboard registers cinematic chrome for the overlay nav", billboard.includes("useRegisterCinematicNav"), true);
+check("light hero uses paper ink", billboard.includes("text-foreground dark:text-primary-foreground"), true);
+check("light hero is not a black wash", billboard.includes("from-background via-background/75"), true);
+check("sitting caption lives on the hero, not the paper fade", dashboard.includes("caption="), true);
+check("desktop search input is tokenized", topNav.includes("bg-black/70"), false);
+check("poster tiles use always-white ink on cinematic art", titleCard.includes("text-primary-foreground"), true);
+check("calendar out-of-month cells are not a black wash", calendar.includes("bg-black/20"), false);
+check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);
+check("header search field uses canvas tokens", navSearch.includes("bg-secondary"), true);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

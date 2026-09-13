@@ -164,21 +164,22 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Billboard {...billboard} />
+      <Billboard
+        {...billboard}
+        caption={
+          !sittingPending && sittingNames.length > 0
+            ? `Sitting at ${sittingNames.join(" · ")}`
+            : undefined
+        }
+      />
 
-      <div className="relative z-10 -mt-16 space-y-9 pb-20">
+      <div className="relative z-10 -mt-8 space-y-9 pb-20 dark:-mt-16">
         {isPendingClerk || clerkState === "loading" ? null : (
           <>
         {mattersError && (
           <div className="browse-gutter">
             <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
           </div>
-        )}
-
-        {!sittingPending && sittingNames.length > 0 && (
-          <p className="browse-gutter text-sm text-foreground/55">
-            Sitting at {sittingNames.join(" · ")}
-          </p>
         )}
 
         {(mattersPending || continueWorking.length > 0) && (

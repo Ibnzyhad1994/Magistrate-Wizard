@@ -19,7 +19,7 @@ interface AppProvidersProps {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider>
         <QueryProvider>
           <TooltipProvider delayDuration={200}>
             <AuthProvider>{children}</AuthProvider>

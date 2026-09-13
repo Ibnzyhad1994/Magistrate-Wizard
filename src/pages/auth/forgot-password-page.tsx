@@ -21,11 +21,12 @@ import {
   type ForgotPasswordFormValues,
 } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
+import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 
 const fieldClassName =
   "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
-const panelClassName = "border-0 bg-black/75 shadow-none";
+const panelClassName = AUTH_PANEL_CLASS;
 const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";
 const contentClassName = "px-8 pb-10 sm:px-16 sm:pb-12";
 

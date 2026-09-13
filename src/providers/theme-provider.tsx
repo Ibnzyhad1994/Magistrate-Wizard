@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
-import { ThemeContext, type Theme } from "@/providers/use-theme";
+import {
+  DEFAULT_THEME,
+  applyResolvedTheme,
+  prefersDarkScheme,
+  prefersMoreContrast,
+  readStoredTheme,
+  resolveTheme,
+  type Theme,
+} from "@/lib/theme";
+import { ThemeContext } from "@/providers/use-theme";
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -8,59 +17,46 @@ interface ThemeProviderProps {
   storageKey?: string;
 }
 
-function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
-function readStoredTheme(storageKey: string, fallback: Theme): Theme {
-  if (typeof window === "undefined") return fallback;
-  const stored = window.localStorage.getItem(storageKey);
-  return stored === "light" || stored === "dark" || stored === "system"
-    ? stored
-    : fallback;
-}
-
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = DEFAULT_THEME,
   storageKey = LOCAL_STORAGE_KEYS.theme,
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() =>
     readStoredTheme(storageKey, defaultTheme),
   );
+  const [systemIsDark, setSystemIsDark] = useState(prefersDarkScheme);
+  const [systemWantsContrast, setSystemWantsContrast] = useState(prefersMoreContrast);
 
-  const resolvedTheme = useMemo<"light" | "dark">(
-    () => (theme === "system" ? getSystemTheme() : theme),
-    [theme],
+  const resolvedTheme = useMemo(
+    () => resolveTheme(theme, systemIsDark, systemWantsContrast),
+    [theme, systemIsDark, systemWantsContrast],
   );
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(resolvedTheme);
-    root.style.colorScheme = resolvedTheme;
+    applyResolvedTheme(resolvedTheme);
   }, [resolvedTheme]);
 
   useEffect(() => {
-    if (theme !== "system") return;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      const root = window.document.documentElement;
-      const next = getSystemTheme();
-      root.classList.remove("light", "dark");
-      root.classList.add(next);
-      root.style.colorScheme = next;
+    const schemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const contrastQuery = window.matchMedia("(prefers-contrast: more)");
+    const onScheme = () => setSystemIsDark(schemeQuery.matches);
+    const onContrast = () => setSystemWantsContrast(contrastQuery.matches);
+    schemeQuery.addEventListener("change", onScheme);
+    contrastQuery.addEventListener("change", onContrast);
+    return () => {
+      schemeQuery.removeEventListener("change", onScheme);
+      contrastQuery.removeEventListener("change", onContrast);
     };
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [theme]);
+  }, []);
 
   const setTheme = useCallback(
     (next: Theme) => {
-      window.localStorage.setItem(storageKey, next);
+      try {
+        window.localStorage.setItem(storageKey, next);
+      } catch {
+        /* Private mode or blocked storage: still apply for this session. */
+      }
       setThemeState(next);
     },
     [storageKey],

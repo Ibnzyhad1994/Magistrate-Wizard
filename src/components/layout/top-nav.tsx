@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, Search } from "lucide-react";
+import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { NAV_ITEMS, groupNavItems, navItemLabel, navTourIdForHref, visibleNavItems } from "@/components/layout/nav-config";
@@ -8,9 +8,8 @@ import { AppLogo } from "@/components/brand/app-logo";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ReportIssueButton } from "@/components/feedback/report-issue-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { MobileSearchDialog } from "@/components/layout/mobile-search-dialog";
+import { NavSearch } from "@/components/layout/nav-search";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +21,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useCinematicNav } from "@/components/layout/cinematic-nav";
+import { useTheme } from "@/providers/use-theme";
+import { isDarkPalette } from "@/lib/theme";
 import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
 import { useIsDesktop, useMediaQuery } from "@/hooks/use-media-query";
 
@@ -34,12 +36,14 @@ const PRIMARY_HREFS = new Set<string>([
 ]);
 
 /**
- * Netflix-style fixed top bar: transparent over the billboard, solid
- * #141414 after 50px of scroll. Logo + text links left, search +
- * profile right.
+ * Netflix-style fixed top bar: dark fade + light ink over a Billboard,
+ * solid canvas after 50px of scroll (and on paper pages with no hero).
  */
 export function TopNav() {
   const [scrolled, setScrolled] = useState(false);
+  const cinematic = useCinematicNav();
+  const { resolvedTheme } = useTheme();
+  const overlay = cinematic && !scrolled && isDarkPalette(resolvedTheme);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
@@ -86,25 +90,30 @@ export function TopNav() {
   };
 
   const handleOpenSearch = () => setSearchOpen(true);
-
-  const handleSearchOpenChange = (open: boolean) => setSearchOpen(open);
+  const handleCloseSearch = () => setSearchOpen(false);
 
   const handleOpenMobileNav = () => setMobileNavOpen(true);
+  const hideActionCluster = searchOpen && !isDesktop;
+
+  const chromeBtn = overlay
+    ? "text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+    : "text-foreground hover:bg-foreground/10";
 
   return (
     <header
+      data-nav-overlay={overlay ? "true" : undefined}
       className={cn(
         "fixed inset-x-0 top-0 z-50 flex h-[calc(68px+env(safe-area-inset-top,0px))] items-center gap-2 overflow-hidden pt-[env(safe-area-inset-top,0px)] transition-colors duration-300 sm:gap-3 lg:gap-6",
         "browse-gutter",
-        scrolled
-          ? "bg-background"
-          : "bg-gradient-to-b from-black/80 to-transparent",
+        overlay
+          ? "bg-transparent bg-gradient-to-b from-black/80 to-transparent text-primary-foreground"
+          : "bg-background text-foreground",
       )}
     >
       <Button
         variant="ghost"
         size="icon"
-        className="min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10 lg:hidden"
+        className={cn("min-h-11 min-w-11 shrink-0 touch-manipulation lg:hidden", chromeBtn)}
         onClick={handleOpenMobileNav}
         aria-label="Open navigation"
         aria-expanded={mobileNavOpen}
@@ -116,20 +125,29 @@ export function TopNav() {
 
       <Link
         to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.dashboard}
-        className="min-w-0 shrink rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className={cn(
+          "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          hideActionCluster ? "shrink-0" : "min-w-0 shrink",
+        )}
       >
-        <AppLogo size="md" markOnly={!showWordmark} />
+        <AppLogo size="md" markOnly={!showWordmark || hideActionCluster} />
       </Link>
 
-      <nav className="hidden items-center gap-5 text-sm font-medium text-foreground/80 lg:flex">
+      <nav
+        className={cn(
+          "hidden items-center gap-5 text-sm font-medium lg:flex",
+          overlay ? "text-primary-foreground/80" : "text-foreground/80",
+        )}
+      >
         {primary.map((item) => (
           <NavLink
             key={item.href}
             to={item.href}
             className={({ isActive }) =>
               cn(
-                "transition-colors hover:text-foreground",
-                isActive && "font-semibold text-foreground",
+                "transition-colors",
+                overlay ? "hover:text-primary-foreground" : "hover:text-foreground",
+                isActive && (overlay ? "font-semibold text-primary-foreground" : "font-semibold text-foreground"),
               )
             }
             end={item.href === ROUTES.dashboard}
@@ -141,7 +159,12 @@ export function TopNav() {
         {more.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="text-sm font-medium text-foreground/80 outline-none hover:text-foreground"
+              className={cn(
+                "text-sm font-medium outline-none",
+                overlay
+                  ? "text-primary-foreground/80 hover:text-primary-foreground"
+                  : "text-foreground/80 hover:text-foreground",
+              )}
               data-tour="nav-more"
             >
               More
@@ -150,7 +173,7 @@ export function TopNav() {
               {moreGroups.map((section, index) => (
                 <DropdownMenuGroup key={section.id}>
                   {index > 0 ? <DropdownMenuSeparator className="bg-foreground/10" /> : null}
-                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/40">
+                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     {section.label}
                   </DropdownMenuLabel>
                   {section.items.map((item) => (
@@ -167,53 +190,34 @@ export function TopNav() {
         )}
       </nav>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
-        {isPendingMagistrate ? null : isDesktop && searchOpen ? (
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/60" />
-            <Input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onBlur={() => {
-                if (!query) setSearchOpen(false);
-              }}
-              placeholder="Titles, notes, legislation…"
-              className="h-9 w-48 border-foreground/40 bg-black/70 pl-8 text-sm text-foreground placeholder:text-foreground/50 sm:w-64"
-              aria-label="Search"
-              data-tour="nav-search"
-            />
-          </form>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10"
-            onClick={handleOpenSearch}
-            aria-label="Search"
-            aria-haspopup={isDesktop ? undefined : "dialog"}
-            aria-expanded={isDesktop ? undefined : searchOpen}
-            data-tour="nav-search"
-          >
-            <Search className="h-5 w-5" />
-          </Button>
+      <div
+        className={cn(
+          "ml-auto flex items-center gap-1 sm:gap-3",
+          hideActionCluster ? "min-w-0 flex-1" : "shrink-0",
         )}
-        {/* Hidden for a pending magistrate for the same reason search is:
-            /notifications sits behind requireApprovedMagistrateCourt, so
-            the bell would be a link that only ever bounces them back. */}
-        {isPendingMagistrate ? null : <NotificationBell />}
-        <ReportIssueButton />
-        <UserMenu compact />
+      >
+        {isPendingMagistrate ? null : (
+          <NavSearch
+            open={searchOpen}
+            query={query}
+            onQueryChange={setQuery}
+            onOpen={handleOpenSearch}
+            onClose={handleCloseSearch}
+            onSubmit={handleSearchSubmit}
+            buttonClassName={chromeBtn}
+          />
+        )}
+        {hideActionCluster ? null : (
+          <>
+            {/* Hidden for a pending magistrate for the same reason search is:
+                /notifications sits behind requireApprovedMagistrateCourt, so
+                the bell would be a link that only ever bounces them back. */}
+            {isPendingMagistrate ? null : <NotificationBell className={chromeBtn} />}
+            <ReportIssueButton className={chromeBtn} />
+            <UserMenu compact />
+          </>
+        )}
       </div>
-      {!isDesktop && !isPendingMagistrate ? (
-        <MobileSearchDialog
-          open={searchOpen}
-          query={query}
-          onQueryChange={setQuery}
-          onOpenChange={handleSearchOpenChange}
-          onSubmit={handleSearchSubmit}
-        />
-      ) : null}
     </header>
   );
 }

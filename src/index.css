@@ -156,6 +156,263 @@
     --sidebar-border: 0 0% 14%;
     --sidebar-ring: 357 92% 47%;
   }
+
+  /*
+   * High contrast light — white canvas, black ink, 7:1 muted copy.
+   * Applied as html.light.theme-high-contrast. Dark high-contrast uses
+   * the more specific .dark.theme-high-contrast block below.
+   */
+  .theme-high-contrast {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 357 100% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 16%;
+
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 357 100% 32%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 357 100% 32%;
+
+    --brass: 42 100% 22%;
+    --brass-foreground: 42 100% 16%;
+
+    --match: 137 100% 18%;
+
+    --stage-progress: 38 100% 24%;
+    --stage-done: 160 100% 16%;
+    --stage-remand: 347 100% 32%;
+    --stage-dismissed: 357 100% 32%;
+    --stage-outcome-complete: 210 100% 28%;
+
+    --notice-action: 38 100% 24%;
+    --notice-granted: 160 100% 16%;
+    --notice-revoked: 357 100% 32%;
+    --notice-outcome: 210 100% 28%;
+
+    --capacity-available: 142 100% 18%;
+    --capacity-filling: 38 100% 24%;
+    --capacity-full: 0 100% 32%;
+    --capacity-over: 0 100% 22%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 0%;
+    --sidebar-primary: 357 100% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 0%;
+    --sidebar-ring: 357 100% 32%;
+  }
+
+  .dark.theme-high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 357 100% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 357 100% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 55 100% 50%;
+
+    --brass: 42 100% 70%;
+    --brass-foreground: 42 100% 85%;
+
+    --match: 137 100% 62%;
+
+    --stage-progress: 38 100% 60%;
+    --stage-done: 160 100% 55%;
+    --stage-remand: 347 100% 70%;
+    --stage-dismissed: 357 100% 62%;
+    --stage-outcome-complete: 210 100% 68%;
+
+    --notice-action: 38 100% 60%;
+    --notice-granted: 160 100% 55%;
+    --notice-revoked: 357 100% 62%;
+    --notice-outcome: 210 100% 68%;
+
+    --capacity-available: 142 100% 58%;
+    --capacity-filling: 38 100% 60%;
+    --capacity-full: 0 100% 62%;
+    --capacity-over: 0 80% 72%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 357 100% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 55 100% 50%;
+  }
+
+  /*
+   * Colourblind-safe light — same chambers canvas, Okabe–Ito status hues
+   * so progress/done/dismissed are not red-versus-green.
+   */
+  .theme-colourblind {
+    --background: 40 20% 97%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 357 80% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 12% 92%;
+    --secondary-foreground: 0 0% 12%;
+
+    --muted: 40 12% 94%;
+    --muted-foreground: 0 0% 38%;
+
+    --accent: 40 12% 90%;
+    --accent-foreground: 0 0% 12%;
+
+    --destructive: 26 100% 36%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 10% 85%;
+    --input: 40 10% 85%;
+    --ring: 357 80% 42%;
+
+    --brass: 41 100% 32%;
+    --brass-foreground: 41 100% 24%;
+
+    --match: 163 100% 24%;
+
+    --stage-progress: 41 100% 32%;
+    --stage-done: 163 100% 24%;
+    --stage-remand: 326 55% 38%;
+    --stage-dismissed: 26 100% 36%;
+    --stage-outcome-complete: 202 100% 32%;
+
+    --notice-action: 41 100% 32%;
+    --notice-granted: 163 100% 24%;
+    --notice-revoked: 26 100% 36%;
+    --notice-outcome: 202 100% 32%;
+
+    --capacity-available: 163 100% 24%;
+    --capacity-filling: 41 100% 32%;
+    --capacity-full: 26 100% 36%;
+    --capacity-over: 26 100% 26%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 12%;
+    --sidebar-primary: 357 80% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 12% 92%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 40 10% 85%;
+    --sidebar-ring: 357 80% 42%;
+  }
+
+  .dark.theme-colourblind {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 9.4%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 9.4%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 357 92% 47%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 26 100% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 357 92% 47%;
+
+    --brass: 41 100% 55%;
+    --brass-foreground: 41 100% 72%;
+
+    --match: 163 80% 48%;
+
+    --stage-progress: 41 100% 50%;
+    --stage-done: 163 80% 48%;
+    --stage-remand: 326 47% 64%;
+    --stage-dismissed: 26 100% 52%;
+    --stage-outcome-complete: 202 77% 58%;
+
+    --notice-action: 41 100% 50%;
+    --notice-granted: 163 80% 48%;
+    --notice-revoked: 26 100% 52%;
+    --notice-outcome: 202 77% 58%;
+
+    --capacity-available: 163 80% 48%;
+    --capacity-filling: 41 100% 50%;
+    --capacity-full: 26 100% 52%;
+    --capacity-over: 26 90% 42%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 357 92% 47%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 357 92% 47%;
+  }
 }
 
 @layer base {
@@ -185,6 +442,11 @@
   #root {
     min-height: 100dvh;
     background: hsl(var(--background));
+  }
+
+  .theme-high-contrast :focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
 

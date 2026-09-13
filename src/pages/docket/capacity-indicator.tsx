@@ -62,7 +62,7 @@ export function CapacityIndicator({
   if (variant === "chip") {
     const chip = (
       <span
-        className={`inline-flex items-center gap-1 rounded-full border border-black/10 px-2 py-0.5 text-[11px] ${style.textClass} ${style.bold ? "font-bold" : "font-medium"}`}
+        className={`inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] ${style.textClass} ${style.bold ? "font-bold" : "font-medium"}`}
         style={{ backgroundColor: style.bg }}
       >
         {style.band === "over_capacity" && <AlertTriangle className="h-3 w-3" />}
@@ -84,7 +84,7 @@ export function CapacityIndicator({
 
   return (
     <div
-      className={`flex items-center justify-between gap-2 rounded border border-black/10 px-2 py-1 text-xs ${style.textClass}`}
+      className={`flex items-center justify-between gap-2 rounded border border-border px-2 py-1 text-xs ${style.textClass}`}
       style={{ backgroundColor: style.bg }}
     >
       <span className={style.bold ? "font-bold" : undefined}>{categoryName}</span>

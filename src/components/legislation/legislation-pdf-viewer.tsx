@@ -528,12 +528,12 @@ export function LegislationPdfViewer({
       )}
 
       {searchOpen && showScannedNotice && (
-        <div className="border-b border-foreground/10 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+        <div className="border-b border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-[hsl(var(--notice-action))]">
           This PDF does not contain searchable text. You may still view and scroll through the document.
         </div>
       )}
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto bg-black/40 p-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto bg-muted p-4 dark:bg-black/40">
         {loading ? (
           <div className="flex h-full items-center justify-center">
             <LoadingSpinner size={28} />

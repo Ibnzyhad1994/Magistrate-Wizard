@@ -9,8 +9,12 @@ export const initNativeShell = async () => {
 
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
-    await StatusBar.setBackgroundColor({ color: "#141414" });
-    await StatusBar.setStyle({ style: Style.Dark });
+    const root = document.documentElement;
+    const dark = root.classList.contains("dark");
+    const highContrast = root.classList.contains("theme-high-contrast");
+    const color = highContrast ? (dark ? "#000000" : "#ffffff") : dark ? "#141414" : "#f6f3ee";
+    await StatusBar.setBackgroundColor({ color });
+    await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
     // Keep the WebView below the status bar / punch-hole so the hamburger
     // is not sitting under the Galaxy S22 camera cutout.
     await StatusBar.setOverlaysWebView({ overlay: false });

@@ -2,7 +2,10 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Play, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { TONE_GRADIENT, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
+import { useRegisterCinematicNav } from "@/components/layout/cinematic-nav";
+import { useTheme } from "@/providers/use-theme";
+import { isDarkPalette } from "@/lib/theme";
+import { TONE_GRADIENT_HERO, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
 
 interface BillboardAction {
   label: string;
@@ -20,6 +23,8 @@ interface BillboardProps {
   primaryAction?: BillboardAction;
   secondaryAction?: BillboardAction;
   tertiaryAction?: BillboardAction;
+  /** Court sitting (and similar) — follows hero ink, not the paper fade. */
+  caption?: string;
   className?: string;
   /**
    * `hero` is the cinematic dashboard splash. `detail` is compact so
@@ -30,9 +35,11 @@ interface BillboardProps {
   tourId?: string;
 }
 
+type BillboardButtonVariant = "play" | "more" | "default" | "outline";
+
 /**
- * Full-bleed homepage hero. Text sits left over a cinematic gradient;
- * chrome fades into the rows below.
+ * Full-bleed homepage hero. Dark keeps the cinematic gradient; light is a
+ * chambers wash so Welcome copy is ink on paper, not white on navy.
  */
 export function Billboard({
   eyebrow,
@@ -44,10 +51,14 @@ export function Billboard({
   primaryAction,
   secondaryAction,
   tertiaryAction,
+  caption,
   className,
   variant = "hero",
   tourId,
 }: BillboardProps) {
+  const { resolvedTheme } = useTheme();
+  const cinematic = isDarkPalette(resolvedTheme);
+  useRegisterCinematicNav();
   const Icon = TONE_ICON[tone];
   const isDetail = variant === "detail";
 
@@ -57,7 +68,7 @@ export function Billboard({
       className={cn(
         "relative isolate w-full overflow-hidden bg-gradient-to-br",
         isDetail ? "min-h-0" : "min-h-[78vh]",
-        TONE_GRADIENT[tone],
+        TONE_GRADIENT_HERO[tone],
         className,
       )}
     >
@@ -69,10 +80,10 @@ export function Billboard({
         />
       ) : (
         <>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--foreground)/0.14),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--primary)/0.08),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--foreground)/0.14),transparent_55%)]" />
           <Icon
             className={cn(
-              "absolute right-[6%] top-[18%] rotate-[-12deg] text-foreground/10",
+              "absolute right-[6%] top-[18%] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10",
               isDetail
                 ? "h-[18vh] w-[18vh] max-w-[32vw]"
                 : "h-[55vh] w-[55vh] max-w-[46vw]",
@@ -82,26 +93,28 @@ export function Billboard({
           />
         </>
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent sm:h-40" />
+      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/75 to-transparent dark:from-black dark:via-black/75 dark:to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent sm:h-28" />
 
       <div
         className={cn(
           "browse-gutter relative flex max-w-3xl flex-col justify-end",
           isDetail
             ? "min-h-0 pb-10 pt-20"
-            : "min-h-[78vh] pb-24 pt-32",
+            : caption
+              ? "min-h-[78vh] pb-32 pt-32"
+              : "min-h-[78vh] pb-24 pt-32",
         )}
       >
         {eyebrow && (
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground/70">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground/70 dark:text-primary-foreground/70">
             {eyebrow}
           </p>
         )}
         <h1
           data-tour-focus={isDetail ? "" : undefined}
           className={cn(
-            "w-fit font-extrabold tracking-tight text-foreground drop-shadow-lg",
+            "w-fit font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg",
             isDetail
               ? "text-2xl sm:text-3xl lg:text-4xl"
               : "text-4xl sm:text-5xl lg:text-6xl",
@@ -114,7 +127,7 @@ export function Billboard({
             {badges.map((badge) => (
               <span
                 key={badge}
-                className="rounded-[2px] border border-foreground/30 bg-black/30 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-foreground"
+                className="rounded-[2px] border border-border bg-background/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-foreground dark:border-primary-foreground/30 dark:bg-black/30 dark:text-primary-foreground"
               >
                 {badge}
               </span>
@@ -124,7 +137,7 @@ export function Billboard({
         {description && (
           <p
             className={cn(
-              "max-w-xl leading-relaxed text-foreground/85",
+              "max-w-xl leading-relaxed text-foreground/80 dark:text-primary-foreground/85",
               isDetail
                 ? "mt-2 line-clamp-2 text-sm"
                 : "mt-4 line-clamp-3 text-sm sm:text-base",
@@ -140,7 +153,7 @@ export function Billboard({
           {primaryAction && (
             <BillboardButton
               action={primaryAction}
-              variant="play"
+              variant={cinematic ? "play" : "default"}
               icon={isDetail ? "back" : "play"}
               compact={isDetail}
             />
@@ -148,7 +161,7 @@ export function Billboard({
           {secondaryAction && (
             <BillboardButton
               action={secondaryAction}
-              variant="more"
+              variant={cinematic ? "more" : "outline"}
               icon="info"
               compact={isDetail}
             />
@@ -156,12 +169,17 @@ export function Billboard({
           {tertiaryAction && (
             <BillboardButton
               action={tertiaryAction}
-              variant="more"
+              variant={cinematic ? "more" : "outline"}
               icon="info"
               compact={isDetail}
             />
           )}
         </div>
+        {caption ? (
+          <p className="mt-4 text-sm font-medium text-foreground/70 dark:text-primary-foreground/80">
+            {caption}
+          </p>
+        ) : null}
       </div>
     </section>
   );
@@ -174,7 +192,7 @@ function BillboardButton({
   compact = false,
 }: {
   action: BillboardAction;
-  variant: "play" | "more";
+  variant: BillboardButtonVariant;
   icon: "play" | "info" | "back";
   compact?: boolean;
 }) {

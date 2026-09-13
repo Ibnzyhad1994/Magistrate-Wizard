@@ -2,24 +2,46 @@
 <html lang="en" class="dark" style="color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
+    <meta name="theme-color" content="#141414" />
     <script>
       // Resolve the theme BEFORE first paint. Without this the document
       // ships with class="dark" (above) and React only corrects it after
       // the bundle boots, so anyone who chose Light sees a full dark flash
       // on every single load -- which reads as the setting not working.
+      // Missing or invalid storage defaults to dark (the product default).
+      // System is opt-in and follows prefers-color-scheme, plus
+      // prefers-contrast: more for the high-contrast palettes.
       // Deliberately tiny, synchronous, and dependency-free so it runs
       // ahead of the stylesheet. Allowed under the CSP by a sha256 hash
       // that vite.config.ts computes from this exact text at build time.
       try {
         var stored = localStorage.getItem("magistrate-wizard-theme");
-        var dark =
-          stored === "dark" ||
-          ((!stored || stored === "system") &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var prefersContrast = window.matchMedia("(prefers-contrast: more)").matches;
+        var palette = "dark";
+        if (stored === "light") palette = "light";
+        else if (stored === "high-contrast") palette = "high-contrast";
+        else if (stored === "high-contrast-light") palette = "high-contrast-light";
+        else if (stored === "colourblind") palette = "colourblind";
+        else if (stored === "colourblind-light") palette = "colourblind-light";
+        else if (stored === "system") {
+          if (prefersContrast) palette = prefersDark ? "high-contrast" : "high-contrast-light";
+          else palette = prefersDark ? "dark" : "light";
+        }
+        var dark = palette === "dark" || palette === "high-contrast" || palette === "colourblind";
         var root = document.documentElement;
         root.classList.toggle("dark", dark);
         root.classList.toggle("light", !dark);
+        root.classList.toggle("theme-high-contrast", palette === "high-contrast" || palette === "high-contrast-light");
+        root.classList.toggle("theme-colourblind", palette === "colourblind" || palette === "colourblind-light");
         root.style.colorScheme = dark ? "dark" : "light";
+        var meta = document.querySelector('meta[name="theme-color"]');
+        var themeColor =
+          palette === "high-contrast" ? "#000000"
+          : palette === "high-contrast-light" ? "#ffffff"
+          : dark ? "#141414"
+          : "#f6f3ee";
+        if (meta) meta.setAttribute("content", themeColor);
       } catch (e) {
         /* Private mode or blocked storage: keep the dark default. */
       }
@@ -31,7 +53,6 @@
       content="Magistrate Wizard — a legal knowledge management platform for magistrates."
     />
     <title>Magistrate Wizard</title>
-    <meta name="theme-color" content="#141414" />
     <link rel="apple-touch-icon" href="/favicon.svg?v=2" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

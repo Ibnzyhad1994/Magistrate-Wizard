@@ -83,9 +83,9 @@ export default function IssueReportsAdminPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     {r.type === "bug" ? (
-                      <Bug className="h-4 w-4 shrink-0 text-red-400" />
+                      <Bug className="h-4 w-4 shrink-0 text-destructive" />
                     ) : (
-                      <Lightbulb className="h-4 w-4 shrink-0 text-amber-300" />
+                      <Lightbulb className="h-4 w-4 shrink-0 text-[hsl(var(--notice-action))]" />
                     )}
                     <p className="font-medium text-foreground">{r.title}</p>
                   </div>

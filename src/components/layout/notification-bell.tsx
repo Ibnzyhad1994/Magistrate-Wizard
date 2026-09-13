@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, Inbox } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,7 +47,7 @@ import { ROUTES } from "@/routes/paths";
  * on every authenticated page, so subscribing here covers the whole app
  * without the notifications page having to be open.
  */
-export function NotificationBell() {
+export function NotificationBell({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   useNotificationsRealtime();
@@ -74,7 +75,10 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative min-h-11 min-w-11 shrink-0 touch-manipulation text-foreground hover:bg-foreground/10"
+          className={cn(
+            "relative min-h-11 min-w-11 shrink-0 touch-manipulation text-current hover:bg-foreground/10 hover:text-current",
+            className,
+          )}
           aria-label={
             hasUnread ? `Notifications, ${unread} unread` : "Notifications, none unread"
           }
