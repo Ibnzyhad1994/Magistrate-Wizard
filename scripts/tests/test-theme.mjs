@@ -201,6 +201,8 @@ check("ThemeProvider listens for prefers-contrast", provider.includes("prefers-c
 check("account menu includes the theme picker", userMenu.includes("ThemeMenuSub"), true);
 check("sign-in shell has no theme select", authLayout.includes("ThemeSelect"), false);
 check("settings uses the shared ThemeSelect", settings.includes("<ThemeSelect"), true);
+check("sign-in and sign-up play a brand splash", authLayout.includes("AuthSplash") && authLayout.includes("ROUTES.login") && authLayout.includes("ROUTES.register"), true);
+check("password recovery skips the brand splash", authLayout.includes("ROUTES.forgotPassword"), false);
 
 const topNav = readFileSync("src/components/layout/top-nav.tsx", "utf8");
 const titleCard = readFileSync("src/components/browse/title-card.tsx", "utf8");
