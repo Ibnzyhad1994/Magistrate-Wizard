@@ -3,6 +3,8 @@ name: Migration CI
 # Apply every committed SQL migration against a fresh local Postgres.
 # Fast develop CI never starts Docker; this job is the apply-break gate.
 # Seed is skipped so the job measures schema apply, not fixture load.
+# Hosted preview/prod drift is a separate read-only workflow
+# (.github/workflows/schema-alignment.yml), not this apply job.
 
 on:
   pull_request:

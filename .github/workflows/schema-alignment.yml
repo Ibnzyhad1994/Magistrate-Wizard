@@ -1,0 +1,35 @@
+name: Schema alignment
+
+# Read-only check that git migrations stay unique and that hosted preview
+# and production are not behind (or on a colliding version name). Missing
+# secrets skip the hosted half instead of failing the job. Never writes.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-alignment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Compare git migrations to hosted schema
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SCHEMA_ALIGN_PREVIEW_ANON_KEY: ${{ secrets.SCHEMA_ALIGN_PREVIEW_ANON_KEY }}
+          SCHEMA_ALIGN_PREVIEW_URL: ${{ secrets.SCHEMA_ALIGN_PREVIEW_URL }}
+        run: node scripts/tests/test-schema-alignment.mjs

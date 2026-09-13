@@ -8,14 +8,17 @@ name: Develop CI + Auto-merge to Main
 # and every pure-logic test script under scripts/tests/ that needs no
 # live database (extraction/OCR pipeline correctness, tag proposals,
 # docket-procedure logic, calendar sync/mapping, offline outbox, XSS
-# sanitisation, and a handful of scripts with no npm alias yet, invoked
-# directly with the same runner the aliased ones use). Explicitly OUT of
-# scope: every script that opens a live Supabase connection — persona-
-# workflow simulation, the clerk access / admin-magistrate docket-scoping
-# / legislation-edit-permission integration tests, manual RLS probes, and
-# the slow/"brutal" stress-test variants. Those need a real project and
-# meaningfully longer runtime, and were left for manual or separately-
-# scheduled runs rather than gating every push.
+# sanitisation, schema-alignment uniqueness/contracts, and a handful of
+# scripts with no npm alias yet, invoked directly with the same runner
+# the aliased ones use). Hosted preview/prod drift is checked read-only
+# by schema-alignment.yml so a lagging remote cannot freeze this merge.
+# Explicitly OUT of scope: every script that opens a live Supabase
+# connection to mutate or query rows — persona-workflow simulation, the
+# clerk access / admin-magistrate docket-scoping / legislation-edit-
+# permission integration tests, manual RLS probes, and the slow/"brutal"
+# stress-test variants. Those need a real project and meaningfully longer
+# runtime, and were left for manual or separately-scheduled runs rather
+# than gating every push.
 #
 # The merge is fast-forward-only. If `main` has commits `develop` doesn't
 # (i.e. someone pushed directly to main out of band), the merge step
@@ -87,6 +90,11 @@ jobs:
 
       - name: Light/dark theming
         run: npm run test:theme
+
+      - name: Schema alignment (repo uniqueness and contracts)
+        env:
+          SCHEMA_ALIGN_SKIP_LIVE: "1"
+        run: npm run test:schema-alignment
 
       - name: Judgment and bench-note PDF export
         run: npm run test:export-pdf
