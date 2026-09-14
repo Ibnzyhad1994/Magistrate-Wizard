@@ -52,8 +52,9 @@ export function SessionLockDialog() {
         <DialogHeader>
           <DialogTitle>Session locked</DialogTitle>
           <DialogDescription>
-            You have been inactive for an hour. Enter your password to keep
-            this page. Your work is still here.
+            You have been inactive for an hour. Enter your password to continue.
+            Queued saves will sync, then this page reloads so you pick up the
+            latest app.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void handleContinue(event)} className="space-y-4">

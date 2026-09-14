@@ -9,7 +9,10 @@ import {
 } from "@/lib/auth/session-policy";
 import { bumpRememberUntil } from "@/lib/auth/session-storage";
 import { lockCurrentSession } from "@/lib/auth/session-lock";
-import { recoverSessionWork } from "@/lib/auth/session-recovery";
+import {
+  completeSessionUnlock,
+  finishPostUnlockReloadIfNeeded,
+} from "@/lib/auth/session-recovery";
 import { useAuthStore } from "@/store/auth-store";
 
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
@@ -79,12 +82,13 @@ export function SessionLifecycle() {
     if (status === "authenticated") {
       lastActivityRef.current = Date.now();
       setPhase("ok");
+      void finishPostUnlockReloadIfNeeded();
     }
   }, [status]);
 
   useEffect(() => {
     if (prevStatusRef.current === "locked" && status === "authenticated") {
-      void recoverSessionWork();
+      void completeSessionUnlock();
     }
     prevStatusRef.current = status;
   }, [status]);

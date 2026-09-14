@@ -11,7 +11,12 @@ import { resolveProtectedRouteGate } from "@/lib/protected-route-gate"
 import { AUTH_STORAGE_KEY, createAuthStorage, createMemoryStorage, setRememberMeFlag, readRememberPreference } from "@/lib/auth/session-storage"
 import { useAuthStore } from "@/store/auth-store"
 import { lockCurrentSession } from "@/lib/auth/session-lock"
-import { recoverSessionWork } from "@/lib/auth/session-recovery"
+import {
+  completeSessionUnlock,
+  finishPostUnlockReloadIfNeeded,
+  recoverSessionWork,
+  POST_UNLOCK_RELOAD_KEY,
+} from "@/lib/auth/session-recovery"
 import { currentProfileId, flushPendingHearings } from "@/lib/offline/runtime"
 import { setCachedProfile, getCachedProfile } from "@/lib/offline/store"
 import { queryClient } from "@/lib/query-client"
@@ -310,6 +315,11 @@ const authenticate = () => {
   check("lock dialog blocks escape", dialog.includes("onEscapeKeyDown"), true)
   check("lock email field is read-only", dialog.includes("readOnly"), true)
   check("reauthenticate uses hook email, not a typed email", /reauthenticate\(password\)/.test(dialog), true)
+  check(
+    "lock dialog tells the user queued work saves then the page reloads",
+    dialog.includes("Queued saves will sync") && dialog.includes("this page reloads"),
+    true,
+  )
 }
 
 {
@@ -343,8 +353,64 @@ const authenticate = () => {
 {
   const recovery = readFileSync(join(SRC, "lib/auth/session-recovery.ts"), "utf8")
   check(
-    "recovery documents that only Sign out clears the query cache",
-    recovery.includes("Query cache is not cleared"),
+    "recovery still leaves the in-memory query cache in place until reload",
+    recovery.includes("Does not wipe the in-memory query cache"),
+    true,
+  )
+  check(
+    "unlock reloads after saving queued work",
+    recovery.includes("completeSessionUnlock") && recovery.includes("reloadPage"),
+    true,
+  )
+}
+
+{
+  const memory = new Map()
+  const storage = {
+    getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+    setItem: (key, value) => {
+      memory.set(key, value)
+    },
+    removeItem: (key) => {
+      memory.delete(key)
+    },
+  }
+  let reloads = 0
+  authenticate()
+  queryClient.setQueryData(["bench-notes", "secret"], { body: "CANARY-BENCH" })
+  installSupabaseAuthMock()
+  await completeSessionUnlock({
+    reloadPage: () => {
+      reloads += 1
+    },
+    storage,
+  })
+  check("first unlock save-then-refresh reloads once", reloads, 1)
+  check("first unlock marks a pending reload", storage.getItem(POST_UNLOCK_RELOAD_KEY), "pending")
+  const finished = await finishPostUnlockReloadIfNeeded({ storage })
+  check("reloaded tab finishes queued work without a second reload", finished, true)
+  check("pending reload flag is cleared after finish", storage.getItem(POST_UNLOCK_RELOAD_KEY), null)
+  reloads = 0
+  await completeSessionUnlock({
+    reloadPage: () => {
+      reloads += 1
+    },
+    storage,
+  })
+  check("a later unlock with no pending flag still reloads", reloads, 1)
+  resetSupabaseAuthMock()
+}
+
+{
+  const lifecycle = readFileSync(join(SRC, "components/auth/session-lifecycle.tsx"), "utf8")
+  check(
+    "idle unlock saves then reloads",
+    lifecycle.includes("completeSessionUnlock"),
+    true,
+  )
+  check(
+    "reloaded tab consumes the pending reload flag",
+    lifecycle.includes("finishPostUnlockReloadIfNeeded"),
     true,
   )
 }

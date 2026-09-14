@@ -86,7 +86,7 @@ export function useAuth() {
       return data;
     },
     onSuccess: () => {
-      toast.success("Session restored. Your work is still here.");
+      toast.success("Session restored. Saving queued work, then refreshing.");
     },
   });
 
