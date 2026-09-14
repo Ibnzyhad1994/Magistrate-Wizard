@@ -93,11 +93,13 @@ export function useDeleteDocketCapacitySetting() {
 }
 
 /**
- * Live utilisation for every category on one date, for the calling magistrate
- * across every court they sit. Each row also carries total_matters_count
- * (distinct files that day, any classification or stage). The week strip
- * has no preferred court: a 1/10 tile can come from Vigilance even while
- * the heading is Kamarang. Clicking that day switches the board to All My Courts.
+ * Live utilisation for every category on one date. Category scheduled_count
+ * is sittings the caller presides. total_matters_count is the board's day
+ * load: distinct RLS-visible files with any non-entered_in_error appearance
+ * that day, any classification or stage, including clerk-logged sittings.
+ * The week strip has no preferred court: a 1/10 tile can come from Vigilance
+ * even while the heading is Kamarang. Clicking that day switches the board
+ * to All My Courts.
  */
 export function useDocketCapacitySnapshot(date: string | undefined) {
   return useQuery({

@@ -157,8 +157,9 @@ function DayTile({
 /**
  * Capacity chrome on Docket. Weekly, daily, or monthly tiles, switched
  * from a persistent toggle — not a one-shot Month disclosure.
- * Tiles count sittings you preside across every court you sit. Clicking a
- * day switches the board to All My Courts for that date.
+ * The pill is every listed file that day. The fraction is sittings you
+ * preside across every court you sit. Clicking a day switches the board
+ * to All My Courts for that date.
  */
 export function DocketCapacityStrip({
   selectedDate,

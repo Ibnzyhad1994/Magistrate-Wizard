@@ -1,6 +1,7 @@
 /**
- * Docket capacity strip vs board list contract (0139 + 0147 total-matters
- * count + all-courts day click).
+ * Docket capacity strip vs board list contract (0139 + 0147/0148
+ * total-matters count matching list_docket_matters day membership +
+ * all-courts day click).
  *
  * Snapshot SQL still accepts optional p_court_id. The week strip must not
  * send it: tiles count every court the caller sits. Clicking a day writes
@@ -19,7 +20,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const snapshotSql = readFileSync(
-  join(__dirname, "../../supabase/migrations/0147_docket_calendar_total_matters.sql"),
+  join(__dirname, "../../supabase/migrations/0148_docket_calendar_total_matches_board.sql"),
   "utf8",
 )
 const listSql = readFileSync(
@@ -51,7 +52,7 @@ const check = (label, actual, expected) => {
 }
 
 check(
-  "0147 still defines get_docket_capacity_snapshot with optional p_court_id",
+  "0148 redefines get_docket_capacity_snapshot with optional p_court_id",
   /create function public\.get_docket_capacity_snapshot\([\s\S]*?p_court_id uuid default null/i.test(
     snapshotSql,
   ),
@@ -68,7 +69,7 @@ check(
   true,
 )
 check(
-  "snapshot still scopes to the calling magistrate",
+  "category utilisation still scopes to the calling magistrate",
   snapshotSql.includes("e.presiding_magistrate_id = (select auth.uid())"),
   true,
 )
@@ -89,6 +90,21 @@ const dayTotalCte = snapshotSql.slice(
 check(
   "day-total CTE does not filter by event category",
   /e\.category_id/.test(dayTotalCte),
+  false,
+)
+check(
+  "day-total CTE does not require the caller to preside",
+  /presiding_magistrate_id/.test(dayTotalCte),
+  false,
+)
+check(
+  "day-total CTE uses the board's non-entered_in_error appearance rule",
+  dayTotalCte.includes("event_status <> 'entered_in_error'"),
+  true,
+)
+check(
+  "day-total CTE does not limit to scheduled/completed only",
+  /event_status in \('scheduled', 'completed'\)/.test(dayTotalCte),
   false,
 )
 check(

@@ -84,12 +84,66 @@ check(
 
 const { data: allCourtsList, error: allErr } = await client.rpc("list_docket_matters", {
   p_exact_date: SITTING_DATE,
+  p_limit: 500,
 })
 check("list with null court + that date succeeds", !allErr)
 check(
   "list with null court + that date returns 2053/26",
   (allCourtsList ?? []).some((row) => row.case_number === CASE_NUMBER),
 )
+check(
+  "snapshot total_matters_count matches the unfiltered day list",
+  Number(trialRow?.total_matters_count) === (allCourtsList ?? []).length,
+)
+
+const CANCEL_DATE = "2026-09-08"
+const { data: matterRow, error: matterErr } = await client
+  .from("docket_matters")
+  .select("id")
+  .eq("case_number", CASE_NUMBER)
+  .maybeSingle()
+check("persona can read 2053/26 for the cancelled-appearance check", !matterErr && !!matterRow)
+
+let cancelEventId = null
+if (matterRow?.id) {
+  const { data: cancelEvent, error: cancelInsErr } = await client
+    .from("docket_events")
+    .insert({
+      docket_matter_id: matterRow.id,
+      scheduled_date: CANCEL_DATE,
+      event_status: "cancelled",
+      event_type: "Criminal trial",
+    })
+    .select("id")
+    .single()
+  check("can log a cancelled appearance on 2026-09-08", !cancelInsErr)
+  if (cancelInsErr) console.error("  ", cancelInsErr.message)
+  cancelEventId = cancelEvent?.id ?? null
+
+  const { data: cancelSnapshot, error: cancelSnapErr } = await client.rpc(
+    "get_docket_capacity_snapshot",
+    { p_scheduled_date: CANCEL_DATE },
+  )
+  const { data: cancelList, error: cancelListErr } = await client.rpc("list_docket_matters", {
+    p_exact_date: CANCEL_DATE,
+    p_limit: 500,
+  })
+  check("cancelled-day snapshot RPC succeeds", !cancelSnapErr)
+  check("cancelled-day list RPC succeeds", !cancelListErr)
+  const cancelTotal = Number(cancelSnapshot?.[0]?.total_matters_count ?? 0)
+  check(
+    "cancelled appearance still counts in total_matters_count",
+    cancelTotal >= 1 && cancelTotal === (cancelList ?? []).length,
+  )
+}
+
+if (cancelEventId) {
+  const { error: hideErr } = await client
+    .from("docket_events")
+    .update({ event_status: "entered_in_error" })
+    .eq("id", cancelEventId)
+  check("cancelled test appearance can be marked entered_in_error", !hideErr)
+}
 
 const { data: noDateList, error: noDateErr } = await client.rpc("list_docket_matters", {
   p_exact_date: SITTING_DATE,
