@@ -34,7 +34,7 @@ export function OfflineSyncBanner() {
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="onDark"
         onClick={() => void handleSync()}
         disabled={syncing}
         aria-label="Sync pending hearings"

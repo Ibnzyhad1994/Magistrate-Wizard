@@ -5,6 +5,7 @@ import {
   ACTIVITY_THROTTLE_MS,
   evaluateSessionIdle,
   getIdleTimeoutMs,
+  WARN_BEFORE_MS,
   type IdlePhase,
 } from "@/lib/auth/session-policy";
 import { bumpRememberUntil } from "@/lib/auth/session-storage";
@@ -95,12 +96,20 @@ export function SessionLifecycle() {
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    const w = window as Window & { __mwLockSession?: () => Promise<void> };
+    const w = window as Window & {
+      __mwLockSession?: () => Promise<void>;
+      __mwIdleWarn?: () => void;
+    };
     w.__mwLockSession = lockCurrentSession;
+    w.__mwIdleWarn = () => {
+      lastActivityRef.current = Date.now() - (idleMs - WARN_BEFORE_MS / 2);
+      setPhase("warn");
+    };
     return () => {
       delete w.__mwLockSession;
+      delete w.__mwIdleWarn;
     };
-  }, []);
+  }, [idleMs]);
 
   return (
     <>

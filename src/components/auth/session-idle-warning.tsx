@@ -10,7 +10,7 @@ export function SessionIdleWarning({ onContinue }: { onContinue: () => void }) {
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="onDark"
         onClick={onContinue}
         aria-label="Continue working and stay signed in"
       >

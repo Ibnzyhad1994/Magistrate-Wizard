@@ -224,5 +224,22 @@ check("calendar out-of-month cells are not a black wash", calendar.includes("bg-
 check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);
 check("header search field uses canvas tokens", navSearch.includes("bg-secondary"), true);
 
+// Always-dark amber strips (idle warning, offline sync) inherit
+// text-amber-50. Theme outline uses bg-background, so light mode paints
+// a cream chip with cream ink. Those actions must pin dark ink.
+const amberStripWithOutline = tsxFiles("src").filter((file) => {
+  const src = readFileSync(file, "utf8");
+  return /bg-amber-950\//.test(src) && src.includes('variant="outline"');
+});
+check(
+  "dark amber strips do not use theme outline buttons",
+  amberStripWithOutline,
+  [],
+);
+const idleWarning = readFileSync("src/components/auth/session-idle-warning.tsx", "utf8");
+const offlineBanner = readFileSync("src/components/layout/offline-sync-banner.tsx", "utf8");
+check("idle warning action is the on-dark chip", idleWarning.includes('variant="onDark"'), true);
+check("offline sync action is the on-dark chip", offlineBanner.includes('variant="onDark"'), true);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
