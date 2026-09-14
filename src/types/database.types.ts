@@ -3783,6 +3783,7 @@ export type Database = {
           daily_capacity: number
           scheduled_count: number
           status: string
+          total_matters_count: number
         }[]
       }
       global_search: {

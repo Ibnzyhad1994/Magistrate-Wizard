@@ -67,6 +67,10 @@ check(
   "snapshot for 2026-09-09 with null court is 1 on Criminal trial",
   Number(trialRow?.scheduled_count) === 1 && Number(trialRow?.daily_capacity) === 10,
 )
+check(
+  "snapshot total_matters_count for 2026-09-09 is at least 1",
+  Number(trialRow?.total_matters_count) >= 1,
+)
 
 const { data: kamarangList, error: kamarangErr } = await client.rpc("list_docket_matters", {
   p_exact_date: SITTING_DATE,

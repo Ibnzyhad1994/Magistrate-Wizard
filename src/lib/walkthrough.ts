@@ -83,6 +83,15 @@ export const walkthroughStepsFor = (
   /** Worked by clerks and magistrates alike, so written for both. */
   const board: WalkthroughStep[] = [
     {
+      id: "week-strip",
+      title: "Day load",
+      body: "The pill is every matter listed that day, any classification and stage. The fraction is the busiest classification against your personal limit. Green, amber, and red follow the limit, not the total.",
+      target: "docket-week-strip",
+      fallbackTarget: "docket-board",
+      route: ROUTES.docket,
+      chapter: "sitting",
+    },
+    {
       id: "board",
       title: "Procedure board",
       body: "Each column is one stage; click a cell on a real file to record it. Arraignment also takes Not Found, To Be Summoned, so a file where service failed reads as stalled rather than untouched.",
@@ -102,7 +111,7 @@ export const walkthroughStepsFor = (
     {
       id: "next",
       title: "Next date",
-      body: "Set the next hearing from this column. Capacity colours on the week strip show how full a day already is before you pick it.",
+      body: "Set the next hearing from this column.",
       target: "docket-next-date",
       fallbackTarget: "docket-board",
       route: ROUTES.docket,
@@ -256,7 +265,7 @@ export const walkthroughStepsFor = (
     {
       id: "calendar",
       title: "Calendar",
-      body: "Hearings you can already see on the Docket appear here. Capacity still lives on the Docket week strip.",
+      body: "Hearings you can already see on the Docket appear here. Day totals and classification capacity still live on the Docket week strip.",
       target: "page-calendar",
       navTarget: "nav-calendar",
       fallbackTarget: "nav-more",

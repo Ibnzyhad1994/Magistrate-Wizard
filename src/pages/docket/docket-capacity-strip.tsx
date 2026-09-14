@@ -7,7 +7,7 @@ import {
 } from "@/hooks/docket/use-docket-capacity";
 import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
 import { HintTooltip } from "@/components/ui/tooltip";
-import { capacityStatusLabel, getCapacityStyle } from "@/lib/docket-capacity";
+import { getCapacityStyle } from "@/lib/docket-capacity";
 import { daysOfWeek, weekOfLabel, weekStartSunday, addDaysIso, dayOfLabel } from "@/lib/docket-week";
 import { formatDate, getLocalDateOnly, parseDateOnly } from "@/lib/utils";
 
@@ -20,6 +20,14 @@ const CAPACITY_VIEWS = [
 ] as const;
 
 type CapacityView = (typeof CAPACITY_VIEWS)[number]["id"];
+
+const dayTotalHint = (count: number) =>
+  `${count} matter${count === 1 ? "" : "s"} listed that day, all classifications and stages`
+
+const loadPillClass = (onDarkTile: boolean) =>
+  `inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-semibold leading-none ${
+    onDarkTile ? "bg-white/25" : "bg-neutral-900/15"
+  }`
 
 function WeekdayRow() {
   return (
@@ -88,6 +96,7 @@ function DayTile({
 }) {
   const { data: snapshot } = useDocketCapacitySnapshot(date);
   const day = Number(date.slice(-2));
+  const totalMatters = Number(snapshot?.[0]?.total_matters_count ?? 0);
 
   const worst = useMemo(() => {
     const configured = (snapshot ?? []).filter((s) => s.daily_capacity != null);
@@ -103,25 +112,31 @@ function DayTile({
   const style = worst
     ? getCapacityStyle(worst.scheduled_count, worst.daily_capacity)
     : getCapacityStyle(0, null);
-  const hint = worst
-    ? `${capacityStatusLabel(style.band)}. ${worst.category_name} · ${worst.scheduled_count} of ${worst.daily_capacity} files you preside across your courts`
+  const onDarkTile = style.textClass === "text-white";
+  const totalHint = dayTotalHint(totalMatters);
+  const capacityHint = worst
+    ? `Capacity: ${worst.category_name} ${worst.scheduled_count} of ${worst.daily_capacity}`
     : null;
-  const ariaHint = hint ?? `Select ${date}`;
+  const hint = capacityHint ? `${totalHint}. ${capacityHint}` : totalHint;
 
   const tile = (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      aria-label={ariaHint}
+      aria-label={hint}
       className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors ${
-        size === "day" ? "h-20 sm:h-24" : "h-12 sm:h-14"
+        size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20"
       } ${style.textClass} ${
         today ? "border-2 border-[hsl(var(--stage-outcome-complete))]" : "border-border"
       } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
       style={{ backgroundColor: style.bg }}
     >
       <span className="text-sm font-bold leading-none">{day}</span>
+      <span className={loadPillClass(onDarkTile)}>
+        {totalMatters}
+        {size === "day" ? ` matter${totalMatters === 1 ? "" : "s"}` : ""}
+      </span>
       {worst && (
         <span className="flex items-center gap-0.5 text-[10px] font-semibold leading-none">
           {style.band === "over_capacity" && <AlertTriangle className="h-2.5 w-2.5" />}
@@ -136,7 +151,6 @@ function DayTile({
     </button>
   );
 
-  if (!hint) return tile;
   return <HintTooltip label={hint}>{tile}</HintTooltip>;
 }
 
@@ -165,6 +179,7 @@ export function DocketCapacityStrip({
   const [weekAnchor, setWeekAnchor] = useState(today);
   const { data: categories } = useDocketMatterCategories();
   const { data: snapshot } = useDocketCapacitySnapshot(selectedDate ?? undefined);
+  const selectedTotal = Number(snapshot?.[0]?.total_matters_count ?? 0);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -247,8 +262,13 @@ export function DocketCapacityStrip({
         ? dayOfLabel(focusDate)
         : weekOfLabel(weekStart);
 
+  const captionTotalHint = dayTotalHint(selectedTotal);
+
   return (
-    <div className="mb-4 space-y-3 rounded-md border border-border p-3">
+    <div
+      className="mb-4 space-y-3 rounded-md border border-border p-3"
+      data-tour="docket-week-strip"
+    >
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <span className="min-w-0 text-sm font-medium text-foreground">{heading}</span>
@@ -350,7 +370,7 @@ export function DocketCapacityStrip({
                   onSelect={() => handleSelectDay(cell.date)}
                 />
               ) : (
-                <div key={`blank-${i}`} className="h-12 w-full sm:h-14" />
+                <div key={`blank-${i}`} className="h-16 w-full sm:h-20" />
               ),
             )}
           </div>
@@ -361,16 +381,32 @@ export function DocketCapacityStrip({
         {selectedDate ? (
           <>
             <p className="text-xs text-muted-foreground">
-              Appearances on{" "}
+              <HintTooltip label={captionTotalHint}>
+                <span
+                  tabIndex={0}
+                  className="cursor-help rounded-sm underline decoration-dotted underline-offset-2"
+                >
+                  {selectedTotal} matter{selectedTotal === 1 ? "" : "s"} in all
+                </span>
+              </HintTooltip>
+              . Appearances on{" "}
               {formatDate(selectedDate, {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
                 year: "numeric",
               })}{" "}
-              across every court you sit
+              across every court you sit. Capacity by classification below.
             </p>
             <div className="flex flex-wrap gap-2">
+              <HintTooltip label={captionTotalHint}>
+                <span
+                  tabIndex={0}
+                  className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                >
+                  All: {selectedTotal}
+                </span>
+              </HintTooltip>
               {(categories ?? []).map((cat) => {
                 const row = (snapshot ?? []).find((s) => s.category_id === cat.id);
                 return (

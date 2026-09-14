@@ -92,7 +92,7 @@ check(
 // Clerks and magistrates work the same sheet, so the board steps must be
 // the same steps, not two drifting copies.
 
-const boardIds = ["board", "outcome", "next"];
+const boardIds = ["week-strip", "board", "outcome", "next"];
 check(
   "clerk and magistrate get identical board steps",
   boardIds.map((id) => JSON.stringify(clerk.find((s) => s.id === id))),
@@ -126,6 +126,7 @@ check("clerk sitting-day ids", idsIn(clerk, "sitting"), [
   "home",
   "docket",
   "new-matter",
+  "week-strip",
   "board",
   "outcome",
   "next",
@@ -136,6 +137,7 @@ check("clerk rest-of-app ids", idsIn(clerk, "rest"), ["clerk-access", "notificat
 check("magistrate sitting-day ids", idsIn(magistrate, "sitting"), [
   "home",
   "docket",
+  "week-strip",
   "board",
   "outcome",
   "next",
@@ -168,7 +170,7 @@ check(
 check(
   "empty docket sitting day skips the file",
   visibleWalkthroughSteps(magistrate, "sitting", false).map((s) => s.id),
-  ["home", "docket", "board", "outcome", "next", "chapter-rest"],
+  ["home", "docket", "week-strip", "board", "outcome", "next", "chapter-rest"],
 );
 check(
   "full sitting day keeps the file",

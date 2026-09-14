@@ -1,5 +1,6 @@
 /**
- * Docket capacity strip vs board list contract (0139 + all-courts day click).
+ * Docket capacity strip vs board list contract (0139 + 0147 total-matters
+ * count + all-courts day click).
  *
  * Snapshot SQL still accepts optional p_court_id. The week strip must not
  * send it: tiles count every court the caller sits. Clicking a day writes
@@ -17,7 +18,11 @@ import {
 } from "../../src/lib/docket-board-params.ts"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const sql = readFileSync(
+const snapshotSql = readFileSync(
+  join(__dirname, "../../supabase/migrations/0147_docket_calendar_total_matters.sql"),
+  "utf8",
+)
+const listSql = readFileSync(
   join(__dirname, "../../supabase/migrations/0139_docket_capacity_matches_board.sql"),
   "utf8",
 )
@@ -46,30 +51,26 @@ const check = (label, actual, expected) => {
 }
 
 check(
-  "0139 still defines get_docket_capacity_snapshot with optional p_court_id",
+  "0147 still defines get_docket_capacity_snapshot with optional p_court_id",
   /create function public\.get_docket_capacity_snapshot\([\s\S]*?p_court_id uuid default null/i.test(
-    sql,
+    snapshotSql,
   ),
   true,
 )
 check(
   "snapshot excludes binned matters",
-  sql.includes("dm.deleted_at is null"),
+  snapshotSql.includes("dm.deleted_at is null"),
   true,
 )
 check(
   "snapshot counts distinct matters, not event rows",
-  sql.includes("count(distinct e.docket_matter_id)"),
+  snapshotSql.includes("count(distinct e.docket_matter_id)"),
   true,
 )
 check(
   "snapshot still scopes to the calling magistrate",
-  sql.includes("e.presiding_magistrate_id = (select auth.uid())"),
+  snapshotSql.includes("e.presiding_magistrate_id = (select auth.uid())"),
   true,
-)
-const snapshotSql = sql.slice(
-  0,
-  sql.indexOf("create function public.list_docket_matters"),
 )
 check(
   "snapshot does not apply list-style full-text search",
@@ -77,8 +78,32 @@ check(
   false,
 )
 check(
+  "snapshot returns total_matters_count",
+  snapshotSql.includes("total_matters_count bigint"),
+  true,
+)
+const dayTotalCte = snapshotSql.slice(
+  snapshotSql.indexOf("with day_total as"),
+  snapshotSql.indexOf("from public.docket_matter_categories"),
+)
+check(
+  "day-total CTE does not filter by event category",
+  /e\.category_id/.test(dayTotalCte),
+  false,
+)
+check(
+  "snapshot does not filter procedure_stage",
+  /procedure_stage/.test(snapshotSql),
+  false,
+)
+check(
+  "snapshot does not filter trial_status",
+  /trial_status/.test(snapshotSql),
+  false,
+)
+check(
   "list_docket_matters ignores next-date buckets when a day is selected",
-  /p_exact_date is not null\s+or p_next_date is null/i.test(sql),
+  /p_exact_date is not null\s+or p_next_date is null/i.test(listSql),
   true,
 )
 
@@ -97,6 +122,23 @@ check(
   "capacity strip has no courtId prop",
   /courtId/.test(stripSrc),
   false,
+)
+check(
+  "strip reads total_matters_count independently of the worst-category fraction",
+  stripSrc.includes("total_matters_count") &&
+    stripSrc.includes("totalMatters") &&
+    stripSrc.includes("{worst.scheduled_count}/{worst.daily_capacity}"),
+  true,
+)
+check(
+  "strip renders the day total in its own pill",
+  stripSrc.includes("loadPillClass") && stripSrc.includes("All: {selectedTotal}"),
+  true,
+)
+check(
+  "strip is a walkthrough target",
+  stripSrc.includes('data-tour="docket-week-strip"'),
+  true,
 )
 check(
   "day click writes court=all in the same search-params write",

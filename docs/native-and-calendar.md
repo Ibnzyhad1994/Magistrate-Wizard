@@ -4,9 +4,8 @@ Magistrate Wizard stays one React + Supabase app. Capacitor (Android/iOS)
 and Electron (Windows) wrap the same `dist/` build. Docket events remain
 the legal source of truth; Google Calendar only mirrors **when/where**.
 
-Version is `package.json` (`0.2.0` for this release). Native build number
-is `native/version.json` `versionCode` (starts at `2`). After changing
-either, run:
+Version is `package.json`. Native build number is `native/version.json`
+`versionCode` (monotonic integer). After changing either, run:
 
 ```bash
 npm run native:sync-version
