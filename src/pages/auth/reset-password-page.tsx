@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import {
   Form,
   FormControl,
@@ -126,8 +126,7 @@ export default function ResetPasswordPage() {
                 <FormItem>
                   <FormLabel className="text-foreground/80">New password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       autoComplete="new-password"
                       className={fieldClassName}
                       {...field}
@@ -145,8 +144,7 @@ export default function ResetPasswordPage() {
                 <FormItem>
                   <FormLabel className="text-foreground/80">Confirm new password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       autoComplete="new-password"
                       className={fieldClassName}
                       {...field}

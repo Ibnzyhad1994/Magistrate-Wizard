@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -95,8 +96,7 @@ export default function LoginPage() {
                     </Link>
                   </div>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       autoComplete="current-password"
                       className={fieldClassName}
                       {...field}

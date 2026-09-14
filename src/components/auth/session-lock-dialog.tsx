@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { PasswordInput } from "@/components/auth/password-input";
 import { useAuth } from "@/hooks/use-auth";
 
 /**
@@ -25,8 +26,11 @@ export function SessionLockDialog() {
     isReauthenticating,
     signOut,
     isSigningOut,
+    resetPassword,
+    isResettingPassword,
   } = useAuth();
   const [password, setPassword] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const email = user?.email ?? profile?.email ?? "";
 
   async function handleContinue(event: FormEvent) {
@@ -34,6 +38,16 @@ export function SessionLockDialog() {
     try {
       await reauthenticate(password);
       setPassword("");
+    } catch {
+      // Mutation cache toast already surfaced the error.
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email) return;
+    try {
+      await resetPassword(email);
+      setResetSent(true);
     } catch {
       // Mutation cache toast already surfaced the error.
     }
@@ -70,16 +84,37 @@ export function SessionLockDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="session-lock-password">Password</Label>
-            <Input
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="session-lock-password">Password</Label>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-xs font-medium text-foreground/70"
+                disabled={isResettingPassword || !email}
+                onClick={() => void handleForgotPassword()}
+              >
+                {isResettingPassword
+                  ? "Sending reset link…"
+                  : resetSent
+                    ? "Resend reset link"
+                    : "Forgot password?"}
+              </Button>
+            </div>
+            <PasswordInput
               id="session-lock-password"
-              type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               autoFocus
               className="h-11 border-foreground/15 bg-secondary text-foreground"
             />
+            {resetSent ? (
+              <p className="text-xs text-foreground/70">
+                Check your email. Open the link in a new tab, set a new
+                password, then type it here. Keep this window open so work still
+                on the page is kept.
+              </p>
+            ) : null}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
             <Button

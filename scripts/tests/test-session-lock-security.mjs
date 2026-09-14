@@ -320,6 +320,29 @@ const authenticate = () => {
     dialog.includes("Queued saves will sync") && dialog.includes("this page reloads"),
     true,
   )
+  check("lock dialog uses the shared password reveal field", dialog.includes("<PasswordInput"), true)
+  check("lock dialog can send a reset without leaving", dialog.includes("resetPassword(email)"), true)
+  check(
+    "forgot-password from lock does not navigate away",
+    dialog.includes("ROUTES.forgotPassword"),
+    false,
+  )
+  check(
+    "lock dialog tells the user to finish reset in another tab",
+    dialog.includes("Open the link in a new tab") && dialog.includes("Keep this window open"),
+    true,
+  )
+  const passwordInput = readFileSync(join(SRC, "components/auth/password-input.tsx"), "utf8")
+  check(
+    "password reveal toggles the input type",
+    passwordInput.includes('type={visible ? "text" : "password"}'),
+    true,
+  )
+  check(
+    "password reveal control cannot submit a form",
+    passwordInput.includes('type="button"') && passwordInput.includes("Show password"),
+    true,
+  )
 }
 
 {

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -197,8 +198,7 @@ export default function RegisterPage() {
                 <FormItem>
                   <FormLabel className="text-foreground/80">Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       autoComplete="new-password"
                       className={fieldClassName}
                       {...field}
@@ -216,8 +216,7 @@ export default function RegisterPage() {
                 <FormItem>
                   <FormLabel className="text-foreground/80">Confirm password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       autoComplete="new-password"
                       className={fieldClassName}
                       {...field}

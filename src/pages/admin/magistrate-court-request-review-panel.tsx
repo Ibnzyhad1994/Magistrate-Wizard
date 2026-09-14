@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, Gavel, ShieldAlert, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -274,9 +274,8 @@ export function MagistrateCourtRequestReviewPanel() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="bootstrap-password">Confirm your password</Label>
-              <Input
+              <PasswordInput
                 id="bootstrap-password"
-                type="password"
                 autoComplete="current-password"
                 value={bootstrapPassword}
                 onChange={(e) => setBootstrapPassword(e.target.value)}
