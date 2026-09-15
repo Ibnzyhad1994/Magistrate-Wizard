@@ -132,6 +132,12 @@ jobs:
       - name: Audit activity summaries
         run: npm run test:audit-activity
 
+      - name: Admin people directory
+        run: npm run test:admin-people
+
+      - name: People court occupancy and exceptions
+        run: npm run test:people-court-occupancy
+
       - name: Case law facets
         run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-facets.mjs
 

@@ -38,10 +38,12 @@ export const adminPeopleKeys = {
 };
 
 export interface AdminPersonCourt {
+  assignmentId?: string;
   courtId: string;
   courtName: string;
   kind: "magistrate" | "clerk";
   assignmentType?: string;
+  occupiesPrimarySlot?: boolean;
 }
 
 export interface AdminPersonRow {
@@ -78,13 +80,16 @@ function asCourtJoin(value: unknown): CourtJoin | null {
 }
 
 interface MagistrateAssignmentRow {
+  id?: string;
   profile_id: string;
   court_id: string;
   assignment_type: string;
+  occupies_primary_slot?: boolean;
   courts: CourtJoin | null;
 }
 
 interface ClerkAssignmentRow {
+  id?: string;
   profile_id: string;
   court_id: string;
   courts: CourtJoin | null;
@@ -134,14 +139,17 @@ export function buildAdminPeopleRows(input: {
 
   for (const row of input.magistrateAssignments) {
     addCourt(row.profile_id, {
+      assignmentId: row.id,
       courtId: row.court_id,
       courtName: row.courts?.name ?? "Unknown court",
       kind: "magistrate",
       assignmentType: row.assignment_type,
+      occupiesPrimarySlot: row.occupies_primary_slot,
     });
   }
   for (const row of input.clerkAssignments) {
     addCourt(row.profile_id, {
+      assignmentId: row.id,
       courtId: row.court_id,
       courtName: row.courts?.name ?? "Unknown court",
       kind: "clerk",
@@ -208,11 +216,11 @@ export function useAdminPeople() {
             .order("full_name"),
           supabase
             .from("magistrate_courts")
-            .select("profile_id, court_id, assignment_type, courts(id, name)")
+            .select("id, profile_id, court_id, assignment_type, occupies_primary_slot, courts(id, name)")
             .is("ended_at", null),
           supabase
             .from("clerk_courts")
-            .select("profile_id, court_id, courts(id, name)")
+            .select("id, profile_id, court_id, courts(id, name)")
             .is("ended_at", null),
           supabase
             .from("auth_event_log")
@@ -278,12 +286,15 @@ export function useAdminPeople() {
       const rows = buildAdminPeopleRows({
         profiles: (profilesResult.data ?? []) as ProfileRow[],
         magistrateAssignments: (magistrateResult.data ?? []).map((row) => ({
+          id: row.id,
           profile_id: row.profile_id,
           court_id: row.court_id,
           assignment_type: row.assignment_type,
+          occupies_primary_slot: row.occupies_primary_slot,
           courts: asCourtJoin(row.courts),
         })),
         clerkAssignments: (clerkResult.data ?? []).map((row) => ({
+          id: row.id,
           profile_id: row.profile_id,
           court_id: row.court_id,
           courts: asCourtJoin(row.courts),

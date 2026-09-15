@@ -47,6 +47,14 @@ const sql0144 = readFileSync(
   join(__dirname, "../../supabase/migrations/0144_clerk_approver_primary_sitting.sql"),
   "utf8",
 );
+const sql0151 = readFileSync(
+  join(__dirname, "../../supabase/migrations/0151_admin_may_decide_clerk_access.sql"),
+  "utf8",
+);
+const sql0153 = readFileSync(
+  join(__dirname, "../../supabase/migrations/0153_admin_may_cancel_pending_court_requests.sql"),
+  "utf8",
+);
 const clerkAccessPage = readFileSync(
   join(__dirname, "../../src/pages/clerk/clerk-access-page.tsx"),
   "utf8",
@@ -444,6 +452,20 @@ check("assignment type labels use Primary not regular", ASSIGNMENT_TYPE_LABEL.re
 check("assignmentTypeLabel maps regular to Primary", assignmentTypeLabel("regular"), "Primary");
 check("assignmentTypeLabel ignores a non-string index (the CI typecheck case)", assignmentTypeLabel({}), undefined);
 
+check(
+  "0153 lets an administrator cancel a pending clerk or magistrate request",
+  sql0153.includes("or (select public.is_admin())") &&
+    sql0153.includes("create or replace function public.cancel_clerk_access_request") &&
+    sql0153.includes("create or replace function public.cancel_magistrate_court_request"),
+  true,
+);
+check(
+  "0151 lets an administrator decide clerk access without sitting that court",
+  sql0151.includes("select public.is_admin()") &&
+    sql0151.includes("create or replace function public.decide_clerk_access_request") &&
+    sql0151.includes("create or replace function public.can_manage_clerk_access"),
+  true,
+);
 check(
   "0144 unique primary may review clerks while covering sits",
   sql0144.includes("mc.assignment_type = 'regular'") &&

@@ -24,6 +24,8 @@ export interface MagistrateRequestForReview {
   reviewed_at: string | null;
   rejection_reason: string | null;
   approval_kind: "ordinary" | "bootstrap_self_approval" | null;
+  request_kind?: "ordinary" | "occupied_exception";
+  occupied_resolution?: "replace" | "co_sit" | null;
   email_confirmed: boolean | null;
   profiles: { full_name: string | null; email: string } | null;
   courts: { id: string; name: string; jurisdiction: string } | null;
@@ -43,7 +45,7 @@ export function useMagistrateCourtRequestsToReview() {
         supabase
           .from("magistrate_court_requests")
           .select(
-            "id, profile_id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, approval_kind, profiles!magistrate_court_requests_profile_id_fkey(full_name, email), courts(id, name, jurisdiction)",
+            "id, profile_id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, approval_kind, request_kind, occupied_resolution, profiles!magistrate_court_requests_profile_id_fkey(full_name, email), courts(id, name, jurisdiction)",
           )
           .order("requested_at", { ascending: false }),
         supabase.rpc("list_magistrate_court_request_email_confirmation"),
@@ -86,6 +88,8 @@ function invalidateAfterDecision(queryClient: ReturnType<typeof useQueryClient>)
   void queryClient.invalidateQueries({ queryKey: magistrateCourtRequestAdminKeys.requests });
   void queryClient.invalidateQueries({ queryKey: ["admin", "court-assignments"] });
   void queryClient.invalidateQueries({ queryKey: ["admin", "unassigned-magistrates"] });
+  void queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
+  void queryClient.invalidateQueries({ queryKey: ["admin", "occupied-primary-courts"] });
 }
 
 /** Approve or reject a pending request. Never usable on the caller's own request. */
@@ -96,11 +100,13 @@ export function useDecideMagistrateCourtRequest() {
       requestId: string;
       decision: "approved" | "rejected";
       rejectionReason?: string;
+      occupiedResolution?: "replace" | "co_sit";
     }) => {
       const { data, error } = await supabase.rpc("decide_magistrate_court_request", {
         p_request_id: input.requestId,
         p_decision: input.decision,
         p_rejection_reason: input.rejectionReason ?? undefined,
+        p_occupied_resolution: input.occupiedResolution ?? undefined,
       });
       if (error) throw error;
       return data;

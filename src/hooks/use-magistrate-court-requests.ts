@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { occupiedExceptionSubmitMessage } from "@/lib/occupied-court-exception";
 
 /**
  * Self-service surface: a magistrate's (or an admin who is also a sitting
@@ -23,6 +24,8 @@ export interface MagistrateCourtRequestRow {
   reviewed_at: string | null;
   rejection_reason: string | null;
   approval_kind: "ordinary" | "bootstrap_self_approval" | null;
+  request_kind?: "ordinary" | "occupied_exception";
+  occupied_resolution?: "replace" | "co_sit" | null;
   courts: { id: string; name: string; jurisdiction: string } | null;
 }
 
@@ -55,7 +58,7 @@ export function useMyMagistrateCourtRequests() {
       const { data, error } = await supabase
         .from("magistrate_court_requests")
         .select(
-          "id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, approval_kind, courts(id, name, jurisdiction)",
+          "id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, approval_kind, request_kind, occupied_resolution, courts(id, name, jurisdiction)",
         )
         .order("requested_at", { ascending: false });
       if (error) throw error;
@@ -158,8 +161,11 @@ export function useSubmitMagistrateCourtRequest() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      toast.success("Court assignment request submitted.");
+    onSuccess: (data) => {
+      const kind = data && typeof data === "object" && "request_kind" in data
+        ? (data as { request_kind?: string }).request_kind
+        : undefined;
+      toast.success(occupiedExceptionSubmitMessage(kind === "occupied_exception"));
       invalidateAfterAssignmentChange(queryClient);
     },
     onError: (error) => toast.error(getErrorMessage(error)),

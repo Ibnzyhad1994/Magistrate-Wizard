@@ -68,10 +68,6 @@ export default function RegisterPage() {
   const assignedInDistrict = courtsInDistrict.filter((court) =>
     Boolean((court as { is_assigned?: boolean }).is_assigned),
   );
-  const allCourtsAssigned =
-    accountType === "magistrate" &&
-    courtsInDistrict.length > 0 &&
-    assignedInDistrict.length === courtsInDistrict.length;
   const lookupsPending = districtsQuery.isPending || courtsQuery.isPending;
   const lookupsError = districtsQuery.isError || courtsQuery.isError;
 
@@ -318,10 +314,12 @@ export default function RegisterPage() {
                       <p className="text-sm text-foreground/50">No courts found in this district.</p>
                     ) : (
                       <>
-                        {allCourtsAssigned && (
+                        {accountType === "magistrate" && assignedInDistrict.length > 0 && (
                           <p className="text-sm text-[hsl(var(--notice-action))]">
-                            All courts in this district already have a primary magistrate.
-                            Choose another district or ask an administrator.
+                            Courts marked occupied already have a signed-in primary magistrate.
+                            You can still request one as a special exception. An administrator
+                            decides whether to replace that magistrate or seat two at that court.
+                            The request does not fill the court until you have signed in.
                           </p>
                         )}
                         <div className="max-h-48 space-y-2 overflow-y-auto">
@@ -332,15 +330,11 @@ export default function RegisterPage() {
                             return (
                               <label
                                 key={court.id}
-                                className={cn(
-                                  "flex items-center justify-between gap-2 text-sm",
-                                  isAssigned ? "text-foreground/35" : "text-foreground/80",
-                                )}
+                                className="flex items-center justify-between gap-2 text-sm text-foreground/80"
                               >
                                 <span className="flex items-center gap-2">
                                   <Checkbox
                                     checked={courtIds.includes(court.id)}
-                                    disabled={isAssigned}
                                     onCheckedChange={(checked) => {
                                       const next = checked
                                         ? [...courtIds, court.id]
@@ -351,8 +345,8 @@ export default function RegisterPage() {
                                   {court.name}
                                 </span>
                                 {isAssigned && (
-                                  <span className="text-[11px] uppercase tracking-wide text-foreground/40">
-                                    Assigned
+                                  <span className="text-[11px] uppercase tracking-wide text-[hsl(var(--notice-action))]">
+                                    Occupied — exception
                                   </span>
                                 )}
                               </label>

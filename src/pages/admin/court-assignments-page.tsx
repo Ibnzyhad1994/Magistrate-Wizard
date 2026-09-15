@@ -26,14 +26,17 @@ import {
   useProfileCourtAssignments,
   useCreateCourtAssignment,
   useEndCourtAssignment,
+  useOccupiedPrimaryCourtIds,
   useUnassignedMagistrates,
   useProfileClerkCourts,
   type CourtAssignmentType,
+  type OccupiedIfNeeded,
   type ProfileSearchResult,
 } from "@/hooks/admin/use-court-assignments";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MagistrateCourtRequestReviewPanel } from "@/pages/admin/magistrate-court-request-review-panel";
 import { RosterProfileRequests } from "@/pages/admin/roster-profile-requests";
+import { OccupiedCourtResolutionFields } from "@/components/admin/occupied-court-resolution-fields";
 import { useMagistrateCourtRequestsToReview } from "@/hooks/admin/use-magistrate-court-requests";
 import {
   ASSIGNMENT_TYPE_LABEL,
@@ -45,6 +48,7 @@ import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { ROUTES } from "@/routes/paths";
+import type { OccupiedCourtResolution } from "@/lib/occupied-court-exception";
 
 /**
  * Admin-only Court Assignment management. `magistrate_courts` is
@@ -70,6 +74,7 @@ export default function CourtAssignmentsPage() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [courtToAssign, setCourtToAssign] = useState("");
   const [assignmentType, setAssignmentType] = useState<CourtAssignmentType>("regular");
+  const [assignResolution, setAssignResolution] = useState<OccupiedCourtResolution | "">("");
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
   const rosterTab = searchParams.get("tab") === "roster" ? "roster" : "requests";
 
@@ -105,6 +110,7 @@ export default function CourtAssignmentsPage() {
     refetch: refetchClerkAssignments,
   } = useProfileClerkCourts(selectedProfileId ?? undefined);
   const { data: courts, isPending: courtsPending } = useCourts();
+  const { data: occupiedIds } = useOccupiedPrimaryCourtIds();
   const createAssignment = useCreateCourtAssignment(selectedProfileId ?? "");
   const endAssignment = useEndCourtAssignment(selectedProfileId ?? "");
 
@@ -134,14 +140,23 @@ export default function CourtAssignmentsPage() {
     setAssignmentType("regular");
   };
 
+  const rosterAssignOccupied =
+    assignmentType === "regular" && Boolean(courtToAssign) && Boolean(occupiedIds?.has(courtToAssign));
+
   function handleAssign() {
     if (!courtToAssign) return;
+    if (rosterAssignOccupied && !assignResolution) return;
     createAssignment.mutate(
-      { courtId: courtToAssign, assignmentType },
+      {
+        courtId: courtToAssign,
+        assignmentType,
+        ifOccupied: rosterAssignOccupied ? (assignResolution as OccupiedIfNeeded) : undefined,
+      },
       {
         onSuccess: () => {
           setCourtToAssign("");
           setAssignmentType("regular");
+          setAssignResolution("");
         },
       },
     );
@@ -438,7 +453,10 @@ export default function CourtAssignmentsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Select
                       value={courtToAssign}
-                      onChange={(e) => setCourtToAssign(e.target.value)}
+                      onChange={(e) => {
+                        setCourtToAssign(e.target.value);
+                        setAssignResolution("");
+                      }}
                       disabled={courtsPending || availableCourts.length === 0}
                       aria-label="Court to assign"
                       className="max-w-xs"
@@ -451,6 +469,7 @@ export default function CourtAssignmentsPage() {
                       {availableCourts.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
+                          {occupiedIds?.has(c.id) ? " (occupied)" : ""}
                         </option>
                       ))}
                     </Select>
@@ -469,16 +488,24 @@ export default function CourtAssignmentsPage() {
                     <Button
                       size="sm"
                       onClick={handleAssign}
-                      disabled={!courtToAssign || createAssignment.isPending}
+                      disabled={!courtToAssign || createAssignment.isPending || (rosterAssignOccupied && !assignResolution)}
                     >
                       <Plus className="h-4 w-4" />
                       Assign
                     </Button>
                   </div>
+                  {rosterAssignOccupied && (
+                    <OccupiedCourtResolutionFields
+                      name="roster-assign-resolution"
+                      value={assignResolution}
+                      onChange={setAssignResolution}
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Primary is the sitting magistrate for that court. Acting and Relief cover
                     alongside them and do not replace the primary, or block that primary from
-                    reviewing clerk access.
+                    reviewing clerk access. Occupied courts stay available until the seated
+                    magistrate has signed in.
                   </p>
                 </div>
                 )}

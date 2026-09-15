@@ -27,6 +27,7 @@ export const courtAssignmentKeys = {
   assignments: (profileId: string) => ["admin", "court-assignments", profileId] as const,
   clerkAssignments: (profileId: string) => ["admin", "clerk-courts", profileId] as const,
   waiting: ["admin", "unassigned-magistrates"] as const,
+  occupiedPrimary: ["admin", "occupied-primary-courts"] as const,
 };
 
 /**
@@ -176,9 +177,16 @@ export function useProfileClerkCourts(profileId: string | undefined) {
 
 export type CourtAssignmentType = "regular" | "acting" | "relief" | "other";
 
+export type OccupiedIfNeeded = "replace" | "co_sit";
+
 export type CreateCourtAssignmentInput =
   | string
-  | { courtId: string; assignmentType?: CourtAssignmentType };
+  | {
+      courtId: string;
+      assignmentType?: CourtAssignmentType;
+      ifOccupied?: OccupiedIfNeeded;
+      reason?: string;
+    };
 
 function invalidateAfterAdminCourtChange(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -186,22 +194,24 @@ function invalidateAfterAdminCourtChange(
 ) {
   void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.assignments(profileId) });
   void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.waiting });
+  void queryClient.invalidateQueries({ queryKey: courtAssignmentKeys.occupiedPrimary });
   void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
   void queryClient.invalidateQueries({ queryKey: ["docket", "my-current-courts"] });
   void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "my-assignments"] });
   void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "courts"] });
   void queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
+  void queryClient.invalidateQueries({ queryKey: ["admin", "magistrate-court-requests"] });
 }
 
 /**
- * Create a Court assignment via admin_assign_magistrate_court()
- * (0108/0110, SECURITY DEFINER) rather than a raw table insert — same
+ * Create a Court assignment via admin_seat_magistrate_at_court()
+ * (0150, SECURITY DEFINER) rather than a raw table insert — same
  * admin-only authority (is_admin(), re-verified inside the RPC), but with
- * clean conflict handling: a primary-exclusivity conflict (0105) or a
+ * clean conflict handling: a primary-exclusivity conflict or a
  * same-(profile,court) duplicate surfaces as a readable message instead of
- * a raw Postgres error. `check_court_active_for_assignment()` (0017,
- * unmodified) remains the backend gate against assigning an inactive
- * Court, including for Admins.
+ * a raw Postgres error. Occupied courts require `ifOccupied` of replace
+ * or co_sit. `check_court_active_for_assignment()` (0017, unmodified)
+ * remains the backend gate against assigning an inactive Court.
  *
  * A string argument (the Court Assignments roster) creates a `regular`
  * assignment. Pass `{ courtId, assignmentType }` when the caller needs
@@ -214,10 +224,14 @@ export function useCreateCourtAssignment(profileId: string) {
     mutationFn: async (input: CreateCourtAssignmentInput) => {
       const courtId = typeof input === "string" ? input : input.courtId;
       const assignmentType = typeof input === "string" ? "regular" : (input.assignmentType ?? "regular");
-      const { error } = await supabase.rpc("admin_assign_magistrate_court", {
+      const ifOccupied = typeof input === "string" ? undefined : input.ifOccupied;
+      const reason = typeof input === "string" ? undefined : input.reason;
+      const { error } = await supabase.rpc("admin_seat_magistrate_at_court", {
         p_profile_id: profileId,
         p_court_id: courtId,
         p_assignment_type: assignmentType,
+        p_if_occupied: ifOccupied,
+        p_reason: reason,
       });
       if (error) throw error;
     },
@@ -247,6 +261,49 @@ export function useEndCourtAssignment(profileId: string) {
     },
     onSuccess: () => {
       toast.success("Court assignment ended.");
+      invalidateAfterAdminCourtChange(queryClient, profileId);
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
+
+/** Courts whose primary slot is filled by a signed-in regular magistrate. */
+export function useOccupiedPrimaryCourtIds() {
+  return useQuery({
+    queryKey: courtAssignmentKeys.occupiedPrimary,
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await supabase
+        .from("magistrate_courts")
+        .select("court_id")
+        .eq("assignment_type", "regular")
+        .is("ended_at", null)
+        .eq("occupies_primary_slot", true);
+      if (error) throw error;
+      return new Set((data ?? []).map((row) => row.court_id));
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useTransferCourtAssignment(profileId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      assignmentId: string;
+      newCourtId: string;
+      ifOccupied?: OccupiedIfNeeded;
+      reason?: string;
+    }) => {
+      const { error } = await supabase.rpc("admin_transfer_magistrate_court", {
+        p_assignment_id: input.assignmentId,
+        p_new_court_id: input.newCourtId,
+        p_if_occupied: input.ifOccupied,
+        p_reason: input.reason,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Court assignment transferred.");
       invalidateAfterAdminCourtChange(queryClient, profileId);
     },
     onError: (error) => toast.error(getErrorMessage(error)),

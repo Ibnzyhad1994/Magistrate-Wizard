@@ -31,7 +31,15 @@ import {
   useMagistrateCourtRequestsToReview,
   type MagistrateRequestForReview,
 } from "@/hooks/admin/use-magistrate-court-requests";
+import { OccupiedCourtResolutionFields } from "@/components/admin/occupied-court-resolution-fields";
+import { useOccupiedPrimaryCourtIds } from "@/hooks/admin/use-court-assignments";
 import { courtRequestStatusLabel } from "@/lib/court-assignment-roster";
+import {
+  OCCUPIED_COURT_EXCEPTION_LABEL,
+  occupiedResolutionLabel,
+  requestNeedsOccupiedResolution,
+  type OccupiedCourtResolution,
+} from "@/lib/occupied-court-exception";
 import { formatDate } from "@/lib/utils";
 
 /**
@@ -47,11 +55,14 @@ export function MagistrateCourtRequestReviewPanel() {
   const { profile } = useAuth();
   const { data: requests, isPending, isError, error, refetch } = useMagistrateCourtRequestsToReview();
   const { data: bootstrapAvailable } = useIsSoleAdminBootstrapAvailable();
+  const { data: occupiedIds } = useOccupiedPrimaryCourtIds();
   const decide = useDecideMagistrateCourtRequest();
   const bootstrapApprove = useAdminBootstrapSelfApprove();
 
   const [rejectTarget, setRejectTarget] = useState<MagistrateRequestForReview | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [approveTarget, setApproveTarget] = useState<MagistrateRequestForReview | null>(null);
+  const [approveResolution, setApproveResolution] = useState<OccupiedCourtResolution | "">("");
   const [bootstrapTarget, setBootstrapTarget] = useState<MagistrateRequestForReview | null>(null);
   const [bootstrapReason, setBootstrapReason] = useState("");
   const [bootstrapPassword, setBootstrapPassword] = useState("");
@@ -107,6 +118,10 @@ export function MagistrateCourtRequestReviewPanel() {
             {pending.map((r) => {
               const isOwnRequest = r.profile_id === profile?.id;
               const canBootstrap = isOwnRequest && !!bootstrapAvailable;
+              const occupied = requestNeedsOccupiedResolution({
+                requestKind: r.request_kind,
+                courtIsOccupied: Boolean(occupiedIds?.has(r.court_id)),
+              });
               return (
                 <Card key={r.id} className="border-foreground/10 bg-foreground/5">
                   <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
@@ -122,6 +137,11 @@ export function MagistrateCourtRequestReviewPanel() {
                         </Badge>
                       )}
                       <p className="mt-1 text-sm text-foreground">{r.courts?.name}</p>
+                      {occupied && (
+                        <Badge variant="outline" className="mt-1">
+                          {OCCUPIED_COURT_EXCEPTION_LABEL}
+                        </Badge>
+                      )}
                       <p className="mt-1 text-xs text-muted-foreground">
                         Requested {formatDate(r.requested_at)}
                         {r.staff_id ? ` · Staff ID ${r.staff_id}` : ""}
@@ -139,7 +159,14 @@ export function MagistrateCourtRequestReviewPanel() {
                         <>
                           <Button
                             size="sm"
-                            onClick={() => decide.mutate({ requestId: r.id, decision: "approved" })}
+                            onClick={() => {
+                              if (occupied) {
+                                setApproveTarget(r);
+                                setApproveResolution("");
+                                return;
+                              }
+                              decide.mutate({ requestId: r.id, decision: "approved" });
+                            }}
                             disabled={decide.isPending}
                           >
                             <Check className="h-4 w-4" />
@@ -196,6 +223,11 @@ export function MagistrateCourtRequestReviewPanel() {
                     {r.rejection_reason && (
                       <p className="mt-1 text-xs text-muted-foreground">{r.rejection_reason}</p>
                     )}
+                    {r.occupied_resolution && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {occupiedResolutionLabel(r.occupied_resolution)}
+                      </p>
+                    )}
                     {r.approval_kind === "bootstrap_self_approval" && (
                       <p className="mt-1 flex items-center gap-1 text-xs text-[hsl(var(--notice-action))]">
                         <ShieldAlert className="h-3.5 w-3.5" />
@@ -246,6 +278,47 @@ export function MagistrateCourtRequestReviewPanel() {
           );
         }}
       />
+
+      <Dialog open={!!approveTarget} onOpenChange={(open) => !open && setApproveTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Special seating exception</DialogTitle>
+            <DialogDescription>
+              {approveTarget?.profiles?.full_name || "This magistrate"} requested{" "}
+              <strong>{approveTarget?.courts?.name}</strong>, which already has a signed-in
+              primary magistrate. The request does not fill the court. Choose whether to
+              replace the current primary or seat both magistrates.
+            </DialogDescription>
+          </DialogHeader>
+          <OccupiedCourtResolutionFields
+            name="review-approve-resolution"
+            value={approveResolution}
+            onChange={setApproveResolution}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setApproveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!approveResolution || decide.isPending}
+              onClick={() => {
+                if (!approveTarget || !approveResolution) return;
+                decide.mutate(
+                  {
+                    requestId: approveTarget.id,
+                    decision: "approved",
+                    occupiedResolution: approveResolution,
+                  },
+                  { onSuccess: () => setApproveTarget(null) },
+                );
+              }}
+            >
+              Approve exception
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!bootstrapTarget} onOpenChange={(open) => !open && setBootstrapTarget(null)}>
         <DialogContent>

@@ -603,12 +603,12 @@ async function main() {
         p_request_id: pending[0].id,
         p_decision: "approved",
       });
-      log(!!decideErr, "orphanClerk", "admin decide_clerk_access_request blocked", errMsg(decideErr));
+      log(!decideErr, "orphanClerk", "admin decide_clerk_access_request", errMsg(decideErr));
       finding(
-        "admin-cannot-approve-orphan-clerk",
-        decideErr ? "degrade" : "break",
-        "Admin cannot approve an orphaned clerk request (must seat a magistrate first); unresolved page has no Approve",
-        decideErr ? errMsg(decideErr) : "admin was able to approve — unexpected",
+        "admin-can-approve-orphan-clerk",
+        !decideErr ? "hold" : "break",
+        "Admin may approve an orphaned clerk request (0151); seating a magistrate is no longer required first",
+        decideErr ? errMsg(decideErr) : "admin approved",
       );
     }
   }

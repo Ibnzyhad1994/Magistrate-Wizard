@@ -113,6 +113,7 @@ export function useDecideClerkAccessRequest() {
       toast.success(data.status === "approved" ? "Access approved." : "Request rejected.");
       void queryClient.invalidateQueries({ queryKey: clerkReviewKeys.requests });
       void queryClient.invalidateQueries({ queryKey: clerkReviewKeys.roster });
+      void queryClient.invalidateQueries({ queryKey: ["clerk-access-review", "orphaned"] });
       void notifyClerkAccess("decision_made", data.id);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -133,6 +134,8 @@ export function useRevokeClerkCourtAccess() {
     onSuccess: () => {
       toast.success("Clerk access revoked.");
       void queryClient.invalidateQueries({ queryKey: clerkReviewKeys.roster });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
+      void queryClient.invalidateQueries({ queryKey: ["clerk-access-review", "orphaned"] });
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

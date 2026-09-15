@@ -44,8 +44,8 @@ export function useSignupCourts() {
 /**
  * Anon-safe, magistrate-registration variant of useSignupCourts() above:
  * same id/name/district_id shape, plus `is_assigned` -- whether the court
- * already has an active primary magistrate. Never discloses who; "it is
- * sufficient to show that the court is unavailable."
+ * already has a signed-in primary magistrate. Occupied courts remain
+ * selectable as a special exception; they do not disclose who sits.
  */
 export function useSignupCourtsForMagistrate() {
   return useQuery({

@@ -2448,6 +2448,8 @@ export type Database = {
           notified_requester_at: string | null
           profile_id: string
           rejection_reason: string | null
+          occupied_resolution: string | null
+          request_kind: string
           requested_assignment_type: string
           requested_at: string
           reviewed_at: string | null
@@ -2468,6 +2470,8 @@ export type Database = {
           notified_requester_at?: string | null
           profile_id: string
           rejection_reason?: string | null
+          occupied_resolution?: string | null
+          request_kind?: string
           requested_assignment_type?: string
           requested_at?: string
           reviewed_at?: string | null
@@ -2488,6 +2492,8 @@ export type Database = {
           notified_requester_at?: string | null
           profile_id?: string
           rejection_reason?: string | null
+          occupied_resolution?: string | null
+          request_kind?: string
           requested_assignment_type?: string
           requested_at?: string
           reviewed_at?: string | null
@@ -2530,6 +2536,7 @@ export type Database = {
           ended_at: string | null
           ended_by: string | null
           id: string
+          occupies_primary_slot: boolean
           profile_id: string
           started_at: string
           updated_at: string
@@ -2543,6 +2550,7 @@ export type Database = {
           ended_at?: string | null
           ended_by?: string | null
           id?: string
+          occupies_primary_slot?: boolean
           profile_id: string
           started_at?: string
           updated_at?: string
@@ -2556,6 +2564,7 @@ export type Database = {
           ended_at?: string | null
           ended_by?: string | null
           id?: string
+          occupies_primary_slot?: boolean
           profile_id?: string
           started_at?: string
           updated_at?: string
@@ -3314,6 +3323,64 @@ export type Database = {
           ended_at: string | null
           ended_by: string | null
           id: string
+          occupies_primary_slot: boolean
+          profile_id: string
+          started_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "magistrate_courts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_seat_magistrate_at_court: {
+        Args: {
+          p_assignment_type?: string
+          p_court_id: string
+          p_if_occupied?: string
+          p_profile_id: string
+          p_reason?: string
+        }
+        Returns: {
+          assignment_type: string
+          can_manage_clerks: boolean
+          court_id: string
+          created_at: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          occupies_primary_slot: boolean
+          profile_id: string
+          started_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "magistrate_courts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_transfer_magistrate_court: {
+        Args: {
+          p_assignment_id: string
+          p_if_occupied?: string
+          p_new_court_id: string
+          p_reason?: string
+        }
+        Returns: {
+          assignment_type: string
+          can_manage_clerks: boolean
+          court_id: string
+          created_at: string
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          occupies_primary_slot: boolean
           profile_id: string
           started_at: string
           updated_at: string
@@ -3339,6 +3406,8 @@ export type Database = {
           notified_requester_at: string | null
           profile_id: string
           rejection_reason: string | null
+          occupied_resolution: string | null
+          request_kind: string
           requested_assignment_type: string
           requested_at: string
           reviewed_at: string | null
@@ -3488,6 +3557,8 @@ export type Database = {
           notified_requester_at: string | null
           profile_id: string
           rejection_reason: string | null
+          occupied_resolution: string | null
+          request_kind: string
           requested_assignment_type: string
           requested_at: string
           reviewed_at: string | null
@@ -3676,6 +3747,7 @@ export type Database = {
       decide_magistrate_court_request: {
         Args: {
           p_decision: Database["public"]["Enums"]["magistrate_court_decision"]
+          p_occupied_resolution?: string
           p_rejection_reason?: string
           p_request_id: string
         }
@@ -3691,6 +3763,8 @@ export type Database = {
           notified_requester_at: string | null
           profile_id: string
           rejection_reason: string | null
+          occupied_resolution: string | null
+          request_kind: string
           requested_assignment_type: string
           requested_at: string
           reviewed_at: string | null
@@ -4047,6 +4121,7 @@ export type Database = {
           ended_at: string | null
           ended_by: string | null
           id: string
+          occupies_primary_slot: boolean
           profile_id: string
           started_at: string
           updated_at: string
@@ -4361,6 +4436,8 @@ export type Database = {
           notified_requester_at: string | null
           profile_id: string
           rejection_reason: string | null
+          occupied_resolution: string | null
+          request_kind: string
           requested_assignment_type: string
           requested_at: string
           reviewed_at: string | null

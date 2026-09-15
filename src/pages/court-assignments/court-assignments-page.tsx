@@ -31,6 +31,7 @@ import {
   COURT_REQUEST_RETURN_NEXT_STEP,
   courtRequestStatusLabel,
 } from "@/lib/court-assignment-roster";
+import { OCCUPIED_COURT_EXCEPTION_LABEL } from "@/lib/occupied-court-exception";
 import { formatDate } from "@/lib/utils";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -80,8 +81,12 @@ export default function CourtAssignmentsPage() {
   const latestReturned = latestOutcome?.status === "rejected" ? latestOutcome : undefined;
   const latestCancelled = latestOutcome?.status === "cancelled" ? latestOutcome : undefined;
   const courtsInDistrict = (courts ?? []).filter(
-    (c) => c.district_id === districtId && c.status === "available",
+    (c) =>
+      c.district_id === districtId &&
+      (c.status === "available" || c.status === "assigned"),
   );
+  const selectedCourt = courtsInDistrict.find((c) => c.id === courtId);
+  const requestingOccupied = selectedCourt?.status === "assigned";
   const hasAssignment = (assignments ?? []).length > 0;
   const awaitingFirstRequest =
     !isPending && !requestsPending && !hasAssignment && pendingRequests.length === 0;
@@ -182,6 +187,12 @@ export default function CourtAssignmentsPage() {
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
                   <p className="text-xs text-muted-foreground">Requested {formatDate(r.requested_at)}</p>
+                  {r.request_kind === "occupied_exception" && (
+                    <p className="mt-1 text-xs text-[hsl(var(--notice-action))]">
+                      {OCCUPIED_COURT_EXCEPTION_LABEL}: waiting for an administrator to replace
+                      the current magistrate or seat you alongside them.
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
@@ -232,7 +243,9 @@ export default function CourtAssignmentsPage() {
           <CardHeader>
             <CardTitle className="text-base">Request a court assignment</CardTitle>
             <CardDescription>
-              A Court Assignment Administrator reviews and decides each requested court independently.
+              A Court Assignment Administrator reviews each request. Occupied courts are a
+              special exception: they decide whether to replace the current magistrate or
+              seat two. The request does not fill the court until you have signed in.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -258,21 +271,31 @@ export default function CourtAssignmentsPage() {
                   {!districtId
                     ? "Select a district first"
                     : courtsInDistrict.length === 0
-                      ? "No available courts in this district"
+                      ? "No courts in this district"
                       : "Select a court…"}
                 </option>
                 {courtsInDistrict.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.status === "assigned" ? " (occupied — special exception)" : ""}
+                  </option>
                 ))}
               </Select>
             </div>
+            {requestingOccupied && (
+              <p className="text-xs text-[hsl(var(--notice-action))]">
+                This court already has a signed-in primary magistrate. Submitting asks an
+                administrator to replace them or seat you alongside them. Your request does
+                not occupy the court.
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={resetRequestForm}>Cancel</Button>
               <Button
                 disabled={!courtId || submit.isPending}
                 onClick={() => submit.mutate({ courtId }, { onSuccess: resetRequestForm })}
               >
-                Submit request
+                {requestingOccupied ? "Request exception" : "Submit request"}
               </Button>
             </div>
           </CardContent>

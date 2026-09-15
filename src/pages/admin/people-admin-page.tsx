@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Users } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -16,6 +17,7 @@ import {
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { useAdminPeople, type AdminPersonRow } from "@/hooks/admin/use-admin-people";
+import { PeopleCourtSheet } from "@/pages/admin/people-court-sheet";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatDateTime } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
@@ -59,9 +61,14 @@ const matchesQuery = (person: AdminPersonRow, query: string) => {
  */
 export default function PeopleAdminPage() {
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<AdminPersonRow | null>(null);
   const { data, isPending, isError, error, refetch } = useAdminPeople();
   const people = data?.rows;
   const coverage = data?.coverage;
+
+  const selectedLive = selected
+    ? (people ?? []).find((person) => person.id === selected.id) ?? selected
+    : null;
 
   const visible = useMemo(
     () => (people ?? []).filter((person) => matchesQuery(person, query)),
@@ -72,7 +79,7 @@ export default function PeopleAdminPage() {
     <BrowsePage>
       <BrowseHeader
         title="People"
-        description="Every account, the court they sit, last sign-in, and latest institutional activity. Acting and relief sit that Court's docket."
+        description="Every account, the court they sit, last sign-in, and latest institutional activity. Reassign or transfer magistrates from a person. A court stays available until that person has signed in."
       />
 
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -125,6 +132,7 @@ export default function PeopleAdminPage() {
               <TableHead>Court assigned</TableHead>
               <TableHead>Last login</TableHead>
               <TableHead>Activity</TableHead>
+              <TableHead className="text-right">Courts</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -163,11 +171,17 @@ export default function PeopleAdminPage() {
                     <span className="text-sm text-muted-foreground">None recorded</span>
                   )}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="outline" onClick={() => setSelected(person)}>
+                    Manage
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+      <PeopleCourtSheet person={selectedLive} onClose={() => setSelected(null)} />
     </BrowsePage>
   );
 }

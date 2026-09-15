@@ -23,10 +23,10 @@ import {
 import { formatDate } from "@/lib/utils";
 
 /**
- * Magistrate-only "Clerk Access" review console. RLS scopes every row
- * shown here to courts the signed-in magistrate is currently authorized
- * to manage (can_manage_clerk_access()) — this page never needs to filter
- * by court itself; if it's visible here, this magistrate may act on it.
+ * Clerk Access review console for magistrates and Court Assignment
+ * Administrators. RLS scopes rows to courts the caller may review
+ * (can_manage_clerk_access(), including is_admin()) — this page never
+ * needs to filter by court itself; if it's visible here, they may act.
  */
 export default function ClerkAccessRequestsPage() {
   const { data: requests, isPending, isError, error, refetch } = useClerkAccessRequestsToReview();
@@ -47,7 +47,7 @@ export default function ClerkAccessRequestsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Clerk Access"
-        description="Requests and approved clerks for the courts you currently manage."
+        description="Requests and approved clerks for the courts you are authorized to review. Administrators may decide any court."
       />
 
       {isPending ? (
