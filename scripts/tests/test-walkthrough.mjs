@@ -124,6 +124,8 @@ check(
 
 check("clerk sitting-day ids", idsIn(clerk, "sitting"), [
   "home",
+  "dashboard",
+  "dashboard-metrics",
   "docket",
   "new-matter",
   "week-strip",
@@ -136,6 +138,8 @@ check("clerk sitting-day ids", idsIn(clerk, "sitting"), [
 check("clerk rest-of-app ids", idsIn(clerk, "rest"), ["clerk-access", "notifications"]);
 check("magistrate sitting-day ids", idsIn(magistrate, "sitting"), [
   "home",
+  "dashboard",
+  "dashboard-metrics",
   "docket",
   "week-strip",
   "board",
@@ -170,7 +174,7 @@ check(
 check(
   "empty docket sitting day skips the file",
   visibleWalkthroughSteps(magistrate, "sitting", false).map((s) => s.id),
-  ["home", "docket", "week-strip", "board", "outcome", "next", "chapter-rest"],
+  ["home", "dashboard", "dashboard-metrics", "docket", "week-strip", "board", "outcome", "next", "chapter-rest"],
 );
 check(
   "full sitting day keeps the file",
@@ -190,13 +194,29 @@ check(
   true,
 );
 check(
-  "sitting-day control steps keep a ring",
+  "sitting-day control steps keep a ring, except the Dashboard page stop",
   [clerk, magistrate, admin].every((steps) =>
     steps
-      .filter((s) => s.chapter === "sitting" && s.kind !== "choice")
+      .filter((s) => s.chapter === "sitting" && s.kind !== "choice" && s.id !== "dashboard")
       .every((s) => s.kind !== "page"),
   ),
   true,
+);
+check(
+  "dashboard is walked as a page stop so it can ring More",
+  [clerk, magistrate, admin].every((steps) => {
+    const step = steps.find((s) => s.id === "dashboard");
+    return step?.kind === "page" && step.navTarget === "nav-dashboard" && step.route === "/dashboard";
+  }),
+  true,
+);
+check(
+  "the ledger step rings the briefing counts",
+  {
+    target: magistrate.find((s) => s.id === "dashboard-metrics")?.target,
+    route: magistrate.find((s) => s.id === "dashboard-metrics")?.route,
+  },
+  { target: "dashboard-metrics", route: "/dashboard" },
 );
 check(
   "every page step can fall back to the More menu",

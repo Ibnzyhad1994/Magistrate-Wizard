@@ -33,9 +33,10 @@ export const issueReportKeys = {
  * gated by `ProtectedRoute allowedRoles={["admin"]}`), so this adds no
  * visibility beyond what an admin caller already lawfully has.
  */
-export function useIssueReports() {
+export function useIssueReports(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: issueReportKeys.all,
+    enabled: options?.enabled,
     queryFn: async (): Promise<IssueReportRow[]> => {
       const { data, error } = await supabase
         .from("issue_reports")

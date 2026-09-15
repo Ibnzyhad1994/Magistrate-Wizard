@@ -69,5 +69,22 @@ const sql138 = readFileSync(join(__dirname, "../../supabase/migrations/0138_revo
 check("0138 revokes anon search", sql138.includes("revoke all on function public.global_search"), true)
 check("0138 keeps authenticated execute", sql138.includes("grant execute on function public.global_search"), true)
 
+const sql149 = readFileSync(join(__dirname, "../../supabase/migrations/0149_lock_down_anon_rpcs_and_clerk_bench_notes.sql"), "utf8")
+check(
+  "0149 revokes anon execute on clerk decide RPC",
+  sql149.includes("revoke all on function public.decide_clerk_access_request"),
+  true,
+)
+check(
+  "0149 revokes anon execute on magistrate-court decide RPC",
+  sql149.includes("revoke all on function public.decide_magistrate_court_request"),
+  true,
+)
+check(
+  "0149 clerks cannot insert bench notes",
+  sql149.includes("not (select public.is_clerk())"),
+  true,
+)
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`)
 process.exit(failures === 0 ? 0 : 1)

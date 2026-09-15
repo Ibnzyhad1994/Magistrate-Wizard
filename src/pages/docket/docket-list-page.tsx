@@ -35,6 +35,7 @@ import {
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { shouldShowDocketTourExample } from "@/lib/docket-tour-example";
 import { useUiStore } from "@/store/ui-store";
+import { isBrowseView } from "@/lib/browse-prefs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ALL_COURTS_PARAM, docketScopeTitle, resolveDocketScope } from "@/lib/docket-scope";
 import { useTour } from "@/components/tour/use-tour";
@@ -200,6 +201,8 @@ export default function DocketListPage() {
   const { isActive: tourActive } = useTour();
   const docketBrowseView = useUiStore((s) => s.docketBrowseView);
   const setDocketBrowseView = useUiStore((s) => s.setDocketBrowseView);
+  const urlView = searchParams.get("view");
+  const effectiveBrowseView = isBrowseView(urlView) ? urlView : docketBrowseView;
   // Queries the settled, URL-backed query text — never the raw input — so
   // the query key always matches the URL the user could share, and the
   // empty-state wording below always describes the search that actually ran.
@@ -255,8 +258,14 @@ export default function DocketListPage() {
         title={docketScopeTitle(selectedCourt?.court_name ?? null)}
         description="List is the working sheet. On a phone each file shows its stages. Tiles stay for cover-photo browse. Set Next date and record hearing progress on each file."
         showViewSelect
-        viewSelectValue={docketBrowseView}
-        onViewSelectChange={setDocketBrowseView}
+        viewSelectValue={effectiveBrowseView}
+        onViewSelectChange={(view) => {
+          setDocketBrowseView(view);
+          const next = new URLSearchParams(searchParams);
+          if (view === "list") next.set("view", "list");
+          else next.delete("view");
+          setSearchParams(next, { replace: true });
+        }}
       />
 
       <DocketToolbar
@@ -370,7 +379,7 @@ export default function DocketListPage() {
       <DocketStageFilters filters={filters} onChange={setFilters} />
 
       {isPending ? (
-        docketBrowseView === "list" ? (
+        effectiveBrowseView === "list" ? (
           isDesktop ? (
             <Skeleton className="h-64 w-full rounded-sm" />
           ) : (
@@ -466,7 +475,7 @@ export default function DocketListPage() {
           className={`transition-opacity duration-150 ${isFetching ? "opacity-60" : ""}`}
           aria-busy={isFetching}
         >
-          {docketBrowseView === "list" ? (
+          {effectiveBrowseView === "list" ? (
             isDesktop ? (
               <DocketStageSheet
                 rows={data}

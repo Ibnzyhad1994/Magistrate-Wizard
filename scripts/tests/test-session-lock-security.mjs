@@ -371,6 +371,11 @@ const authenticate = () => {
     provider.includes('if (useAuthStore.getState().status === "locked") return'),
     true,
   )
+  check(
+    "token refresh while locked does not restore the session",
+    provider.includes('status === "locked" && event !== "SIGNED_IN"'),
+    true,
+  )
 }
 
 {

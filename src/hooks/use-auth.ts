@@ -137,7 +137,7 @@ export function useAuth() {
         return;
       }
       toast.success("Account created.");
-      navigate(ROUTES.dashboard);
+      navigate(ROUTES.home);
     },
   });
 

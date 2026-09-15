@@ -80,7 +80,16 @@ export const walkthroughStepsFor = (
 ): WalkthroughStep[] => {
   if (!role || isPendingMagistrate) return [];
 
-  /** Worked by clerks and magistrates alike, so written for both. */
+  const dashboardLedger: WalkthroughStep = {
+    id: "dashboard-metrics",
+    title: "The ledger",
+    body: "Each figure is files you can already see. Click a number to open that list, then open a file from it.",
+    target: "dashboard-metrics",
+    fallbackTarget: "page-dashboard",
+    route: ROUTES.dashboard,
+    chapter: "sitting",
+  };
+
   const board: WalkthroughStep[] = [
     {
       id: "week-strip",
@@ -126,9 +135,21 @@ export const walkthroughStepsFor = (
         title: "Home",
         body: "Your docket work starts here. Open Docket when you are ready to handle files.",
         target: "home-billboard",
-        route: ROUTES.dashboard,
+        route: ROUTES.home,
         chapter: "sitting",
       },
+      {
+        id: "dashboard",
+        title: "Dashboard",
+        body: "A briefing of load, paper-trail gaps, and files that still need a log. Open it from More, or the menu on a phone.",
+        target: "page-dashboard",
+        navTarget: "nav-dashboard",
+        fallbackTarget: "nav-more",
+        route: ROUTES.dashboard,
+        chapter: "sitting",
+        kind: "page",
+      },
+      dashboardLedger,
       {
         id: "docket",
         title: "Docket",
@@ -197,9 +218,21 @@ export const walkthroughStepsFor = (
       title: "Your week starts here",
       body: "New matter opens a file on the working sheet. Browse docket lists every matter you sit.",
       target: "home-billboard",
-      route: ROUTES.dashboard,
+      route: ROUTES.home,
       chapter: "sitting",
     },
+    {
+      id: "dashboard",
+      title: "Dashboard",
+      body: "A briefing of capacity, overdue appearances, and the next log to make. It lives under More, not in the top tabs.",
+      target: "page-dashboard",
+      navTarget: "nav-dashboard",
+      fallbackTarget: "nav-more",
+      route: ROUTES.dashboard,
+      chapter: "sitting",
+      kind: "page",
+    },
+    dashboardLedger,
     {
       id: "docket",
       title: "Docket and New matter",

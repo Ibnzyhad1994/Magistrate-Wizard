@@ -1,4 +1,5 @@
 import {
+  Home,
   LayoutDashboard,
   ClipboardList,
   Scale,
@@ -62,9 +63,15 @@ export const NAV_GROUP_LABELS: Record<NavGroupId, string> = {
  */
 export const NAV_ITEMS: AppNavItem[] = [
   {
+    label: "Home",
+    href: ROUTES.home,
+    icon: Home,
+  },
+  {
     label: "Dashboard",
     href: ROUTES.dashboard,
     icon: LayoutDashboard,
+    group: "workbench",
   },
   {
     label: "Docket",
@@ -224,8 +231,7 @@ export const NAV_ITEMS: AppNavItem[] = [
   },
 ];
 
-export const navItemLabel = (item: AppNavItem) =>
-  item.label === "Dashboard" ? "Home" : item.label;
+export const navItemLabel = (item: AppNavItem) => item.label;
 
 /**
  * Anchors the walkthrough rings onto nav links. Every destination the
@@ -235,7 +241,8 @@ export const navItemLabel = (item: AppNavItem) =>
  * so they are the ones most worth pointing at.
  */
 export const navTourIdForHref = (href: string): string | undefined => {
-  if (href === ROUTES.dashboard) return "nav-home";
+  if (href === ROUTES.home) return "nav-home";
+  if (href === ROUTES.dashboard) return "nav-dashboard";
   if (href === ROUTES.docket) return "nav-docket";
   if (href === ROUTES.callovers) return "nav-callovers";
   if (href === ROUTES.calendar) return "nav-calendar";

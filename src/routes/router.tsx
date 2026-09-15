@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { ROUTES } from "@/routes/paths";
 import { ProtectedRoute } from "@/routes/protected-route";
 import { PublicRoute } from "@/routes/public-route";
@@ -9,6 +9,7 @@ import LoginPage from "@/pages/auth/login-page";
 import RegisterPage from "@/pages/auth/register-page";
 import ForgotPasswordPage from "@/pages/auth/forgot-password-page";
 import ResetPasswordPage from "@/pages/auth/reset-password-page";
+import HomePage from "@/pages/home-page";
 import DashboardPage from "@/pages/dashboard-page";
 import DocketListPage from "@/pages/docket/docket-list-page";
 import DocketBinPage from "@/pages/docket/docket-bin-page";
@@ -93,7 +94,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: ROUTES.home, element: <Navigate to={ROUTES.dashboard} replace /> },
+          { path: ROUTES.home, element: <HomePage /> },
           { path: ROUTES.dashboard, element: <DashboardPage /> },
           { path: ROUTES.settings, element: <SettingsPage /> },
           { path: ROUTES.notifications, element: <NotificationsPage /> },

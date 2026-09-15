@@ -65,9 +65,10 @@ async function enrichWithClerkProfiles<T extends { profile_id: string }>(
 }
 
 /** Every access request (any status) for a court the caller currently manages. */
-export function useClerkAccessRequestsToReview() {
+export function useClerkAccessRequestsToReview(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: clerkReviewKeys.requests,
+    enabled: options?.enabled,
     queryFn: async (): Promise<ClerkRequestForReview[]> => {
       const { data, error } = await supabase
         .from("clerk_access_requests")
@@ -138,9 +139,10 @@ export function useRevokeClerkCourtAccess() {
 }
 
 /** Admin-only fallback: verified, still-pending requests whose court has no magistrate currently able to review them. */
-export function useOrphanedClerkAccessRequests() {
+export function useOrphanedClerkAccessRequests(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["clerk-access-review", "orphaned"],
+    enabled: options?.enabled,
     queryFn: async (): Promise<ClerkRequestForReview[]> => {
       const { data, error } = await supabase.rpc("list_clerk_access_requests_needing_admin_attention");
       if (error) throw error;

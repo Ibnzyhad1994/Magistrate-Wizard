@@ -116,6 +116,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setProfile(null);
         return;
       }
+      // TOKEN_REFRESHED (or any non-password event) must not lift the lock
+      // if local sign-out failed and a refresh token is still in storage.
+      // Password re-auth is GoTrue SIGNED_IN.
+      if (useAuthStore.getState().status === "locked" && event !== "SIGNED_IN") return;
       setSession(session);
       if (session.user) {
         void loadProfile(session.user.id);

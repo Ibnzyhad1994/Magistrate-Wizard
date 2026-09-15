@@ -23,7 +23,7 @@ export const shareItemPath = (itemType: string, itemId: string) => {
   if (itemType === "docket_matter") return ROUTES.docketMatter(itemId)
   if (itemType === "judgment") return ROUTES.judgmentDetail(itemId)
   if (itemType === "case_law") return ROUTES.caseLawDetail(itemId)
-  return ROUTES.dashboard
+  return ROUTES.home
 }
 
 export const shareItemNoun = (itemType: string) => {

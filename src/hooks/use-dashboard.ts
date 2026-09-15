@@ -99,3 +99,118 @@ export function useMyRetainedMatters() {
     },
   });
 }
+
+export type DashboardEventPulseRow = {
+  id: string;
+  docket_matter_id: string;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  event_status: string;
+  event_type: string | null;
+  outcome_at_event: string | null;
+  orders_made_at_event: string | null;
+  case_number: string | null;
+  matter_title: string | null;
+};
+
+/**
+ * Appearances in a date window, including outcome/orders so the briefing
+ * can tell a logged sitting from one still marked scheduled. RLS
+ * (`can_view_docket_matter`) is the only access filter.
+ */
+export function useDashboardEventPulse(from: string, to: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["dashboard", "event-pulse", from, to],
+    enabled: options?.enabled ?? true,
+    queryFn: async (): Promise<DashboardEventPulseRow[]> => {
+      const { data, error } = await supabase
+        .from("docket_events")
+        .select(
+          "id, docket_matter_id, scheduled_date, scheduled_time, event_status, event_type, outcome_at_event, orders_made_at_event, docket_matters(case_number, matter_title, deleted_at)",
+        )
+        .gte("scheduled_date", from)
+        .lte("scheduled_date", to)
+        .order("scheduled_date", { ascending: true })
+        .order("scheduled_time", { ascending: true, nullsFirst: true })
+        .limit(400);
+      if (error) throw error;
+      return (data ?? []).flatMap((row) => {
+        const matter = Array.isArray(row.docket_matters) ? row.docket_matters[0] : row.docket_matters;
+        if (!matter || matter.deleted_at) return [];
+        return [
+          {
+            id: row.id,
+            docket_matter_id: row.docket_matter_id,
+            scheduled_date: row.scheduled_date,
+            scheduled_time: row.scheduled_time,
+            event_status: row.event_status,
+            event_type: row.event_type,
+            outcome_at_event: row.outcome_at_event,
+            orders_made_at_event: row.orders_made_at_event,
+            case_number: matter.case_number,
+            matter_title: matter.matter_title,
+          },
+        ];
+      });
+    },
+  });
+}
+
+/** Distinct matter ids that already have at least one party row. */
+export function useDashboardPartyPresence(matterIds: string[], options?: { enabled?: boolean }) {
+  const ids = [...new Set(matterIds)].sort();
+  return useQuery({
+    queryKey: ["dashboard", "party-presence", ids],
+    enabled: (options?.enabled ?? true) && ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("docket_matter_parties")
+        .select("docket_matter_id")
+        .in("docket_matter_id", ids)
+        .neq("party_status", "entered_in_error");
+      if (error) throw error;
+      return new Set((data ?? []).map((row) => row.docket_matter_id));
+    },
+  });
+}
+
+/** All currently-active retained matter ids (no carousel cap). */
+export function useMyRetainedMatterIds(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["dashboard", "my-retained-matter-ids"],
+    enabled: options?.enabled ?? true,
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [] as string[];
+      const { data, error } = await supabase
+        .from("docket_matter_assignments")
+        .select("docket_matter_id")
+        .eq("profile_id", user.id)
+        .eq("reason", "retained_part_heard")
+        .is("ended_at", null);
+      if (error) throw error;
+      return (data ?? []).map((row) => row.docket_matter_id);
+    },
+  });
+}
+
+/** Jacket fields for retained ids that missed the 100-row board cap. */
+export function useMatterSummaries(ids: string[], options?: { enabled?: boolean }) {
+  const sorted = [...ids].sort();
+  return useQuery({
+    queryKey: ["dashboard", "matter-summaries", sorted],
+    enabled: (options?.enabled ?? true) && sorted.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("docket_matters")
+        .select("id, case_number, matter_title, status")
+        .in("id", sorted)
+        .is("deleted_at", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+

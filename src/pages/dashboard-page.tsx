@@ -1,339 +1,398 @@
 import { useMemo } from "react";
-import { Billboard, ContentRow, TitleCard } from "@/components/browse";
+import { BrowsePage } from "@/components/browse";
 import { InlineError } from "@/components/common/inline-error";
+import { MetricLedger, MetricStat } from "@/components/dashboard/metric-stat";
+import { CapacityWeek } from "@/components/dashboard/capacity-week";
+import { AppearanceTimeline } from "@/components/dashboard/appearance-timeline";
+import { SuggestionList } from "@/components/dashboard/suggestion-list";
+import { Sparkline, StageLedger } from "@/components/dashboard/stage-ledger";
+import { DashboardFileList } from "@/components/dashboard/dashboard-file-list";
+import { DashboardFolio, DashboardKicker } from "@/components/dashboard/dashboard-folio";
 import { useAuth } from "@/hooks/use-auth";
-import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
+import { useDocketMatterBoard } from "@/hooks/docket/use-docket-matters";
 import {
-  useMyRetainedMatters,
-  useUpcomingAppearances,
+  useDashboardEventPulse,
+  useDashboardPartyPresence,
+  useMatterSummaries,
+  useMyRetainedMatterIds,
 } from "@/hooks/use-dashboard";
-import { useJudgments } from "@/hooks/judgments/use-judgments";
-import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
-import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
-import { useSignedUrls } from "@/hooks/use-signed-urls";
-import { useMyClerkAccessRequests } from "@/hooks/clerk/use-clerk-access";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
+import { useCallovers } from "@/hooks/docket/use-callovers";
+import { useDocketCapacitySettings } from "@/hooks/docket/use-docket-capacity";
+import { useClerkAccessRequestsToReview, useOrphanedClerkAccessRequests } from "@/hooks/clerk/use-clerk-access-review";
+import { useIssueReports } from "@/hooks/admin/use-issue-reports";
+import { useJudgments } from "@/hooks/judgments/use-judgments";
+import { usePendingHearings } from "@/hooks/offline/use-pending-hearings";
+import { useMyClerkAccessRequests } from "@/hooks/clerk/use-clerk-access";
 import { clerkHomeState, clerkPendingDescription } from "@/lib/clerk-home";
-import { APP_NAME } from "@/lib/constants";
+import { EMPTY_PROCEDURE_FILTERS } from "@/lib/docket-procedure";
+import { addDaysIso, daysOfWeek, weekStartSunday } from "@/lib/docket-week";
+import {
+  appearancesByDay,
+  BOARD_INSIGHT_CAP,
+  buildDashboardInsights,
+  dashboardFilesHref,
+  filesForFocus,
+  isDashboardFileFocus,
+  isOverdueScheduled,
+  workloadFromBoard,
+  type BoardInsightRow,
+  type DashboardFileFocus,
+  type DashboardRole,
+} from "@/lib/dashboard-insights";
+import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
+import { Link, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Every card here reads from data the caller is already RLS-permitted to
- * see — the same underlying queries used by each workspace's own list
- * page, just capped and summarized. No global/administrative counts, and
- * nothing here leaks the existence of rows the caller can't otherwise see.
- *
- * Role-branched: a clerk (pending or approved) never sees the
- * magistrate's Judgments/Bench Notes/Quick Codes/Retained rows or the
- * Judgments shortcut — those queries aren't even fetched for a clerk, not
- * merely hidden once empty. A pending clerk (zero currently-active
- * clerk_courts rows) sees the pending-approval welcome instead of any
- * operational content at all. Access requests never grant the Docket.
+ * Operational briefing. Home (`/`) keeps the cinematic rows. This page
+ * composes the docket board RPC, capacity snapshots, and event pulse —
+ * never the Home carousels — and only counts rows the caller can already see.
  */
 export default function DashboardPage() {
   const { user, profile } = useAuth();
-  const rolePending = !profile;
-  const isClerk = profile?.role === "clerk";
-  const {
-    data: matters,
-    isPending: mattersPending,
-    isError: mattersError,
-    error: mattersErr,
-    refetch: refetchMatters,
-  } = useDocketMatters("");
+  const [searchParams] = useSearchParams();
+  const filesParam = searchParams.get("files");
+  const filesFocus = isDashboardFileFocus(filesParam) ? filesParam : null;
+  const role = (profile?.role ?? "magistrate") as DashboardRole;
+  const isClerk = role === "clerk";
+  const isAdmin = role === "admin";
+  const today = getLocalDateOnly();
+  const weekDates = daysOfWeek(weekStartSunday(today));
+  const pulseFrom = addDaysIso(today, -90);
+  const pulseTo = addDaysIso(today, 13);
+
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
-  const { data: appearances, isPending: appearancesPending } = useUpcomingAppearances();
-  const { data: retained } = useMyRetainedMatters();
-  const { data: judgments, isPending: judgmentsPending } = useJudgments({ enabled: Boolean(profile) && !isClerk });
-  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes({ enabled: Boolean(profile) && !isClerk });
-  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes({ enabled: Boolean(profile) && !isClerk });
   const { data: clerkRequests } = useMyClerkAccessRequests();
-
-  const activeMatters = useMemo(
-    () => (matters ?? []).filter((m) => m.status === "active"),
-    [matters],
-  );
-
-  const retainedIds = useMemo(
-    () => new Set((retained ?? []).map((row) => row.docket_matter_id)),
-    [retained],
-  );
-
-  const continueWorking = useMemo(
-    () => activeMatters.filter((m) => !retainedIds.has(m.id)),
-    [activeMatters, retainedIds],
-  );
-
-  const { myDrafts, myFinal } = useMemo(() => {
-    const all = judgments ?? [];
-    return {
-      myDrafts: all.filter((j) => j.owner_id === user?.id && j.status === "draft"),
-      myFinal: all.filter((j) => j.owner_id === user?.id && j.status === "final"),
-    };
-  }, [judgments, user?.id]);
-
-  const coverPaths = useMemo(() => {
-    const paths: (string | null | undefined)[] = [];
-    for (const m of matters ?? []) {
-      if ("cover_image_path" in m) paths.push(m.cover_image_path);
-    }
-    for (const event of appearances ?? []) {
-      paths.push(rel(event.docket_matters)?.cover_image_path);
-    }
-    for (const row of retained ?? []) {
-      paths.push(rel(row.docket_matters)?.cover_image_path);
-    }
-    return paths;
-  }, [matters, appearances, retained]);
-  const { data: coverUrls } = useSignedUrls(coverPaths);
-
-  function coverUrl(path: string | null | undefined) {
-    return path ? coverUrls?.[path] : undefined;
-  }
-
-  // Personalized welcome hero, not a specific case/matter — the home
-  // screen is the entry point into the app, not a particular docket item.
-  // Real matter/appearance data still populates the rows below unchanged.
-  const name = profile?.full_name?.trim() || null;
-
-  const pendingClerkRequests = (clerkRequests ?? []).filter((r) => r.status === "pending");
-  const clerkState = rolePending
+  const clerkState = !profile
     ? "loading"
     : isClerk
-      ? clerkHomeState({
-          courtsPending,
-          courtCount: myCourts?.length ?? 0,
-        })
+      ? clerkHomeState({ courtsPending, courtCount: myCourts?.length ?? 0 })
       : "ready";
   const isPendingClerk = clerkState === "pending";
-  const sittingNames = (myCourts ?? []).map((c) => c.court_name).filter(Boolean);
-  const sittingPending = courtsPending;
+  const operational = clerkState === "ready";
 
-  // A magistrate can no longer reach this page at all without an
-  // approved court (requireApprovedMagistrateCourt, router.tsx — they're
-  // redirected to /court-assignments before DashboardPage ever mounts),
-  // so there is no remaining "no court" case to special-case for the
-  // magistrate persona this billboard is written for. An admin with no
-  // personal magistrate_courts row is unaffected by that gate and can
-  // still land here — the "Sitting at ..." line below already handles
-  // that plainly (it just doesn't render), so no separate banner is
-  // needed for them either.
-  const billboard = rolePending
-    ? {
-        tone: "judgment" as const,
-        eyebrow: APP_NAME,
-        title: "Welcome",
-        description: "Loading your workspace.",
-      }
-    : !isClerk
-    ? {
-        tone: "judgment" as const,
-        eyebrow: APP_NAME,
-        title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
-        description: `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
-        primaryAction: { label: "New matter", href: `${ROUTES.docket}?new=1` },
-        secondaryAction: { label: "Browse docket", href: ROUTES.docket },
-        tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
-      }
-    : clerkState === "loading"
-      ? {
-          tone: "judgment" as const,
-          eyebrow: APP_NAME,
-          title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
-          description: "Loading your court assignment.",
-        }
-      : isPendingClerk
-      ? {
-          tone: "judgment" as const,
-          eyebrow: APP_NAME,
-          title: name ? `Welcome, ${name}` : "Welcome",
-          description: clerkPendingDescription({
-            pendingRequestCount: pendingClerkRequests.length,
-            pendingCourtName: pendingClerkRequests[0]?.courts?.name,
-          }),
-          primaryAction: { label: "View my requests", href: ROUTES.clerkAccess },
-        }
-      : {
-          tone: "judgment" as const,
-          eyebrow: APP_NAME,
-          title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
-          description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
-          primaryAction: { label: "Open docket", href: ROUTES.docket },
-        };
+  const boardQuery = useDocketMatterBoard("", EMPTY_PROCEDURE_FILTERS, null, null, {
+    enabled: operational,
+  });
+  const eventsQuery = useDashboardEventPulse(pulseFrom, pulseTo, { enabled: operational });
+  const retainedIdsQuery = useMyRetainedMatterIds({ enabled: operational && !isClerk });
+  const judgmentsQuery = useJudgments({ enabled: operational && !isClerk });
+  const calloversQuery = useCallovers(null, { enabled: operational && !isClerk });
+  const clerkReviewQuery = useClerkAccessRequestsToReview({ enabled: operational && !isClerk });
+  const orphanQuery = useOrphanedClerkAccessRequests({ enabled: operational && isAdmin });
+  const issuesQuery = useIssueReports({ enabled: operational && isAdmin });
+  const pendingHearings = usePendingHearings();
+  const capacitySettings = useDocketCapacitySettings();
+
+  const board = boardQuery.data ?? [];
+  const boardRows: BoardInsightRow[] = board.map((row) => ({
+    id: row.id,
+    status: row.status,
+    case_number: row.case_number,
+    matter_title: row.matter_title,
+    next_appearance: row.next_appearance,
+    procedure_stage: row.procedure_stage,
+    workflow_protocol: row.workflow_protocol,
+    ruling_status: row.ruling_status,
+    judgment_status: row.judgment_status,
+    has_ruling_document: row.has_ruling_document,
+    has_judgment_document: row.has_judgment_document,
+    created_at: row.created_at,
+  }));
+  const matterIds = boardRows.map((row) => row.id);
+  const partiesQuery = useDashboardPartyPresence(matterIds, { enabled: operational && matterIds.length > 0 });
+
+  const workload = workloadFromBoard(boardRows);
+  const events = eventsQuery.data ?? [];
+  const overdueCount = events.filter((event) => isOverdueScheduled(event, today)).length;
+  const spark = appearancesByDay(events, today, 14);
+  const mattersWithoutParties = operational
+    ? boardRows
+        .filter((row) => row.status === "active")
+        .filter((row) => partiesQuery.data && !partiesQuery.data.has(row.id))
+        .map((row) => row.id)
+    : [];
+
+  const pendingClerkReviews = isClerk
+    ? 0
+    : (clerkReviewQuery.data ?? []).filter((row) => row.status === "pending").length;
+  const openIssues = isAdmin
+    ? (issuesQuery.data ?? []).filter((row) => row.status === "open" || row.status === "in_progress").length
+    : 0;
+  const staleDrafts =
+    !isClerk
+      ? (judgmentsQuery.data ?? [])
+          .filter((row) => row.owner_id === user?.id && row.status === "draft")
+          .map((row) => ({ id: row.id, title: row.title, updatedAt: row.updated_at }))
+      : [];
+
+  const callovers = !isClerk
+    ? (calloversQuery.data ?? []).map((row) => ({
+        id: row.id,
+        status: row.status,
+        callover_date: row.callover_date,
+      }))
+    : [];
+
+  const leftoverRetainedIds = useMemo(() => {
+    if (filesFocus !== "retained") return [] as string[];
+    const onBoard = new Set(board.map((row) => row.id));
+    return (retainedIdsQuery.data ?? []).filter((id) => !onBoard.has(id));
+  }, [filesFocus, board, retainedIdsQuery.data]);
+  const extraRetainedQuery = useMatterSummaries(leftoverRetainedIds, {
+    enabled: leftoverRetainedIds.length > 0,
+  });
+
+  const fileRows = useMemo(
+    () =>
+      filesFocus
+        ? filesForFocus({
+            focus: filesFocus,
+            today,
+            board: boardRows,
+            events,
+            retainedIds: retainedIdsQuery.data ?? [],
+            extraRetained: extraRetainedQuery.data ?? [],
+            mattersWithoutParties,
+          })
+        : [],
+    [
+      filesFocus,
+      today,
+      boardRows,
+      events,
+      retainedIdsQuery.data,
+      extraRetainedQuery.data,
+      mattersWithoutParties,
+    ],
+  );
+  const filesPending =
+    Boolean(filesFocus) &&
+    (boardQuery.isPending ||
+      eventsQuery.isPending ||
+      (filesFocus === "no_parties" && partiesQuery.isPending) ||
+      (filesFocus === "retained" && (retainedIdsQuery.isPending || extraRetainedQuery.isPending)));
+
+  const metricHref = (focus: DashboardFileFocus) =>
+    filesFocus === focus ? ROUTES.dashboard : dashboardFilesHref(focus);
+
+  const sitsCourt = (myCourts?.length ?? 0) > 0;
+  const capacityDays =
+    sitsCourt && !capacitySettings.isPending && (capacitySettings.data?.length ?? 0) === 0
+      ? weekDates.filter((date) => date >= today).slice(0, 5).map((date) => ({ date, band: "not_set" as const }))
+      : [];
+
+  const insights = useMemo(
+    () =>
+      buildDashboardInsights({
+        today,
+        role,
+        board: boardRows,
+        events,
+        capacityDays,
+        pendingHearings: pendingHearings.count,
+        pendingClerkReviews,
+        orphanClerkRequests: isAdmin ? (orphanQuery.data ?? []).length : 0,
+        openIssueReports: openIssues,
+        staleDraftJudgments: staleDrafts,
+        callovers,
+        boardCapped: board.length >= BOARD_INSIGHT_CAP,
+        mattersWithoutParties,
+      }),
+    [
+      today,
+      role,
+      boardRows,
+      events,
+      capacityDays,
+      pendingHearings.count,
+      pendingClerkReviews,
+      isAdmin,
+      orphanQuery.data,
+      openIssues,
+      staleDrafts,
+      callovers,
+      board.length,
+      mattersWithoutParties,
+    ],
+  );
+
+  const pendingClerkRequests = (clerkRequests ?? []).filter((row) => row.status === "pending");
+  const sittingLine = (myCourts ?? [])
+    .map((court) => court.court_name)
+    .filter(Boolean)
+    .join(" · ");
+  const todayLabel = formatDate(today, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  if (isPendingClerk || clerkState === "loading") {
+    return (
+      <BrowsePage>
+        <DashboardFolio>
+          <header className="mb-10 max-w-2xl">
+            <DashboardKicker>Briefing</DashboardKicker>
+            <p className="mt-3 font-brand text-sm tabular-nums tracking-wide text-muted-foreground">
+              {todayLabel}
+            </p>
+            <h1 className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground" data-tour="page-dashboard">
+              Dashboard
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              {clerkState === "loading"
+                ? "Loading your court assignment."
+                : clerkPendingDescription({
+                    pendingRequestCount: pendingClerkRequests.length,
+                    pendingCourtName: pendingClerkRequests[0]?.courts?.name,
+                  })}
+            </p>
+          </header>
+          {isPendingClerk && (
+            <Button asChild>
+              <Link to={ROUTES.clerkAccess}>View my requests</Link>
+            </Button>
+          )}
+        </DashboardFolio>
+      </BrowsePage>
+    );
+  }
 
   return (
-    <div>
-      <Billboard
-        {...billboard}
-        caption={
-          !sittingPending && sittingNames.length > 0
-            ? `Sitting at ${sittingNames.join(" · ")}`
-            : undefined
-        }
-      />
+    <BrowsePage>
+      <DashboardFolio>
+        <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <DashboardKicker>Chambers briefing</DashboardKicker>
+            <p className="mt-3 font-brand text-sm tabular-nums tracking-wide text-muted-foreground">
+              {todayLabel}
+              {sittingLine ? ` · ${sittingLine}` : ""}
+            </p>
+            <h1 className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground" data-tour="page-dashboard">
+              Dashboard
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Load, paper trail, and the next log to make — from files you can already see.
+            </p>
+          </div>
+          <Button asChild variant="link" className="h-auto justify-start px-0">
+            <Link to={ROUTES.home}>Return to Home</Link>
+          </Button>
+        </header>
 
-      <div className="relative z-10 -mt-8 space-y-9 pb-20 dark:-mt-16">
-        {isPendingClerk || clerkState === "loading" ? null : (
-          <>
-        {mattersError && (
-          <div className="browse-gutter">
-            <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
+        {boardQuery.isError && (
+          <div className="mb-6">
+            <InlineError error={boardQuery.error} onRetry={() => void boardQuery.refetch()} />
           </div>
         )}
 
-        {(mattersPending || continueWorking.length > 0) && (
-          <ContentRow title="Continue Working" href={ROUTES.docket} isLoading={mattersPending}>
-            {continueWorking.map((m) => (
-              <TitleCard
-                layout="tiles"
-                key={m.id}
-                tone="docket"
-                eyebrow={m.case_number}
-                title={m.matter_title}
-                subtitle={issueOf(m)}
-                badge={toTitleCase(m.status)}
-                meta={"courts" in m ? [rel(m.courts)?.name].filter((v): v is string => Boolean(v)) : undefined}
-                imageUrl={coverUrl("cover_image_path" in m ? m.cover_image_path : null)}
-                href={ROUTES.docketMatter(m.id)}
+        <MetricLedger>
+          {boardQuery.isPending ? (
+            <>
+              <Skeleton className="h-28 rounded-none" />
+              <Skeleton className="h-28 rounded-none" />
+              <Skeleton className="h-28 rounded-none" />
+              <Skeleton className="h-28 rounded-none" />
+            </>
+          ) : (
+            <>
+              <MetricStat
+                label="Active files"
+                value={workload.active}
+                hint="Active matters on the board in view (same 100-row cap as the working sheet)."
+                href={metricHref("active")}
+                selected={filesFocus === "active"}
               />
-            ))}
-          </ContentRow>
-        )}
-
-        {(appearancesPending || (appearances?.length ?? 0) > 0) && (
-          <ContentRow title="Upcoming Appearances" href={ROUTES.docket} isLoading={appearancesPending}>
-            {(appearances ?? []).map((event) => {
-              const matter = rel(event.docket_matters);
-              return (
-                <TitleCard
-                  layout="tiles"
-                  key={event.id}
-                  tone="docket"
-                  eyebrow={matter?.case_number}
-                  title={matter?.matter_title ?? eventLabel(event.event_type)}
-                  subtitle={matter?.charge_or_issue ?? undefined}
-                  badge={eventLabel(event.event_type)}
-                  meta={[
-                    formatDate(event.scheduled_date),
-                    event.scheduled_time ? formatTimeOnly(event.scheduled_time) : null,
-                  ].filter((v): v is string => Boolean(v))}
-                  imageUrl={coverUrl(matter?.cover_image_path)}
-                  href={ROUTES.docketMatter(event.docket_matter_id)}
+              <MetricStat
+                label="No next date"
+                value={workload.noNextDate}
+                hint="Active files with an empty next appearance. Set the date from the board."
+                href={metricHref("no_date")}
+                selected={filesFocus === "no_date"}
+                tone={workload.noNextDate > 0 ? "warn" : "ok"}
+              />
+              <MetricStat
+                label="Overdue sittings"
+                value={overdueCount}
+                hint="Appearances still marked scheduled after their date."
+                href={metricHref("overdue")}
+                selected={filesFocus === "overdue"}
+                tone={overdueCount > 0 ? "warn" : "ok"}
+              />
+              {isClerk ? (
+                <MetricStat
+                  label="Without parties"
+                  value={mattersWithoutParties.length}
+                  hint="Active files with no party rows yet."
+                  href={metricHref("no_parties")}
+                  selected={filesFocus === "no_parties"}
+                  tone={mattersWithoutParties.length > 0 ? "warn" : "ok"}
                 />
-              );
-            })}
-          </ContentRow>
-        )}
-
-        {!isClerk && (judgmentsPending || myDrafts.length > 0) && (
-          <ContentRow title="Draft Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
-            {myDrafts.map((j) => (
-              <TitleCard
-                layout="tiles"
-                key={j.id}
-                tone="judgment"
-                eyebrow={j.case_number ?? undefined}
-                title={j.title}
-                subtitle={j.court_name ?? j.citation ?? undefined}
-                badge="Draft"
-                href={ROUTES.judgmentDetail(j.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
-
-        {!isClerk && (judgmentsPending || myFinal.length > 0) && (
-          <ContentRow title="Final Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
-            {myFinal.map((j) => (
-              <TitleCard
-                layout="tiles"
-                key={j.id}
-                tone="judgment"
-                eyebrow={j.case_number ?? undefined}
-                title={j.title}
-                subtitle={j.court_name ?? j.citation ?? undefined}
-                badge="Final"
-                href={ROUTES.judgmentDetail(j.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
-
-        {!isClerk && (retained?.length ?? 0) > 0 && (
-          <ContentRow title="Retained / Part-Heard" href={ROUTES.docket}>
-            {(retained ?? []).map((row) => {
-              const matter = rel(row.docket_matters);
-              return (
-                <TitleCard
-                  layout="tiles"
-                  key={row.id}
-                  tone="docket"
-                  eyebrow={matter?.case_number}
-                  title={matter?.matter_title ?? "Retained matter"}
-                  subtitle={matter?.charge_or_issue ?? undefined}
-                  badge={matter?.status ? toTitleCase(matter.status) : "Retained"}
-                  imageUrl={coverUrl(matter?.cover_image_path)}
-                  href={ROUTES.docketMatter(row.docket_matter_id)}
+              ) : (
+                <MetricStat
+                  label="Retained"
+                  value={retainedIdsQuery.data?.length ?? 0}
+                  hint="Part-heard files currently retained to you."
+                  href={metricHref("retained")}
+                  selected={filesFocus === "retained"}
                 />
-              );
-            })}
-          </ContentRow>
-        )}
+              )}
+              {isAdmin && (
+                <>
+                  <MetricStat
+                    label="Unresolved clerk access"
+                    value={orphanQuery.data?.length ?? 0}
+                    hint="Pending clerk requests with no sitting magistrate who can decide them."
+                    href={ROUTES.adminClerkAccess}
+                    tone={(orphanQuery.data?.length ?? 0) > 0 ? "warn" : "ink"}
+                  />
+                  <MetricStat
+                    label="Open issue reports"
+                    value={openIssues}
+                    hint="Issue reports still open or in progress."
+                    href={ROUTES.adminIssueReports}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </MetricLedger>
 
-        {!isClerk && (benchNotesPending || (benchNotes?.length ?? 0) > 0) && (
-          <ContentRow title="Bench Notes" href={ROUTES.benchNotes} isLoading={benchNotesPending}>
-            {(benchNotes ?? []).map((note) => (
-              <TitleCard
-                layout="tiles"
-                key={note.id}
-                tone="note"
-                eyebrow={entityLabel(note.entity_type)}
-                title={note.title}
-                badge={toTitleCase(note.status)}
-                href={ROUTES.benchNoteDetail(note.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
+        {filesFocus ? (
+          <div className="mt-12">
+            <DashboardFileList
+              focus={filesFocus}
+              rows={fileRows}
+              isPending={filesPending}
+              boardCapped={board.length >= BOARD_INSIGHT_CAP}
+            />
+          </div>
+        ) : (
+          <>
+            {sitsCourt && (
+              <div className="mt-10">
+                <CapacityWeek dates={weekDates} today={today} />
+              </div>
+            )}
 
-        {!isClerk && (quickCodesPending || (quickCodes?.length ?? 0) > 0) && (
-          <ContentRow title="Quick Codes" href={ROUTES.quickCodes} isLoading={quickCodesPending}>
-            {(quickCodes ?? []).map((code) => (
-              <TitleCard
-                layout="tiles"
-                key={code.id}
-                tone="code"
-                eyebrow={code.code_word}
-                title={code.title ?? code.code_word}
-                subtitle={code.category ?? undefined}
-                href={`${ROUTES.quickCodes}?qc=${code.id}`}
-              />
-            ))}
-          </ContentRow>
-        )}
+            <div className="mt-12 grid gap-12 lg:grid-cols-12 lg:gap-10">
+              <div className="space-y-12 lg:col-span-7">
+                <SuggestionList insights={insights} isPending={boardQuery.isPending} />
+                <AppearanceTimeline events={events} today={today} />
+              </div>
+              <aside className="space-y-12 lg:col-span-5 lg:border-l lg:border-foreground/15 lg:pl-8">
+                <Sparkline points={spark} />
+                <StageLedger counts={workload.byStage} />
+              </aside>
+            </div>
           </>
         )}
-      </div>
-    </div>
+      </DashboardFolio>
+    </BrowsePage>
   );
-}
-
-function rel<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) return null;
-  return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
-function eventLabel(type: string | null | undefined) {
-  return toTitleCase((type ?? "appearance").replace(/_/g, " "));
-}
-
-function entityLabel(type: string) {
-  return toTitleCase(type.replace(/_/g, " "));
-}
-
-function issueOf(matter: { charge_or_issue?: string | null; headline?: string | null }) {
-  if (matter.charge_or_issue) return matter.charge_or_issue;
-  if (matter.headline) return matter.headline.replace(/<\/?b>/gi, "");
-  return undefined;
 }

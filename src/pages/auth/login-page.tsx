@@ -41,7 +41,7 @@ export default function LoginPage() {
       await signIn(values);
       const from = (location.state as { from?: { pathname: string; search?: string; hash?: string } } | null)
         ?.from;
-      navigate(pathFromLoginRedirect(from, ROUTES.dashboard), { replace: true });
+      navigate(pathFromLoginRedirect(from, ROUTES.home), { replace: true });
     } catch {
       // Errors surface globally via the mutation cache toast subscriber
       // in src/lib/query-client.ts; nothing further to do here.

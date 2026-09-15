@@ -209,7 +209,7 @@ const titleCard = readFileSync("src/components/browse/title-card.tsx", "utf8");
 const calendar = readFileSync("src/pages/calendar/calendar-page.tsx", "utf8");
 const navSearch = readFileSync("src/components/layout/nav-search.tsx", "utf8");
 const billboard = readFileSync("src/components/browse/billboard.tsx", "utf8");
-const dashboard = readFileSync("src/pages/dashboard-page.tsx", "utf8");
+const dashboard = readFileSync("src/pages/home-page.tsx", "utf8");
 check("hero overlay nav uses a black fade over dark art", topNav.includes("from-black/80"), true);
 check("hero overlay nav is only used on dark-family palettes", topNav.includes("isDarkPalette(resolvedTheme)"), true);
 check("billboard cinematic chrome follows dark-family palettes", billboard.includes("isDarkPalette(resolvedTheme)"), true);

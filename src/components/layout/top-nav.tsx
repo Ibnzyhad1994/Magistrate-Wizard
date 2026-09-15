@@ -28,7 +28,7 @@ import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requ
 import { useIsDesktop, useMediaQuery } from "@/hooks/use-media-query";
 
 const PRIMARY_HREFS = new Set<string>([
-  ROUTES.dashboard,
+  ROUTES.home,
   ROUTES.docket,
   ROUTES.judgments,
   ROUTES.caseLaw,
@@ -124,7 +124,7 @@ export function TopNav() {
       </Button>
 
       <Link
-        to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.dashboard}
+        to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.home}
         className={cn(
           "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           hideActionCluster ? "shrink-0" : "min-w-0 shrink",
@@ -150,7 +150,7 @@ export function TopNav() {
                 isActive && (overlay ? "font-semibold text-primary-foreground" : "font-semibold text-foreground"),
               )
             }
-            end={item.href === ROUTES.dashboard}
+            end={item.href === ROUTES.home}
             data-tour={navTourIdForHref(item.href)}
           >
             {navItemLabel(item)}

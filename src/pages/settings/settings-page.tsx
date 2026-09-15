@@ -32,6 +32,8 @@ import {
 } from "@/pages/settings/privacy-and-reminders-cards";
 import { ROUTES } from "@/routes/paths";
 import { useTour } from "@/components/tour/use-tour";
+import { FeatureFlag } from "@/components/common/feature-flag";
+import { DispatchCard } from "@/pages/settings/dispatch-card";
 
 export default function SettingsPage() {
   const browseView = useUiStore((s) => s.browseView);
@@ -178,6 +180,12 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <div className="mt-6">
+        <FeatureFlag flag="matter_portable_bundle">
+          <DispatchCard />
+        </FeatureFlag>
+      </div>
 
       <div className="mt-6 space-y-6">
       <GoogleCalendarCard />

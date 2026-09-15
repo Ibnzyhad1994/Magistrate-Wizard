@@ -17,9 +17,10 @@ export const calloverKeys = {
  * client-side access check layered on top. `courtId` narrows to one
  * court; null spans every court the caller currently sits.
  */
-export function useCallovers(courtId: string | null) {
+export function useCallovers(courtId: string | null, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: calloverKeys.list(courtId),
+    enabled: options?.enabled,
     queryFn: async () => {
       let query = supabase
         .from("docket_callovers")

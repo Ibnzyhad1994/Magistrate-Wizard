@@ -9,7 +9,7 @@ export default function UnauthorizedPage() {
     <AppCanvas>
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
         <Link
-          to={ROUTES.dashboard}
+          to={ROUTES.home}
           className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <AppLogo size="lg" />
@@ -28,7 +28,7 @@ export default function UnauthorizedPage() {
           </p>
         </div>
         <Button asChild className="h-12 px-8 text-base font-semibold">
-          <Link to={ROUTES.dashboard}>Back to dashboard</Link>
+          <Link to={ROUTES.home}>Back to home</Link>
         </Button>
       </main>
     </AppCanvas>

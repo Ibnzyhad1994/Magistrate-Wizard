@@ -46,7 +46,7 @@ const MobileNavLink = ({
             : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground",
         )
       }
-      end={item.href === ROUTES.dashboard}
+      end={item.href === ROUTES.home}
     >
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="truncate">{label}</span>

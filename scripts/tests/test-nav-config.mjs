@@ -20,7 +20,8 @@ function check(label, actual, expected) {
 }
 
 const items = [
-  { label: "Dashboard", href: "/dashboard", icon: null },
+  { label: "Home", href: "/", icon: null },
+  { label: "Dashboard", href: "/dashboard", icon: null, group: "workbench" },
   { label: "Docket", href: "/docket", icon: null },
   { label: "Court Assignments", href: "/court-assignments", icon: null, roles: ["magistrate", "admin"], visibleWhilePending: true },
   { label: "Case Law", href: "/case-law", icon: null, roles: ["magistrate", "admin"] },
@@ -30,7 +31,7 @@ const items = [
 check(
   "magistrate, not pending: sees everything role allows",
   visibleNavItems(items, "magistrate").map((i) => i.href),
-  ["/dashboard", "/docket", "/court-assignments", "/case-law"],
+  ["/", "/dashboard", "/docket", "/court-assignments", "/case-law"],
 );
 
 check(
@@ -42,13 +43,13 @@ check(
 check(
   "pending flag is a no-op for admin (admin is never gated on magistrate-court approval)",
   visibleNavItems(items, "admin", true).map((i) => i.href),
-  ["/dashboard", "/docket", "/court-assignments", "/case-law", "/admin/court-assignments"],
+  ["/", "/dashboard", "/docket", "/court-assignments", "/case-law", "/admin/court-assignments"],
 );
 
 check(
   "pending flag is a no-op for clerk (clerk has no such item to lose anyway)",
   visibleNavItems(items, "clerk", true).map((i) => i.href),
-  ["/dashboard", "/docket"],
+  ["/", "/dashboard", "/docket"],
 );
 
 check(
@@ -65,7 +66,18 @@ check(
 check(
   "isPendingMagistrate undefined (role check not yet resolved) behaves like false -- no lockdown until explicitly true",
   visibleNavItems(items, "magistrate").map((i) => i.href),
-  ["/dashboard", "/docket", "/court-assignments", "/case-law"],
+  ["/", "/dashboard", "/docket", "/court-assignments", "/case-law"],
+);
+
+check(
+  "home is ungrouped so it stays a primary tab",
+  NAV_ITEMS.some((item) => item.href === ROUTES.home && !item.group),
+  true,
+);
+check(
+  "dashboard lives in the workbench group (More / hamburger)",
+  NAV_ITEMS.some((item) => item.href === ROUTES.dashboard && item.group === "workbench"),
+  true,
 );
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

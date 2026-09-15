@@ -11,7 +11,7 @@ interface LocationState {
 /**
  * Gate for routes that should only be visible to signed-out visitors
  * (login, register, forgot password). Already-authenticated users are
- * redirected to their originally requested page, or the dashboard.
+ * redirected to their originally requested page, or home.
  */
 export function PublicRoute() {
   const status = useAuthStore((state) => state.status);
@@ -23,7 +23,7 @@ export function PublicRoute() {
 
   if (status === "authenticated" || status === "locked") {
     const state = location.state as LocationState | null;
-    const redirectTo = pathFromLoginRedirect(state?.from, ROUTES.dashboard);
+    const redirectTo = pathFromLoginRedirect(state?.from, ROUTES.home);
     return <Navigate to={redirectTo} replace />;
   }
 
