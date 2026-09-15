@@ -82,9 +82,59 @@ create trigger a_sync_magistrate_court_occupies_primary_slot_trigger
   for each row
   execute function public.sync_magistrate_court_occupies_primary_slot();
 
+-- Occupancy is a derived flag. First sign-in (and this backfill) must be
+-- able to flip it on a still-current row. 0104 treated ANY non-ending
+-- UPDATE as "reactivation" unless the JWT caller was is_admin() — the
+-- migration role and claim_primary_slot_on_first_sign_in() (DEFINER)
+-- are not, and ended rows are immutable. Allow occupancy/updated_at on
+-- current sittings; never rewrite history.
+create or replace function public.protect_magistrate_court_history()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old.ended_at is null and new.ended_at is not null then
+    new.ended_by := (select auth.uid());
+  end if;
+
+  if (select public.is_admin()) then
+    return new;
+  end if;
+
+  if old.ended_at is not null then
+    raise exception 'Cannot modify a historical (already-ended) court assignment';
+  end if;
+
+  if new.profile_id is distinct from old.profile_id
+     or new.court_id is distinct from old.court_id
+     or new.started_at is distinct from old.started_at
+     or new.assignment_type is distinct from old.assignment_type then
+    raise exception 'Ordinary self-service may only set ended_at/end_reason to end a current assignment, or refresh occupancy after first sign-in; no other field may change';
+  end if;
+
+  if new.ended_at is null then
+    if new.can_manage_clerks is distinct from old.can_manage_clerks
+       or new.ended_by is distinct from old.ended_by
+       or new.end_reason is distinct from old.end_reason then
+      raise exception 'Ordinary self-service may only set ended_at/end_reason to end a current assignment, or refresh occupancy after first sign-in; no other field may change';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.protect_magistrate_court_history() is
+  '0104 rules plus occupancy: historical rows stay immutable; identity fields stay frozen; ending still force-sets ended_by. A current row may refresh occupies_primary_slot/updated_at after first sign-in without being treated as reactivation. Admin JWT still bypasses.';
+
+alter table public.magistrate_courts disable trigger protect_magistrate_court_history_trigger;
+
 update public.magistrate_courts mc
-set occupies_primary_slot = (mc.assignment_type = 'regular' and mc.ended_at is null
-  and public.profile_has_completed_first_sign_in(mc.profile_id));
+set occupies_primary_slot = public.profile_has_completed_first_sign_in(mc.profile_id)
+where mc.assignment_type = 'regular' and mc.ended_at is null;
+
+alter table public.magistrate_courts enable trigger protect_magistrate_court_history_trigger;
 
 create or replace function public.court_has_active_primary_magistrate(p_court_id uuid)
 returns boolean
@@ -105,6 +155,9 @@ $$;
 
 comment on function public.court_has_active_primary_magistrate(uuid) is
   'True when a signed-in primary (regular) magistrate currently sits this court. Pending requests and never-logged-in regulars do not count.';
+
+revoke all on function public.court_has_active_primary_magistrate(uuid) from public;
+grant execute on function public.court_has_active_primary_magistrate(uuid) to anon, authenticated;
 
 create or replace function public.check_primary_magistrate_exclusivity()
 returns trigger

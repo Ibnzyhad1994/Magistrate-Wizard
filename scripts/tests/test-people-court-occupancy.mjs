@@ -128,6 +128,14 @@ check(
   true,
 );
 check(
+  "0152 occupancy backfill skips ended sittings and allows first-sign-in refresh",
+  sql0152.includes("create or replace function public.protect_magistrate_court_history") &&
+    sql0152.includes("refresh occupancy after first sign-in") &&
+    sql0152.includes("where mc.assignment_type = 'regular' and mc.ended_at is null") &&
+    sql0152.includes("disable trigger protect_magistrate_court_history_trigger"),
+  true,
+);
+check(
   "0152 accepts occupied courts as occupied_exception",
   sql0152.includes("occupied_exception") &&
     sql0152.includes("p_occupied_resolution") &&
