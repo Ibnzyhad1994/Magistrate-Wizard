@@ -23,9 +23,20 @@ const items = [
   { label: "Home", href: "/", icon: null },
   { label: "Dashboard", href: "/dashboard", icon: null, group: "workbench" },
   { label: "Docket", href: "/docket", icon: null },
-  { label: "Court Assignments", href: "/court-assignments", icon: null, roles: ["magistrate", "admin"], visibleWhilePending: true },
+  {
+    label: "Court Assignments",
+    href: "/court-assignments",
+    icon: null,
+    roles: ["magistrate", "admin"],
+    visibleWhilePending: true,
+  },
   { label: "Case Law", href: "/case-law", icon: null, roles: ["magistrate", "admin"] },
-  { label: "Manage Court Assignments", href: "/admin/court-assignments", icon: null, roles: ["admin"] },
+  {
+    label: "Manage Court Assignments",
+    href: "/admin/court-assignments",
+    icon: null,
+    roles: ["admin"],
+  },
 ];
 
 check(

@@ -44,9 +44,21 @@ function check(label, actual, expected) {
   const boilerplateOnly = Array.from({ length: 20 }, (_, i) => pageHeader(i + 1)).join(" ");
   const env = buildEnvelope(boilerplateOnly);
   check("boilerplate-only text envelope status is failed", env.status, "failed");
-  check("boilerplate-only text hardFailReason is repeated_running_header", env.hardFailReason, "repeated_running_header");
-  check("boilerplate-only text characterQuality is a real bucket, never 'high'", env.characterQuality !== "high", true);
-  check("boilerplate-only text structuralQuality is a real bucket, never 'medium'", env.structuralQuality !== "medium", true);
+  check(
+    "boilerplate-only text hardFailReason is repeated_running_header",
+    env.hardFailReason,
+    "repeated_running_header",
+  );
+  check(
+    "boilerplate-only text characterQuality is a real bucket, never 'high'",
+    env.characterQuality !== "high",
+    true,
+  );
+  check(
+    "boilerplate-only text structuralQuality is a real bucket, never 'medium'",
+    env.structuralQuality !== "medium",
+    true,
+  );
 }
 
 // buildEnvelope: genuine, substantial legislative text passes cleanly.
@@ -65,20 +77,73 @@ function check(label, actual, expected) {
 
 // deriveContentQualityStatus mapping.
 {
-  check("failed status maps to 'failed'", deriveContentQualityStatus({ status: "failed", qualityScore: 0, characterQuality: "poor", structuralQuality: "poor" }), "failed");
-  check("pending/no-score maps to 'unknown'", deriveContentQualityStatus({ status: "pending", qualityScore: null, characterQuality: null, structuralQuality: null }), "unknown");
-  check("poor characterQuality maps to 'poor' even if status passed", deriveContentQualityStatus({ status: "low_quality", qualityScore: 0.5, characterQuality: "poor", structuralQuality: "fair" }), "poor");
-  check("high score maps to 'good'", deriveContentQualityStatus({ status: "extracted", qualityScore: 0.9, characterQuality: "good", structuralQuality: "good" }), "good");
-  check("mid score maps to 'fair'", deriveContentQualityStatus({ status: "low_quality", qualityScore: 0.6, characterQuality: "fair", structuralQuality: "fair" }), "fair");
+  check(
+    "failed status maps to 'failed'",
+    deriveContentQualityStatus({
+      status: "failed",
+      qualityScore: 0,
+      characterQuality: "poor",
+      structuralQuality: "poor",
+    }),
+    "failed",
+  );
+  check(
+    "pending/no-score maps to 'unknown'",
+    deriveContentQualityStatus({
+      status: "pending",
+      qualityScore: null,
+      characterQuality: null,
+      structuralQuality: null,
+    }),
+    "unknown",
+  );
+  check(
+    "poor characterQuality maps to 'poor' even if status passed",
+    deriveContentQualityStatus({
+      status: "low_quality",
+      qualityScore: 0.5,
+      characterQuality: "poor",
+      structuralQuality: "fair",
+    }),
+    "poor",
+  );
+  check(
+    "high score maps to 'good'",
+    deriveContentQualityStatus({
+      status: "extracted",
+      qualityScore: 0.9,
+      characterQuality: "good",
+      structuralQuality: "good",
+    }),
+    "good",
+  );
+  check(
+    "mid score maps to 'fair'",
+    deriveContentQualityStatus({
+      status: "low_quality",
+      qualityScore: 0.6,
+      characterQuality: "fair",
+      structuralQuality: "fair",
+    }),
+    "fair",
+  );
 }
 
 // isHarvestedTitleSuspect / decideLegislationTitle — the "Marriage"/
 // "Marriage" defect class, and the "never silently overwrite a good
 // harvested title" guarantee.
 {
-  check("title identical to code is suspect", isHarvestedTitleSuspect("Marriage", "Marriage"), true);
+  check(
+    "title identical to code is suspect",
+    isHarvestedTitleSuspect("Marriage", "Marriage"),
+    true,
+  );
   check("very short title is suspect", isHarvestedTitleSuspect("Ma", "13 of 1985"), true);
-  check("a real, distinct title is not suspect", isHarvestedTitleSuspect("Marriage (Amendment) Act 1985", "13 of 1985"), false);
+  check(
+    "a real, distinct title is not suspect",
+    isHarvestedTitleSuspect("Marriage (Amendment) Act 1985", "13 of 1985"),
+    false,
+  );
 
   const realText =
     "GUYANA\nACT No. 13 of 1985\nMARRIAGE (AMENDMENT) ACT 1985\n\n" +
@@ -90,8 +155,16 @@ function check(label, actual, expected) {
     harvestedCode: "Marriage",
     extracted,
   });
-  check("suspect title=code is replaced by the extracted title", suspectDecision.source, "extracted");
-  check("suspect title=code recovers the real Act title", suspectDecision.title, "Marriage (Amendment) Act 1985");
+  check(
+    "suspect title=code is replaced by the extracted title",
+    suspectDecision.source,
+    "extracted",
+  );
+  check(
+    "suspect title=code recovers the real Act title",
+    suspectDecision.title,
+    "Marriage (Amendment) Act 1985",
+  );
 
   const goodDecision = decideLegislationTitle({
     harvestedTitle: "Criminal Law Miscellaneous Act- 10 of 2025",
@@ -99,7 +172,11 @@ function check(label, actual, expected) {
     extracted: null,
   });
   check("a good harvested title is kept, never overwritten", goodDecision.source, "harvested");
-  check("a good harvested title is preserved verbatim", goodDecision.title, "Criminal Law Miscellaneous Act- 10 of 2025");
+  check(
+    "a good harvested title is preserved verbatim",
+    goodDecision.title,
+    "Criminal Law Miscellaneous Act- 10 of 2025",
+  );
 }
 
 // applyLegislationContentCheck — the "1-page cover sheet only" gap: real
@@ -127,8 +204,16 @@ function check(label, actual, expected) {
     true,
   );
   const overridden = applyLegislationContentCheck(baseEnv);
-  check("legislation content override catches the cover-page-only case", overridden.status, "failed");
-  check("override maps to content_quality_status 'failed'", deriveContentQualityStatus(overridden), "failed");
+  check(
+    "legislation content override catches the cover-page-only case",
+    overridden.status,
+    "failed",
+  );
+  check(
+    "override maps to content_quality_status 'failed'",
+    deriveContentQualityStatus(overridden),
+    "failed",
+  );
 }
 
 // The override must never touch an already-good, substantial document.
@@ -142,18 +227,27 @@ function check(label, actual, expected) {
     "Registrar General.' 3. This Act shall be read and construed as one with the Principal Act.";
   const baseEnv = buildEnvelope(realText, "manual_paste");
   const overridden = applyLegislationContentCheck(baseEnv);
-  check("substantial legislative text is unaffected by the override", overridden.status, "extracted");
+  check(
+    "substantial legislative text is unaffected by the override",
+    overridden.status,
+    "extracted",
+  );
 }
 
 // The override must never touch an envelope that already failed for its
 // own reason (e.g. the shared repeated-block detector already caught it)
 // — no double-processing, no losing the original hardFailReason.
 {
-  const pageHeader = (page) => `THE OFFICIAL GAZETTE ${page} LEGAL SUPPLEMENT A LAWS OF GUYANA A.D. 2025 No. 13 THE OFFICIAL GAZETTE`;
+  const pageHeader = (page) =>
+    `THE OFFICIAL GAZETTE ${page} LEGAL SUPPLEMENT A LAWS OF GUYANA A.D. 2025 No. 13 THE OFFICIAL GAZETTE`;
   const boilerplateOnly = Array.from({ length: 20 }, (_, i) => pageHeader(i + 1)).join(" ");
   const baseEnv = buildEnvelope(boilerplateOnly, "manual_paste");
   const overridden = applyLegislationContentCheck(baseEnv);
-  check("already-failed envelope keeps its original hardFailReason", overridden.hardFailReason, baseEnv.hardFailReason);
+  check(
+    "already-failed envelope keeps its original hardFailReason",
+    overridden.hardFailReason,
+    baseEnv.hardFailReason,
+  );
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

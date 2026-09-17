@@ -3,22 +3,22 @@
  *
  *   node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/compare-propose-tags-before-after.mjs
  */
-import { writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { proposeTags, proposeTagsScored } from "@/lib/legal-extraction"
-import { LEGAL_TAXONOMY_TOPICS } from "@/lib/legal-taxonomy"
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { proposeTags, proposeTagsScored } from "@/lib/legal-extraction";
+import { LEGAL_TAXONOMY_TOPICS } from "@/lib/legal-taxonomy";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT = join(__dirname, "propose-tags-before-after.json")
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const OUT = join(__dirname, "propose-tags-before-after.json");
 
 /** Pre-hardening behavior: case-insensitive substring includes, no aliases/negation/floor. */
 const proposeTagsBefore = (text, limit = 10) => {
-  if (!text?.trim()) return []
-  const lower = text.toLowerCase()
-  const hits = LEGAL_TAXONOMY_TOPICS.filter((topic) => lower.includes(topic.toLowerCase()))
-  return Array.from(new Set(hits)).slice(0, limit)
-}
+  if (!text?.trim()) return [];
+  const lower = text.toLowerCase();
+  const hits = LEGAL_TAXONOMY_TOPICS.filter((topic) => lower.includes(topic.toLowerCase()));
+  return Array.from(new Set(hits)).slice(0, limit);
+};
 
 const FIXTURES = [
   {
@@ -109,67 +109,68 @@ const FIXTURES = [
     text: "The customer service industry provides a valuable service daily.",
     expectAfter: { exclude: ["Service"] },
   },
-]
+];
 
 const eqSet = (a, b) => {
-  if (a.length !== b.length) return false
-  const sa = [...a].sort().join("\0")
-  const sb = [...b].sort().join("\0")
-  return sa === sb
-}
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort().join("\0");
+  const sb = [...b].sort().join("\0");
+  return sa === sb;
+};
 
-const rows = []
-let improved = 0
-let unchanged = 0
-let regress = 0
+const rows = [];
+let improved = 0;
+let unchanged = 0;
+let regress = 0;
 
 for (const fix of FIXTURES) {
-  const before = proposeTagsBefore(fix.text)
-  const after = proposeTags(fix.text)
-  const scored = proposeTagsScored(fix.text)
-  const high = scored.filter((s) => s.confidence === "high").map((s) => s.name)
+  const before = proposeTagsBefore(fix.text);
+  const after = proposeTags(fix.text);
+  const scored = proposeTagsScored(fix.text);
+  const high = scored.filter((s) => s.confidence === "high").map((s) => s.name);
 
-  const added = after.filter((t) => !before.includes(t))
-  const removed = before.filter((t) => !after.includes(t))
-  const same = eqSet(before, after)
+  const added = after.filter((t) => !before.includes(t));
+  const removed = before.filter((t) => !after.includes(t));
+  const same = eqSet(before, after);
 
-  let ok = true
-  const problems = []
+  let ok = true;
+  const problems = [];
   for (const name of fix.expectAfter.include ?? []) {
     if (!after.includes(name)) {
-      ok = false
-      problems.push(`missing ${name}`)
+      ok = false;
+      problems.push(`missing ${name}`);
     }
   }
   for (const name of fix.expectAfter.exclude ?? []) {
     if (after.includes(name)) {
-      ok = false
-      problems.push(`still has ${name}`)
+      ok = false;
+      problems.push(`still has ${name}`);
     }
   }
   for (const name of fix.expectAfter.high ?? []) {
     if (!high.includes(name)) {
-      ok = false
-      problems.push(`${name} not high`)
+      ok = false;
+      problems.push(`${name} not high`);
     }
   }
 
   // Before often fails the same expectations — track delta quality
-  let beforeOk = true
+  let beforeOk = true;
   for (const name of fix.expectAfter.include ?? []) {
-    if (!before.includes(name)) beforeOk = false
+    if (!before.includes(name)) beforeOk = false;
   }
   for (const name of fix.expectAfter.exclude ?? []) {
-    if (before.includes(name)) beforeOk = false
+    if (before.includes(name)) beforeOk = false;
   }
 
-  if (!beforeOk && ok) improved += 1
-  else if (beforeOk && ok && same) unchanged += 1
-  else if (beforeOk && !ok) regress += 1
+  if (!beforeOk && ok) improved += 1;
+  else if (beforeOk && ok && same) unchanged += 1;
+  else if (beforeOk && !ok) regress += 1;
   else if (!beforeOk && !ok) {
     /* both wrong — rare */
-  } else if (beforeOk && ok && !same) improved += 1 // refined list
-  else if (!same && ok) improved += 1
+  } else if (beforeOk && ok && !same)
+    improved += 1; // refined list
+  else if (!same && ok) improved += 1;
 
   const row = {
     id: fix.id,
@@ -184,16 +185,19 @@ for (const fix of FIXTURES) {
     afterOk: ok,
     beforeOk,
     problems,
-  }
-  rows.push(row)
+  };
+  rows.push(row);
 
-  const mark = ok ? "PASS" : "FAIL"
-  const delta =
-    same ? "unchanged" : `−[${removed.join(", ") || "—"}] +[${added.join(", ") || "—"}]`
-  console.log(`${mark}  ${fix.label}`)
-  console.log(`      BEFORE: [${before.join(", ") || "(none)"}]`)
-  console.log(`      AFTER:  [${after.join(", ") || "(none)"}]${high.length ? `  high=[${high.join(", ")}]` : ""}`)
-  console.log(`      DELTA:  ${delta}${problems.length ? `  (${problems.join("; ")})` : ""}`)
+  const mark = ok ? "PASS" : "FAIL";
+  const delta = same
+    ? "unchanged"
+    : `−[${removed.join(", ") || "—"}] +[${added.join(", ") || "—"}]`;
+  console.log(`${mark}  ${fix.label}`);
+  console.log(`      BEFORE: [${before.join(", ") || "(none)"}]`);
+  console.log(
+    `      AFTER:  [${after.join(", ") || "(none)"}]${high.length ? `  high=[${high.join(", ")}]` : ""}`,
+  );
+  console.log(`      DELTA:  ${delta}${problems.length ? `  (${problems.join("; ")})` : ""}`);
 }
 
 const payload = {
@@ -207,12 +211,12 @@ const payload = {
     regressions: regress,
   },
   rows,
-}
-writeFileSync(OUT, JSON.stringify(payload, null, 2))
+};
+writeFileSync(OUT, JSON.stringify(payload, null, 2));
 
-console.log("\n--- Before vs After ---")
+console.log("\n--- Before vs After ---");
 console.log(
   `Fixtures ${payload.summary.fixtures}  |  before OK ${payload.summary.beforePass}  |  after OK ${payload.summary.afterPass}  |  improved ${improved}  |  regressions ${regress}`,
-)
-console.log("Results:", OUT)
-process.exit(rows.some((r) => !r.afterOk) || regress > 0 ? 1 : 0)
+);
+console.log("Results:", OUT);
+process.exit(rows.some((r) => !r.afterOk) || regress > 0 ? 1 : 0);

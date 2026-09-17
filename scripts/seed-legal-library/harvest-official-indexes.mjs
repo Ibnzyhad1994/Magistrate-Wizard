@@ -41,7 +41,10 @@ async function harvestMola() {
   const seen = new Set();
   let lastPage = 1;
   for (let page = 1; page <= 60; page++) {
-    const url = page === 1 ? "https://www.mola.gov.gy/laws-of-guyana" : `https://www.mola.gov.gy/laws-of-guyana?page=${page}`;
+    const url =
+      page === 1
+        ? "https://www.mola.gov.gy/laws-of-guyana"
+        : `https://www.mola.gov.gy/laws-of-guyana?page=${page}`;
     let html;
     try {
       html = await fetchText(url);
@@ -59,7 +62,8 @@ async function harvestMola() {
     while ((match = re.exec(html))) {
       const source_url = decodeEntities(match[1].replace(/ /g, "%20"));
       const titleRaw = decodeEntities(match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
-      const cap = titleRaw.match(/Chapter\s+(\d+:\d+)/i)?.[1] ?? titleRaw.match(/Cap\.?\s*(\d+:\d+)/i)?.[1];
+      const cap =
+        titleRaw.match(/Chapter\s+(\d+:\d+)/i)?.[1] ?? titleRaw.match(/Cap\.?\s*(\d+:\d+)/i)?.[1];
       const title = titleRaw.replace(/^Chapter\s+\d+:\d+\s*-\s*/i, "").trim();
       const key = `${cap ?? ""}|${title}|${source_url}`;
       if (seen.has(key)) continue;
@@ -164,4 +168,6 @@ async function harvestParliament() {
 
 const molaCount = await harvestMola();
 const parlCount = await harvestParliament();
-console.log(`Wrote catalogs: MoLA ${molaCount} chapters, Parliament ${parlCount} acts (budget acts skipped).`);
+console.log(
+  `Wrote catalogs: MoLA ${molaCount} chapters, Parliament ${parlCount} acts (budget acts skipped).`,
+);

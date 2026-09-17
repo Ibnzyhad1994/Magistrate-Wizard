@@ -53,7 +53,11 @@ function check(label, actual, expected) {
     "This license permits the licensed fonts to be embedded in documents.";
   const q = assessExtractionQuality(boilerplate);
   check("font/license boilerplate fails the quality gate", q.passed, false);
-  check("font/license boilerplate hard-fail reason is boilerplate", q.hardFailReason, "boilerplate");
+  check(
+    "font/license boilerplate hard-fail reason is boilerplate",
+    q.hardFailReason,
+    "boilerplate",
+  );
 }
 
 // Binary/garbled decode -- low printable ratio, many control/replacement
@@ -85,7 +89,11 @@ function check(label, actual, expected) {
     "again forming ordinary sentences so the only anomaly being tested is the replacement characters above.";
   const q = assessExtractionQuality(boxes);
   check("repeated replacement characters fail the quality gate", q.passed, false);
-  check("replacement-char hard-fail reason is replacement_chars", q.hardFailReason, "replacement_chars");
+  check(
+    "replacement-char hard-fail reason is replacement_chars",
+    q.hardFailReason,
+    "replacement_chars",
+  );
 }
 
 // Repeated running-header/footer boilerplate -- real-world pattern from a
@@ -121,8 +129,16 @@ function check(label, actual, expected) {
     " More readable words follow after this point in the text for good measure, " +
     "again forming ordinary sentences so the only anomaly being tested is the replacement characters above.";
   const q = assessExtractionQuality(boxes);
-  check("garbled text with replacement chars still fails (unaffected by new check)", q.passed, false);
-  check("garbled text still reports replacement_chars, not repeated_running_header", q.hardFailReason, "replacement_chars");
+  check(
+    "garbled text with replacement chars still fails (unaffected by new check)",
+    q.passed,
+    false,
+  );
+  check(
+    "garbled text still reports replacement_chars, not repeated_running_header",
+    q.hardFailReason,
+    "replacement_chars",
+  );
 }
 
 // A genuine long document legitimately has a SMALL running header/footer
@@ -138,7 +154,9 @@ function check(label, actual, expected) {
     "Having considered the submissions of both parties the Court concluded the trial judge had correctly directed the jury throughout.",
     "The appeal against conviction was accordingly dismissed and the original sentence imposed by the trial judge was affirmed in full.",
   ];
-  const withSmallFooter = paragraphs.map((p, i) => `${p} — Judgment continued, page ${i + 1}`).join(" ");
+  const withSmallFooter = paragraphs
+    .map((p, i) => `${p} — Judgment continued, page ${i + 1}`)
+    .join(" ");
   const q = assessExtractionQuality(withSmallFooter);
   check("long judgment with a small varying page footer still passes", q.passed, true);
 }

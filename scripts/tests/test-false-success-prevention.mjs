@@ -65,12 +65,24 @@ async function main() {
   // ---------------------------------------------------------------------
   {
     const env = await runPdfExtractionPipeline(makeCmapPollutedPdf());
-    checkTrue("A. CMap-polluted PDF: extracted text does not contain 'Adobe'", !env.text.includes("Adobe"));
-    checkTrue("A. CMap-polluted PDF: extracted text does not contain 'UCS2'", !env.text.includes("UCS2"));
+    checkTrue(
+      "A. CMap-polluted PDF: extracted text does not contain 'Adobe'",
+      !env.text.includes("Adobe"),
+    );
+    checkTrue(
+      "A. CMap-polluted PDF: extracted text does not contain 'UCS2'",
+      !env.text.includes("UCS2"),
+    );
     check("A. CMap-polluted PDF: status is extracted", env.status, "extracted");
 
-    const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(normalizeWhitespace(env.text));
-    check("A. CMap-polluted PDF: case name is the genuine header", fields.case_name, "The State v Test Appellant");
+    const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(
+      normalizeWhitespace(env.text),
+    );
+    check(
+      "A. CMap-polluted PDF: case name is the genuine header",
+      fields.case_name,
+      "The State v Test Appellant",
+    );
     check("A. CMap-polluted PDF: case name confidence is high", caseNameConfidence, "high");
 
     const court = matchCanonicalCourtScored(env.text, COURTS);
@@ -86,10 +98,22 @@ async function main() {
   // ---------------------------------------------------------------------
   {
     const env = await runPdfExtractionPipeline(makeBodyCitationTrapPdf());
-    const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(normalizeWhitespace(env.text));
-    check("B. Body citation trap: genuine header proposed", fields.case_name, "The Queen v Test Respondent");
-    checkTrue("B. Body citation trap: proposed name does not contain 'Ferguson'", !(fields.case_name ?? "").includes("Ferguson"));
-    checkTrue("B. Body citation trap: proposed name does not start with 'at '", !/^at\s/i.test(fields.case_name ?? ""));
+    const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(
+      normalizeWhitespace(env.text),
+    );
+    check(
+      "B. Body citation trap: genuine header proposed",
+      fields.case_name,
+      "The Queen v Test Respondent",
+    );
+    checkTrue(
+      "B. Body citation trap: proposed name does not contain 'Ferguson'",
+      !(fields.case_name ?? "").includes("Ferguson"),
+    );
+    checkTrue(
+      "B. Body citation trap: proposed name does not start with 'at '",
+      !/^at\s/i.test(fields.case_name ?? ""),
+    );
     check("B. Body citation trap: case name confidence is high", caseNameConfidence, "high");
   }
 
@@ -107,7 +131,10 @@ async function main() {
     // status — the longer end-to-end array-text case is covered by
     // fixture A above and by test-extraction-pipeline.mjs's existing
     // concatenated-text case.)
-    checkTrue("C. TJ array text extraction is non-throwing and produces a result object", typeof env.status === "string");
+    checkTrue(
+      "C. TJ array text extraction is non-throwing and produces a result object",
+      typeof env.status === "string",
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -117,10 +144,17 @@ async function main() {
   // criterion, this must NEVER be capable of reading as high quality.
   // ---------------------------------------------------------------------
   {
-    const glued = Array.from({ length: 40 }, () => "AdobeIdentityUCS2CIDSystemInfoRegistryOrderingSupplementCMapName").join("");
+    const glued = Array.from(
+      { length: 40 },
+      () => "AdobeIdentityUCS2CIDSystemInfoRegistryOrderingSupplementCMapName",
+    ).join("");
     const q = assessExtractionQuality(glued);
     checkTrue("D. Huge glued 'false success' text does not pass the quality gate", !q.passed);
-    check("D. Huge glued text hard-fail reason is structural_incoherence", q.hardFailReason, "structural_incoherence");
+    check(
+      "D. Huge glued text hard-fail reason is structural_incoherence",
+      q.hardFailReason,
+      "structural_incoherence",
+    );
     checkTrue("D. Huge glued text score is not treated as clean/high", q.score < 0.75);
   }
 
@@ -173,7 +207,9 @@ async function main() {
       state.extractionEnvelope = envelope;
       state.text = envelope.text;
       if (envelope.status === "extracted" || envelope.status === "low_quality") {
-        const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(normalizeWhitespace(envelope.text));
+        const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(
+          normalizeWhitespace(envelope.text),
+        );
         state.caseNameConfidence = caseNameConfidence;
         state.caseName = caseNameConfidence === "high" ? (fields.case_name ?? "") : "";
         const matched = matchCanonicalCourtScored(envelope.text, courts);
@@ -183,17 +219,29 @@ async function main() {
     }
 
     const a = await simulateSelect(makeCmapPollutedPdf(), COURTS);
-    check("G. File A: case name high confidence and auto-filled", a.caseName, "The State v Test Appellant");
+    check(
+      "G. File A: case name high confidence and auto-filled",
+      a.caseName,
+      "The State v Test Appellant",
+    );
     check("G. File A: caseNameConfidence high", a.caseNameConfidence, "high");
 
     const b = await simulateSelect(makeFontBoilerplatePdf(), COURTS);
     check("G. File B (boilerplate, failed extraction): text cleared", b.text, "");
     check("G. File B: case name cleared, not File A's value", b.caseName, "");
-    check("G. File B: caseNameConfidence reset (not carried over from File A)", b.caseNameConfidence, null);
+    check(
+      "G. File B: caseNameConfidence reset (not carried over from File A)",
+      b.caseNameConfidence,
+      null,
+    );
     check("G. File B: court cleared", b.courtId, "");
 
     const c = await simulateSelect(makeBodyCitationTrapPdf(), COURTS);
-    check("G. File C: case name high confidence and auto-filled", c.caseName, "The Queen v Test Respondent");
+    check(
+      "G. File C: case name high confidence and auto-filled",
+      c.caseName,
+      "The Queen v Test Respondent",
+    );
     checkTrue("G. File C's case name differs from File A's", c.caseName !== a.caseName);
   }
 

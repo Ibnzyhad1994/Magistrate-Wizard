@@ -1,13 +1,13 @@
 // Optional public court PDF fetch for Stage 8 of the brutal circuit.
 // Cache under scripts/test-support/.cache/ (gitignored). Skip offline — not a failure.
 
-import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-export const CACHE_DIR = join(__dirname, ".cache")
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export const CACHE_DIR = join(__dirname, ".cache");
 
 export const PUBLIC_FIXTURES = [
   {
@@ -89,43 +89,43 @@ export const PUBLIC_FIXTURES = [
     kind: "pdf",
     mustContain: ["Trinidad", "Tobago", "Privy Council"],
   },
-]
+];
 
-const cachePath = (id, ext) => join(CACHE_DIR, `${id}.${ext}`)
+const cachePath = (id, ext) => join(CACHE_DIR, `${id}.${ext}`);
 
 const ensureCacheDir = () => {
-  if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true })
-}
+  if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
+};
 
 /**
  * Fetch a URL with a short timeout. Returns { ok, bytes|text, skipped, reason }.
  */
 export const fetchCached = async (id, url, ext, timeoutMs = 20000) => {
-  ensureCacheDir()
-  const path = cachePath(id, ext)
+  ensureCacheDir();
+  const path = cachePath(id, ext);
   if (existsSync(path)) {
-    const bytes = readFileSync(path)
-    return { ok: true, bytes, path, fromCache: true }
+    const bytes = readFileSync(path);
+    return { ok: true, bytes, path, fromCache: true };
   }
   try {
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const res = await fetch(url, {
       signal: ctrl.signal,
       headers: { "User-Agent": "MagistrateWizard-IngestCircuit/1.0 (local robustness test)" },
       redirect: "follow",
-    })
-    clearTimeout(timer)
+    });
+    clearTimeout(timer);
     if (!res.ok) {
-      return { ok: false, skipped: true, reason: `HTTP ${res.status}` }
+      return { ok: false, skipped: true, reason: `HTTP ${res.status}` };
     }
-    const buf = Buffer.from(await res.arrayBuffer())
-    writeFileSync(path, buf)
-    return { ok: true, bytes: buf, path, fromCache: false }
+    const buf = Buffer.from(await res.arrayBuffer());
+    writeFileSync(path, buf);
+    return { ok: true, bytes: buf, path, fromCache: false };
   } catch (e) {
-    return { ok: false, skipped: true, reason: e?.message ?? String(e) }
+    return { ok: false, skipped: true, reason: e?.message ?? String(e) };
   }
-}
+};
 
 export const stripHtmlToText = (html) => {
   return String(html)
@@ -139,10 +139,10 @@ export const stripHtmlToText = (html) => {
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
     .replace(/\s+/g, " ")
-    .trim()
-}
+    .trim();
+};
 
-export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
+export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 /** In-repo workflow PDF — always available offline. */
 export const IN_REPO_PDF = join(
@@ -153,6 +153,6 @@ export const IN_REPO_PDF = join(
   "workflows-layman",
   "pdf",
   "00-how-to-read-these-guides.pdf",
-)
+);
 
-export const IN_REPO_MUST_CONTAIN = ["How to read", "Magistrate Wizard"]
+export const IN_REPO_MUST_CONTAIN = ["How to read", "Magistrate Wizard"];

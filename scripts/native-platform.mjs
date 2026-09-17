@@ -10,7 +10,9 @@ const target = process.argv[2] === "ios" ? "ios" : "android";
 const run = (cmd, args) =>
   new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { cwd: root, stdio: "inherit", shell: true });
-    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} exited ${code}`))));
+    child.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`${cmd} exited ${code}`)),
+    );
   });
 
 await run("npm", ["run", "build"]);

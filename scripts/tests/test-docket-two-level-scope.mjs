@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS/RPC security test for the two-level Docket (All My Courts /
 // one specific court). Needs a running local Supabase instance (`npm run
 // db:start`) and SUPABASE_SERVICE_ROLE_KEY in the environment.
@@ -30,7 +31,9 @@ if (!SERVICE_KEY) {
   process.exit(1);
 }
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -78,7 +81,12 @@ async function main() {
   async function makeCourt(name) {
     const { data, error } = await admin
       .from("courts")
-      .insert({ name: `${name} ${stamp}`, jurisdiction: "Test", district_id: district.id, is_active: true })
+      .insert({
+        name: `${name} ${stamp}`,
+        jurisdiction: "Test",
+        district_id: district.id,
+        is_active: true,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -121,7 +129,10 @@ async function main() {
       .select("court_id")
       .eq("profile_id", magistrate.id)
       .is("ended_at", null);
-    check("1. Magistrate's active court assignments include both Alpha and Beta", new Set(data.map((r) => r.court_id)).size === 2);
+    check(
+      "1. Magistrate's active court assignments include both Alpha and Beta",
+      new Set(data.map((r) => r.court_id)).size === 2,
+    );
   }
 
   // Create matters directly (as magistrate) at Alpha and Beta.
@@ -145,8 +156,14 @@ async function main() {
     const { data, error } = await magClient.rpc("list_docket_matters", { p_court_id: null });
     if (error) throw error;
     const ids = new Set(data.map((r) => r.id));
-    check("2. All My Courts (p_court_id=null) includes both the Alpha and Beta matter", ids.has(alphaMatter.id) && ids.has(betaMatter.id));
-    check("3. Every combined-view row has a non-empty court_name", data.every((r) => !!r.court_name));
+    check(
+      "2. All My Courts (p_court_id=null) includes both the Alpha and Beta matter",
+      ids.has(alphaMatter.id) && ids.has(betaMatter.id),
+    );
+    check(
+      "3. Every combined-view row has a non-empty court_name",
+      data.every((r) => !!r.court_name),
+    );
   }
 
   // --- 4/5: scoped to one court excludes the other -----------------------
@@ -173,7 +190,10 @@ async function main() {
       p_court_id: alpha.id,
     });
     if (error) throw error;
-    check("6. Court-scoped export accepts p_court_id without error (no matching date -> empty, not an error)", Array.isArray(data));
+    check(
+      "6. Court-scoped export accepts p_court_id without error (no matching date -> empty, not an error)",
+      Array.isArray(data),
+    );
   }
 
   // --- 7/8: create respects/derives court context; unauthorized court is rejected ---
@@ -181,7 +201,11 @@ async function main() {
     const { error } = await magClient
       .from("docket_matters")
       .insert({ court_id: outsider.id, case_number: `X-${stamp}`, matter_title: "Should fail" });
-    checkErr("7/9/10. Magistrate cannot insert a matter into a court they have no access to (RLS)", error, true);
+    checkErr(
+      "7/9/10. Magistrate cannot insert a matter into a court they have no access to (RLS)",
+      error,
+      true,
+    );
   }
 
   // --- 11: ordinary edit cannot change court_id ---------------------------
@@ -190,30 +214,61 @@ async function main() {
       .from("docket_matters")
       .update({ court_id: beta.id })
       .eq("id", alphaMatter.id);
-    checkErr("11. Ordinary update cannot change court_id (docket_matters_guard, 0097)", error, true);
-    const { data: stillAlpha } = await admin.from("docket_matters").select("court_id").eq("id", alphaMatter.id).single();
-    check("11b. The matter's court_id is unchanged after the rejected attempt", stillAlpha.court_id === alpha.id);
+    checkErr(
+      "11. Ordinary update cannot change court_id (docket_matters_guard, 0097)",
+      error,
+      true,
+    );
+    const { data: stillAlpha } = await admin
+      .from("docket_matters")
+      .select("court_id")
+      .eq("id", alphaMatter.id)
+      .single();
+    check(
+      "11b. The matter's court_id is unchanged after the rejected attempt",
+      stillAlpha.court_id === alpha.id,
+    );
   }
 
   // --- 12/13: clerk cross-court isolation --------------------------------
   {
-    const { data } = await clerkAlphaClient.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("12. Alpha clerk sees the Alpha matter", (data ?? []).some((r) => r.id === alphaMatter.id));
+    const { data } = await clerkAlphaClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
+    check(
+      "12. Alpha clerk sees the Alpha matter",
+      (data ?? []).some((r) => r.id === alphaMatter.id),
+    );
   }
   {
-    const { data } = await clerkAlphaClient.from("docket_matters").select("id").eq("court_id", beta.id);
-    check("12b. Alpha clerk sees ZERO Beta matters (direct court_id query)", (data ?? []).length === 0);
+    const { data } = await clerkAlphaClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", beta.id);
+    check(
+      "12b. Alpha clerk sees ZERO Beta matters (direct court_id query)",
+      (data ?? []).length === 0,
+    );
   }
   {
-    const { data, error } = await clerkAlphaClient.rpc("list_docket_matters", { p_court_id: beta.id });
+    const { data, error } = await clerkAlphaClient.rpc("list_docket_matters", {
+      p_court_id: beta.id,
+    });
     if (error) throw error;
-    check("12c. Alpha clerk's list_docket_matters(p_court_id=Beta) returns zero rows, not an error", data.length === 0);
+    check(
+      "12c. Alpha clerk's list_docket_matters(p_court_id=Beta) returns zero rows, not an error",
+      data.length === 0,
+    );
   }
   {
     const { data, error } = await clerkAlphaClient.rpc("list_docket_matters", { p_court_id: null });
     if (error) throw error;
     const ids = new Set(data.map((r) => r.id));
-    check("12d. Alpha clerk's own All My Courts contains Alpha, not Beta", ids.has(alphaMatter.id) && !ids.has(betaMatter.id));
+    check(
+      "12d. Alpha clerk's own All My Courts contains Alpha, not Beta",
+      ids.has(alphaMatter.id) && !ids.has(betaMatter.id),
+    );
   }
   {
     const { error } = await clerkAlphaClient
@@ -221,11 +276,22 @@ async function main() {
       .update({ matter_title: "hacked" })
       .eq("id", betaMatter.id);
     // RLS denies -> zero rows matched -> no error, but also no change.
-    const { data: unchanged } = await admin.from("docket_matters").select("matter_title").eq("id", betaMatter.id).single();
-    check("13. Alpha clerk cannot modify the Beta matter (silently affects zero rows)", unchanged.matter_title === "Beta matter", !error || true);
+    const { data: unchanged } = await admin
+      .from("docket_matters")
+      .select("matter_title")
+      .eq("id", betaMatter.id)
+      .single();
+    check(
+      "13. Alpha clerk cannot modify the Beta matter (silently affects zero rows)",
+      unchanged.matter_title === "Beta matter",
+      !error || true,
+    );
   }
   {
-    const { data } = await clerkBetaClient.from("docket_matters").select("id").eq("court_id", alpha.id);
+    const { data } = await clerkBetaClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
     check("13b. Beta clerk sees ZERO Alpha matters", (data ?? []).length === 0);
   }
 
@@ -234,7 +300,10 @@ async function main() {
     const { data, error } = await clerkBothClient.rpc("list_docket_matters", { p_court_id: null });
     if (error) throw error;
     const ids = new Set(data.map((r) => r.id));
-    check("14. Clerk approved for both courts sees both matters via All My Courts", ids.has(alphaMatter.id) && ids.has(betaMatter.id));
+    check(
+      "14. Clerk approved for both courts sees both matters via All My Courts",
+      ids.has(alphaMatter.id) && ids.has(betaMatter.id),
+    );
   }
 
   // --- 15: revocation is immediate -----------------------------------------
@@ -246,15 +315,27 @@ async function main() {
       .eq("court_id", alpha.id)
       .single();
     await magClient.rpc("revoke_clerk_court_access", { p_assignment_id: assignment.id });
-    const { data } = await clerkAlphaClient.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("15. Revoked Alpha clerk immediately loses access to the Alpha matter", (data ?? []).length === 0);
+    const { data } = await clerkAlphaClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
+    check(
+      "15. Revoked Alpha clerk immediately loses access to the Alpha matter",
+      (data ?? []).length === 0,
+    );
   }
 
   // --- 16: search does not leak an unauthorized matter's existence --------
   {
-    const { data, error } = await clerkBetaClient.rpc("search_docket_matters", { p_query: "Alpha", p_limit: 10 });
+    const { data, error } = await clerkBetaClient.rpc("search_docket_matters", {
+      p_query: "Alpha",
+      p_limit: 10,
+    });
     if (error) throw error;
-    check("16. Beta clerk's search for 'Alpha' returns nothing (no title/case-number leak)", data.length === 0);
+    check(
+      "16. Beta clerk's search for 'Alpha' returns nothing (no title/case-number leak)",
+      data.length === 0,
+    );
   }
 
   // --- 18: child records follow the parent matter's court ----------------
@@ -270,16 +351,32 @@ async function main() {
       .select()
       .single();
     if (error) throw error;
-    check("18. A clerk approved for Alpha can create a docket_event on the Alpha matter", !!event.id);
-    const { data: seenByBetaOnly } = await clerkBetaClient.from("docket_events").select("id").eq("id", event.id);
-    check("18b. Beta-only clerk cannot see that Alpha event (child follows parent's court)", (seenByBetaOnly ?? []).length === 0);
+    check(
+      "18. A clerk approved for Alpha can create a docket_event on the Alpha matter",
+      !!event.id,
+    );
+    const { data: seenByBetaOnly } = await clerkBetaClient
+      .from("docket_events")
+      .select("id")
+      .eq("id", event.id);
+    check(
+      "18b. Beta-only clerk cannot see that Alpha event (child follows parent's court)",
+      (seenByBetaOnly ?? []).length === 0,
+    );
   }
 
   // --- 23: concurrency — a stale update is rejected, not silently applied ---
   {
-    const { data: fresh } = await admin.from("docket_matters").select("updated_at").eq("id", betaMatter.id).single();
+    const { data: fresh } = await admin
+      .from("docket_matters")
+      .select("updated_at")
+      .eq("id", betaMatter.id)
+      .single();
     // Someone else updates it first.
-    await magClient.from("docket_matters").update({ outcome: "first save" }).eq("id", betaMatter.id);
+    await magClient
+      .from("docket_matters")
+      .update({ outcome: "first save" })
+      .eq("id", betaMatter.id);
     // A stale editor (still holding the OLD updated_at) tries to save.
     const { data: staleAttempt } = await magClient
       .from("docket_matters")
@@ -288,16 +385,30 @@ async function main() {
       .eq("updated_at", fresh.updated_at)
       .select()
       .maybeSingle();
-    check("23. A stale conditional update (old updated_at) matches zero rows, not a silent overwrite", staleAttempt === null);
-    const { data: finalRow } = await admin.from("docket_matters").select("outcome").eq("id", betaMatter.id).single();
-    check("23b. The first (non-stale) save is the one that stuck", finalRow.outcome === "first save");
+    check(
+      "23. A stale conditional update (old updated_at) matches zero rows, not a silent overwrite",
+      staleAttempt === null,
+    );
+    const { data: finalRow } = await admin
+      .from("docket_matters")
+      .select("outcome")
+      .eq("id", betaMatter.id)
+      .single();
+    check(
+      "23b. The first (non-stale) save is the one that stuck",
+      finalRow.outcome === "first save",
+    );
   }
 
   // --- 25/26: district-scoped uniqueness + archive-not-delete still work ---
   {
     const { error } = await magClient
       .from("docket_matters")
-      .insert({ court_id: alpha.id, case_number: `A-${stamp}`, matter_title: "Duplicate case number" });
+      .insert({
+        court_id: alpha.id,
+        case_number: `A-${stamp}`,
+        matter_title: "Duplicate case number",
+      });
     checkErr("25. District-scoped case-number uniqueness is still enforced", error, true);
   }
   {
@@ -309,21 +420,39 @@ async function main() {
       .single();
     if (error) throw error;
     check("26. Archive (status update) still works", data.status === "archived");
-    const { error: delError } = await magClient.from("docket_matters").delete().eq("id", alphaMatter.id);
-    const { data: stillThere } = await admin.from("docket_matters").select("id").eq("id", alphaMatter.id).maybeSingle();
-    check("26b. Permanent delete remains blocked (no DELETE policy — row still exists)", !!stillThere, !delError || true);
+    const { error: delError } = await magClient
+      .from("docket_matters")
+      .delete()
+      .eq("id", alphaMatter.id);
+    const { data: stillThere } = await admin
+      .from("docket_matters")
+      .select("id")
+      .eq("id", alphaMatter.id)
+      .maybeSingle();
+    check(
+      "26b. Permanent delete remains blocked (no DELETE policy — row still exists)",
+      !!stillThere,
+      !delError || true,
+    );
   }
 
-  console.log(failures > 0 ? `\n${failures} failure(s).` : "\nAll docket two-level scope tests passed.");
+  console.log(
+    failures > 0 ? `\n${failures} failure(s).` : "\nAll docket two-level scope tests passed.",
+  );
 }
 
 async function cleanup() {
   try {
     for (const courtId of created.courts) {
-      await admin.from("docket_events").delete().in(
-        "docket_matter_id",
-        (await admin.from("docket_matters").select("id").eq("court_id", courtId)).data?.map((r) => r.id) ?? [],
-      );
+      await admin
+        .from("docket_events")
+        .delete()
+        .in(
+          "docket_matter_id",
+          (await admin.from("docket_matters").select("id").eq("court_id", courtId)).data?.map(
+            (r) => r.id,
+          ) ?? [],
+        );
       await admin.from("docket_matters").delete().eq("court_id", courtId);
       await admin.from("clerk_courts").delete().eq("court_id", courtId);
       await admin.from("clerk_access_requests").delete().eq("court_id", courtId);
@@ -332,7 +461,8 @@ async function cleanup() {
     for (const courtId of created.courts) {
       await admin.from("courts").delete().eq("id", courtId);
     }
-    if (created.districtId) await admin.from("magisterial_districts").delete().eq("id", created.districtId);
+    if (created.districtId)
+      await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     for (const userId of created.users) {
       await admin.auth.admin.deleteUser(userId);
     }

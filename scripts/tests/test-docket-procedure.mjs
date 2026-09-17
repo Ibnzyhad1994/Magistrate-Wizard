@@ -134,7 +134,11 @@ check(
 
 check(
   "OR within next-date: upcoming matches later date",
-  matchesProcedureFilters(row, { ...EMPTY_PROCEDURE_FILTERS, nextDate: ["today", "upcoming"] }, "2026-08-19"),
+  matchesProcedureFilters(
+    row,
+    { ...EMPTY_PROCEDURE_FILTERS, nextDate: ["today", "upcoming"] },
+    "2026-08-19",
+  ),
   true,
 );
 
@@ -162,7 +166,11 @@ check("edit share is edit mode", procedureCellMode(true), "edit");
 const hint = appearanceHintForColumn("disclosure_status", "partial");
 check("disclosure hint uses Disclosure event type", hint.event_type, "Disclosure");
 
-const rpc = filtersToRpcArgs({ ...EMPTY_PROCEDURE_FILTERS, stages: ["trial"], nextDate: ["today"] });
+const rpc = filtersToRpcArgs({
+  ...EMPTY_PROCEDURE_FILTERS,
+  stages: ["trial"],
+  nextDate: ["today"],
+});
 check("empty filter groups omit RPC args", rpc.p_custody, undefined);
 check("selected stages pass through", rpc.p_procedure_stages, ["trial"]);
 

@@ -16,7 +16,16 @@
 // user's specified patterns, since no other real judgment PDFs were
 // available in this sandbox.
 
-import { extractCaseLawMetadata, extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, extractLegislationMetadataWithConfidence, normalizeMetadataHead, proposeTags, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
+import {
+  extractCaseLawMetadata,
+  extractCaseLawMetadataWithConfidence,
+  extractCaseNameFromFilename,
+  extractLegislationMetadataWithConfidence,
+  normalizeMetadataHead,
+  proposeTags,
+  shouldAutoFillCaseName,
+  shouldProposeCaseName,
+} from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import { mergeReprocessFields } from "@/lib/legal-library/machine-proposal";
 
@@ -67,7 +76,11 @@ const COURTS = [
     id: "full-court-guyana",
     canonical_name: "Full Court of Guyana",
     short_name: "Full Court",
-    aliases: ["Full Court", "Full Court of the High Court of Guyana", "Full Court of the High Court"],
+    aliases: [
+      "Full Court",
+      "Full Court of the High Court of Guyana",
+      "Full Court of the High Court",
+    ],
     jurisdiction_id: "jur-guyana",
   },
   {
@@ -123,14 +136,19 @@ const COURTS = [
     "an earlier case, and notes that the Privy Council's approach to hearsay is " +
     "instructive, as is a further Privy Council authority cited by counsel.";
   const court = matchCanonicalCourtScored(text, COURTS);
-  check("B. court matched (header wins over repeated body mentions)", court?.court.id, "coa-guyana");
+  check(
+    "B. court matched (header wins over repeated body mentions)",
+    court?.court.id,
+    "coa-guyana",
+  );
 }
 
 // ---------------------------------------------------------------------------
 // C. Genuine Privy Council case.
 // ---------------------------------------------------------------------------
 {
-  const text = "Some Appellant v Some Respondent [1990] UKPC 12\nJUDICIAL COMMITTEE OF THE PRIVY COUNCIL\n\nBody text.";
+  const text =
+    "Some Appellant v Some Respondent [1990] UKPC 12\nJUDICIAL COMMITTEE OF THE PRIVY COUNCIL\n\nBody text.";
   const court = matchCanonicalCourtScored(text, COURTS);
   check("C. court matched", court?.court.id, "jcpc");
   check("C. confidence high", court?.confidence, "high");
@@ -140,7 +158,8 @@ const COURTS = [
 // D. Genuine CCJ case.
 // ---------------------------------------------------------------------------
 {
-  const text = "Some Appellant v Some Respondent [2015] CCJ 4\nCARIBBEAN COURT OF JUSTICE\n\nBody text.";
+  const text =
+    "Some Appellant v Some Respondent [2015] CCJ 4\nCARIBBEAN COURT OF JUSTICE\n\nBody text.";
   const court = matchCanonicalCourtScored(text, COURTS);
   check("D. court matched", court?.court.id, "ccj");
   check("D. confidence high", court?.confidence, "high");
@@ -175,7 +194,8 @@ const COURTS = [
 // Decision date IS proposed when a clear "delivered on" anchor exists.
 // ---------------------------------------------------------------------------
 {
-  const text = "Some Case v Another (1999) 1 WLR 55\nCOURT OF APPEAL\n\nJudgment delivered on 3 June 1999.";
+  const text =
+    "Some Case v Another (1999) 1 WLR 55\nCOURT OF APPEAL\n\nJudgment delivered on 3 June 1999.";
   const meta = extractCaseLawMetadata(text);
   check("Decision date proposed with clear anchor", meta.decided_date_guess, "1999-06-03");
 }
@@ -190,8 +210,14 @@ const COURTS = [
 // specific, per the explicit anti-overfitting instruction (Phase S).
 // ---------------------------------------------------------------------------
 {
-  const periodDelimited = extractCaseLawMetadata("Some Case [1969] S.C.R. 525\nSUPREME COURT OF CANADA");
-  check("Citation generalization — period-delimited bracketed reporter", periodDelimited.neutral_citation, "[1969] S.C.R. 525");
+  const periodDelimited = extractCaseLawMetadata(
+    "Some Case [1969] S.C.R. 525\nSUPREME COURT OF CANADA",
+  );
+  check(
+    "Citation generalization — period-delimited bracketed reporter",
+    periodDelimited.neutral_citation,
+    "[1969] S.C.R. 525",
+  );
 
   const canlii = extractCaseLawMetadata("Some Case 1987 CanLII 16\nCOURT OF APPEAL FOR ONTARIO");
   check("Citation generalization — unbracketed CanLII", canlii.neutral_citation, "1987 CanLII 16");
@@ -209,7 +235,11 @@ const COURTS = [
   const ordinaryProse = extractCaseLawMetadata(
     "This dispute traces back to events described in 1987 Somewhere in the record, long before the hearing.",
   );
-  check("Citation generalization — no false positive on ordinary prose", ordinaryProse.neutral_citation, undefined);
+  check(
+    "Citation generalization — no false positive on ordinary prose",
+    ordinaryProse.neutral_citation,
+    undefined,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -220,7 +250,9 @@ const COURTS = [
 // ---------------------------------------------------------------------------
 {
   const spacedCitationOnly = extractCaseNameFromFilename("1969 SCR 525.pdf");
-  check("Filename fallback — bare unbracketed citation, no case name", spacedCitationOnly, { neutral_citation: "1969 SCR 525" });
+  check("Filename fallback — bare unbracketed citation, no case name", spacedCitationOnly, {
+    neutral_citation: "1969 SCR 525",
+  });
 
   // A filename with the year/abbreviation/number run together with no
   // separator at all cannot be split without a hard-coded dictionary of
@@ -228,14 +260,22 @@ const COURTS = [
   // do not build fixture-specific hacks). Confirms this stays an honest
   // "nothing found" rather than a guessed/garbled result.
   const gluedCitationOnly = extractCaseNameFromFilename("1987canlii16.pdf");
-  check("Filename fallback — glued citation with no separator yields nothing (not guessed)", gluedCitationOnly, undefined);
+  check(
+    "Filename fallback — glued citation with no separator yields nothing (not guessed)",
+    gluedCitationOnly,
+    undefined,
+  );
 
   const noSignal = extractCaseNameFromFilename("scan0042.pdf");
   check("Filename fallback — no case name or citation signal yields nothing", noSignal, undefined);
 }
 
 {
-  check("OCR never auto-fills case name even at high confidence", shouldAutoFillCaseName("high", true), false);
+  check(
+    "OCR never auto-fills case name even at high confidence",
+    shouldAutoFillCaseName("high", true),
+    false,
+  );
   check("text-layer high confidence still auto-fills", shouldAutoFillCaseName("high", false), true);
   check("low confidence never auto-fills", shouldAutoFillCaseName("low", false), false);
 }
@@ -257,12 +297,20 @@ const COURTS = [
   const noCase = proposeTags(
     "At the close of the prosecution case a no case to answer submission was made.",
   );
-  check("Tags — no case to answer proposes No-Case Submission", noCase.includes("No-Case Submission"), true);
+  check(
+    "Tags — no case to answer proposes No-Case Submission",
+    noCase.includes("No-Case Submission"),
+    true,
+  );
 
   const bailOnce = proposeTags(
     "The matter was mentioned briefly; bail was noted in passing and the hearing continued on other issues.",
   );
-  check("Tags — single Bail hit does not clear short-token floor", bailOnce.includes("Bail"), false);
+  check(
+    "Tags — single Bail hit does not clear short-token floor",
+    bailOnce.includes("Bail"),
+    false,
+  );
 
   const bailTwice = proposeTags(
     "The accused applied for bail. Bail was opposed. The court refused bail with reasons.",
@@ -292,7 +340,11 @@ const COURTS = [
 
   check("Tags — empty text yields no proposals", proposeTags(""), []);
   check("Tags — whitespace-only yields no proposals", proposeTags("   \n\t  "), []);
-  check("Tags — unrelated prose yields no proposals", proposeTags("The sky was blue and the birds sang.").length, 0);
+  check(
+    "Tags — unrelated prose yields no proposals",
+    proposeTags("The sky was blue and the birds sang.").length,
+    0,
+  );
 
   const chunk = "hearsay evidence and similar fact evidence. ".repeat(2500); // ~100k chars
   const t0 = Date.now();
@@ -308,17 +360,42 @@ const COURTS = [
     "Perreira v Cummings 233 G a b c d e f g h j Perreira v Cummings FULL COURT OF THE HIGH COURT OF GUYANA " +
     "[1987] AC 352 the earlier authority was applied. Delivered on 25 th MAY 1995. (1995) 54 WIR 233";
   const cleaned = normalizeMetadataHead(raw);
-  check("WIR head strips column rails", /\ba\s+b\s+c\s+d\s+e\s+f\s+g\s+h\s+j\b/i.test(cleaned), false);
+  check(
+    "WIR head strips column rails",
+    /\ba\s+b\s+c\s+d\s+e\s+f\s+g\s+h\s+j\b/i.test(cleaned),
+    false,
+  );
   check("WIR head joins split ordinals", cleaned.includes("25th MAY"), true);
 
   const extraction = extractCaseLawMetadataWithConfidence(raw, undefined, {
     filename: "(1995) 54 WIR 233.pdf",
   });
-  check("WIR identity citation is the filename WIR cite, not AC", extraction.fields.reported_citation, "(1995) 54 WIR 233");
-  check("WIR case name from running title", extraction.fields.case_name?.includes("Perreira v Cummings"), true);
-  check("WIR cited AC is not the record citation", extraction.fields.neutral_citation?.includes("AC") ?? false, false);
-  check("WIR name is proposed at least at low confidence", shouldProposeCaseName(extraction.caseNameConfidence, false), true);
-  check("WIR high auto-fill still requires high confidence", shouldAutoFillCaseName(extraction.caseNameConfidence, false) || extraction.caseNameConfidence === "low", true);
+  check(
+    "WIR identity citation is the filename WIR cite, not AC",
+    extraction.fields.reported_citation,
+    "(1995) 54 WIR 233",
+  );
+  check(
+    "WIR case name from running title",
+    extraction.fields.case_name?.includes("Perreira v Cummings"),
+    true,
+  );
+  check(
+    "WIR cited AC is not the record citation",
+    extraction.fields.neutral_citation?.includes("AC") ?? false,
+    false,
+  );
+  check(
+    "WIR name is proposed at least at low confidence",
+    shouldProposeCaseName(extraction.caseNameConfidence, false),
+    true,
+  );
+  check(
+    "WIR high auto-fill still requires high confidence",
+    shouldAutoFillCaseName(extraction.caseNameConfidence, false) ||
+      extraction.caseNameConfidence === "low",
+    true,
+  );
 
   const court = matchCanonicalCourtScored(cleaned, COURTS);
   check("WIR Full Court header beats High Court substring", court?.court.id, "full-court-guyana");
@@ -327,7 +404,11 @@ const COURTS = [
     filename: "(1982) 31 WIR 219.pdf",
   });
   check("Scan filename fills WIR citation", scanMeta.fields.reported_citation, "(1982) 31 WIR 219");
-  check("Scan filename has no invented case name from citation-only file", scanMeta.fields.case_name, undefined);
+  check(
+    "Scan filename has no invented case name from citation-only file",
+    scanMeta.fields.case_name,
+    undefined,
+  );
 }
 
 {
@@ -386,7 +467,11 @@ const COURTS = [
     "1. This Act may be cited as the Marriage (Amendment) Act 1985 and shall come into operation " +
     "on a date to be fixed by the Minister by order.\n\n2. Section 5 of the Principal Act is amended...";
   const result = extractLegislationMetadataWithConfidence(text);
-  check("'may be cited as' recovers the real title", result.fields.title, "Marriage (Amendment) Act 1985");
+  check(
+    "'may be cited as' recovers the real title",
+    result.fields.title,
+    "Marriage (Amendment) Act 1985",
+  );
   check("'may be cited as' title confidence is high", result.titleConfidence, "high");
   check("act number recovered near document start", result.fields.act_number, "13 of 1985");
   check("enactment year recovered", result.fields.enactment_year, 1985);
@@ -403,8 +488,16 @@ const COURTS = [
     "CRIMINAL LAW MISCELLANEOUS ACT 2025\n\nNo. 10 of 2025\n\n" +
     "1. Short title. This Act may be referred to informally but has no formal citation clause in this fixture.";
   const result = extractLegislationMetadataWithConfidence(text);
-  check("gazette running header is excluded from the title guess", result.fields.title, "CRIMINAL LAW MISCELLANEOUS ACT 2025");
-  check("header-line title confidence is high (within the near-start window)", result.titleConfidence, "high");
+  check(
+    "gazette running header is excluded from the title guess",
+    result.fields.title,
+    "CRIMINAL LAW MISCELLANEOUS ACT 2025",
+  );
+  check(
+    "header-line title confidence is high (within the near-start window)",
+    result.titleConfidence,
+    "high",
+  );
 }
 
 // The exact "title=code" shape the audit found — the extractor's OWN
@@ -412,7 +505,8 @@ const COURTS = [
 // publish-gate's job, 0072/publication-validation.ts); this only proves
 // the extractor recovers a real, distinct title when given real text.
 {
-  const text = "GUYANA\nACT No. 13 of 1985\nMARRIAGE (AMENDMENT) ACT 1985\n\nmay be cited as the Marriage (Amendment) Act.";
+  const text =
+    "GUYANA\nACT No. 13 of 1985\nMARRIAGE (AMENDMENT) ACT 1985\n\nmay be cited as the Marriage (Amendment) Act.";
   const result = extractLegislationMetadataWithConfidence(text);
   check(
     "recovered title is never identical to a bare one-word harvested code",
@@ -423,7 +517,9 @@ const COURTS = [
 
 // No signal at all — must never invent a title.
 {
-  const result = extractLegislationMetadataWithConfidence("Some unrelated short passage of ordinary text with no legislative markers whatsoever.");
+  const result = extractLegislationMetadataWithConfidence(
+    "Some unrelated short passage of ordinary text with no legislative markers whatsoever.",
+  );
   check("no title guessed when there is no signal", result.fields.title, undefined);
   check("title confidence is none when there is no signal", result.titleConfidence, "none");
 }

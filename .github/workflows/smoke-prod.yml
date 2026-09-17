@@ -1,0 +1,61 @@
+name: Production smoke
+
+# Post-deploy and daily check that production answers and still sends the
+# security headers vercel.json promises. Runs when Vercel reports a
+# successful Production deployment (deployment_status), once a day, and on
+# demand. The URL comes from the repository variable PROD_URL (Settings →
+# Variables) and defaults to the production Vercel host.
+
+on:
+  deployment_status:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PROD_URL: ${{ vars.PROD_URL || 'https://magistrate-wizard.vercel.app' }}
+    steps:
+      - name: GET /login expects 200
+        run: |
+          url="${PROD_URL%/}/login"
+          code=$(curl -sS -L -o /dev/null -D headers.txt -w '%{http_code}' --max-time 30 "$url")
+          echo "HTTP $code from $url"
+          if [ "$code" != "200" ]; then
+            cat headers.txt
+            echo "::error::Expected 200 from $url, got $code"
+            exit 1
+          fi
+
+      - name: Security headers are present
+        run: |
+          fail=0
+          for header in content-security-policy strict-transport-security; do
+            if grep -qi "^$header:" headers.txt; then
+              echo "ok   $header"
+            else
+              echo "::error::Missing response header: $header"
+              fail=1
+            fi
+          done
+          if grep -qi "frame-ancestors 'none'" headers.txt; then
+            echo "ok   frame-ancestors 'none'"
+          else
+            echo "::error::Content-Security-Policy does not carry frame-ancestors 'none'"
+            fail=1
+          fi
+          if [ "$fail" != "0" ]; then
+            echo "--- response headers ---"
+            cat headers.txt
+            exit 1
+          fi

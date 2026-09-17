@@ -1,0 +1,90 @@
+name: Deploy database (production)
+
+# Applies committed migrations and redeploys the edge functions to the
+# PRODUCTION Supabase project when they land on `main`. Until this workflow
+# existed, migrations reached production by someone running `supabase db push`
+# by hand, so a frontend depending on a new migration could deploy (via
+# Vercel, on the same push to main) before the schema did.
+#
+# Gate: the job runs in the GitHub Environment `production`. Configure that
+# environment in Settings → Environments → production with REQUIRED REVIEWERS
+# so a human approves every production schema change (this cannot be
+# verified or set from the repository — it lives in repo settings). The
+# environment also scopes the secrets below so they are never exposed to
+# PR or develop runs.
+#
+# Steps: link → `db push --dry-run` (lists exactly what would apply; a
+# migration that already exists remotely under a different name fails here,
+# before anything is written) → `db push` → `functions deploy`.
+#
+# Migrations are forward-only (DEVELOPMENT_WORKFLOW.md): there is no
+# rollback step. A bad migration is fixed by a new forward migration.
+#
+# Secrets (environment `production`):
+#   SUPABASE_ACCESS_TOKEN  personal/CI access token (supabase.com → Account → Access Tokens)
+#   SUPABASE_PROJECT_REF   the production project ref (the id in <ref>.supabase.co)
+#   SUPABASE_DB_PASSWORD   the database password (Project Settings → Database)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - ".github/workflows/deploy-db.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-db-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache Supabase CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.supabase
+          key: supabase-cli-${{ runner.os }}-${{ hashFiles('supabase/config.toml') }}
+
+      - name: Check secrets are configured
+        run: |
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name is not set on the 'production' environment."
+              exit 1
+            fi
+          done
+
+      - name: Link to the production project
+        run: npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Dry run (what would be applied)
+        run: npx supabase db push --dry-run
+
+      - name: Apply migrations
+        run: npx supabase db push
+
+      - name: Deploy edge function clerk-access-notify
+        run: npx supabase functions deploy clerk-access-notify --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy edge function webhook-dispatch
+        run: npx supabase functions deploy webhook-dispatch --project-ref "$SUPABASE_PROJECT_REF"

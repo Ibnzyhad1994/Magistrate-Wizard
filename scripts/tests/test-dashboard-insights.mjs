@@ -44,19 +44,75 @@ const boardRow = (overrides = {}) => ({
   ...overrides,
 });
 
-check("active file without a next date", missingNextDate(boardRow({ next_appearance: null })), true);
-check("completed file without a next date is ignored", missingNextDate(boardRow({ status: "completed", next_appearance: null })), false);
-check("arraignment is still first stage", stillAtFirstStage(boardRow({ procedure_stage: "arraignment" })), true);
-check("civil information_sworn is first stage", stillAtFirstStage(boardRow({ procedure_stage: "information_sworn" })), true);
+check(
+  "active file without a next date",
+  missingNextDate(boardRow({ next_appearance: null })),
+  true,
+);
+check(
+  "completed file without a next date is ignored",
+  missingNextDate(boardRow({ status: "completed", next_appearance: null })),
+  false,
+);
+check(
+  "arraignment is still first stage",
+  stillAtFirstStage(boardRow({ procedure_stage: "arraignment" })),
+  true,
+);
+check(
+  "civil information_sworn is first stage",
+  stillAtFirstStage(boardRow({ procedure_stage: "information_sworn" })),
+  true,
+);
 check("trial is not first stage", stillAtFirstStage(boardRow({ procedure_stage: "trial" })), false);
 
-check("scheduled yesterday is overdue", isOverdueScheduled({ event_status: "scheduled", scheduled_date: "2026-09-14" }, "2026-09-15"), true);
-check("scheduled today is not overdue", isOverdueScheduled({ event_status: "scheduled", scheduled_date: "2026-09-15" }, "2026-09-15"), false);
-check("today sitting missing paper", sittingMissingPaper({ event_status: "scheduled", scheduled_date: "2026-09-15", outcome_at_event: null, orders_made_at_event: null }, "2026-09-15"), true);
-check("today sitting with outcome is logged", sittingMissingPaper({ event_status: "scheduled", scheduled_date: "2026-09-15", outcome_at_event: "Adjourned", orders_made_at_event: null }, "2026-09-15"), false);
+check(
+  "scheduled yesterday is overdue",
+  isOverdueScheduled({ event_status: "scheduled", scheduled_date: "2026-09-14" }, "2026-09-15"),
+  true,
+);
+check(
+  "scheduled today is not overdue",
+  isOverdueScheduled({ event_status: "scheduled", scheduled_date: "2026-09-15" }, "2026-09-15"),
+  false,
+);
+check(
+  "today sitting missing paper",
+  sittingMissingPaper(
+    {
+      event_status: "scheduled",
+      scheduled_date: "2026-09-15",
+      outcome_at_event: null,
+      orders_made_at_event: null,
+    },
+    "2026-09-15",
+  ),
+  true,
+);
+check(
+  "today sitting with outcome is logged",
+  sittingMissingPaper(
+    {
+      event_status: "scheduled",
+      scheduled_date: "2026-09-15",
+      outcome_at_event: "Adjourned",
+      orders_made_at_event: null,
+    },
+    "2026-09-15",
+  ),
+  false,
+);
 
-check("draft older than 14 days is stale", isStaleDraft("2026-08-01T12:00:00Z", "2026-09-15"), true);
-check("draft from yesterday is not stale", isStaleDraft("2026-09-14T12:00:00Z", "2026-09-15"), false);
+check(
+  "draft older than 14 days is stale",
+  isStaleDraft("2026-08-01T12:00:00Z", "2026-09-15"),
+  true,
+);
+check(
+  "draft from yesterday is not stale",
+  isStaleDraft("2026-09-14T12:00:00Z", "2026-09-15"),
+  false,
+);
 
 const workload = workloadFromBoard([
   boardRow(),
@@ -69,14 +125,42 @@ check("workload first stage", workload.firstStage, 1);
 
 const spark = appearancesByDay(
   [
-    { id: "e1", docket_matter_id: "m1", scheduled_date: "2026-09-15", event_status: "scheduled", event_type: "hearing", outcome_at_event: null, orders_made_at_event: null },
-    { id: "e2", docket_matter_id: "m1", scheduled_date: "2026-09-16", event_status: "cancelled", event_type: "hearing", outcome_at_event: null, orders_made_at_event: null },
-    { id: "e3", docket_matter_id: "m2", scheduled_date: "2026-09-15", event_status: "completed", event_type: "hearing", outcome_at_event: "Heard", orders_made_at_event: null },
+    {
+      id: "e1",
+      docket_matter_id: "m1",
+      scheduled_date: "2026-09-15",
+      event_status: "scheduled",
+      event_type: "hearing",
+      outcome_at_event: null,
+      orders_made_at_event: null,
+    },
+    {
+      id: "e2",
+      docket_matter_id: "m1",
+      scheduled_date: "2026-09-16",
+      event_status: "cancelled",
+      event_type: "hearing",
+      outcome_at_event: null,
+      orders_made_at_event: null,
+    },
+    {
+      id: "e3",
+      docket_matter_id: "m2",
+      scheduled_date: "2026-09-15",
+      event_status: "completed",
+      event_type: "hearing",
+      outcome_at_event: "Heard",
+      orders_made_at_event: null,
+    },
   ],
   "2026-09-15",
   3,
 );
-check("sparkline ignores cancelled", spark.map((row) => row.count), [2, 0, 0]);
+check(
+  "sparkline ignores cancelled",
+  spark.map((row) => row.count),
+  [2, 0, 0],
+);
 
 const overdue = buildDashboardInsights({
   today: "2026-09-15",
@@ -106,7 +190,11 @@ const overdue = buildDashboardInsights({
   mattersWithoutParties: [],
 });
 check("overdue sits above missing next date", overdue[0].id, "overdue-scheduled");
-check("missing next date still fires", overdue.some((row) => row.id === "no-next-date"), true);
+check(
+  "missing next date still fires",
+  overdue.some((row) => row.id === "no-next-date"),
+  true,
+);
 
 const clerkBlocked = buildDashboardInsights({
   today: "2026-09-15",
@@ -123,9 +211,21 @@ const clerkBlocked = buildDashboardInsights({
   boardCapped: false,
   mattersWithoutParties: [],
 });
-check("clerk never sees callover coaching", clerkBlocked.some((row) => row.id.startsWith("open-callover") || row.id === "callover-nudge"), false);
-check("clerk never sees judicial drafts", clerkBlocked.some((row) => row.id === "stale-draft"), false);
-check("clerk never sees admin queues", clerkBlocked.some((row) => row.id === "orphan-clerk" || row.id === "issue-reports"), false);
+check(
+  "clerk never sees callover coaching",
+  clerkBlocked.some((row) => row.id.startsWith("open-callover") || row.id === "callover-nudge"),
+  false,
+);
+check(
+  "clerk never sees judicial drafts",
+  clerkBlocked.some((row) => row.id === "stale-draft"),
+  false,
+);
+check(
+  "clerk never sees admin queues",
+  clerkBlocked.some((row) => row.id === "orphan-clerk" || row.id === "issue-reports"),
+  false,
+);
 
 const adminOps = buildDashboardInsights({
   today: "2026-09-15",
@@ -142,8 +242,16 @@ const adminOps = buildDashboardInsights({
   boardCapped: true,
   mattersWithoutParties: [],
 });
-check("admin sees orphan clerk requests", adminOps.some((row) => row.id === "orphan-clerk"), true);
-check("capped board is disclosed", adminOps.some((row) => row.id === "board-capped"), true);
+check(
+  "admin sees orphan clerk requests",
+  adminOps.some((row) => row.id === "orphan-clerk"),
+  true,
+);
+check(
+  "capped board is disclosed",
+  adminOps.some((row) => row.id === "board-capped"),
+  true,
+);
 
 const ruling = buildDashboardInsights({
   today: "2026-09-15",
@@ -160,10 +268,26 @@ const ruling = buildDashboardInsights({
   boardCapped: false,
   mattersWithoutParties: ["m1"],
 });
-check("offline outbox is urgent", ruling.find((row) => row.id === "offline-outbox")?.severity, "urgent");
-check("ruling without file is suggested", ruling.some((row) => row.id === "ruling-file"), true);
-check("missing parties is suggested", ruling.some((row) => row.id === "missing-parties"), true);
-check("over capacity in five days is urgent", ruling.find((row) => row.id === "capacity-full")?.severity, "urgent");
+check(
+  "offline outbox is urgent",
+  ruling.find((row) => row.id === "offline-outbox")?.severity,
+  "urgent",
+);
+check(
+  "ruling without file is suggested",
+  ruling.some((row) => row.id === "ruling-file"),
+  true,
+);
+check(
+  "missing parties is suggested",
+  ruling.some((row) => row.id === "missing-parties"),
+  true,
+);
+check(
+  "over capacity in five days is urgent",
+  ruling.find((row) => row.id === "capacity-full")?.severity,
+  "urgent",
+);
 
 const files = filesForFocus({
   focus: "active",
@@ -198,12 +322,31 @@ const files = filesForFocus({
     },
   ],
   retainedIds: ["m1", "off-board"],
-  extraRetained: [{ id: "off-board", case_number: "2026/9", matter_title: "Retained elsewhere", status: "active" }],
+  extraRetained: [
+    {
+      id: "off-board",
+      case_number: "2026/9",
+      matter_title: "Retained elsewhere",
+      status: "active",
+    },
+  ],
   mattersWithoutParties: ["m2"],
 });
-check("active files omit completed jackets", files.map((row) => row.id), ["m1", "m2"]);
-check("active files sort by case number", files.map((row) => row.case_number), ["2026/1", "2026/2"]);
-check("active file without a date says so", files.find((row) => row.id === "m2")?.detail, "No next date");
+check(
+  "active files omit completed jackets",
+  files.map((row) => row.id),
+  ["m1", "m2"],
+);
+check(
+  "active files sort by case number",
+  files.map((row) => row.case_number),
+  ["2026/1", "2026/2"],
+);
+check(
+  "active file without a date says so",
+  files.find((row) => row.id === "m2")?.detail,
+  "No next date",
+);
 
 const noDateFiles = filesForFocus({
   focus: "no_date",
@@ -218,7 +361,11 @@ const noDateFiles = filesForFocus({
   extraRetained: [],
   mattersWithoutParties: [],
 });
-check("no next date lists only active empty dates", noDateFiles.map((row) => row.id), ["m2"]);
+check(
+  "no next date lists only active empty dates",
+  noDateFiles.map((row) => row.id),
+  ["m2"],
+);
 
 const overdueFiles = filesForFocus({
   focus: "overdue",
@@ -252,7 +399,11 @@ const overdueFiles = filesForFocus({
   extraRetained: [],
   mattersWithoutParties: [],
 });
-check("overdue list is one row per past sitting", overdueFiles.map((row) => row.id), ["e1"]);
+check(
+  "overdue list is one row per past sitting",
+  overdueFiles.map((row) => row.id),
+  ["e1"],
+);
 check("overdue row opens the events tab", overdueFiles[0].href, "/docket/m1?tab=events");
 
 const retainedFiles = filesForFocus({
@@ -261,21 +412,39 @@ const retainedFiles = filesForFocus({
   board: [boardRow({ id: "m1", case_number: "2026/1" })],
   events: [],
   retainedIds: ["off-board", "m1"],
-  extraRetained: [{ id: "off-board", case_number: "2026/9", matter_title: "Retained elsewhere", status: "active" }],
+  extraRetained: [
+    {
+      id: "off-board",
+      case_number: "2026/9",
+      matter_title: "Retained elsewhere",
+      status: "active",
+    },
+  ],
   mattersWithoutParties: [],
 });
-check("retained list merges board and leftover ids", retainedFiles.map((row) => row.case_number), ["2026/1", "2026/9"]);
+check(
+  "retained list merges board and leftover ids",
+  retainedFiles.map((row) => row.case_number),
+  ["2026/1", "2026/9"],
+);
 
 const partyFiles = filesForFocus({
   focus: "no_parties",
   today: "2026-09-15",
-  board: [boardRow({ id: "m1" }), boardRow({ id: "m2", case_number: "2026/2", matter_title: "R v Two" })],
+  board: [
+    boardRow({ id: "m1" }),
+    boardRow({ id: "m2", case_number: "2026/2", matter_title: "R v Two" }),
+  ],
   events: [],
   retainedIds: [],
   extraRetained: [],
   mattersWithoutParties: ["m2"],
 });
-check("without parties uses the presence set", partyFiles.map((row) => row.id), ["m2"]);
+check(
+  "without parties uses the presence set",
+  partyFiles.map((row) => row.id),
+  ["m2"],
+);
 
 check("files query accepts known focuses", isDashboardFileFocus("no_date"), true);
 check("files query rejects unknown focuses", isDashboardFileFocus("all"), false);
@@ -318,8 +487,16 @@ const manyOverdue = buildDashboardInsights({
   boardCapped: false,
   mattersWithoutParties: ["m1", "m2"],
 });
-check("many overdue sittings open the dashboard list", manyOverdue.find((row) => row.id === "overdue-scheduled")?.href, dashboardFilesHref("overdue"));
-check("many files without parties open the dashboard list", manyOverdue.find((row) => row.id === "missing-parties")?.href, dashboardFilesHref("no_parties"));
+check(
+  "many overdue sittings open the dashboard list",
+  manyOverdue.find((row) => row.id === "overdue-scheduled")?.href,
+  dashboardFilesHref("overdue"),
+);
+check(
+  "many files without parties open the dashboard list",
+  manyOverdue.find((row) => row.id === "missing-parties")?.href,
+  dashboardFilesHref("no_parties"),
+);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

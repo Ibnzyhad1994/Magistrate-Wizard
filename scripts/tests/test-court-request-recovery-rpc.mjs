@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 /**
  * Live RPC checks for 0135/0136 against the running local database.
  * Creates a disposable magistrate, then tears them down.
@@ -21,7 +22,9 @@ const PASSWORD = "password123";
 const STAMP = Date.now().toString(36);
 const TEST_EMAIL = `rpc-recovery-${STAMP}@magistrate-wizard.local`;
 
-const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
+const admin = createClient(URL, SERVICE, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
 
 let failures = 0;
@@ -87,7 +90,11 @@ try {
   await new Promise((r) => setTimeout(r, 400));
   await admin.from("profiles").update({ role: "magistrate" }).eq("id", testUserId);
 
-  const { data: court, error: courtError } = await admin.from("courts").select("id").limit(1).maybeSingle();
+  const { data: court, error: courtError } = await admin
+    .from("courts")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
   if (courtError || !court?.id) throw courtError ?? new Error("no court to request");
 
   const { data: request, error: requestError } = await admin
@@ -97,10 +104,13 @@ try {
     .single();
   if (requestError) throw requestError;
 
-  const { error: emptyReasonError } = await adminClient.rpc("return_unassigned_magistrate_to_requester", {
-    p_profile_id: testUserId,
-    p_reason: "   ",
-  });
+  const { error: emptyReasonError } = await adminClient.rpc(
+    "return_unassigned_magistrate_to_requester",
+    {
+      p_profile_id: testUserId,
+      p_reason: "   ",
+    },
+  );
   expectError("empty reason is rejected", emptyReasonError, /reason is required/i);
 
   const { data: rejectedCount, error: returnError } = await adminClient.rpc(
@@ -116,7 +126,11 @@ try {
     .eq("id", request.id)
     .single();
   check("pending request is now rejected", afterReturn?.status, "rejected");
-  check("rejection reason is stored", afterReturn?.rejection_reason, "Wrong court — request again.");
+  check(
+    "rejection reason is stored",
+    afterReturn?.rejection_reason,
+    "Wrong court — request again.",
+  );
 
   const { error: selfCorrectError } = await adminClient.rpc("correct_unassigned_account_type", {
     p_profile_id: session.user.id,
@@ -132,14 +146,21 @@ try {
   });
   expectError("cannot convert to admin", toAdminError, /magistrate and clerk/i);
 
-  const { data: newRole, error: correctError } = await adminClient.rpc("correct_unassigned_account_type", {
-    p_profile_id: testUserId,
-    p_new_role: "clerk",
-    p_reason: "Signed up as magistrate by mistake.",
-  });
+  const { data: newRole, error: correctError } = await adminClient.rpc(
+    "correct_unassigned_account_type",
+    {
+      p_profile_id: testUserId,
+      p_new_role: "clerk",
+      p_reason: "Signed up as magistrate by mistake.",
+    },
+  );
   check("account type correction to clerk succeeds", correctError, null);
   check("RPC returns clerk", newRole, "clerk");
-  const { data: flipped } = await admin.from("profiles").select("role").eq("id", testUserId).single();
+  const { data: flipped } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", testUserId)
+    .single();
   check("profile.role is clerk", flipped?.role, "clerk");
 } catch (error) {
   failures += 1;

@@ -43,7 +43,9 @@ const PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "password123";
 const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
 
 function sha256Text(text) {
-  return createHash("sha256").update(String(text ?? "").trim(), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(String(text ?? "").trim(), "utf8")
+    .digest("hex");
 }
 
 function clientAs(token) {
@@ -55,15 +57,25 @@ function clientAs(token) {
 
 async function ensureSource(sb, userId, harvest) {
   const name = harvest.source?.name ?? "Unknown official source";
-  const { data: existing } = await sb.from("legal_sources").select("id").eq("name", name).maybeSingle();
+  const { data: existing } = await sb
+    .from("legal_sources")
+    .select("id")
+    .eq("name", name)
+    .maybeSingle();
   if (existing?.id) return existing.id;
   const { data, error } = await sb
     .from("legal_sources")
     .insert({
       name,
-      jurisdiction: harvest.source?.jurisdiction === "mixed" ? "Guyana" : harvest.source?.jurisdiction ?? "Guyana",
+      jurisdiction:
+        harvest.source?.jurisdiction === "mixed"
+          ? "Guyana"
+          : (harvest.source?.jurisdiction ?? "Guyana"),
       base_url: harvest.source?.base_url ?? null,
-      source_type: harvest.source?.source_type === "mixed" ? "mixed" : harvest.source?.source_type ?? "legislation",
+      source_type:
+        harvest.source?.source_type === "mixed"
+          ? "mixed"
+          : (harvest.source?.source_type ?? "legislation"),
       connector_type: harvest.source?.connector_type ?? "index_page",
       status: "approved",
       canonical_trusted: true,
@@ -77,9 +89,11 @@ async function ensureSource(sb, userId, harvest) {
 }
 
 async function ensureBatch(sb, userId, file, harvest, items) {
-  const dominantKind = items.filter((i) => (i.kind ?? harvest.source?.source_type) === "case_law").length > items.length / 2
-    ? "case_law"
-    : "legislation";
+  const dominantKind =
+    items.filter((i) => (i.kind ?? harvest.source?.source_type) === "case_law").length >
+    items.length / 2
+      ? "case_law"
+      : "legislation";
   const { data, error } = await sb
     .from("import_batches")
     .insert({
@@ -102,7 +116,10 @@ function matchCourt(courts, name) {
   const n = name.toLowerCase();
   return (
     courts.find((c) => c.canonical_name.toLowerCase() === n) ??
-    courts.find((c) => n.includes(c.canonical_name.toLowerCase()) || c.canonical_name.toLowerCase().includes(n)) ??
+    courts.find(
+      (c) =>
+        n.includes(c.canonical_name.toLowerCase()) || c.canonical_name.toLowerCase().includes(n),
+    ) ??
     null
   );
 }
@@ -112,19 +129,33 @@ function matchJurisdiction(jurisdictions, name) {
   const n = name.toLowerCase();
   return (
     jurisdictions.find((j) => j.name.toLowerCase() === n) ??
-    jurisdictions.find((j) => n.includes(j.name.toLowerCase()) || j.name.toLowerCase().includes(n)) ??
+    jurisdictions.find(
+      (j) => n.includes(j.name.toLowerCase()) || j.name.toLowerCase().includes(n),
+    ) ??
     null
   );
 }
 
-const stats = { legislation: 0, case_law: 0, skipped: 0, errors: 0, quality_failed: 0, title_recovered: 0 };
+const stats = {
+  legislation: 0,
+  case_law: 0,
+  skipped: 0,
+  errors: 0,
+  quality_failed: 0,
+  title_recovered: 0,
+};
 
-const { data: session, error: authErr } = await anon.auth.signInWithPassword({ email: EMAIL, password: PASSWORD });
+const { data: session, error: authErr } = await anon.auth.signInWithPassword({
+  email: EMAIL,
+  password: PASSWORD,
+});
 if (authErr) throw authErr;
 const sb = clientAs(session.session.access_token);
 const userId = session.user.id;
 
-const { data: courts } = await sb.from("legal_authority_courts").select("id, canonical_name, jurisdiction_id");
+const { data: courts } = await sb
+  .from("legal_authority_courts")
+  .select("id, canonical_name, jurisdiction_id");
 const { data: jurisdictions } = await sb.from("legal_jurisdictions").select("id, name");
 
 const files = readdirSync(CATALOGS).filter((f) => isCatalogFilename(f));
@@ -166,7 +197,11 @@ for (const file of files) {
         if (contentQualityStatus === "failed") stats.quality_failed += 1;
         const citation = cleanLegislationLabel(String(item.citation ?? rawTitle).slice(0, 240));
         const title = cleanLegislationLabel(rawTitle);
-        const { data: dup } = await sb.from("case_law").select("id").eq("citation", citation).maybeSingle();
+        const { data: dup } = await sb
+          .from("case_law")
+          .select("id")
+          .eq("citation", citation)
+          .maybeSingle();
         if (dup?.id) {
           stats.skipped += 1;
           continue;
@@ -245,7 +280,9 @@ for (const file of files) {
           p_title: title,
           p_jurisdiction: jur?.name ?? "Guyana",
           p_jurisdiction_id: jur?.id ?? null,
-          p_short_title: extracted?.fields?.short_title ? cleanLegislationLabel(extracted.fields.short_title) : null,
+          p_short_title: extracted?.fields?.short_title
+            ? cleanLegislationLabel(extracted.fields.short_title)
+            : null,
           // Unlike the live browser pipeline, a failed item's text is kept
           // (not withheld) — this is a curator-remediation queue, not an
           // end-user display, and the curator needs to SEE why it failed

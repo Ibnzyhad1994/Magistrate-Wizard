@@ -1,3 +1,5 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
+// @slow  long-running: `npm test` skips it, pass --slow (npm run test:slow) to include
 /**
  * Persona-driven end-to-end simulation against local Magistrate Wizard.
  * Creates skill-level users, runs distinct workflows (incl. client OCR ingest
@@ -5,94 +7,110 @@
  *
  *   npm run test:persona-workflows
  */
-import { writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createClient } from "@supabase/supabase-js"
-import { ingestDocument } from "@/lib/ingest-document"
-import { terminateOcrWorker } from "@/lib/ocr/engine"
-import { characterErrorRate, containsNormalized } from "@/lib/ocr/accuracy"
-import { makeRenderedScanPdf, SCAN_GROUND_TRUTH, SCAN_MUST_CONTAIN } from "../test-support/scanned-pdf-fixtures.mjs"
-import { makeTextPdf } from "../test-support/pdf-fixtures.mjs"
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createClient } from "@supabase/supabase-js";
+import { ingestDocument } from "@/lib/ingest-document";
+import { terminateOcrWorker } from "@/lib/ocr/engine";
+import { characterErrorRate, containsNormalized } from "@/lib/ocr/accuracy";
+import {
+  makeRenderedScanPdf,
+  SCAN_GROUND_TRUTH,
+  SCAN_MUST_CONTAIN,
+} from "../test-support/scanned-pdf-fixtures.mjs";
+import { makeTextPdf } from "../test-support/pdf-fixtures.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const RESULTS = join(__dirname, "persona-workflow-results.json")
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const RESULTS = join(__dirname, "persona-workflow-results.json");
 
-const URL = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321"
+const URL = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321";
 const ANON =
   process.env.VITE_SUPABASE_ANON_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 const SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
-const PASSWORD = "password123"
-const RUN = `P${Date.now().toString(36).slice(-6).toUpperCase()}`
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+const PASSWORD = "password123";
+const RUN = `P${Date.now().toString(36).slice(-6).toUpperCase()}`;
 
 const admin = createClient(URL, SERVICE, {
   auth: { persistSession: false, autoRefreshToken: false },
-})
+});
 const anon = createClient(URL, ANON, {
   auth: { persistSession: false, autoRefreshToken: false },
-})
+});
 
 /** @type {{ ok: boolean, persona: string, step: string, detail: string, ms?: number }[]} */
-const results = []
+const results = [];
 
 const log = (ok, persona, step, detail = "", ms) => {
-  const row = { ok: !!ok, persona, step, detail: String(detail).slice(0, 500), ...(ms != null ? { ms } : {}) }
-  results.push(row)
-  console.log(`${ok ? "PASS" : "FAIL"}  [${persona}] ${step}${detail ? ` — ${detail}` : ""}${ms != null ? ` (${ms}ms)` : ""}`)
-}
+  const row = {
+    ok: !!ok,
+    persona,
+    step,
+    detail: String(detail).slice(0, 500),
+    ...(ms != null ? { ms } : {}),
+  };
+  results.push(row);
+  console.log(
+    `${ok ? "PASS" : "FAIL"}  [${persona}] ${step}${detail ? ` — ${detail}` : ""}${ms != null ? ` (${ms}ms)` : ""}`,
+  );
+};
 
 const fail = (persona, step, err) => {
-  const msg = err?.message ?? err?.error_description ?? String(err)
-  log(false, persona, step, msg)
-  return null
-}
+  const msg = err?.message ?? err?.error_description ?? String(err);
+  log(false, persona, step, msg);
+  return null;
+};
 
 const clientAs = (accessToken) =>
   createClient(URL, ANON, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false, autoRefreshToken: false },
-  })
+  });
 
 const signIn = async (email) => {
-  const { data, error } = await anon.auth.signInWithPassword({ email, password: PASSWORD })
-  if (error) throw error
-  return { user: data.user, token: data.session.access_token }
-}
+  const { data, error } = await anon.auth.signInWithPassword({ email, password: PASSWORD });
+  if (error) throw error;
+  return { user: data.user, token: data.session.access_token };
+};
 
 const ensureUser = async ({ email, fullName, role }) => {
-  const { data: existing } = await admin.from("profiles").select("id, email, role").eq("email", email).maybeSingle()
+  const { data: existing } = await admin
+    .from("profiles")
+    .select("id, email, role")
+    .eq("email", email)
+    .maybeSingle();
   if (existing?.id) {
     if (role && existing.role !== role) {
-      const { error } = await admin.from("profiles").update({ role }).eq("id", existing.id)
-      if (error) throw error
+      const { error } = await admin.from("profiles").update({ role }).eq("id", existing.id);
+      if (error) throw error;
     }
-    return existing.id
+    return existing.id;
   }
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password: PASSWORD,
     email_confirm: true,
     user_metadata: { full_name: fullName },
-  })
-  if (error) throw error
+  });
+  if (error) throw error;
   if (role && role !== "magistrate") {
-    const { error: roleErr } = await admin.from("profiles").update({ role }).eq("id", data.user.id)
-    if (roleErr) throw roleErr
+    const { error: roleErr } = await admin.from("profiles").update({ role }).eq("id", data.user.id);
+    if (roleErr) throw roleErr;
   }
-  return data.user.id
-}
+  return data.user.id;
+};
 
 const alreadySeatedError = (error) => {
-  const msg = error?.message ?? error?.error_description ?? String(error)
+  const msg = error?.message ?? error?.error_description ?? String(error);
   return (
     error?.code === "23505" ||
     msg.includes("magistrate_courts_current_pair_idx") ||
     /you already (hold|have) an active (primary|assignment)/i.test(msg)
-  )
-}
+  );
+};
 
 const ensureAssignment = async (profileId, courtId, assignmentType = "regular") => {
   const { data: live } = await admin
@@ -101,13 +119,13 @@ const ensureAssignment = async (profileId, courtId, assignmentType = "regular") 
     .eq("profile_id", profileId)
     .eq("court_id", courtId)
     .is("ended_at", null)
-    .maybeSingle()
-  if (live?.id) return live.id
+    .maybeSingle();
+  if (live?.id) return live.id;
   const { data, error } = await admin
     .from("magistrate_courts")
     .insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType })
     .select("id")
-    .single()
+    .single();
   if (error) {
     if (alreadySeatedError(error)) {
       const { data: again } = await admin
@@ -116,13 +134,13 @@ const ensureAssignment = async (profileId, courtId, assignmentType = "regular") 
         .eq("profile_id", profileId)
         .eq("court_id", courtId)
         .is("ended_at", null)
-        .maybeSingle()
-      if (again?.id) return again.id
+        .maybeSingle();
+      if (again?.id) return again.id;
     }
-    throw error
+    throw error;
   }
-  return data.id
-}
+  return data.id;
+};
 
 const ensureClerkAssignment = async (profileId, courtId, approvedBy) => {
   const { data: live } = await admin
@@ -131,16 +149,16 @@ const ensureClerkAssignment = async (profileId, courtId, approvedBy) => {
     .eq("profile_id", profileId)
     .eq("court_id", courtId)
     .is("ended_at", null)
-    .maybeSingle()
-  if (live?.id) return live.id
+    .maybeSingle();
+  if (live?.id) return live.id;
   const { data, error } = await admin
     .from("clerk_courts")
     .insert({ profile_id: profileId, court_id: courtId, approved_by: approvedBy })
     .select("id")
-    .single()
-  if (error) throw error
-  return data.id
-}
+    .single();
+  if (error) throw error;
+  return data.id;
+};
 
 /**
  * Skill-level personas — each exercises a different slice of the product.
@@ -150,13 +168,17 @@ const pickOpenRegularCourt = async (excludeIds = []) => {
     .from("magistrate_courts")
     .select("court_id")
     .eq("assignment_type", "regular")
-    .is("ended_at", null)
-  const taken = new Set([...(occupied ?? []).map((r) => r.court_id), ...excludeIds])
-  const { data: courts } = await admin.from("courts").select("id, name").eq("is_active", true).order("name")
-  const open = (courts ?? []).find((c) => !taken.has(c.id))
-  if (!open) throw new Error("no court without an active regular magistrate")
-  return open
-}
+    .is("ended_at", null);
+  const taken = new Set([...(occupied ?? []).map((r) => r.court_id), ...excludeIds]);
+  const { data: courts } = await admin
+    .from("courts")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("name");
+  const open = (courts ?? []).find((c) => !taken.has(c.id));
+  if (!open) throw new Error("no court without an active regular magistrate");
+  return open;
+};
 
 const PERSONAS = [
   {
@@ -213,25 +235,25 @@ const PERSONAS = [
     description: "Authenticated magistrate with ZERO court assignment — isolation checks.",
     assignmentType: null,
   },
-]
+];
 
 const runNoviceWorkflow = async (actor, court) => {
-  const tag = actor.key
-  const t0 = Date.now()
+  const tag = actor.key;
+  const t0 = Date.now();
   try {
-    const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
-    const sb = clientAs(token)
+    const { token, user } = await signIn(actor.email);
+    log(true, tag, "login", actor.email);
+    const sb = clientAs(token);
 
     const { data: courts, error: cErr } = await sb
       .from("magistrate_courts")
       .select("court_id, courts(name)")
       .eq("profile_id", user.id)
-      .is("ended_at", null)
-    if (cErr) return fail(tag, "list courts", cErr)
-    log((courts?.length ?? 0) > 0, tag, "sees court assignment", courts?.[0]?.courts?.name ?? "")
+      .is("ended_at", null);
+    if (cErr) return fail(tag, "list courts", cErr);
+    log((courts?.length ?? 0) > 0, tag, "sees court assignment", courts?.[0]?.courts?.name ?? "");
 
-    const caseNumber = `N-${RUN}-01`
+    const caseNumber = `N-${RUN}-01`;
     const { data: matter, error: mErr } = await sb
       .from("docket_matters")
       .insert({
@@ -242,11 +264,11 @@ const runNoviceWorkflow = async (actor, court) => {
         status: "active",
       })
       .select()
-      .single()
-    if (mErr) return fail(tag, "create first matter", mErr)
-    log(true, tag, "create first matter", caseNumber)
-    actor.matterId = matter.id
-    actor.caseNumber = caseNumber
+      .single();
+    if (mErr) return fail(tag, "create first matter", mErr);
+    log(true, tag, "create first matter", caseNumber);
+    actor.matterId = matter.id;
+    actor.caseNumber = caseNumber;
 
     const { error: pErr } = await sb.from("docket_matter_parties").insert({
       docket_matter_id: matter.id,
@@ -254,9 +276,9 @@ const runNoviceWorkflow = async (actor, court) => {
       party_type: "individual",
       role: "accused",
       party_status: "active",
-    })
-    if (pErr) fail(tag, "add accused", pErr)
-    else log(true, tag, "add accused")
+    });
+    if (pErr) fail(tag, "add accused", pErr);
+    else log(true, tag, "add accused");
 
     const { error: nErr } = await sb.from("bench_notes").insert({
       title: `Day-1 notes — ${caseNumber}`,
@@ -265,32 +287,32 @@ const runNoviceWorkflow = async (actor, court) => {
       status: "draft",
       is_private: true,
       content_text: "Reminded of plea options. Adjourned for counsel.",
-    })
-    if (nErr) fail(tag, "draft bench note", nErr)
-    else log(true, tag, "draft bench note")
+    });
+    if (nErr) fail(tag, "draft bench note", nErr);
+    else log(true, tag, "draft bench note");
 
     const { data: hits, error: sErr } = await sb.rpc("search_docket_matters", {
       p_query: "First",
       p_limit: 5,
-    })
-    if (sErr) fail(tag, "search own matter", sErr)
-    else log(true, tag, "search own matter", `${hits?.length ?? 0} hits`)
+    });
+    if (sErr) fail(tag, "search own matter", sErr);
+    else log(true, tag, "search own matter", `${hits?.length ?? 0} hits`);
 
-    log(true, tag, "workflow complete", "beginner path", Date.now() - t0)
+    log(true, tag, "workflow complete", "beginner path", Date.now() - t0);
   } catch (err) {
-    fail(tag, "workflow crashed", err)
+    fail(tag, "workflow crashed", err);
   }
-}
+};
 
 const runExperiencedWorkflow = async (actor, court, shareWith) => {
-  const tag = actor.key
-  const t0 = Date.now()
+  const tag = actor.key;
+  const t0 = Date.now();
   try {
-    const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
-    const sb = clientAs(token)
+    const { token, user } = await signIn(actor.email);
+    log(true, tag, "login", actor.email);
+    const sb = clientAs(token);
 
-    const caseNumber = `E-${RUN}-42`
+    const caseNumber = `E-${RUN}-42`;
     const { data: matter, error: mErr } = await sb
       .from("docket_matters")
       .insert({
@@ -301,11 +323,11 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         status: "active",
       })
       .select()
-      .single()
-    if (mErr) return fail(tag, "create matter", mErr)
-    log(true, tag, "create matter", caseNumber)
-    actor.matterId = matter.id
-    actor.caseNumber = caseNumber
+      .single();
+    if (mErr) return fail(tag, "create matter", mErr);
+    log(true, tag, "create matter", caseNumber);
+    actor.matterId = matter.id;
+    actor.caseNumber = caseNumber;
 
     for (const p of [
       { full_name: "Senior Sitting Accused", party_type: "individual", role: "accused" },
@@ -315,9 +337,9 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         ...p,
         docket_matter_id: matter.id,
         party_status: "active",
-      })
-      if (error) fail(tag, `party ${p.role}`, error)
-      else log(true, tag, `party ${p.role}`)
+      });
+      if (error) fail(tag, `party ${p.role}`, error);
+      else log(true, tag, `party ${p.role}`);
     }
 
     const { data: event, error: eErr } = await sb
@@ -333,10 +355,10 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         notes: "Part-heard; PW1 under cross.",
       })
       .select()
-      .single()
-    if (eErr) fail(tag, "schedule hearing", eErr)
+      .single();
+    if (eErr) fail(tag, "schedule hearing", eErr);
     else {
-      log(true, tag, "schedule hearing")
+      log(true, tag, "schedule hearing");
       const { error: uErr } = await sb
         .from("docket_events")
         .update({
@@ -344,49 +366,49 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
           outcome_at_event: "Adjourned part-heard",
           orders_made_at_event: "Bail continued. Next sitting 3 Sep 2026.",
         })
-        .eq("id", event.id)
-      if (uErr) fail(tag, "complete hearing", uErr)
-      else log(true, tag, "complete hearing")
+        .eq("id", event.id);
+      if (uErr) fail(tag, "complete hearing", uErr);
+      else log(true, tag, "complete hearing");
     }
 
     const { error: retErr } = await sb.from("docket_matter_assignments").insert({
       docket_matter_id: matter.id,
       reason: "retained_part_heard",
       notes: "Retain for continuation.",
-    })
-    if (retErr) fail(tag, "retain part-heard", retErr)
-    else log(true, tag, "retain part-heard")
+    });
+    if (retErr) fail(tag, "retain part-heard", retErr);
+    else log(true, tag, "retain part-heard");
 
     for (const t of ["urgent", "part-heard"]) {
       const { error } = await sb.from("docket_matter_tags").insert({
         docket_matter_id: matter.id,
         tag_name: t,
-      })
-      if (error) fail(tag, `tag ${t}`, error)
-      else log(true, tag, `tag ${t}`)
+      });
+      if (error) fail(tag, `tag ${t}`, error);
+      else log(true, tag, `tag ${t}`);
     }
 
     // Client-side OCR ingest (what happens when they upload a scan into a draft)
-    const scanFile = makeRenderedScanPdf({ name: `persona-scan-${RUN}.pdf`, jpegQuality: 88 })
-    const ocrT0 = Date.now()
-    const envelope = await ingestDocument(scanFile)
-    const ocrMs = Date.now() - ocrT0
-    const hits = SCAN_MUST_CONTAIN.filter((p) => containsNormalized(envelope.text, p)).length
-    const usable = envelope.status === "extracted" || envelope.status === "low_quality"
+    const scanFile = makeRenderedScanPdf({ name: `persona-scan-${RUN}.pdf`, jpegQuality: 88 });
+    const ocrT0 = Date.now();
+    const envelope = await ingestDocument(scanFile);
+    const ocrMs = Date.now() - ocrT0;
+    const hits = SCAN_MUST_CONTAIN.filter((p) => containsNormalized(envelope.text, p)).length;
+    const usable = envelope.status === "extracted" || envelope.status === "low_quality";
     log(
       usable && envelope.ocrUsed === true && envelope.requiresReview === true && hits >= 2,
       tag,
       "OCR ingest scanned judgment",
       `status=${envelope.status} hits=${hits}/${SCAN_MUST_CONTAIN.length} cer=${usable ? characterErrorRate(envelope.text, SCAN_GROUND_TRUTH).toFixed(3) : "n/a"}`,
       ocrMs,
-    )
-    actor.ocrStatus = envelope.status
-    actor.ocrMs = ocrMs
+    );
+    actor.ocrStatus = envelope.status;
+    actor.ocrMs = ocrMs;
 
     const judgmentBody =
       usable && envelope.text
         ? envelope.text.slice(0, 4000)
-        : "The accused is put to plea. Trial date fixed. [OCR withheld — manual entry]"
+        : "The accused is put to plea. Trial date fixed. [OCR withheld — manual entry]";
 
     const { data: judgment, error: jErr } = await sb
       .from("judgments")
@@ -398,17 +420,17 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         content_text: judgmentBody,
       })
       .select()
-      .single()
-    if (jErr) fail(tag, "create judgment from OCR text", jErr)
+      .single();
+    if (jErr) fail(tag, "create judgment from OCR text", jErr);
     else {
-      log(true, tag, "create judgment from OCR text", judgment.status)
-      actor.judgmentId = judgment.id
+      log(true, tag, "create judgment from OCR text", judgment.status);
+      actor.judgmentId = judgment.id;
       const { error: linkErr } = await sb.from("docket_matter_judgments").insert({
         docket_matter_id: matter.id,
         judgment_id: judgment.id,
-      })
-      if (linkErr) fail(tag, "link judgment", linkErr)
-      else log(true, tag, "link judgment")
+      });
+      if (linkErr) fail(tag, "link judgment", linkErr);
+      else log(true, tag, "link judgment");
     }
 
     const { data: note, error: nErr } = await sb
@@ -422,13 +444,16 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         content_text: "Credibility of PW1 to be tested.",
       })
       .select()
-      .single()
-    if (nErr) fail(tag, "bench note", nErr)
+      .single();
+    if (nErr) fail(tag, "bench note", nErr);
     else {
-      log(true, tag, "bench note")
-      const { error: pubErr } = await sb.from("bench_notes").update({ status: "published" }).eq("id", note.id)
-      if (pubErr) fail(tag, "publish bench note", pubErr)
-      else log(true, tag, "publish bench note")
+      log(true, tag, "bench note");
+      const { error: pubErr } = await sb
+        .from("bench_notes")
+        .update({ status: "published" })
+        .eq("id", note.id);
+      if (pubErr) fail(tag, "publish bench note", pubErr);
+      else log(true, tag, "publish bench note");
     }
 
     const { error: qcErr } = await sb.from("quick_codes").insert({
@@ -437,9 +462,9 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
       content: "Report every Monday to nearest station.",
       description: "Reusable bail",
       category: "bail",
-    })
-    if (qcErr) fail(tag, "quick code", qcErr)
-    else log(true, tag, "quick code")
+    });
+    if (qcErr) fail(tag, "quick code", qcErr);
+    else log(true, tag, "quick code");
 
     const { data: research, error: clErr } = await sb
       .from("case_law")
@@ -452,35 +477,35 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
         summary: "Personal research for this sitting.",
       })
       .select()
-      .single()
-    if (clErr) fail(tag, "case law research", clErr)
+      .single();
+    if (clErr) fail(tag, "case law research", clErr);
     else {
-      log(true, tag, "case law research")
+      log(true, tag, "case law research");
       const { error: clLink } = await sb.from("docket_matter_case_law").insert({
         docket_matter_id: matter.id,
         case_law_id: research.id,
-      })
-      if (clLink) fail(tag, "link case law", clLink)
-      else log(true, tag, "link case law")
+      });
+      if (clLink) fail(tag, "link case law", clLink);
+      else log(true, tag, "link case law");
     }
 
     const { error: bmErr } = await sb.from("bookmarks").insert({
       entity_type: "docket_matter",
       entity_id: matter.id,
       user_id: user.id,
-    })
-    if (bmErr) fail(tag, "bookmark", bmErr)
-    else log(true, tag, "bookmark")
+    });
+    if (bmErr) fail(tag, "bookmark", bmErr);
+    else log(true, tag, "bookmark");
 
     if (shareWith?.email) {
       const { data: resolved, error: rErr } = await sb.rpc("resolve_docket_share_recipient", {
         p_docket_matter_id: matter.id,
         p_email: shareWith.email,
-      })
-      if (rErr) fail(tag, "resolve share recipient", rErr)
+      });
+      if (rErr) fail(tag, "resolve share recipient", rErr);
       else {
-        const recipientId = resolved?.[0]?.profile_id
-        if (!recipientId) fail(tag, "resolve share recipient", "empty")
+        const recipientId = resolved?.[0]?.profile_id;
+        if (!recipientId) fail(tag, "resolve share recipient", "empty");
         else {
           const { error: shErr } = await sb.from("shares").insert({
             item_type: "docket_matter",
@@ -488,12 +513,12 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
             recipient_id: recipientId,
             granted_by: user.id,
             permission: "view",
-          })
-          if (shErr) fail(tag, "share view with covering", shErr)
+          });
+          if (shErr) fail(tag, "share view with covering", shErr);
           else {
-            log(true, tag, "share view with covering", shareWith.email)
-            actor.sharedWith = shareWith.email
-            actor.sharePermission = "view"
+            log(true, tag, "share view with covering", shareWith.email);
+            actor.sharedWith = shareWith.email;
+            actor.sharePermission = "view";
           }
         }
       }
@@ -502,38 +527,38 @@ const runExperiencedWorkflow = async (actor, court, shareWith) => {
     const { data: gHits, error: gErr } = await sb.rpc("global_search", {
       p_query: caseNumber,
       p_limit: 10,
-    })
-    if (gErr) fail(tag, "global search", gErr)
-    else log(true, tag, "global search", `${gHits?.length ?? 0} hits`)
+    });
+    if (gErr) fail(tag, "global search", gErr);
+    else log(true, tag, "global search", `${gHits?.length ?? 0} hits`);
 
-    log(true, tag, "workflow complete", "advanced path", Date.now() - t0)
+    log(true, tag, "workflow complete", "advanced path", Date.now() - t0);
   } catch (err) {
-    fail(tag, "workflow crashed", err)
+    fail(tag, "workflow crashed", err);
   }
-}
+};
 
 const runCoveringWorkflow = async (actor, court, sharedMatter) => {
-  const tag = actor.key
-  const t0 = Date.now()
+  const tag = actor.key;
+  const t0 = Date.now();
   try {
-    const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
-    const sb = clientAs(token)
+    const { token, user } = await signIn(actor.email);
+    log(true, tag, "login", actor.email);
+    const sb = clientAs(token);
 
     const { data: courts } = await sb
       .from("magistrate_courts")
       .select("assignment_type, courts(name)")
       .eq("profile_id", user.id)
-      .is("ended_at", null)
+      .is("ended_at", null);
     log(
       (courts?.length ?? 0) > 0,
       tag,
       "relief assignment visible",
       courts?.map((c) => `${c.assignment_type}:${c.courts?.name}`).join("; ") ?? "",
-    )
+    );
 
     // Own short matter on relief court
-    const caseNumber = `C-${RUN}-07`
+    const caseNumber = `C-${RUN}-07`;
     const { data: matter, error: mErr } = await sb
       .from("docket_matters")
       .insert({
@@ -544,11 +569,11 @@ const runCoveringWorkflow = async (actor, court, sharedMatter) => {
         status: "active",
       })
       .select()
-      .single()
-    if (mErr) fail(tag, "create relief-court matter", mErr)
+      .single();
+    if (mErr) fail(tag, "create relief-court matter", mErr);
     else {
-      log(true, tag, "create relief-court matter", caseNumber)
-      actor.matterId = matter.id
+      log(true, tag, "create relief-court matter", caseNumber);
+      actor.matterId = matter.id;
     }
 
     if (sharedMatter?.id) {
@@ -556,49 +581,49 @@ const runCoveringWorkflow = async (actor, court, sharedMatter) => {
         .from("docket_matters")
         .select("id, case_number, matter_title")
         .eq("id", sharedMatter.id)
-        .maybeSingle()
-      if (error) fail(tag, "see shared matter", error)
-      else log(!!data?.id, tag, "see shared matter", data?.case_number ?? "hidden")
+        .maybeSingle();
+      if (error) fail(tag, "see shared matter", error);
+      else log(!!data?.id, tag, "see shared matter", data?.case_number ?? "hidden");
 
       const { data: updated, error: updErr } = await sb
         .from("docket_matters")
         .update({ outcome: "covering-should-not-edit-view-share" })
         .eq("id", sharedMatter.id)
-        .select("id")
+        .select("id");
 
-      const sameCourt = sharedMatter.court_id === court.id
-      const blocked = Boolean(updErr) || !(updated?.length)
+      const sameCourt = sharedMatter.court_id === court.id;
+      const blocked = Boolean(updErr) || !updated?.length;
       if (sameCourt) {
-        log(!blocked, tag, "same-court can still edit via assignment", updErr?.message ?? "ok")
+        log(!blocked, tag, "same-court can still edit via assignment", updErr?.message ?? "ok");
       } else {
-        log(blocked, tag, "view-share cannot edit foreign court", updErr?.message ?? "0 rows")
+        log(blocked, tag, "view-share cannot edit foreign court", updErr?.message ?? "0 rows");
       }
     }
 
-    log(true, tag, "workflow complete", "covering path", Date.now() - t0)
+    log(true, tag, "workflow complete", "covering path", Date.now() - t0);
   } catch (err) {
-    fail(tag, "workflow crashed", err)
+    fail(tag, "workflow crashed", err);
   }
-}
+};
 
 const runClerkWorkflow = async (actor, court) => {
-  const tag = actor.key
-  const t0 = Date.now()
+  const tag = actor.key;
+  const t0 = Date.now();
   try {
-    const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
-    const sb = clientAs(token)
+    const { token, user } = await signIn(actor.email);
+    log(true, tag, "login", actor.email);
+    const sb = clientAs(token);
 
     const { data: matters, error: listErr } = await sb
       .from("docket_matters")
       .select("id, case_number, matter_title")
       .eq("court_id", court.id)
       .order("updated_at", { ascending: false })
-      .limit(20)
-    if (listErr) fail(tag, "list court docket", listErr)
-    else log(true, tag, "list court docket", `${matters?.length ?? 0} matters`)
+      .limit(20);
+    if (listErr) fail(tag, "list court docket", listErr);
+    else log(true, tag, "list court docket", `${matters?.length ?? 0} matters`);
 
-    const caseNumber = `K-${RUN}-03`
+    const caseNumber = `K-${RUN}-03`;
     const { data: matter, error: mErr } = await sb
       .from("docket_matters")
       .insert({
@@ -609,11 +634,11 @@ const runClerkWorkflow = async (actor, court) => {
         status: "active",
       })
       .select()
-      .single()
-    if (mErr) fail(tag, "create registry matter", mErr)
+      .single();
+    if (mErr) fail(tag, "create registry matter", mErr);
     else {
-      log(true, tag, "create registry matter", caseNumber)
-      actor.matterId = matter.id
+      log(true, tag, "create registry matter", caseNumber);
+      actor.matterId = matter.id;
       const { error: eErr } = await sb.from("docket_events").insert({
         docket_matter_id: matter.id,
         scheduled_date: "2026-08-21",
@@ -623,162 +648,199 @@ const runClerkWorkflow = async (actor, court) => {
         location: court.name,
         event_status: "scheduled",
         notes: "Clerk listed for mention.",
-      })
-      if (eErr) fail(tag, "schedule mention", eErr)
-      else log(true, tag, "schedule mention")
+      });
+      if (eErr) fail(tag, "schedule mention", eErr);
+      else log(true, tag, "schedule mention");
     }
 
-    const { data: profiles, error: pErr } = await sb.from("profiles").select("id, email").limit(20)
-    if (pErr) fail(tag, "profiles list", pErr)
+    const { data: profiles, error: pErr } = await sb.from("profiles").select("id, email").limit(20);
+    if (pErr) fail(tag, "profiles list", pErr);
     else {
-      const leaked = (profiles ?? []).filter((p) => p.email !== actor.email && p.id !== user.id)
-      log(leaked.length === 0, tag, "cannot browse other profiles", leaked.length ? `LEAK ${leaked.length}` : "own only")
+      const leaked = (profiles ?? []).filter((p) => p.email !== actor.email && p.id !== user.id);
+      log(
+        leaked.length === 0,
+        tag,
+        "cannot browse other profiles",
+        leaked.length ? `LEAK ${leaked.length}` : "own only",
+      );
     }
 
-    log(true, tag, "workflow complete", "clerk path", Date.now() - t0)
+    log(true, tag, "workflow complete", "clerk path", Date.now() - t0);
   } catch (err) {
-    fail(tag, "workflow crashed", err)
+    fail(tag, "workflow crashed", err);
   }
-}
+};
 
 const runAdminWorkflow = async (actor, targetProfileId, extraCourt) => {
-  const tag = actor.key
-  const t0 = Date.now()
+  const tag = actor.key;
+  const t0 = Date.now();
   try {
-    const { token } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
-    const sb = clientAs(token)
+    const { token } = await signIn(actor.email);
+    log(true, tag, "login", actor.email);
+    const sb = clientAs(token);
 
-    const { data: profiles, error: pErr } = await sb.from("profiles").select("id, email, role").order("email").limit(50)
-    if (pErr) fail(tag, "list profiles", pErr)
-    else log((profiles?.length ?? 0) > 1, tag, "list profiles", `${profiles?.length ?? 0}`)
+    const { data: profiles, error: pErr } = await sb
+      .from("profiles")
+      .select("id, email, role")
+      .order("email")
+      .limit(50);
+    if (pErr) fail(tag, "list profiles", pErr);
+    else log((profiles?.length ?? 0) > 1, tag, "list profiles", `${profiles?.length ?? 0}`);
 
     if (extraCourt && targetProfileId) {
       const { error } = await sb.from("magistrate_courts").insert({
         profile_id: targetProfileId,
         court_id: extraCourt.id,
         assignment_type: "acting",
-      })
+      });
       if (error) {
-        if (alreadySeatedError(error)) log(true, tag, "assign acting court", `${extraCourt.name} (already seated)`)
-        else fail(tag, "assign acting court", error)
-      } else log(true, tag, "assign acting court", extraCourt.name)
+        if (alreadySeatedError(error))
+          log(true, tag, "assign acting court", `${extraCourt.name} (already seated)`);
+        else fail(tag, "assign acting court", error);
+      } else log(true, tag, "assign acting court", extraCourt.name);
     }
 
-    const { data: sources, error: sErr } = await sb.from("legal_sources").select("id, name").limit(10)
-    if (sErr) fail(tag, "legal sources", sErr)
-    else log(true, tag, "legal sources", `${sources?.length ?? 0}`)
+    const { data: sources, error: sErr } = await sb
+      .from("legal_sources")
+      .select("id, name")
+      .limit(10);
+    if (sErr) fail(tag, "legal sources", sErr);
+    else log(true, tag, "legal sources", `${sources?.length ?? 0}`);
 
     // Library curator: OCR a scan + prefer text-layer PDF (what bulk ingest does client-side)
-    const scan = makeRenderedScanPdf({ name: `library-scan-${RUN}.pdf`, jpegQuality: 90 })
-    const textPdf = makeTextPdf(SCAN_GROUND_TRUTH.split("\n").filter(Boolean), `library-text-${RUN}.pdf`)
+    const scan = makeRenderedScanPdf({ name: `library-scan-${RUN}.pdf`, jpegQuality: 90 });
+    const textPdf = makeTextPdf(
+      SCAN_GROUND_TRUTH.split("\n").filter(Boolean),
+      `library-text-${RUN}.pdf`,
+    );
 
-    const ocrT0 = Date.now()
-    const scanEnv = await ingestDocument(scan)
-    const ocrMs = Date.now() - ocrT0
-    const textT0 = Date.now()
-    const textEnv = await ingestDocument(textPdf)
-    const textMs = Date.now() - textT0
+    const ocrT0 = Date.now();
+    const scanEnv = await ingestDocument(scan);
+    const ocrMs = Date.now() - ocrT0;
+    const textT0 = Date.now();
+    const textEnv = await ingestDocument(textPdf);
+    const textMs = Date.now() - textT0;
 
     const scanOk =
       (scanEnv.status === "extracted" || scanEnv.status === "low_quality") &&
       scanEnv.ocrUsed === true &&
-      scanEnv.requiresReview === true
-    log(scanOk, tag, "library OCR scan ingest", `status=${scanEnv.status}`, ocrMs)
+      scanEnv.requiresReview === true;
+    log(scanOk, tag, "library OCR scan ingest", `status=${scanEnv.status}`, ocrMs);
     log(
       textEnv.ocrUsed === false && textEnv.method === "pdf_text_layer",
       tag,
       "library text-layer prefers fast path",
       `method=${textEnv.method}`,
       textMs,
-    )
+    );
 
-    const { data: matters } = await sb.from("docket_matters").select("id").limit(5)
-    log(true, tag, "admin docket visibility is court-gated", `${matters?.length ?? 0} matters`)
+    const { data: matters } = await sb.from("docket_matters").select("id").limit(5);
+    log(true, tag, "admin docket visibility is court-gated", `${matters?.length ?? 0} matters`);
 
-    log(true, tag, "workflow complete", "admin/curator path", Date.now() - t0)
+    log(true, tag, "workflow complete", "admin/curator path", Date.now() - t0);
   } catch (err) {
-    fail(tag, "workflow crashed", err)
+    fail(tag, "workflow crashed", err);
   }
-}
+};
 
 const runOutsiderWorkflow = async (actor, foreignMatterId) => {
-  const tag = actor.key
-  const t0 = Date.now()
+  const tag = actor.key;
+  const t0 = Date.now();
   try {
-    const { token, user } = await signIn(actor.email)
-    log(true, tag, "login", actor.email)
-    const sb = clientAs(token)
+    const { token, user } = await signIn(actor.email);
+    log(true, tag, "login", actor.email);
+    const sb = clientAs(token);
 
     const { data: courts } = await sb
       .from("magistrate_courts")
       .select("id")
       .eq("profile_id", user.id)
-      .is("ended_at", null)
-    log((courts?.length ?? 0) === 0, tag, "no court assignment", `${courts?.length ?? 0}`)
+      .is("ended_at", null);
+    log((courts?.length ?? 0) === 0, tag, "no court assignment", `${courts?.length ?? 0}`);
 
-    const { data: matters, error: listErr } = await sb.from("docket_matters").select("id").limit(20)
-    if (listErr) fail(tag, "list matters", listErr)
-    else log((matters?.length ?? 0) === 0, tag, "sees zero docket matters", `${matters?.length ?? 0}`)
+    const { data: matters, error: listErr } = await sb
+      .from("docket_matters")
+      .select("id")
+      .limit(20);
+    if (listErr) fail(tag, "list matters", listErr);
+    else
+      log((matters?.length ?? 0) === 0, tag, "sees zero docket matters", `${matters?.length ?? 0}`);
 
     if (foreignMatterId) {
-      const { data } = await sb.from("docket_matters").select("id").eq("id", foreignMatterId).maybeSingle()
-      log(!data, tag, "cannot see foreign matter", data ? "LEAK" : "hidden")
+      const { data } = await sb
+        .from("docket_matters")
+        .select("id")
+        .eq("id", foreignMatterId)
+        .maybeSingle();
+      log(!data, tag, "cannot see foreign matter", data ? "LEAK" : "hidden");
     }
 
-    const { data: profiles } = await sb.from("profiles").select("id, email").limit(20)
-    const leaked = (profiles ?? []).filter((p) => p.email !== actor.email)
-    log(leaked.length === 0, tag, "cannot browse profiles", leaked.length ? `LEAK ${leaked.length}` : "own only")
+    const { data: profiles } = await sb.from("profiles").select("id, email").limit(20);
+    const leaked = (profiles ?? []).filter((p) => p.email !== actor.email);
+    log(
+      leaked.length === 0,
+      tag,
+      "cannot browse profiles",
+      leaked.length ? `LEAK ${leaked.length}` : "own only",
+    );
 
-    log(true, tag, "workflow complete", "isolation path", Date.now() - t0)
+    log(true, tag, "workflow complete", "isolation path", Date.now() - t0);
   } catch (err) {
-    fail(tag, "workflow crashed", err)
+    fail(tag, "workflow crashed", err);
   }
-}
+};
 
 const main = async () => {
-  console.log(`\nPersona workflow simulation  ${RUN}\n`)
-  const started = Date.now()
+  console.log(`\nPersona workflow simulation  ${RUN}\n`);
+  const started = Date.now();
 
   const { data: courts, error: courtErr } = await admin
     .from("courts")
     .select("id, name, is_active")
     .eq("is_active", true)
     .order("name")
-    .limit(20)
+    .limit(20);
   if (courtErr || !courts?.length) {
-    fail("system", "load courts", courtErr ?? "no active courts")
-    writeFileSync(RESULTS, JSON.stringify({ error: "no courts", results }, null, 2))
-    process.exit(1)
+    fail("system", "load courts", courtErr ?? "no active courts");
+    writeFileSync(RESULTS, JSON.stringify({ error: "no courts", results }, null, 2));
+    process.exit(1);
   }
-  log(true, "system", "load courts", courts.map((c) => c.name).slice(0, 5).join("; "))
+  log(
+    true,
+    "system",
+    "load courts",
+    courts
+      .map((c) => c.name)
+      .slice(0, 5)
+      .join("; "),
+  );
 
-  const geo1 = courts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? courts[0]
-  const noviceCourt = await pickOpenRegularCourt([geo1.id])
+  const geo1 = courts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? courts[0];
+  const noviceCourt = await pickOpenRegularCourt([geo1.id]);
   const coveringCourt =
-    courts.find((c) => c.id !== geo1.id && c.id !== noviceCourt.id) ?? noviceCourt
+    courts.find((c) => c.id !== geo1.id && c.id !== noviceCourt.id) ?? noviceCourt;
 
   /** @type {Record<string, any>} */
-  const roster = {}
+  const roster = {};
   for (const spec of PERSONAS) {
     try {
-      const id = await ensureUser(spec)
-      roster[spec.key] = { ...spec, id }
-      log(true, "system", `provision ${spec.key}`, `${spec.role} ${spec.email} (${spec.level})`)
+      const id = await ensureUser(spec);
+      roster[spec.key] = { ...spec, id };
+      log(true, "system", `provision ${spec.key}`, `${spec.role} ${spec.email} (${spec.level})`);
     } catch (err) {
-      fail("system", `provision ${spec.key}`, err)
+      fail("system", `provision ${spec.key}`, err);
     }
   }
 
   for (const key of ["experienced", "admin"]) {
-    const u = roster[key]
-    if (!u) continue
+    const u = roster[key];
+    if (!u) continue;
     try {
-      await ensureAssignment(u.id, geo1.id, "acting")
-      u.court = geo1
-      log(true, "system", `assign ${key}`, `${geo1.name} (acting)`)
+      await ensureAssignment(u.id, geo1.id, "acting");
+      u.court = geo1;
+      log(true, "system", `assign ${key}`, `${geo1.name} (acting)`);
     } catch (err) {
-      fail("system", `assign ${key}`, err)
+      fail("system", `assign ${key}`, err);
     }
   }
   if (roster.novice) {
@@ -788,27 +850,31 @@ const main = async () => {
         .select("court_id, courts(name)")
         .eq("profile_id", roster.novice.id)
         .is("ended_at", null)
-        .limit(1)
-      const live = liveRows?.[0]
+        .limit(1);
+      const live = liveRows?.[0];
       if (live?.court_id) {
-        roster.novice.court = { id: live.court_id, name: live.courts?.name ?? "Court" }
-        log(true, "system", "assign novice", `${roster.novice.court.name} (already seated)`)
+        roster.novice.court = { id: live.court_id, name: live.courts?.name ?? "Court" };
+        log(true, "system", "assign novice", `${roster.novice.court.name} (already seated)`);
       } else {
-        await ensureAssignment(roster.novice.id, noviceCourt.id, "regular")
-        roster.novice.court = noviceCourt
-        log(true, "system", "assign novice", `${noviceCourt.name} (regular)`)
+        await ensureAssignment(roster.novice.id, noviceCourt.id, "regular");
+        roster.novice.court = noviceCourt;
+        log(true, "system", "assign novice", `${noviceCourt.name} (regular)`);
       }
     } catch (err) {
-      fail("system", "assign novice", err)
+      fail("system", "assign novice", err);
     }
   }
   if (roster.clerk) {
     try {
-      await ensureClerkAssignment(roster.clerk.id, geo1.id, roster.admin?.id ?? roster.experienced?.id)
-      roster.clerk.court = geo1
-      log(true, "system", "assign clerk", `${geo1.name} (clerk_courts)`)
+      await ensureClerkAssignment(
+        roster.clerk.id,
+        geo1.id,
+        roster.admin?.id ?? roster.experienced?.id,
+      );
+      roster.clerk.court = geo1;
+      log(true, "system", "assign clerk", `${geo1.name} (clerk_courts)`);
     } catch (err) {
-      fail("system", "assign clerk", err)
+      fail("system", "assign clerk", err);
     }
   }
   if (roster.covering) {
@@ -821,36 +887,40 @@ const main = async () => {
         })
         .eq("profile_id", roster.covering.id)
         .eq("court_id", geo1.id)
-        .is("ended_at", null)
-      await ensureAssignment(roster.covering.id, coveringCourt.id, "relief")
-      roster.covering.court = coveringCourt
-      log(true, "system", "assign covering", `${coveringCourt.name} (relief)`)
+        .is("ended_at", null);
+      await ensureAssignment(roster.covering.id, coveringCourt.id, "relief");
+      roster.covering.court = coveringCourt;
+      log(true, "system", "assign covering", `${coveringCourt.name} (relief)`);
     } catch (err) {
-      fail("system", "assign covering", err)
+      fail("system", "assign covering", err);
     }
   }
-  log(true, "system", "outsider intentionally unassigned", roster.outsider?.email ?? "")
+  log(true, "system", "outsider intentionally unassigned", roster.outsider?.email ?? "");
 
-  await runNoviceWorkflow(roster.novice, roster.novice?.court ?? noviceCourt)
-  await runExperiencedWorkflow(roster.experienced, geo1, roster.covering)
+  await runNoviceWorkflow(roster.novice, roster.novice?.court ?? noviceCourt);
+  await runExperiencedWorkflow(roster.experienced, geo1, roster.covering);
   await runCoveringWorkflow(roster.covering, roster.covering?.court ?? coveringCourt, {
     id: roster.experienced?.matterId,
     court_id: geo1.id,
-  })
-  await runClerkWorkflow(roster.clerk, geo1)
-  await runAdminWorkflow(roster.admin, roster.novice?.id, coveringCourt.id !== geo1.id ? coveringCourt : null)
-  await runOutsiderWorkflow(roster.outsider, roster.experienced?.matterId)
+  });
+  await runClerkWorkflow(roster.clerk, geo1);
+  await runAdminWorkflow(
+    roster.admin,
+    roster.novice?.id,
+    coveringCourt.id !== geo1.id ? coveringCourt : null,
+  );
+  await runOutsiderWorkflow(roster.outsider, roster.experienced?.matterId);
 
-  await terminateOcrWorker()
+  await terminateOcrWorker();
 
-  const passed = results.filter((r) => r.ok).length
-  const failed = results.filter((r) => !r.ok).length
-  const byPersona = {}
+  const passed = results.filter((r) => r.ok).length;
+  const failed = results.filter((r) => !r.ok).length;
+  const byPersona = {};
   for (const r of results) {
-    if (!byPersona[r.persona]) byPersona[r.persona] = { passed: 0, failed: 0, steps: [] }
-    if (r.ok) byPersona[r.persona].passed += 1
-    else byPersona[r.persona].failed += 1
-    byPersona[r.persona].steps.push(r)
+    if (!byPersona[r.persona]) byPersona[r.persona] = { passed: 0, failed: 0, steps: [] };
+    if (r.ok) byPersona[r.persona].passed += 1;
+    else byPersona[r.persona].failed += 1;
+    byPersona[r.persona].steps.push(r);
   }
 
   const payload = {
@@ -875,21 +945,23 @@ const main = async () => {
       ocrMs: roster[p.key]?.ocrMs ?? null,
     })),
     results,
-  }
-  writeFileSync(RESULTS, JSON.stringify(payload, null, 2))
+  };
+  writeFileSync(RESULTS, JSON.stringify(payload, null, 2));
 
-  console.log(`\n=== Personas: ${PERSONAS.length} | ${passed} passed, ${failed} failed of ${results.length} (${RUN}) ===`)
-  console.log("Results:", RESULTS)
+  console.log(
+    `\n=== Personas: ${PERSONAS.length} | ${passed} passed, ${failed} failed of ${results.length} (${RUN}) ===`,
+  );
+  console.log("Results:", RESULTS);
   if (failed) {
-    console.log("Failures:")
+    console.log("Failures:");
     for (const r of results.filter((x) => !x.ok)) {
-      console.log(`  - [${r.persona}] ${r.step}: ${r.detail}`)
+      console.log(`  - [${r.persona}] ${r.step}: ${r.detail}`);
     }
   }
-  process.exit(failed ? 1 : 0)
-}
+  process.exit(failed ? 1 : 0);
+};
 
 main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+  console.error(err);
+  process.exit(1);
+});

@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS test for the Legislation view/edit separation:
 // magistrates may READ published Legislation and may publish a NEW Act
 // (0114, Legislation page Add). They still cannot edit, replace, or
@@ -33,7 +34,9 @@ if (!SERVICE_KEY) {
   process.exit(1);
 }
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -57,7 +60,11 @@ async function signAs(emailAddr) {
   return client;
 }
 async function createUser(emailAddr, role) {
-  const { data, error } = await admin.auth.admin.createUser({ email: emailAddr, password, email_confirm: true });
+  const { data, error } = await admin.auth.admin.createUser({
+    email: emailAddr,
+    password,
+    email_confirm: true,
+  });
   if (error) throw error;
   const { error: roleErr } = await admin.from("profiles").update({ role }).eq("id", data.user.id);
   if (roleErr) throw roleErr;
@@ -67,7 +74,11 @@ async function createUser(emailAddr, role) {
 const created = { users: [], jurisdictionId: null, statutes: [], storagePaths: [] };
 
 async function main() {
-  const { data: regionalGroup } = await admin.from("legal_regional_groups").select("id").limit(1).single();
+  const { data: regionalGroup } = await admin
+    .from("legal_regional_groups")
+    .select("id")
+    .limit(1)
+    .single();
   const { data: jurisdiction, error: jErr } = await admin
     .from("legal_jurisdictions")
     .insert({ name: `TEST View-Edit Jurisdiction ${stamp}`, regional_group_id: regionalGroup.id })
@@ -88,7 +99,10 @@ async function main() {
   const clerkClient = await signAs(clerkUser.email);
 
   // Seed a real, published record the same way the file-first upload flow does.
-  const pdf = makeWellFormedMultiPagePdf([["Summary Jurisdiction (Offences) Act, Chapter 8:02."]], "sjo-act.pdf");
+  const pdf = makeWellFormedMultiPagePdf(
+    [["Summary Jurisdiction (Offences) Act, Chapter 8:02."]],
+    "sjo-act.pdf",
+  );
   const { data: statute, error: createErr } = await adminClient
     .from("statutes")
     .insert({
@@ -110,15 +124,36 @@ async function main() {
   created.storagePaths.push(path);
   const { data: document } = await adminClient
     .from("documents")
-    .insert({ uploaded_by: userData.user.id, file_name: "sjo-act.pdf", file_path: path, file_size: pdf.size, mime_type: "application/pdf", entity_type: "statute", entity_id: statute.id, purpose: "attachment" })
+    .insert({
+      uploaded_by: userData.user.id,
+      file_name: "sjo-act.pdf",
+      file_path: path,
+      file_size: pdf.size,
+      mime_type: "application/pdf",
+      entity_type: "statute",
+      entity_id: statute.id,
+      purpose: "attachment",
+    })
     .select()
     .single();
-  await adminClient.rpc("finalize_legislation_document", { p_statute_id: statute.id, p_document_id: document.id, p_page_count: 1, p_has_text_layer: true });
+  await adminClient.rpc("finalize_legislation_document", {
+    p_statute_id: statute.id,
+    p_document_id: document.id,
+    p_page_count: 1,
+    p_has_text_layer: true,
+  });
 
   // --- 1: baseline -- a magistrate legitimately has VIEW access -----------
   {
-    const { data } = await magistrateClient.from("statutes").select("id, title, primary_document_id").eq("id", statute.id).maybeSingle();
-    check("1. An ordinary magistrate CAN read the published record (this is the new, intended read-only access)", !!data && data.primary_document_id === document.id);
+    const { data } = await magistrateClient
+      .from("statutes")
+      .select("id, title, primary_document_id")
+      .eq("id", statute.id)
+      .maybeSingle();
+    check(
+      "1. An ordinary magistrate CAN read the published record (this is the new, intended read-only access)",
+      !!data && data.primary_document_id === document.id,
+    );
   }
 
   // --- 2-5: a magistrate cannot mutate an already-published library record ---
@@ -128,31 +163,71 @@ async function main() {
       .update({ title: "Hacked title" })
       .eq("id", statute.id)
       .select();
-    check("2. A magistrate's metadata UPDATE affects zero rows (RLS silently denies, not a bypass)", !error && (data ?? []).length === 0);
-    const { data: unchanged } = await admin.from("statutes").select("title").eq("id", statute.id).single();
-    check("2b. The record's title is genuinely unchanged after the magistrate's attempt", unchanged.title === statute.title);
+    check(
+      "2. A magistrate's metadata UPDATE affects zero rows (RLS silently denies, not a bypass)",
+      !error && (data ?? []).length === 0,
+    );
+    const { data: unchanged } = await admin
+      .from("statutes")
+      .select("title")
+      .eq("id", statute.id)
+      .single();
+    check(
+      "2b. The record's title is genuinely unchanged after the magistrate's attempt",
+      unchanged.title === statute.title,
+    );
   }
   {
     const { error } = await magistrateClient.rpc("finalize_legislation_document", {
       p_statute_id: statute.id,
       p_document_id: document.id,
     });
-    checkErr("3. A magistrate cannot finalize someone else's already-published Act (replace path)", error, true);
+    checkErr(
+      "3. A magistrate cannot finalize someone else's already-published Act (replace path)",
+      error,
+      true,
+    );
   }
   {
-    const magFile = makeWellFormedMultiPagePdf([["Attempted replacement by a magistrate."]], "hack.pdf");
+    const magFile = makeWellFormedMultiPagePdf(
+      [["Attempted replacement by a magistrate."]],
+      "hack.pdf",
+    );
     const magPath = `${(await magistrateClient.auth.getUser()).data.user.id}/statute/${statute.id}/${Date.now()}-hack.pdf`;
-    await magistrateClient.storage.from("documents").upload(magPath, magFile, { contentType: "application/pdf" });
+    await magistrateClient.storage
+      .from("documents")
+      .upload(magPath, magFile, { contentType: "application/pdf" });
     const { error } = await magistrateClient
       .from("documents")
-      .insert({ uploaded_by: (await magistrateClient.auth.getUser()).data.user.id, file_name: "hack.pdf", file_path: magPath, file_size: magFile.size, mime_type: "application/pdf", entity_type: "statute", entity_id: statute.id, purpose: "attachment" });
-    checkErr("4. A magistrate cannot insert a documents row for entity_type='statute' (replace-file path)", error, true);
+      .insert({
+        uploaded_by: (await magistrateClient.auth.getUser()).data.user.id,
+        file_name: "hack.pdf",
+        file_path: magPath,
+        file_size: magFile.size,
+        mime_type: "application/pdf",
+        entity_type: "statute",
+        entity_id: statute.id,
+        purpose: "attachment",
+      });
+    checkErr(
+      "4. A magistrate cannot insert a documents row for entity_type='statute' (replace-file path)",
+      error,
+      true,
+    );
     await magistrateClient.storage.from("documents").remove([magPath]);
   }
   {
-    const { data, error } = await magistrateClient.from("statutes").delete().eq("id", statute.id).select();
+    const { data, error } = await magistrateClient
+      .from("statutes")
+      .delete()
+      .eq("id", statute.id)
+      .select();
     check("5. A magistrate's DELETE affects zero rows", !error && (data ?? []).length === 0);
-    const { data: stillThere } = await admin.from("statutes").select("id").eq("id", statute.id).maybeSingle();
+    const { data: stillThere } = await admin
+      .from("statutes")
+      .select("id")
+      .eq("id", statute.id)
+      .maybeSingle();
     check("5b. The record still exists after the magistrate's delete attempt", !!stillThere);
   }
 
@@ -175,7 +250,9 @@ async function main() {
     if (magDraft) {
       created.statutes.push(magDraft.id);
       const magPath = `${magUserId}/statute/${magDraft.id}/${Date.now()}-mag-act.pdf`;
-      await magistrateClient.storage.from("documents").upload(magPath, magPdf, { contentType: "application/pdf" });
+      await magistrateClient.storage
+        .from("documents")
+        .upload(magPath, magPdf, { contentType: "application/pdf" });
       created.storagePaths.push(magPath);
       const { data: magDoc, error: magDocErr } = await magistrateClient
         .from("documents")
@@ -192,15 +269,25 @@ async function main() {
         .select()
         .single();
       check("5d. A magistrate can attach a PDF to their own draft Act", !magDocErr && !!magDoc);
-      const { error: magFinalizeErr } = await magistrateClient.rpc("finalize_legislation_document", {
-        p_statute_id: magDraft.id,
-        p_document_id: magDoc.id,
-        p_page_count: 1,
-        p_has_text_layer: true,
-      });
+      const { error: magFinalizeErr } = await magistrateClient.rpc(
+        "finalize_legislation_document",
+        {
+          p_statute_id: magDraft.id,
+          p_document_id: magDoc.id,
+          p_page_count: 1,
+          p_has_text_layer: true,
+        },
+      );
       checkErr("5e. A magistrate can finalize their own draft Act", magFinalizeErr, false);
-      const { data: published } = await admin.from("statutes").select("review_status, created_by").eq("id", magDraft.id).single();
-      check("5f. The magistrate-created Act is published and stamped as theirs", published.review_status === "published" && published.created_by === magUserId);
+      const { data: published } = await admin
+        .from("statutes")
+        .select("review_status, created_by")
+        .eq("id", magDraft.id)
+        .single();
+      check(
+        "5f. The magistrate-created Act is published and stamped as theirs",
+        published.review_status === "published" && published.created_by === magUserId,
+      );
     }
   }
 
@@ -212,23 +299,46 @@ async function main() {
       .eq("id", statute.id)
       .select()
       .single();
-    check("6. An admin's direct metadata update succeeds", !error && data?.short_title === "SJO Act");
-    check("6b. review_status and primary_document_id are untouched by a metadata-only edit (no unpublish detour)", data.review_status === "published" && data.primary_document_id === document.id);
+    check(
+      "6. An admin's direct metadata update succeeds",
+      !error && data?.short_title === "SJO Act",
+    );
+    check(
+      "6b. review_status and primary_document_id are untouched by a metadata-only edit (no unpublish detour)",
+      data.review_status === "published" && data.primary_document_id === document.id,
+    );
   }
 
   // --- 7-9: clerk remains fully excluded (regression check, unchanged behavior) ---
   {
     const { data } = await clerkClient.from("statutes").select("id").eq("id", statute.id);
-    check("7. A clerk cannot read the record at all (unchanged from the file-first task)", (data ?? []).length === 0);
+    check(
+      "7. A clerk cannot read the record at all (unchanged from the file-first task)",
+      (data ?? []).length === 0,
+    );
   }
   {
-    const { error } = await clerkClient.from("statutes").update({ title: "Clerk hack" }).eq("id", statute.id);
+    const { error } = await clerkClient
+      .from("statutes")
+      .update({ title: "Clerk hack" })
+      .eq("id", statute.id);
     // RLS denies -> zero rows affected, not necessarily a thrown error.
-    const { data: unchanged } = await admin.from("statutes").select("title").eq("id", statute.id).single();
-    check("8. A clerk cannot edit the record (silently affects zero rows)", unchanged.title !== "Clerk hack", !error || true);
+    const { data: unchanged } = await admin
+      .from("statutes")
+      .select("title")
+      .eq("id", statute.id)
+      .single();
+    check(
+      "8. A clerk cannot edit the record (silently affects zero rows)",
+      unchanged.title !== "Clerk hack",
+      !error || true,
+    );
   }
   {
-    const { error } = await clerkClient.rpc("finalize_legislation_document", { p_statute_id: statute.id, p_document_id: document.id });
+    const { error } = await clerkClient.rpc("finalize_legislation_document", {
+      p_statute_id: statute.id,
+      p_document_id: document.id,
+    });
     checkErr("9. A clerk cannot call finalize_legislation_document either", error, true);
   }
 
@@ -243,14 +353,30 @@ async function main() {
   // (0102). This must never regress.
   {
     const { error } = await adminClient.from("statutes").delete().eq("id", statute.id);
-    check("10. Admin can delete a record with a linked primary_document_id (no circular-trigger conflict)", !error, error?.message ?? "");
-    const { data: gone } = await admin.from("statutes").select("id").eq("id", statute.id).maybeSingle();
+    check(
+      "10. Admin can delete a record with a linked primary_document_id (no circular-trigger conflict)",
+      !error,
+      error?.message ?? "",
+    );
+    const { data: gone } = await admin
+      .from("statutes")
+      .select("id")
+      .eq("id", statute.id)
+      .maybeSingle();
     check("10b. The record is genuinely gone after delete", gone === null);
-    const { data: docGone } = await admin.from("documents").select("id").eq("id", document.id).maybeSingle();
+    const { data: docGone } = await admin
+      .from("documents")
+      .select("id")
+      .eq("id", document.id)
+      .maybeSingle();
     check("10c. The linked documents row was cascade-removed too", docGone === null);
   }
 
-  console.log(failures > 0 ? `\n${failures} failure(s).` : "\nAll legislation view/edit separation tests passed.");
+  console.log(
+    failures > 0
+      ? `\n${failures} failure(s).`
+      : "\nAll legislation view/edit separation tests passed.",
+  );
 }
 
 async function cleanup() {

@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS/RPC test for Docket identity updates, bin, restore, and
 // 7-day hard purge (0120). Needs a running local Supabase instance
 // (`npm run db:start`) and SUPABASE_SERVICE_ROLE_KEY in the environment
@@ -28,7 +29,9 @@ if (!SERVICE_KEY) {
   process.exit(1);
 }
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -75,7 +78,12 @@ async function main() {
 
   const { data: court, error: courtErr } = await admin
     .from("courts")
-    .insert({ name: `TEST Bin Court ${stamp}`, jurisdiction: "Test", district_id: district.id, is_active: true })
+    .insert({
+      name: `TEST Bin Court ${stamp}`,
+      jurisdiction: "Test",
+      district_id: district.id,
+      is_active: true,
+    })
     .select()
     .single();
   if (courtErr) throw courtErr;
@@ -83,7 +91,12 @@ async function main() {
 
   const { data: otherCourt, error: otherCourtErr } = await admin
     .from("courts")
-    .insert({ name: `TEST Bin Other Court ${stamp}`, jurisdiction: "Test", district_id: district.id, is_active: true })
+    .insert({
+      name: `TEST Bin Other Court ${stamp}`,
+      jurisdiction: "Test",
+      district_id: district.id,
+      is_active: true,
+    })
     .select()
     .single();
   if (otherCourtErr) throw otherCourtErr;
@@ -99,7 +112,12 @@ async function main() {
 
   const { data: matter, error: createErr } = await magClient
     .from("docket_matters")
-    .insert({ court_id: court.id, case_number: `BIN-${stamp}`, matter_title: "Original title", charge_or_issue: "Theft" })
+    .insert({
+      court_id: court.id,
+      case_number: `BIN-${stamp}`,
+      matter_title: "Original title",
+      charge_or_issue: "Theft",
+    })
     .select()
     .single();
   if (createErr) throw createErr;
@@ -107,12 +125,21 @@ async function main() {
   {
     const { data, error } = await magClient
       .from("docket_matters")
-      .update({ case_number: `BIN-${stamp}-R`, matter_title: "Retitled matter", charge_or_issue: "Assault" })
+      .update({
+        case_number: `BIN-${stamp}-R`,
+        matter_title: "Retitled matter",
+        charge_or_issue: "Assault",
+      })
       .eq("id", matter.id)
       .select()
       .single();
     checkErr("1. Magistrate can update case number, title, and charge", error, false);
-    check("1b. Identity fields persisted", data?.case_number === `BIN-${stamp}-R` && data?.matter_title === "Retitled matter" && data?.charge_or_issue === "Assault");
+    check(
+      "1b. Identity fields persisted",
+      data?.case_number === `BIN-${stamp}-R` &&
+        data?.matter_title === "Retitled matter" &&
+        data?.charge_or_issue === "Assault",
+    );
   }
 
   {
@@ -121,7 +148,11 @@ async function main() {
       .update({ court_id: otherCourt.id })
       .eq("id", matter.id);
     checkErr("2. Court update is still rejected (docket_matters_guard)", error, true);
-    const { data: still } = await admin.from("docket_matters").select("court_id").eq("id", matter.id).single();
+    const { data: still } = await admin
+      .from("docket_matters")
+      .select("court_id")
+      .eq("id", matter.id)
+      .single();
     check("2b. court_id unchanged", still?.court_id === court.id);
   }
 
@@ -142,8 +173,15 @@ async function main() {
     const { error } = await magClient.rpc("bin_docket_matter", { p_id: matter.id });
     checkErr("4. Editor can bin", error, false);
     const { data: listed } = await magClient.rpc("list_docket_matters", { p_court_id: court.id });
-    check("4b. Binned matter is hidden from list_docket_matters", !(listed ?? []).some((r) => r.id === matter.id));
-    const { data: row } = await magClient.from("docket_matters").select("deleted_at").eq("id", matter.id).single();
+    check(
+      "4b. Binned matter is hidden from list_docket_matters",
+      !(listed ?? []).some((r) => r.id === matter.id),
+    );
+    const { data: row } = await magClient
+      .from("docket_matters")
+      .select("deleted_at")
+      .eq("id", matter.id)
+      .single();
     check("4c. Direct read still sees the binned row", !!row?.deleted_at);
   }
 
@@ -159,7 +197,10 @@ async function main() {
     const { error } = await magClient.rpc("restore_docket_matter", { p_id: matter.id });
     checkErr("6. Editor can restore", error, false);
     const { data: listed } = await magClient.rpc("list_docket_matters", { p_court_id: court.id });
-    check("6b. Restored matter is back on list_docket_matters", (listed ?? []).some((r) => r.id === matter.id));
+    check(
+      "6b. Restored matter is back on list_docket_matters",
+      (listed ?? []).some((r) => r.id === matter.id),
+    );
   }
 
   {
@@ -167,7 +208,11 @@ async function main() {
     checkErr("7. Re-bin for purge tests", binErr, false);
     const { error: expErr } = await magClient.rpc("purge_expired_docket_matters");
     checkErr("7b. purge_expired_docket_matters runs", expErr, false);
-    const { data: still } = await admin.from("docket_matters").select("id").eq("id", matter.id).maybeSingle();
+    const { data: still } = await admin
+      .from("docket_matters")
+      .select("id")
+      .eq("id", matter.id)
+      .maybeSingle();
     check("7c. Recently binned row is not purged before 7 days", !!still);
   }
 
@@ -175,26 +220,42 @@ async function main() {
     const { error: livePurgeErr } = await magClient.rpc("purge_docket_matter", { p_id: matter.id });
     // still binned, so empty-now is allowed
     checkErr("8. Empty-now purge of a binned matter succeeds", livePurgeErr, false);
-    const { data: gone } = await admin.from("docket_matters").select("id").eq("id", matter.id).maybeSingle();
+    const { data: gone } = await admin
+      .from("docket_matters")
+      .select("id")
+      .eq("id", matter.id)
+      .maybeSingle();
     check("8b. Hard purge removed the row", !gone);
   }
 
   const { data: liveForSkip, error: liveCreateErr } = await magClient
     .from("docket_matters")
-    .insert({ court_id: court.id, case_number: `BIN-LIVE-${stamp}`, matter_title: "Must stay in bin first" })
+    .insert({
+      court_id: court.id,
+      case_number: `BIN-LIVE-${stamp}`,
+      matter_title: "Must stay in bin first",
+    })
     .select()
     .single();
   if (liveCreateErr) throw liveCreateErr;
   {
     const { error } = await magClient.rpc("purge_docket_matter", { p_id: liveForSkip.id });
     checkErr("9. Live matter cannot skip the bin", error, true);
-    const { data: still } = await admin.from("docket_matters").select("id").eq("id", liveForSkip.id).maybeSingle();
+    const { data: still } = await admin
+      .from("docket_matters")
+      .select("id")
+      .eq("id", liveForSkip.id)
+      .maybeSingle();
     check("9b. Live row still exists", !!still);
   }
 
   const { data: expiredMatter, error: expiredCreateErr } = await magClient
     .from("docket_matters")
-    .insert({ court_id: court.id, case_number: `BIN-EXP-${stamp}`, matter_title: "Expired bin candidate" })
+    .insert({
+      court_id: court.id,
+      case_number: `BIN-EXP-${stamp}`,
+      matter_title: "Expired bin candidate",
+    })
     .select()
     .single();
   if (expiredCreateErr) throw expiredCreateErr;
@@ -208,7 +269,11 @@ async function main() {
     const { data: purged, error: purgeErr } = await magClient.rpc("purge_expired_docket_matters");
     checkErr("10b. purge_expired_docket_matters runs for expired row", purgeErr, false);
     check("10c. At least one expired matter was purged", (purged ?? 0) >= 1);
-    const { data: gone } = await admin.from("docket_matters").select("id").eq("id", expiredMatter.id).maybeSingle();
+    const { data: gone } = await admin
+      .from("docket_matters")
+      .select("id")
+      .eq("id", expiredMatter.id)
+      .maybeSingle();
     check("10d. Expired binned row is gone", !gone);
   }
 
@@ -243,7 +308,10 @@ async function main() {
 async function cleanup() {
   try {
     for (const courtId of created.courts) {
-      const { data: leftover } = await admin.from("docket_matters").select("id").eq("court_id", courtId);
+      const { data: leftover } = await admin
+        .from("docket_matters")
+        .select("id")
+        .eq("court_id", courtId);
       const ids = leftover?.map((r) => r.id) ?? [];
       if (ids.length > 0) {
         await admin.from("docket_events").delete().in("docket_matter_id", ids);
@@ -253,7 +321,8 @@ async function cleanup() {
       await admin.from("magistrate_courts").delete().eq("court_id", courtId);
       await admin.from("courts").delete().eq("id", courtId);
     }
-    if (created.districtId) await admin.from("magisterial_districts").delete().eq("id", created.districtId);
+    if (created.districtId)
+      await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     for (const userId of created.users) {
       await admin.auth.admin.deleteUser(userId);
     }

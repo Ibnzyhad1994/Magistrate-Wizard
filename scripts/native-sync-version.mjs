@@ -16,13 +16,12 @@ const native = JSON.parse(readFileSync(versionPath, "utf8"));
 const version = String(pkg.version);
 const versionCode = Number(native.versionCode);
 if (!Number.isInteger(versionCode) || versionCode < 1) {
-  throw new Error(`native/version.json versionCode must be a positive integer, got ${native.versionCode}`);
+  throw new Error(
+    `native/version.json versionCode must be a positive integer, got ${native.versionCode}`,
+  );
 }
 
-writeFileSync(
-  versionPath,
-  `${JSON.stringify({ version, versionCode }, null, 2)}\n`,
-);
+writeFileSync(versionPath, `${JSON.stringify({ version, versionCode }, null, 2)}\n`);
 
 const replaceOnce = (file, pattern, replacement) => {
   if (!existsSync(file)) return false;
@@ -37,16 +36,8 @@ const replaceOnce = (file, pattern, replacement) => {
 };
 
 const androidGradle = join(root, "android", "app", "build.gradle");
-replaceOnce(
-  androidGradle,
-  /versionCode\s+\d+/,
-  `versionCode ${versionCode}`,
-);
-replaceOnce(
-  androidGradle,
-  /versionName\s+"[^"]+"/,
-  `versionName "${version}"`,
-);
+replaceOnce(androidGradle, /versionCode\s+\d+/, `versionCode ${versionCode}`);
+replaceOnce(androidGradle, /versionName\s+"[^"]+"/, `versionName "${version}"`);
 
 const iosPlist = join(root, "ios", "App", "App", "Info.plist");
 replaceOnce(

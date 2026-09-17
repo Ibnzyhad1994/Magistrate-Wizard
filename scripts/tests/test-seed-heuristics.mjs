@@ -25,7 +25,8 @@ check(
     title: "Sexual Offences Act 2010",
     code: "7 of 2010",
     jurisdiction: "Guyana",
-    source_url: "https://www.parliament.gov.gy/publications/acts-of-parliament/sexual-offences-act-2010",
+    source_url:
+      "https://www.parliament.gov.gy/publications/acts-of-parliament/sexual-offences-act-2010",
     full_text: "AN ACT to reform the law relating to sexual offences.",
   }),
   true,
@@ -51,7 +52,8 @@ check(
     title: "Court of Appeal (Amendment) Act",
     code: null,
     jurisdiction: "Guyana",
-    source_url: "https://www.parliament.gov.gy/publications/acts-of-parliament/court-of-appeal-amendment-act",
+    source_url:
+      "https://www.parliament.gov.gy/publications/acts-of-parliament/court-of-appeal-amendment-act",
     original_filename: "24366-24344-act_no._5_of_2025.pdf",
   }),
   true,
@@ -64,7 +66,8 @@ check(
     title: "Appropriation Act 2024",
     code: "1 of 2024",
     jurisdiction: "Guyana",
-    source_url: "https://www.parliament.gov.gy/publications/acts-of-parliament/appropriation-act-2024",
+    source_url:
+      "https://www.parliament.gov.gy/publications/acts-of-parliament/appropriation-act-2024",
   }),
   false,
 );

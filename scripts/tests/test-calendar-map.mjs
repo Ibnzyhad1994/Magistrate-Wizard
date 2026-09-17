@@ -37,16 +37,14 @@ check("all-day end is next calendar day", allDay.end, { date: "2026-08-25" });
 check("all-day does not invent a time", allDay.start.dateTime, undefined);
 
 const timed = toGoogleEvent({ ...base, scheduled_time: "14:30" });
-check(
-  "timed start uses Guyana offset, not UTC",
-  timed.start,
-  { dateTime: "2026-08-24T14:30:00-04:00", timeZone: "America/Guyana" },
-);
-check(
-  "timed end is one hour later in Guyana",
-  timed.end,
-  { dateTime: "2026-08-24T15:30:00-04:00", timeZone: "America/Guyana" },
-);
+check("timed start uses Guyana offset, not UTC", timed.start, {
+  dateTime: "2026-08-24T14:30:00-04:00",
+  timeZone: "America/Guyana",
+});
+check("timed end is one hour later in Guyana", timed.end, {
+  dateTime: "2026-08-24T15:30:00-04:00",
+  timeZone: "America/Guyana",
+});
 
 const late = toGoogleEvent({ ...base, scheduled_time: "23:30:00" });
 check(
@@ -56,7 +54,11 @@ check(
 );
 check("late sitting end is next local day", late.end.dateTime, "2026-08-25T00:30:00-04:00");
 
-check("cancelled maps to Google cancelled", toGoogleEvent({ ...base, event_status: "cancelled" }).status, "cancelled");
+check(
+  "cancelled maps to Google cancelled",
+  toGoogleEvent({ ...base, event_status: "cancelled" }).status,
+  "cancelled",
+);
 check(
   "entered_in_error maps to Google cancelled",
   toGoogleEvent({ ...base, event_status: "entered_in_error" }).status,
@@ -64,7 +66,11 @@ check(
 );
 
 check("description has type and deep link, not notes", allDay.description.includes("trial"), true);
-check("description has matter deep link", allDay.description.includes("/docket/mat-1?tab=events"), true);
+check(
+  "description has matter deep link",
+  allDay.description.includes("/docket/mat-1?tab=events"),
+  true,
+);
 check("description omits orders/PII notes", allDay.description.includes("secret"), false);
 
 const pulledAllDay = logisticsFromGoogle({
@@ -99,15 +105,32 @@ check(
   "2026-08-24",
 );
 
-const ids = { web: "web-client", desktop: "desktop-client", android: "android-client", ios: "ios-client" };
+const ids = {
+  web: "web-client",
+  desktop: "desktop-client",
+  android: "android-client",
+  ios: "ios-client",
+};
 check(
   "loopback browser uses Desktop PKCE client, not confidential Web client",
   selectGoogleClientId("web", ids, "127.0.0.1"),
   "desktop-client",
 );
-check("localhost browser also uses Desktop client", selectGoogleClientId("web", ids, "localhost"), "desktop-client");
-check("hosted web keeps the Web client", selectGoogleClientId("web", ids, "app.example.gov.gy"), "web-client");
-check("Electron uses Desktop client", selectGoogleClientId("desktop", ids, "127.0.0.1"), "desktop-client");
+check(
+  "localhost browser also uses Desktop client",
+  selectGoogleClientId("web", ids, "localhost"),
+  "desktop-client",
+);
+check(
+  "hosted web keeps the Web client",
+  selectGoogleClientId("web", ids, "app.example.gov.gy"),
+  "web-client",
+);
+check(
+  "Electron uses Desktop client",
+  selectGoogleClientId("desktop", ids, "127.0.0.1"),
+  "desktop-client",
+);
 check(
   "token proxy maps Web client id to Web secret",
   secretForClientId("web-client", {

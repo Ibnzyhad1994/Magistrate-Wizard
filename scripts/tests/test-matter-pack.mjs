@@ -65,7 +65,11 @@ const stripped = stripForbiddenKeys({
   case_number: "2026/1",
   matter_title: "R v Test",
 });
-check("strip drops foreign ownership keys", "id" in stripped || "owner_id" in stripped || "court_id" in stripped, false);
+check(
+  "strip drops foreign ownership keys",
+  "id" in stripped || "owner_id" in stripped || "court_id" in stripped,
+  false,
+);
 check("strip keeps identity fields", stripped.case_number, "2026/1");
 
 const hostile = sanitizeMatterForPack({
@@ -75,18 +79,36 @@ const hostile = sanitizeMatterForPack({
   case_number: "2026/9",
   matter_title: "Imported",
   parties: [
-    { full_name: "Jane", role: "Accused", contact_info: "secret", identification_photo_path: "x.png" },
+    {
+      full_name: "Jane",
+      role: "Accused",
+      contact_info: "secret",
+      identification_photo_path: "x.png",
+    },
     { full_name: "", role: "skip" },
   ],
   events: [
-    { id: "e1", scheduled_date: "2026-09-01", presiding_magistrate_id: "mag-2", event_status: "scheduled" },
+    {
+      id: "e1",
+      scheduled_date: "2026-09-01",
+      presiding_magistrate_id: "mag-2",
+      event_status: "scheduled",
+    },
     { scheduled_date: "not-a-date" },
   ],
 });
 check("sanitized matter has no id", hostile && !("id" in hostile), true);
-check("party contact info never survives", hostile?.parties[0] && !("contact_info" in hostile.parties[0]), true);
+check(
+  "party contact info never survives",
+  hostile?.parties[0] && !("contact_info" in hostile.parties[0]),
+  true,
+);
 check("invalid events are dropped", hostile?.events.length, 1);
-check("event magistrate id is stripped", hostile?.events[0] && !("presiding_magistrate_id" in hostile.events[0]), true);
+check(
+  "event magistrate id is stripped",
+  hostile?.events[0] && !("presiding_magistrate_id" in hostile.events[0]),
+  true,
+);
 
 const parsedUnknown = parseMatterPack({ format: "other", version: 1, matters: [{}] });
 check("unknown format fails closed", parsedUnknown.ok, false);

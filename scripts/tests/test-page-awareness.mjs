@@ -41,28 +41,62 @@ async function main() {
   // must not appear on Page 2's `text` and vice versa (Section 34: "Page 1
   // text stays Page 1, Page 2 stays Page 2").
   {
-    const page1 = ["COURT OF APPEAL OF TESTLAND", "The Queen v First Appellant", "(1990) 10 XYZ 100"];
-    const page2 = ["The appellant was convicted following a trial in the High Court.", "Counsel submitted several grounds of appeal on behalf of the appellant in this matter."];
-    const page3 = ["The Court considered each ground in turn before dismissing the appeal entirely."];
+    const page1 = [
+      "COURT OF APPEAL OF TESTLAND",
+      "The Queen v First Appellant",
+      "(1990) 10 XYZ 100",
+    ];
+    const page2 = [
+      "The appellant was convicted following a trial in the High Court.",
+      "Counsel submitted several grounds of appeal on behalf of the appellant in this matter.",
+    ];
+    const page3 = [
+      "The Court considered each ground in turn before dismissing the appeal entirely.",
+    ];
     const file = makeMultiPagePdf([page1, page2, page3]);
     const envelope = await runPdfExtractionPipeline(file);
     checkTrue("1. multi-page PDF is extracted", envelope.status === "extracted");
     check("1. pageCount is 3", envelope.pageCount, 3);
     check("1. pages array has 3 entries", envelope.pages.length, 3);
     if (envelope.pages.length === 3) {
-      checkTrue("1. page 1 text contains its own content", envelope.pages[0].text.includes("First Appellant"));
-      checkTrue("1. page 1 text does NOT contain page 2's content", !envelope.pages[0].text.includes("Counsel submitted"));
-      checkTrue("1. page 2 text contains its own content", envelope.pages[1].text.includes("Counsel submitted"));
-      checkTrue("1. page 2 text does NOT contain page 1's content", !envelope.pages[1].text.includes("First Appellant"));
-      checkTrue("1. page 3 text contains its own content", envelope.pages[2].text.includes("dismissing the appeal"));
-      checkTrue("1. page 3 text does NOT contain page 1's content", !envelope.pages[2].text.includes("First Appellant"));
-      check("1. page numbers are 1-based and in order", envelope.pages.map((p) => p.pageNumber).join(","), "1,2,3");
+      checkTrue(
+        "1. page 1 text contains its own content",
+        envelope.pages[0].text.includes("First Appellant"),
+      );
+      checkTrue(
+        "1. page 1 text does NOT contain page 2's content",
+        !envelope.pages[0].text.includes("Counsel submitted"),
+      );
+      checkTrue(
+        "1. page 2 text contains its own content",
+        envelope.pages[1].text.includes("Counsel submitted"),
+      );
+      checkTrue(
+        "1. page 2 text does NOT contain page 1's content",
+        !envelope.pages[1].text.includes("First Appellant"),
+      );
+      checkTrue(
+        "1. page 3 text contains its own content",
+        envelope.pages[2].text.includes("dismissing the appeal"),
+      );
+      checkTrue(
+        "1. page 3 text does NOT contain page 1's content",
+        !envelope.pages[2].text.includes("First Appellant"),
+      );
+      check(
+        "1. page numbers are 1-based and in order",
+        envelope.pages.map((p) => p.pageNumber).join(","),
+        "1,2,3",
+      );
     }
     // fullText must still contain every page's content somewhere, with a
     // real separator between pages (never glued page-to-page).
     checkTrue("1. fullText contains page 1 content", envelope.text.includes("First Appellant"));
     checkTrue("1. fullText contains page 2 content", envelope.text.includes("Counsel submitted"));
-    checkTrue("1. fullText contains page 3 content", envelope.text.includes("dismissing the appeal"));
+    checkTrue(
+      "1. fullText contains page 3 content",
+      envelope.text.includes("dismissing the appeal"),
+    );
   }
 
   // 2. Metadata extraction prioritizes early pages: the real case header
@@ -85,14 +119,27 @@ async function main() {
     ];
     const file = makeMultiPagePdf([page1, page2]);
     const envelope = await runPdfExtractionPipeline(file);
-    checkTrue("2. two-page PDF is extracted", envelope.status === "extracted" || envelope.status === "low_quality");
+    checkTrue(
+      "2. two-page PDF is extracted",
+      envelope.status === "extracted" || envelope.status === "low_quality",
+    );
     const { fields, caseNameConfidence } = extractCaseLawMetadataWithConfidence(
       envelope.text,
       envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text })),
     );
-    check("2. case name confidence is high (anchored to Page 1's header)", caseNameConfidence, "high");
-    checkTrue("2. proposed case name is the Page 1 header, not the Page 2 body citation", (fields.case_name ?? "").includes("Genuine Appellant"));
-    checkTrue("2. proposed case name does NOT pick up the Page 2 body citation", !(fields.case_name ?? "").includes("Someone Else"));
+    check(
+      "2. case name confidence is high (anchored to Page 1's header)",
+      caseNameConfidence,
+      "high",
+    );
+    checkTrue(
+      "2. proposed case name is the Page 1 header, not the Page 2 body citation",
+      (fields.case_name ?? "").includes("Genuine Appellant"),
+    );
+    checkTrue(
+      "2. proposed case name does NOT pick up the Page 2 body citation",
+      !(fields.case_name ?? "").includes("Someone Else"),
+    );
   }
 
   // 3. Word-boundary spacing heuristic: reproduces the live-tested Ramsingh
@@ -103,11 +150,20 @@ async function main() {
   {
     const file = makeGluedTextPdf();
     const envelope = await runPdfExtractionPipeline(file);
-    checkTrue("3. glued-text PDF is usable", envelope.status === "extracted" || envelope.status === "low_quality");
+    checkTrue(
+      "3. glued-text PDF is usable",
+      envelope.status === "extracted" || envelope.status === "low_quality",
+    );
     checkTrue("3. no digit-letter glue at '138Page'", !envelope.text.includes("138Page"));
     checkTrue("3. no digit-letter glue at '72DPP'", !envelope.text.includes("72DPP"));
-    checkTrue("3. citation text is still present and intact", envelope.text.includes("(1973) 20 WIR 138"));
-    checkTrue("3. the second heading is still present and intact", envelope.text.includes("DPP v Beard"));
+    checkTrue(
+      "3. citation text is still present and intact",
+      envelope.text.includes("(1973) 20 WIR 138"),
+    );
+    checkTrue(
+      "3. the second heading is still present and intact",
+      envelope.text.includes("DPP v Beard"),
+    );
   }
 
   // 4. Backward compatibility: a PDF with ZERO /Type /Page markers (every
@@ -125,10 +181,16 @@ async function main() {
     ];
     const file = makeTextPdf(lines);
     const envelope = await runPdfExtractionPipeline(file);
-    checkTrue("4. no-page-marker PDF is usable", envelope.status === "extracted" || envelope.status === "low_quality");
+    checkTrue(
+      "4. no-page-marker PDF is usable",
+      envelope.status === "extracted" || envelope.status === "low_quality",
+    );
     check("4. degrades to exactly one implicit page", envelope.pageCount, 1);
     if (envelope.pages.length === 1) {
-      checkTrue("4. the single page carries all the text", envelope.pages[0].text.includes("Ordinary Appellant"));
+      checkTrue(
+        "4. the single page carries all the text",
+        envelope.pages[0].text.includes("Ordinary Appellant"),
+      );
       check("4. the single page is numbered 1", envelope.pages[0].pageNumber, 1);
     }
   }

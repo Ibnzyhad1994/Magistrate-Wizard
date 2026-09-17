@@ -29,8 +29,7 @@ check("pending magistrate has no tour", walkthroughStepsFor("magistrate", true).
 const clerk = walkthroughStepsFor("clerk", false);
 const magistrate = walkthroughStepsFor("magistrate", false);
 const admin = walkthroughStepsFor("admin", false);
-const idsIn = (steps, chapter) =>
-  steps.filter((s) => s.chapter === chapter).map((s) => s.id);
+const idsIn = (steps, chapter) => steps.filter((s) => s.chapter === chapter).map((s) => s.id);
 
 // --- role coverage ---------------------------------------------------------
 // The rule the tour is built on: never point at something the role cannot
@@ -174,7 +173,17 @@ check(
 check(
   "empty docket sitting day skips the file",
   visibleWalkthroughSteps(magistrate, "sitting", false).map((s) => s.id),
-  ["home", "dashboard", "dashboard-metrics", "docket", "week-strip", "board", "outcome", "next", "chapter-rest"],
+  [
+    "home",
+    "dashboard",
+    "dashboard-metrics",
+    "docket",
+    "week-strip",
+    "board",
+    "outcome",
+    "next",
+    "chapter-rest",
+  ],
 );
 check(
   "full sitting day keeps the file",
@@ -206,7 +215,9 @@ check(
   "dashboard is walked as a page stop so it can ring More",
   [clerk, magistrate, admin].every((steps) => {
     const step = steps.find((s) => s.id === "dashboard");
-    return step?.kind === "page" && step.navTarget === "nav-dashboard" && step.route === "/dashboard";
+    return (
+      step?.kind === "page" && step.navTarget === "nav-dashboard" && step.route === "/dashboard"
+    );
   }),
   true,
 );
@@ -321,11 +332,10 @@ check(
   false,
 );
 
-check(
-  "pending visit marks awaiting assignment",
-  walkthroughRecordForPending(null),
-  { version: 1, awaitingAssignment: true },
-);
+check("pending visit marks awaiting assignment", walkthroughRecordForPending(null), {
+  version: 1,
+  awaitingAssignment: true,
+});
 check(
   "pending visit does not revive a finished tour",
   walkthroughRecordForPending({ version: 1, completedAt: "2026-09-02T00:00:00.000Z" }),
@@ -333,7 +343,10 @@ check(
 );
 check(
   "auto-start clears awaiting and stamps once",
-  walkthroughRecordAfterAutoStart({ version: 1, awaitingAssignment: true }, "2026-09-02T12:00:00.000Z"),
+  walkthroughRecordAfterAutoStart(
+    { version: 1, awaitingAssignment: true },
+    "2026-09-02T12:00:00.000Z",
+  ),
   { version: 1, awaitingAssignment: false, autoStartedAt: "2026-09-02T12:00:00.000Z" },
 );
 check(

@@ -59,7 +59,11 @@ check("column header spotlight hugs the header's real bounds", header, {
 // would be almost entirely empty space above and below a thin strip.
 const strip = tourSpotlightFromRect({ top: 200, left: 300, width: 90, height: 14 });
 check("a thin strip under the size cap is still rejected on aspect", isCircle(strip), false);
-check("thin strip radius never exceeds half its short side", strip.radius <= strip.height / 2, true);
+check(
+  "thin strip radius never exceeds half its short side",
+  strip.radius <= strip.height / 2,
+  true,
+);
 
 const board = tourSpotlightFromRect({ top: 80, left: 16, width: 900, height: 420 });
 check("the board gets a rectangle, not a disc floating in its middle", isCircle(board), false);
@@ -117,7 +121,11 @@ const below = tourCardPosition({ top: 80, left: 200, width: 56, height: 56 }, vi
   height: 176,
 });
 check("card sits below the spotlight when there is room", below.top >= 80 + 56, true);
-check("card stays inside the viewport horizontally", below.left >= 16 && below.left + 320 <= 784, true);
+check(
+  "card stays inside the viewport horizontally",
+  below.left >= 16 && below.left + 320 <= 784,
+  true,
+);
 
 const above = tourCardPosition({ top: 480, left: 200, width: 56, height: 56 }, viewport, {
   width: 320,
@@ -131,7 +139,11 @@ const rightEdge = tourCardPosition({ top: 360, left: 720, width: 56, height: 56 
   height: 176,
 });
 check("card sits to the left of a right-edge spotlight", rightEdge.left + 320 <= 720, true);
-check("right-edge card stays inside the viewport", rightEdge.left >= 16 && rightEdge.top >= 16, true);
+check(
+  "right-edge card stays inside the viewport",
+  rightEdge.left >= 16 && rightEdge.top >= 16,
+  true,
+);
 
 // A wide spotlight has to push the card further than a 56px circle would.
 // Passing the box (not a nominal circle) is the whole point of the change.
@@ -195,7 +207,12 @@ check("navbar hole is padded around the link", caseLawNav, {
   height: 40,
 });
 
-const pageCardRight = tourCardPositionForPage(caseLawNav, pageViewport, { width: 320, height: 176 }, 68);
+const pageCardRight = tourCardPositionForPage(
+  caseLawNav,
+  pageViewport,
+  { width: 320, height: 176 },
+  68,
+);
 check("page card sits below the navbar", pageCardRight.top >= 80, true);
 check(
   "page card stays off a left navbar link",
@@ -204,12 +221,13 @@ check(
 );
 
 const searchNav = padTourBox({ top: 16, left: 1188, width: 44, height: 44 }, 8, pageViewport);
-const pageCardLeft = tourCardPositionForPage(searchNav, pageViewport, { width: 320, height: 176 }, 68);
-check(
-  "page card stays off the search control",
-  pageCardLeft.left + 320 <= searchNav.left,
-  true,
+const pageCardLeft = tourCardPositionForPage(
+  searchNav,
+  pageViewport,
+  { width: 320, height: 176 },
+  68,
 );
+check("page card stays off the search control", pageCardLeft.left + 320 <= searchNav.left, true);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

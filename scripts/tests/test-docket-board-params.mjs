@@ -24,7 +24,11 @@ const serialise = (state, base = "") =>
 
 // --- defaults ------------------------------------------------------------
 
-check("a bare /docket URL parses to the empty board (no filters, no date)", parse(""), EMPTY_BOARD_PARAMS);
+check(
+  "a bare /docket URL parses to the empty board (no filters, no date)",
+  parse(""),
+  EMPTY_BOARD_PARAMS,
+);
 
 check(
   "the empty board serialises to an empty query string — the default view stays a clean URL",
@@ -57,7 +61,8 @@ check(
 
 check(
   "known filter values parse",
-  parse("stage=trial,ruling&custody=remanded&disclosure=partial&trial=completed&next=today").filters,
+  parse("stage=trial,ruling&custody=remanded&disclosure=partial&trial=completed&next=today")
+    .filters,
   {
     stages: ["trial", "ruling"],
     custody: ["remanded"],
@@ -177,7 +182,9 @@ check(
 
 check(
   "clearing board params leaves ?court= intact — a scope switch keeps the scope, drops the filters",
-  clearBoardParams(new URLSearchParams("court=vigilance-id&q=smith&stage=trial&date=2026-09-10")).toString(),
+  clearBoardParams(
+    new URLSearchParams("court=vigilance-id&q=smith&stage=trial&date=2026-09-10"),
+  ).toString(),
   "court=vigilance-id",
 );
 
@@ -196,7 +203,11 @@ check(
 );
 
 check("hasBoardParams is false for a bare URL", hasBoardParams(new URLSearchParams("")), false);
-check("hasBoardParams is true when a filter is set", hasBoardParams(new URLSearchParams("stage=trial")), true);
+check(
+  "hasBoardParams is true when a filter is set",
+  hasBoardParams(new URLSearchParams("stage=trial")),
+  true,
+);
 check(
   "hasBoardParams ignores a blank param value",
   hasBoardParams(new URLSearchParams("q=%20")),

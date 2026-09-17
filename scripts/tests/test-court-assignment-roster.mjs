@@ -81,14 +81,21 @@ const requests = [
   { id: "3", profile_id: "other", status: "pending" },
 ];
 
-check("filters requests to one profile", requestsForProfile(requests, "bhoj").map((r) => r.id), [
-  "1",
-  "2",
-]);
-check("pending list is empty when they only cancelled", pendingRequestsForProfile(requests, "bhoj"), []);
-check("pending list finds the other person's open row", pendingRequestsForProfile(requests, "other").map((r) => r.id), [
-  "3",
-]);
+check(
+  "filters requests to one profile",
+  requestsForProfile(requests, "bhoj").map((r) => r.id),
+  ["1", "2"],
+);
+check(
+  "pending list is empty when they only cancelled",
+  pendingRequestsForProfile(requests, "bhoj"),
+  [],
+);
+check(
+  "pending list finds the other person's open row",
+  pendingRequestsForProfile(requests, "other").map((r) => r.id),
+  ["3"],
+);
 check("waiting badge is hidden with no open request", waitingListRequestLabel(0), null);
 check("waiting badge for one open request", waitingListRequestLabel(1), "Open request");
 check("waiting badge for several open requests", waitingListRequestLabel(2), "2 open requests");
@@ -199,7 +206,11 @@ check(
   false,
 );
 
-check("migration 0135 adds court_request_decided", sql0135.includes("'court_request_decided'"), true);
+check(
+  "migration 0135 adds court_request_decided",
+  sql0135.includes("'court_request_decided'"),
+  true,
+);
 check(
   "migration 0135 notifies the requester on reject/approve",
   sql0135.includes("after insert or update on public.magistrate_court_requests") &&
@@ -277,7 +288,9 @@ check(
 check(
   "signup requires an explicit Magistrate vs Court Clerk choice",
   registerPage.includes("Choose Magistrate or Court Clerk first") &&
-    registerPage.includes("You sit the court. A Court Assignment Administrator must approve your court."),
+    registerPage.includes(
+      "You sit the court. A Court Assignment Administrator must approve your court.",
+    ),
   true,
 );
 
@@ -324,7 +337,7 @@ check(
 );
 check(
   "the early return only fires once the request list is known",
-  rosterPanel.includes("if (requestsKnown && !canSendBack && !canCorrect"),
+  /if \(\s*requestsKnown &&\s*!canSendBack &&\s*!canCorrect/.test(rosterPanel),
   true,
 );
 check(
@@ -429,13 +442,15 @@ check(
 
 check(
   "rejected court is available to request again",
-  [...clerkCourtsUnavailableForNewRequest(
-    [
-      { court_id: "acquero", status: "rejected" },
-      { court_id: "pending-court", status: "pending" },
-    ],
-    ["sitting-court"],
-  )].sort(),
+  [
+    ...clerkCourtsUnavailableForNewRequest(
+      [
+        { court_id: "acquero", status: "rejected" },
+        { court_id: "pending-court", status: "pending" },
+      ],
+      ["sitting-court"],
+    ),
+  ].sort(),
   ["pending-court", "sitting-court"].sort(),
 );
 check(
@@ -450,7 +465,11 @@ check(
 );
 check("assignment type labels use Primary not regular", ASSIGNMENT_TYPE_LABEL.regular, "Primary");
 check("assignmentTypeLabel maps regular to Primary", assignmentTypeLabel("regular"), "Primary");
-check("assignmentTypeLabel ignores a non-string index (the CI typecheck case)", assignmentTypeLabel({}), undefined);
+check(
+  "assignmentTypeLabel ignores a non-string index (the CI typecheck case)",
+  assignmentTypeLabel({}),
+  undefined,
+);
 
 check(
   "0153 lets an administrator cancel a pending clerk or magistrate request",

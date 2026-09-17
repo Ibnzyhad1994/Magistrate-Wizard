@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS/RPC regression test for the "Administrator who is also a
 // magistrate must reach the Docket through their magistrate_courts
 // assignments, and NEVER through a universal admin bypass" fix.
@@ -43,7 +44,9 @@ if (!SERVICE_KEY) {
   process.exit(1);
 }
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -90,7 +93,12 @@ async function main() {
   async function makeCourt(name) {
     const { data, error } = await admin
       .from("courts")
-      .insert({ name: `${name} ${stamp}`, jurisdiction: "Test", district_id: district.id, is_active: true })
+      .insert({
+        name: `${name} ${stamp}`,
+        jurisdiction: "Test",
+        district_id: district.id,
+        is_active: true,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -166,30 +174,55 @@ async function main() {
       .select("court_id")
       .eq("profile_id", adminMagistrate.id)
       .is("ended_at", null);
-    check("1a. Admin-magistrate's own magistrate_courts query returns exactly Alpha (this is what useMyCurrentCourts() reads)", (data ?? []).length === 1 && data[0].court_id === alpha.id);
+    check(
+      "1a. Admin-magistrate's own magistrate_courts query returns exactly Alpha (this is what useMyCurrentCourts() reads)",
+      (data ?? []).length === 1 && data[0].court_id === alpha.id,
+    );
   }
   {
-    const { data } = await adminMagistrateClient.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("1b. Admin-magistrate can read the Alpha docket (whole-court access via assignment, not via role)", (data ?? []).some((r) => r.id === alphaMatter.id));
+    const { data } = await adminMagistrateClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
+    check(
+      "1b. Admin-magistrate can read the Alpha docket (whole-court access via assignment, not via role)",
+      (data ?? []).some((r) => r.id === alphaMatter.id),
+    );
   }
   {
     const { data, error } = await adminMagistrateClient
       .from("docket_matters")
-      .insert({ court_id: alpha.id, case_number: `ADM-A2-${stamp}`, matter_title: "Second Alpha matter" })
+      .insert({
+        court_id: alpha.id,
+        case_number: `ADM-A2-${stamp}`,
+        matter_title: "Second Alpha matter",
+      })
       .select()
       .single();
     check("1c. Admin-magistrate can create a new matter at Alpha", !error && !!data);
-    check("1d. created_by correctly records the admin-magistrate's own id, not a spoofed value", data?.created_by === adminMagistrate.id);
+    check(
+      "1d. created_by correctly records the admin-magistrate's own id, not a spoofed value",
+      data?.created_by === adminMagistrate.id,
+    );
   }
   {
-    const { data } = await adminMagistrateClient.from("docket_matters").select("id").eq("court_id", beta.id);
-    check("1e. Admin-magistrate CANNOT read the Beta docket (Alpha assignment does not grant unrelated courts)", (data ?? []).length === 0);
+    const { data } = await adminMagistrateClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", beta.id);
+    check(
+      "1e. Admin-magistrate CANNOT read the Beta docket (Alpha assignment does not grant unrelated courts)",
+      (data ?? []).length === 0,
+    );
   }
   {
     const { error } = await adminMagistrateClient
       .from("docket_matters")
       .insert({ court_id: beta.id, case_number: `ADM-B2-${stamp}`, matter_title: "Should fail" });
-    check("1f. Admin-magistrate cannot insert into Beta (no assignment there — no admin bypass on INSERT)", !!error);
+    check(
+      "1f. Admin-magistrate cannot insert into Beta (no assignment there — no admin bypass on INSERT)",
+      !!error,
+    );
   }
 
   // --- 2. Pure admin with ZERO court assignments -- no universal bypass ---
@@ -199,46 +232,93 @@ async function main() {
       .select("court_id")
       .eq("profile_id", pureAdmin.id)
       .is("ended_at", null);
-    check("2a. Pure admin's own magistrate_courts query returns an empty array, not an error (accurate 'no assignment' state)", Array.isArray(data) && data.length === 0);
+    check(
+      "2a. Pure admin's own magistrate_courts query returns an empty array, not an error (accurate 'no assignment' state)",
+      Array.isArray(data) && data.length === 0,
+    );
   }
   {
-    const { data } = await pureAdminClient.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("2b. Pure admin CANNOT read the Alpha docket — role='admin' alone grants nothing", (data ?? []).length === 0);
+    const { data } = await pureAdminClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
+    check(
+      "2b. Pure admin CANNOT read the Alpha docket — role='admin' alone grants nothing",
+      (data ?? []).length === 0,
+    );
   }
   {
-    const { data } = await pureAdminClient.from("docket_matters").select("id").eq("court_id", beta.id);
-    check("2c. Pure admin CANNOT read the Beta docket either — confirms no universal admin bypass exists anywhere", (data ?? []).length === 0);
+    const { data } = await pureAdminClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", beta.id);
+    check(
+      "2c. Pure admin CANNOT read the Beta docket either — confirms no universal admin bypass exists anywhere",
+      (data ?? []).length === 0,
+    );
   }
   {
     const { data, error } = await pureAdminClient.rpc("list_docket_matters", { p_court_id: null });
     if (error) throw error;
-    check("2d. Pure admin's list_docket_matters (All My Courts) returns zero rows, not an error and not every court's matters", data.length === 0);
+    check(
+      "2d. Pure admin's list_docket_matters (All My Courts) returns zero rows, not an error and not every court's matters",
+      data.length === 0,
+    );
   }
 
   // --- 3. Regression controls: ordinary magistrate and approved clerk ---
   {
-    const { data } = await magistrateClient.from("docket_matters").select("id").eq("court_id", beta.id);
-    check("3a. Ordinary magistrate (unaffected by this fix) still reads Beta normally", (data ?? []).some((r) => r.id === betaMatter.id));
+    const { data } = await magistrateClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", beta.id);
+    check(
+      "3a. Ordinary magistrate (unaffected by this fix) still reads Beta normally",
+      (data ?? []).some((r) => r.id === betaMatter.id),
+    );
   }
   {
-    const { data } = await magistrateClient.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("3b. Ordinary magistrate still cannot read Alpha (not their court)", (data ?? []).length === 0);
+    const { data } = await magistrateClient
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
+    check(
+      "3b. Ordinary magistrate still cannot read Alpha (not their court)",
+      (data ?? []).length === 0,
+    );
   }
   {
     const { data } = await clerkClient.from("docket_matters").select("id").eq("court_id", beta.id);
-    check("4a. Approved clerk (unaffected by this fix) still reads Beta normally", (data ?? []).some((r) => r.id === betaMatter.id));
+    check(
+      "4a. Approved clerk (unaffected by this fix) still reads Beta normally",
+      (data ?? []).some((r) => r.id === betaMatter.id),
+    );
   }
   {
     const { data } = await clerkClient.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("4b. Clerk restrictions remain fully intact — clerk still cannot read Alpha, still no cross-court leak", (data ?? []).length === 0);
+    check(
+      "4b. Clerk restrictions remain fully intact — clerk still cannot read Alpha, still no cross-court leak",
+      (data ?? []).length === 0,
+    );
   }
   {
     // A clerk must never acquire admin/magistrate powers as a side effect of this fix.
-    const { data: clerkProfile } = await admin.from("profiles").select("role").eq("id", clerk.id).single();
-    check("4c. Clerk's stored role is unchanged ('clerk'), no privilege drift from this fix", clerkProfile.role === "clerk");
+    const { data: clerkProfile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", clerk.id)
+      .single();
+    check(
+      "4c. Clerk's stored role is unchanged ('clerk'), no privilege drift from this fix",
+      clerkProfile.role === "clerk",
+    );
   }
 
-  console.log(failures > 0 ? `\n${failures} failure(s).` : "\nAll admin-magistrate docket access tests passed.");
+  console.log(
+    failures > 0
+      ? `\n${failures} failure(s).`
+      : "\nAll admin-magistrate docket access tests passed.",
+  );
 }
 
 async function cleanup() {
@@ -251,7 +331,8 @@ async function cleanup() {
     for (const courtId of created.courts) {
       await admin.from("courts").delete().eq("id", courtId);
     }
-    if (created.districtId) await admin.from("magisterial_districts").delete().eq("id", created.districtId);
+    if (created.districtId)
+      await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     for (const userId of created.users) {
       await admin.auth.admin.deleteUser(userId);
     }

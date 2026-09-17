@@ -14,12 +14,18 @@
  *      the harvested one is missing, suspiciously short, or identical to
  *      the code (the exact "title=code=Marriage" defect the audit found).
  */
-import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, deriveContentQualityStatus } from "@/lib/extraction-quality";
+import {
+  assessExtractionQuality,
+  CLEAN_SCORE_THRESHOLD,
+  deriveContentQualityStatus,
+} from "@/lib/extraction-quality";
 
 export { deriveContentQualityStatus };
 
-const SEED_DISCLAIMER = "Seeded from an official public source. Curator must still vet before publish.";
-const CATALOG_ONLY_WARNING = "Catalog entry only — attach or paste the official text in Review Queue.";
+const SEED_DISCLAIMER =
+  "Seeded from an official public source. Curator must still vet before publish.";
+const CATALOG_ONLY_WARNING =
+  "Catalog entry only — attach or paste the official text in Review Queue.";
 
 /**
  * Legislation-specific, deliberately NOT part of the shared
@@ -35,7 +41,8 @@ const CATALOG_ONLY_WARNING = "Catalog entry only — attach or paste the officia
  * else) scored "fair" from the generic gate despite having no enacting
  * text at all.
  */
-const GAZETTE_LINE_RE = /official gazette|legal supplement|laws\s+of\s+guyana|^\s*a\.d\.\s*\d{4}|^\d+\s+the\s+official|no\.\s*\d+\]/i;
+const GAZETTE_LINE_RE =
+  /official gazette|legal supplement|laws\s+of\s+guyana|^\s*a\.d\.\s*\d{4}|^\d+\s+the\s+official|no\.\s*\d+\]/i;
 const MIN_DISTINCT_LEGISLATION_CONTENT = 150;
 
 /** Character length of `text` after stripping gazette masthead/page-
@@ -54,9 +61,11 @@ const HARD_FAIL_MESSAGE = {
     "Automated quality gate: extracted text is mostly a repeated page header/footer block — the real document body was not captured.",
   printable_ratio: "Automated quality gate: too many non-printable/unexpected characters.",
   replacement_chars: "Automated quality gate: too many unrecognized-character (�) OCR artifacts.",
-  boilerplate: "Automated quality gate: text looks like embedded PDF font/licensing metadata, not document content.",
+  boilerplate:
+    "Automated quality gate: text looks like embedded PDF font/licensing metadata, not document content.",
   control_chars: "Automated quality gate: too many control characters for prose text.",
-  structural_incoherence: "Automated quality gate: text does not resemble genuine word-broken prose.",
+  structural_incoherence:
+    "Automated quality gate: text does not resemble genuine word-broken prose.",
 };
 
 /**
@@ -85,10 +94,17 @@ export function buildEnvelope(rawText, method = "manual_paste") {
   }
 
   const assessment = assessExtractionQuality(trimmed);
-  const status = !assessment.passed ? "failed" : assessment.score >= CLEAN_SCORE_THRESHOLD ? "extracted" : "low_quality";
+  const status = !assessment.passed
+    ? "failed"
+    : assessment.score >= CLEAN_SCORE_THRESHOLD
+      ? "extracted"
+      : "low_quality";
   const warnings = [SEED_DISCLAIMER, ...assessment.warnings];
   if (assessment.hardFailReason) {
-    warnings.push(HARD_FAIL_MESSAGE[assessment.hardFailReason] ?? `Automated quality gate: ${assessment.hardFailReason}.`);
+    warnings.push(
+      HARD_FAIL_MESSAGE[assessment.hardFailReason] ??
+        `Automated quality gate: ${assessment.hardFailReason}.`,
+    );
   }
 
   return {
@@ -113,7 +129,8 @@ export function buildEnvelope(rawText, method = "manual_paste") {
  * always contains its instrument type and/or an enactment year — "Marriage
  * (Amendment) Act 1985", "Cattle Stealing Prevention (Amendment) Act 1998".
  * A bare fragment like "Marriage" has neither. */
-const LOOKS_LIKE_LEGISLATION_TITLE_RE = /\b(?:act|ordinance|regulations?|chapter|cap\.?)\b|\b(?:19|20)\d{2}\b/i;
+const LOOKS_LIKE_LEGISLATION_TITLE_RE =
+  /\b(?:act|ordinance|regulations?|chapter|cap\.?)\b|\b(?:19|20)\d{2}\b/i;
 
 /**
  * Applies the Legislation-specific thin-content override on top of an

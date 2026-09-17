@@ -59,7 +59,8 @@ const makeDeps = ({ googleDown = false, existingLink = null } = {}) => {
       },
       links: {
         get: async (profileId, eventId) =>
-          links.find((row) => row.profile_id === profileId && row.docket_event_id === eventId) ?? null,
+          links.find((row) => row.profile_id === profileId && row.docket_event_id === eventId) ??
+          null,
         getByExternal: async (externalEventId) =>
           links.find((row) => row.external_event_id === externalEventId) ?? null,
         upsert: async (row) => {
@@ -94,11 +95,19 @@ const createdResult = await pushOneEvent(createdRun.deps, {
 });
 check("push create returns Google id", createdResult.externalEventId, "gcal-1");
 check("push create wrote one Google event", createdRun.created.length, 1);
-check("push title is case number + matter", createdRun.created[0].summary, "2026/MAG/1 · Police v. Test");
+check(
+  "push title is case number + matter",
+  createdRun.created[0].summary,
+  "2026/MAG/1 · Police v. Test",
+);
 check("unique link row stored", createdRun.links.length, 1);
 check(
   "link unique key",
-  uniqueLinkKey(createdRun.links[0].profile_id, createdRun.links[0].docket_event_id, createdRun.links[0].provider),
+  uniqueLinkKey(
+    createdRun.links[0].profile_id,
+    createdRun.links[0].docket_event_id,
+    createdRun.links[0].provider,
+  ),
   "user-1::evt-1::google",
 );
 

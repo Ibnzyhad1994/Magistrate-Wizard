@@ -22,20 +22,23 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-check-ios:
     runs-on: macos-14
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          npm install -g npm@11.6.2
-          npm ci
+        run: npm ci
 
       - name: Sync native version from package.json / native/version.json
         run: npm run native:sync-version

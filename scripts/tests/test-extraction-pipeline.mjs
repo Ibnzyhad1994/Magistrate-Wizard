@@ -110,7 +110,11 @@ async function main() {
     const envelope = await runPdfExtractionPipeline(file);
     await check("5. image-only PDF status is requires_ocr", envelope.status, "requires_ocr");
     await check("5. image-only PDF text withheld", envelope.text, "");
-    await check("5. image-only PDF unreadableReason is no_text_found", envelope.unreadableReason, "no_text_found");
+    await check(
+      "5. image-only PDF unreadableReason is no_text_found",
+      envelope.unreadableReason,
+      "no_text_found",
+    );
   }
 
   // 6. Simple-font PDF using HEX STRING Tj operands (Phase A/D root-cause
@@ -132,8 +136,16 @@ async function main() {
     const envelope = await runPdfExtractionPipeline(file);
     await check("6. hex-string simple-font PDF is extracted", envelope.status, "extracted");
     await check("6. hex-string simple-font PDF text is non-empty", envelope.text.length > 0, true);
-    await check("6. hex-string simple-font PDF text contains the decoded case name", envelope.text.includes("Test Appellant"), true);
-    await check("6. hex-string simple-font PDF unreadableReason is null", envelope.unreadableReason, null);
+    await check(
+      "6. hex-string simple-font PDF text contains the decoded case name",
+      envelope.text.includes("Test Appellant"),
+      true,
+    );
+    await check(
+      "6. hex-string simple-font PDF unreadableReason is null",
+      envelope.unreadableReason,
+      null,
+    );
   }
 
   // 7. Composite/Type0 (CID-keyed) font PDF using HEX STRING Tj operands
@@ -147,7 +159,11 @@ async function main() {
   {
     const file = makeCompositeFontHexPdf();
     const envelope = await runPdfExtractionPipeline(file);
-    await check("7. composite-font hex PDF status is requires_ocr", envelope.status, "requires_ocr");
+    await check(
+      "7. composite-font hex PDF status is requires_ocr",
+      envelope.status,
+      "requires_ocr",
+    );
     await check("7. composite-font hex PDF text withheld", envelope.text, "");
     await check(
       "7. composite-font hex PDF unreadableReason is unsupported_font_encoding",
@@ -166,20 +182,48 @@ async function main() {
     const envelope = await runPdfExtractionPipeline(file);
     await check("8. encrypted PDF status is requires_ocr", envelope.status, "requires_ocr");
     await check("8. encrypted PDF text withheld", envelope.text, "");
-    await check("8. encrypted PDF unreadableReason is encrypted", envelope.unreadableReason, "encrypted");
+    await check(
+      "8. encrypted PDF unreadableReason is encrypted",
+      envelope.unreadableReason,
+      "encrypted",
+    );
   }
 
-  await check("9. pdf.js upgrade helper prefers substantially longer text", shouldPreferPdfjsText(1495, 12497), true);
-  await check("9. pdf.js upgrade helper ignores a small difference", shouldPreferPdfjsText(1000, 1100), false);
-  await check("9. pdf.js upgrade helper ignores empty pdf.js", shouldPreferPdfjsText(500, 0), false);
-  await check("9. embedded JPEGs used only when rasterize failed", shouldUseEmbeddedJpegsForOcr(0, 3), true);
-  await check("9. embedded JPEGs not preferred when pages were rasterized", shouldUseEmbeddedJpegsForOcr(5, 3), false);
+  await check(
+    "9. pdf.js upgrade helper prefers substantially longer text",
+    shouldPreferPdfjsText(1495, 12497),
+    true,
+  );
+  await check(
+    "9. pdf.js upgrade helper ignores a small difference",
+    shouldPreferPdfjsText(1000, 1100),
+    false,
+  );
+  await check(
+    "9. pdf.js upgrade helper ignores empty pdf.js",
+    shouldPreferPdfjsText(500, 0),
+    false,
+  );
+  await check(
+    "9. embedded JPEGs used only when rasterize failed",
+    shouldUseEmbeddedJpegsForOcr(0, 3),
+    true,
+  );
+  await check(
+    "9. embedded JPEGs not preferred when pages were rasterized",
+    shouldUseEmbeddedJpegsForOcr(5, 3),
+    false,
+  );
 
   {
     const file = makeHomemadeShortPdfjsLongPdf();
     const homemade = await extractPdfTextLayer(file);
     const envelope = await runPdfExtractionPipeline(file);
-    await check("9. multi-stream homemade is shorter than pipeline text", homemade.text.length < envelope.text.length, true);
+    await check(
+      "9. multi-stream homemade is shorter than pipeline text",
+      homemade.text.length < envelope.text.length,
+      true,
+    );
     await check(
       "9. multi-stream fixture recovers later-page unique text",
       envelope.text.includes("Later page paragraph 12"),
@@ -191,15 +235,15 @@ async function main() {
   {
     const pages = [];
     const nonce = (n) => {
-      const letters = "abcdefghijkmnopqrstuvwxyz"
-      let s = "zx"
-      let x = n + 11
+      const letters = "abcdefghijkmnopqrstuvwxyz";
+      let s = "zx";
+      let x = n + 11;
       while (x > 0) {
-        s += letters[x % letters.length]
-        x = Math.floor(x / letters.length)
+        s += letters[x % letters.length];
+        x = Math.floor(x / letters.length);
       }
-      return s
-    }
+      return s;
+    };
     for (let i = 1; i <= 45; i++) {
       pages.push([
         `In the matter of ${nonce(i)} the appellant ${nonce(i + 17)} challenged a conviction recorded against ${nonce(i + 23)}.`,
@@ -212,17 +256,40 @@ async function main() {
     const file = makeWellFormedMultiPagePdf(pages, "forty-five-pages.pdf");
     const envelope = await runPdfExtractionPipeline(file);
     await check("10. 45-page born-digital status is extracted", envelope.status, "extracted");
-    await check("10. 45-page envelope includes page 45", envelope.pages.some((p) => p.pageNumber === 45), true);
-    await check("10. 45-page text includes last-page marker", envelope.text.includes("PAGE_FORTYFIVE_UNIQUE_MARKER"), true);
-    await check("10. 45-page has no truncation warning", envelope.warnings.some((w) => /only the first/i.test(w)), false);
+    await check(
+      "10. 45-page envelope includes page 45",
+      envelope.pages.some((p) => p.pageNumber === 45),
+      true,
+    );
+    await check(
+      "10. 45-page text includes last-page marker",
+      envelope.text.includes("PAGE_FORTYFIVE_UNIQUE_MARKER"),
+      true,
+    );
+    await check(
+      "10. 45-page has no truncation warning",
+      envelope.warnings.some((w) => /only the first/i.test(w)),
+      false,
+    );
   }
 
   {
-    const recovered = await extractPdfjsTextContent(makeWellFormedMultiPagePdf([["Cap page one."], ["Cap page two."]]), {
-      maxPages: 1,
-    });
-    await check("10b. optional text cap reports truncated", recovered.ok && recovered.truncated, true);
-    await check("10b. optional text cap warns", recovered.ok && recovered.warnings.some((w) => /only the first 1 of 2 pages/i.test(w)), true);
+    const recovered = await extractPdfjsTextContent(
+      makeWellFormedMultiPagePdf([["Cap page one."], ["Cap page two."]]),
+      {
+        maxPages: 1,
+      },
+    );
+    await check(
+      "10b. optional text cap reports truncated",
+      recovered.ok && recovered.truncated,
+      true,
+    );
+    await check(
+      "10b. optional text cap warns",
+      recovered.ok && recovered.warnings.some((w) => /only the first 1 of 2 pages/i.test(w)),
+      true,
+    );
   }
 
   {
@@ -238,9 +305,17 @@ async function main() {
     const file = makeWellFormedCidToUnicodePdf(lines);
     const homemade = await extractPdfTextLayer(file);
     const envelope = await runPdfExtractionPipeline(file);
-    await check("11. CID homemade does not decode Type0 hex as success", homemade.hasTextLayer, false);
+    await check(
+      "11. CID homemade does not decode Type0 hex as success",
+      homemade.hasTextLayer,
+      false,
+    );
     await check("11. CID pdf.js-primary status is extracted", envelope.status, "extracted");
-    await check("11. CID pdf.js-primary contains case name", envelope.text.includes("Dhannie Ramsingh"), true);
+    await check(
+      "11. CID pdf.js-primary contains case name",
+      envelope.text.includes("Dhannie Ramsingh"),
+      true,
+    );
   }
 
   await check(
@@ -248,8 +323,16 @@ async function main() {
     classifyPdfjsOpenError({ name: "PasswordException", code: 1 }),
     "need_password",
   );
-  await check("12. TimeoutError is timeout", classifyPdfjsOpenError({ name: "TimeoutError" }), "timeout");
-  await check("12. AbortError is aborted", classifyPdfjsOpenError({ name: "AbortError" }), "aborted");
+  await check(
+    "12. TimeoutError is timeout",
+    classifyPdfjsOpenError({ name: "TimeoutError" }),
+    "timeout",
+  );
+  await check(
+    "12. AbortError is aborted",
+    classifyPdfjsOpenError({ name: "AbortError" }),
+    "aborted",
+  );
 
   {
     let threw = false;
@@ -275,7 +358,8 @@ async function main() {
     "13. citation unique violation uses code+constraint",
     isCanonicalCitationUniqueViolation({
       code: "23505",
-      message: 'duplicate key value violates unique constraint "case_law_citation_canonical_unique_idx"',
+      message:
+        'duplicate key value violates unique constraint "case_law_citation_canonical_unique_idx"',
     }),
     true,
   );

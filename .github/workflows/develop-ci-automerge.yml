@@ -1,29 +1,25 @@
 name: Develop CI + Auto-merge to Main
 
-# On every push to `develop`: run the fast regression/functionality
-# suite, and if it's all green, fast-forward `main` to match and push —
-# which is what triggers the production Vercel deployment.
+# On every push to `develop`: lint, typecheck, run the script test suite,
+# build, run the Playwright smokes (reused from e2e.yml), and if it is all
+# green, fast-forward `main` to match and push — which is what triggers the
+# production Vercel deployment.
 #
-# Scope of the gate is deliberately the FAST suite only: lint, typecheck,
-# and every pure-logic test script under scripts/tests/ that needs no
-# live database (extraction/OCR pipeline correctness, tag proposals,
-# docket-procedure logic, calendar sync/mapping, offline outbox, XSS
-# sanitisation, schema-alignment uniqueness/contracts, and a handful of
-# scripts with no npm alias yet, invoked directly with the same runner
-# the aliased ones use). Hosted preview/prod drift is checked read-only
-# by schema-alignment.yml so a lagging remote cannot freeze this merge.
-# Explicitly OUT of scope: every script that opens a live Supabase
-# connection to mutate or query rows — persona-workflow simulation, the
-# clerk access / admin-magistrate docket-scoping / legislation-edit-
-# permission integration tests, manual RLS probes, and the slow/"brutal"
-# stress-test variants. Those need a real project and meaningfully longer
-# runtime, and were left for manual or separately-scheduled runs rather
-# than gating every push.
+# The script suite is `npm test` (scripts/test-support/run-all.mjs). It
+# discovers every scripts/tests/test-*.mjs and skips anything tagged
+# `// @live-db` (needs a real Supabase project) or `// @slow` (the "brutal"
+# stress variants). Those run on demand with `npm run test:live` /
+# `npm run test:slow`. Hosted preview/prod drift is checked read-only by
+# schema-alignment.yml so a lagging remote cannot freeze this merge.
 #
 # The merge is fast-forward-only. If `main` has commits `develop` doesn't
-# (i.e. someone pushed directly to main out of band), the merge step
-# fails loudly instead of guessing how to reconcile history — fix that
-# by rebasing develop onto main, don't change this workflow to force it.
+# (i.e. someone pushed directly to main out of band), the merge step fails
+# loudly instead of guessing how to reconcile history — fix that by rebasing
+# develop onto main, don't change this workflow to force it. main-drift.yml
+# raises the alarm when main trails develop for more than a day or so.
+#
+# A failed run opens (or comments on) a GitHub issue titled "develop CI
+# failing"; the next green run closes it.
 
 on:
   push:
@@ -31,30 +27,33 @@ on:
       - develop
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: develop-ci
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: npm
 
-      # package-lock.json was written with npm 11.6. Current Node 24
-      # bundles 11.16+, whose `npm ci` rejects that lockfile as out of
-      # sync (EUSAGE) and dumps the ci help text. Pin until regenerated.
       - name: Install dependencies
-        run: |
-          npm install -g npm@11.6.2
-          npm ci
+        run: npm ci
 
-      # High/critical advisories are reported but do not fail the gate while
-      # the tree still carries known transitive findings we are not unblocking
-      # this workflow on. Dependabot opens weekly PRs to work them down.
-      - name: npm audit (high and above)
+      - name: npm audit (critical — blocking)
+        run: npm audit --audit-level=critical
+
+      # High advisories are reported in the log but do not fail the gate while
+      # the tree still carries known transitive findings. Dependabot opens
+      # weekly PRs to work them down.
+      - name: npm audit (high — report only)
         run: npm audit --audit-level=high
         continue-on-error: true
 
@@ -64,125 +63,13 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Ingestion / extraction / OCR correctness suite
-        run: npm run test:ingestion
-
-      - name: Calendar mapping
-        run: npm run test:calendar-map
-
-      - name: Calendar sync
-        run: npm run test:calendar-sync
-
-      - name: Offline outbox
-        run: npm run test:offline-outbox
-
-      - name: Session idle lock and Remember me
-        run: npm run test:session-idle
-
-      - name: Session lock security
-        run: npm run test:session-lock
-
-      - name: Password reset flow
-        run: npm run test:password-reset
-
-      - name: Notification list presentation
-        run: npm run test:notifications-ui
-
-      - name: Light/dark theming
-        run: npm run test:theme
+      - name: Script test suite (npm test)
+        run: npm test
 
       - name: Schema alignment (repo uniqueness and contracts)
         env:
           SCHEMA_ALIGN_SKIP_LIVE: "1"
         run: npm run test:schema-alignment
-
-      - name: Judgment and bench-note PDF export
-        run: npm run test:export-pdf
-
-      - name: Share item types
-        run: npm run test:shares
-
-      - name: Judgment version history helpers
-        run: npm run test:judgment-versions
-
-      - name: Remaining audit-phase helpers
-        run: npm run test:audit-ops
-
-      - name: Tag proposal (hard cases)
-        run: npm run test:propose-tags-hard
-
-      - name: Tag proposal (before/after comparison)
-        run: npm run test:propose-tags-compare
-
-      - name: Content-Security-Policy regression
-        run: npm run test:csp
-
-      - name: Document PDF viewer (authenticated pdf.js, not signed-URL iframe)
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-document-pdf-viewer.mjs
-
-      - name: Rasterized PDF redaction
-        run: npm run test:redaction-pdf
-
-      - name: RPC rate-limit helper
-        run: npm run test:rpc-rate-limit
-
-      - name: XSS sanitisation probes
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/pentest-xss-probes.mjs
-
-      - name: Audit activity summaries
-        run: npm run test:audit-activity
-
-      - name: Admin people directory
-        run: npm run test:admin-people
-
-      - name: People court occupancy and exceptions
-        run: npm run test:people-court-occupancy
-
-      - name: Case law facets
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-facets.mjs
-
-      - name: Docket scope resolution
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docket-scope.mjs
-
-      - name: Docket board URL params
-        run: npm run test:docket-board-params
-
-      - name: Docket capacity matches board
-        run: npm run test:docket-capacity
-
-      # Paper-committal and civil-summons stage walks, column derivation, and
-      # the outcome_adjourned/outcome_status split (0140). Both are pure-logic
-      # and need no database, but were landing untested on every push -- they
-      # are the only automated coverage the workflow-protocol boards have.
-      - name: Docket protocol (paper committal)
-        run: npm run test:docket-protocol-paper
-
-      - name: Docket protocol (civil summons)
-        run: npm run test:docket-protocol-civil
-
-      - name: Callover vocabulary and running-sheet logic
-        run: npm run test:callover
-
-      - name: Docket arraignment/outcome vocabulary
-        run: npm run test:docket-outcome
-
-      - name: Sound cue constraints
-        run: npm run test:sound-cues
-
-      - name: Walkthrough and tour overlay
-        run: npm run test:walkthrough
-
-      - name: Docket week helpers
-        run: npm run test:docket-week
-
-      - name: DOCX page preview sanitisation
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-docx-page-preview-sanitize.mjs
-
-      - name: Persistent batch lifecycle
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-persistent-batch-lifecycle.mjs
-
-      - name: Stale state and publication
-        run: node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-stale-state-and-publication.mjs
 
       - name: Build (catches anything the type checker alone would miss)
         env:
@@ -190,9 +77,19 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
+  # Playwright smokes (unauth against Vite only; auth against local Supabase
+  # + seed). Reused from e2e.yml so PRs and the develop gate run the same jobs.
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    permissions:
+      contents: read
+
   merge-to-main:
-    needs: test
+    needs: [test, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -206,3 +103,66 @@ jobs:
           git fetch origin develop
           git merge --ff-only origin/develop
           git push origin main
+
+  notify-failure:
+    needs: [test, e2e, merge-to-main]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const title = "develop CI failing";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `Develop CI failed on \`${context.sha.slice(0, 7)}\`.`,
+              "",
+              `Run: ${runUrl}`,
+              "",
+              "`main` will not be fast-forwarded until develop is green again.",
+              "This issue is closed automatically by the next successful run.",
+            ].join("\n");
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title && !issue.pull_request);
+            if (existing) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+              core.info(`Commented on #${existing.number}`);
+            } else {
+              const { data: created } = await github.rest.issues.create({ ...context.repo, title, body });
+              core.info(`Opened #${created.number}`);
+            }
+
+  notify-recovered:
+    needs: [merge-to-main]
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const title = "develop CI failing";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: "open",
+              per_page: 100,
+            });
+            for (const issue of issues.filter((i) => i.title === title && !i.pull_request)) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: `Develop CI is green again on \`${context.sha.slice(0, 7)}\` and main has been fast-forwarded. ${runUrl}`,
+              });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: "closed" });
+              core.info(`Closed #${issue.number}`);
+            }

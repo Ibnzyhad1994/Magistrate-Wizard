@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS/RPC security test for the Court Clerk access system. Unlike
 // the other scripts in this directory, this one needs a RUNNING local
 // Supabase instance (it exercises real authenticated Postgres sessions,
@@ -41,7 +42,9 @@ const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -75,7 +78,7 @@ async function createUser(emailAddr, password, meta) {
   return data.user;
 }
 
-const created = { users: [], courts: [], districtId: null };
+const created = { users: [], courts: [], districtId: null, judgments: [] };
 
 async function main() {
   // --- Fixture setup ---------------------------------------------------
@@ -90,7 +93,12 @@ async function main() {
   async function makeCourt(name) {
     const { data, error } = await admin
       .from("courts")
-      .insert({ name: `${name} ${stamp}`, jurisdiction: "Test", district_id: district.id, is_active: true })
+      .insert({
+        name: `${name} ${stamp}`,
+        jurisdiction: "Test",
+        district_id: district.id,
+        is_active: true,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -124,22 +132,39 @@ async function main() {
     [m1.id, zeta.id, "acting"],
     [m2.id, zeta.id, "acting"],
   ]) {
-    const { error } = await admin.from("magistrate_courts").insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType });
+    const { error } = await admin
+      .from("magistrate_courts")
+      .insert({ profile_id: profileId, court_id: courtId, assignment_type: assignmentType });
     if (error) throw error;
   }
 
   // --- Test 1: signup role safety ---------------------------------------
-  const plainMagistrate = await createUser(email("plain-magistrate"), password, { full_name: "Plain Signup" });
+  const plainMagistrate = await createUser(email("plain-magistrate"), password, {
+    full_name: "Plain Signup",
+  });
   created.users.push(plainMagistrate.id);
   {
-    const { data } = await admin.from("profiles").select("role").eq("id", plainMagistrate.id).single();
-    check("1. Ordinary signup (no requested_role) resolves to role=magistrate", data.role === "magistrate");
+    const { data } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", plainMagistrate.id)
+      .single();
+    check(
+      "1. Ordinary signup (no requested_role) resolves to role=magistrate",
+      data.role === "magistrate",
+    );
   }
 
-  const attemptedAdmin = await createUser(email("attempted-admin"), password, { requested_role: "admin" });
+  const attemptedAdmin = await createUser(email("attempted-admin"), password, {
+    requested_role: "admin",
+  });
   created.users.push(attemptedAdmin.id);
   {
-    const { data } = await admin.from("profiles").select("role").eq("id", attemptedAdmin.id).single();
+    const { data } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", attemptedAdmin.id)
+      .single();
     check("2. requested_role='admin' at signup NEVER produces role=admin", data.role !== "admin");
   }
 
@@ -162,14 +187,23 @@ async function main() {
       .select("court_id, status")
       .eq("profile_id", c1.id);
     if (error) throw error;
-    check("4. Signup created exactly 3 independent pending requests (one per court)", data.length === 3 && data.every((r) => r.status === "pending"));
+    check(
+      "4. Signup created exactly 3 independent pending requests (one per court)",
+      data.length === 3 && data.every((r) => r.status === "pending"),
+    );
   }
 
   // --- Pre-verification: invisible to magistrate, no docket access ------
   const m1Client = await signAs(m1.email, password);
   {
-    const { data } = await m1Client.from("clerk_access_requests").select("id").eq("court_id", alpha.id);
-    check("5. M1 cannot see C1's Alpha request before email verification", (data ?? []).length === 0);
+    const { data } = await m1Client
+      .from("clerk_access_requests")
+      .select("id")
+      .eq("court_id", alpha.id);
+    check(
+      "5. M1 cannot see C1's Alpha request before email verification",
+      (data ?? []).length === 0,
+    );
   }
 
   // Confirm C1's email now.
@@ -178,7 +212,10 @@ async function main() {
 
   {
     const { data: mattersBefore } = await c1Client.from("docket_matters").select("id");
-    check("6. A pending (unapproved) clerk reads zero docket matters", (mattersBefore ?? []).length === 0);
+    check(
+      "6. A pending (unapproved) clerk reads zero docket matters",
+      (mattersBefore ?? []).length === 0,
+    );
   }
   {
     const { error } = await c1Client.from("docket_matters").insert({
@@ -192,55 +229,97 @@ async function main() {
   // --- Magistrate visibility, scoped exactly to their own court ----------
   let alphaRequestId, betaRequestId, gammaRequestId;
   {
-    const { data } = await m1Client.from("clerk_access_requests").select("id, court_id").eq("profile_id", c1.id);
-    check("8. M1 (post-verification) sees the Alpha request", (data ?? []).some((r) => r.court_id === alpha.id));
-    check("9. M1 does NOT see the Beta request (M2's court, not M1's)", !(data ?? []).some((r) => r.court_id === beta.id));
-    check("10. M1 does NOT see the Gamma request (no magistrate there yet)", !(data ?? []).some((r) => r.court_id === gamma.id));
+    const { data } = await m1Client
+      .from("clerk_access_requests")
+      .select("id, court_id")
+      .eq("profile_id", c1.id);
+    check(
+      "8. M1 (post-verification) sees the Alpha request",
+      (data ?? []).some((r) => r.court_id === alpha.id),
+    );
+    check(
+      "9. M1 does NOT see the Beta request (M2's court, not M1's)",
+      !(data ?? []).some((r) => r.court_id === beta.id),
+    );
+    check(
+      "10. M1 does NOT see the Gamma request (no magistrate there yet)",
+      !(data ?? []).some((r) => r.court_id === gamma.id),
+    );
     alphaRequestId = (data ?? []).find((r) => r.court_id === alpha.id)?.id;
   }
   const m2Client = await signAs(m2.email, password);
   {
-    const { data } = await m2Client.from("clerk_access_requests").select("id, court_id").eq("profile_id", c1.id);
-    check("11. M2 sees the Beta request (and only Beta, not Alpha/Gamma)", (data ?? []).length === 1 && data[0].court_id === beta.id);
+    const { data } = await m2Client
+      .from("clerk_access_requests")
+      .select("id, court_id")
+      .eq("profile_id", c1.id);
+    check(
+      "11. M2 sees the Beta request (and only Beta, not Alpha/Gamma)",
+      (data ?? []).length === 1 && data[0].court_id === beta.id,
+    );
     betaRequestId = data?.[0]?.id;
   }
 
   // --- Orphaned request surfaced to admin, never auto-approved -----------
   {
     const { data } = await m1Client.rpc("list_clerk_access_requests_needing_admin_attention");
-    check("12. A non-admin caller gets zero rows from the admin-only orphan finder", (data ?? []).length === 0);
+    check(
+      "12. A non-admin caller gets zero rows from the admin-only orphan finder",
+      (data ?? []).length === 0,
+    );
   }
-  const { data: adminProfileRow } = await admin.from("profiles").select("id").eq("role", "admin").limit(1).single();
+  const { data: adminProfileRow } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("role", "admin")
+    .limit(1)
+    .single();
   if (adminProfileRow) {
     // Reuse an existing seed admin purely to exercise the admin-gated RPC
     // as a real admin session; no data belonging to that account is
     // touched anywhere in this script.
-    const { data: gammaReq } = await admin.from("clerk_access_requests").select("id").eq("court_id", gamma.id).single();
+    const { data: gammaReq } = await admin
+      .from("clerk_access_requests")
+      .select("id")
+      .eq("court_id", gamma.id)
+      .single();
     gammaRequestId = gammaReq?.id;
   }
   {
     // Verified with the service-role-scoped function call directly (as
     // Postgres would evaluate it for a genuine admin) rather than signing
     // into a real admin account with an unknown password.
-    const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: gamma.id });
+    const { data, error } = await admin.rpc("court_has_no_clerk_approver", {
+      p_court_id: gamma.id,
+    });
     if (error) throw error;
     check("13. Gamma (no magistrate assigned) correctly has no clerk approver", data === true);
   }
   {
-    const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: alpha.id });
+    const { data, error } = await admin.rpc("court_has_no_clerk_approver", {
+      p_court_id: alpha.id,
+    });
     if (error) throw error;
     check("14. Alpha (single magistrate M1) correctly HAS a clerk approver", data === false);
   }
   {
     // Delta has two current magistrates, neither flagged can_manage_clerks.
-    const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: delta.id });
+    const { data, error } = await admin.rpc("court_has_no_clerk_approver", {
+      p_court_id: delta.id,
+    });
     if (error) throw error;
-    check("15. Delta (unique primary M1 + acting M2) HAS a clerk approver — covering does not freeze the primary", data === false);
+    check(
+      "15. Delta (unique primary M1 + acting M2) HAS a clerk approver — covering does not freeze the primary",
+      data === false,
+    );
   }
   {
     const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: zeta.id });
     if (error) throw error;
-    check("15b. Zeta (two acting, no primary, none flagged) has no resolvable approver", data === true);
+    check(
+      "15b. Zeta (two acting, no primary, none flagged) has no resolvable approver",
+      data === true,
+    );
   }
   {
     // Done via a genuine authenticated admin session (not the service-role
@@ -261,20 +340,37 @@ async function main() {
     if (flagErr) throw flagErr;
     const { data, error } = await admin.rpc("court_has_no_clerk_approver", { p_court_id: zeta.id });
     if (error) throw error;
-    check("16. Flagging M1 can_manage_clerks=true at Zeta (two coverings, no primary) resolves the approver", data === false);
+    check(
+      "16. Flagging M1 can_manage_clerks=true at Zeta (two coverings, no primary) resolves the approver",
+      data === false,
+    );
   }
   {
-    const { data, error } = await c1Client.rpc("submit_clerk_access_request", { p_court_id: delta.id });
+    const { data, error } = await c1Client.rpc("submit_clerk_access_request", {
+      p_court_id: delta.id,
+    });
     if (error) throw error;
     check("16b. Clerk can request Delta (primary + covering)", data.status === "pending");
     var deltaRequestId = data.id;
     {
-      const { data: seen } = await m1Client.from("clerk_access_requests").select("id, court_id").eq("id", deltaRequestId);
-      check("16c. Unique primary M1 sees the Delta clerk request even with acting seated", (seen ?? []).length === 1);
+      const { data: seen } = await m1Client
+        .from("clerk_access_requests")
+        .select("id, court_id")
+        .eq("id", deltaRequestId);
+      check(
+        "16c. Unique primary M1 sees the Delta clerk request even with acting seated",
+        (seen ?? []).length === 1,
+      );
     }
     {
-      const { data: seen } = await m2Client.from("clerk_access_requests").select("id").eq("id", deltaRequestId);
-      check("16d. Acting M2 does NOT see the Delta clerk request (primary still reviews)", (seen ?? []).length === 0);
+      const { data: seen } = await m2Client
+        .from("clerk_access_requests")
+        .select("id")
+        .eq("id", deltaRequestId);
+      check(
+        "16d. Acting M2 does NOT see the Delta clerk request (primary still reviews)",
+        (seen ?? []).length === 0,
+      );
     }
     {
       const { error: denyErr } = await m2Client.rpc("decide_clerk_access_request", {
@@ -284,12 +380,18 @@ async function main() {
       checkErr("16e. Acting M2 cannot decide the Delta request", denyErr, true);
     }
     {
-      const { data: decided, error: decideErr } = await m1Client.rpc("decide_clerk_access_request", {
-        p_request_id: deltaRequestId,
-        p_decision: "approved",
-      });
+      const { data: decided, error: decideErr } = await m1Client.rpc(
+        "decide_clerk_access_request",
+        {
+          p_request_id: deltaRequestId,
+          p_decision: "approved",
+        },
+      );
       if (decideErr) throw decideErr;
-      check("16f. Unique primary M1 can approve the Delta request while acting is seated", decided.status === "approved");
+      check(
+        "16f. Unique primary M1 can approve the Delta request while acting is seated",
+        decided.status === "approved",
+      );
     }
   }
 
@@ -312,8 +414,16 @@ async function main() {
     check("18. M1 approves the Alpha request", data.status === "approved");
   }
   {
-    const { data } = await admin.from("clerk_courts").select("id").eq("profile_id", c1.id).eq("court_id", alpha.id).is("ended_at", null);
-    check("19. Approval created exactly one active clerk_courts row for Alpha", (data ?? []).length === 1);
+    const { data } = await admin
+      .from("clerk_courts")
+      .select("id")
+      .eq("profile_id", c1.id)
+      .eq("court_id", alpha.id)
+      .is("ended_at", null);
+    check(
+      "19. Approval created exactly one active clerk_courts row for Alpha",
+      (data ?? []).length === 1,
+    );
   }
 
   // --- Idempotency: duplicate approval is a no-op ------------------------
@@ -323,11 +433,22 @@ async function main() {
       p_decision: "approved",
     });
     if (error) throw error;
-    check("20. Re-approving the same (already-approved) request is idempotent (no error)", data.status === "approved");
+    check(
+      "20. Re-approving the same (already-approved) request is idempotent (no error)",
+      data.status === "approved",
+    );
   }
   {
-    const { data } = await admin.from("clerk_courts").select("id").eq("profile_id", c1.id).eq("court_id", alpha.id).is("ended_at", null);
-    check("21. Duplicate approval did NOT create a second active assignment", (data ?? []).length === 1);
+    const { data } = await admin
+      .from("clerk_courts")
+      .select("id")
+      .eq("profile_id", c1.id)
+      .eq("court_id", alpha.id)
+      .is("ended_at", null);
+    check(
+      "21. Duplicate approval did NOT create a second active assignment",
+      (data ?? []).length === 1,
+    );
   }
 
   // --- Rejection: no assignment created -----------------------------------
@@ -338,17 +459,31 @@ async function main() {
       p_rejection_reason: "Test rejection reason",
     });
     if (error) throw error;
-    check("22. M2 rejects the Beta request", data.status === "rejected" && data.rejection_reason === "Test rejection reason");
+    check(
+      "22. M2 rejects the Beta request",
+      data.status === "rejected" && data.rejection_reason === "Test rejection reason",
+    );
   }
   {
-    const { data } = await admin.from("clerk_courts").select("id").eq("profile_id", c1.id).eq("court_id", beta.id);
+    const { data } = await admin
+      .from("clerk_courts")
+      .select("id")
+      .eq("profile_id", c1.id)
+      .eq("court_id", beta.id);
     check("23. Rejection created NO clerk_courts row for Beta", (data ?? []).length === 0);
   }
   {
-    const { data, error } = await c1Client.rpc("submit_clerk_access_request", { p_court_id: beta.id });
+    const { data, error } = await c1Client.rpc("submit_clerk_access_request", {
+      p_court_id: beta.id,
+    });
     if (error) throw error;
-    check("23b. Clerk can re-request the same court after rejection (RPC)", data.status === "pending");
-    const { error: cancelErr } = await c1Client.rpc("cancel_clerk_access_request", { p_request_id: data.id });
+    check(
+      "23b. Clerk can re-request the same court after rejection (RPC)",
+      data.status === "pending",
+    );
+    const { error: cancelErr } = await c1Client.rpc("cancel_clerk_access_request", {
+      p_request_id: data.id,
+    });
     if (cancelErr) throw cancelErr;
   }
 
@@ -357,14 +492,24 @@ async function main() {
   {
     const { data, error } = await c1Client
       .from("docket_matters")
-      .insert({ court_id: alpha.id, case_number: `C1-${stamp}`, matter_title: "Clerk-created matter" })
+      .insert({
+        court_id: alpha.id,
+        case_number: `C1-${stamp}`,
+        matter_title: "Clerk-created matter",
+      })
       .select()
       .single();
     if (error) throw error;
     createdMatterId = data.id;
     check("24. Approved clerk can create a docket matter at Alpha", !!data.id);
-    check("25. The clerk's own id is recorded as created_by (not the magistrate's)", data.created_by === c1.id);
-    check("26. district_id was correctly derived from the court, not client-supplied", data.district_id === district.id);
+    check(
+      "25. The clerk's own id is recorded as created_by (not the magistrate's)",
+      data.created_by === c1.id,
+    );
+    check(
+      "26. district_id was correctly derived from the court, not client-supplied",
+      data.district_id === district.id,
+    );
   }
   {
     const { data, error } = await c1Client
@@ -374,7 +519,10 @@ async function main() {
       .select()
       .single();
     if (error) throw error;
-    check("27. Approved clerk can archive (not permanently delete) a docket matter", data.status === "archived");
+    check(
+      "27. Approved clerk can archive (not permanently delete) a docket matter",
+      data.status === "archived",
+    );
   }
   {
     // No DELETE policy exists at all on docket_matters, so RLS matches
@@ -382,22 +530,38 @@ async function main() {
     // anything), it simply deletes nothing. The correct assertion is that
     // the row still exists afterward, not that an error was thrown.
     await c1Client.from("docket_matters").delete().eq("id", createdMatterId);
-    const { data } = await admin.from("docket_matters").select("id").eq("id", createdMatterId).single();
-    check("28. No DELETE policy exists -- a clerk's DELETE silently affects zero rows; the matter still exists", !!data);
+    const { data } = await admin
+      .from("docket_matters")
+      .select("id")
+      .eq("id", createdMatterId)
+      .single();
+    check(
+      "28. No DELETE policy exists -- a clerk's DELETE silently affects zero rows; the matter still exists",
+      !!data,
+    );
   }
   {
     const { data } = await c1Client.from("docket_matters").select("id").eq("court_id", beta.id);
-    check("29. Clerk cannot see Beta's docket (rejected court, different court in the SAME test district)", (data ?? []).length === 0);
+    check(
+      "29. Clerk cannot see Beta's docket (rejected court, different court in the SAME test district)",
+      (data ?? []).length === 0,
+    );
   }
   {
     const { data } = await c1Client.from("docket_matters").select("id").eq("court_id", gamma.id);
-    check("30. Clerk cannot see Gamma's docket (still pending, no decision yet)", (data ?? []).length === 0);
+    check(
+      "30. Clerk cannot see Gamma's docket (still pending, no decision yet)",
+      (data ?? []).length === 0,
+    );
   }
 
   // --- Case law / judgments totally unreachable ---------------------------
   {
     const { data } = await c1Client.from("case_law").select("id").limit(5);
-    check("31. Clerk reads zero Case Law rows, even though real published rows exist", (data ?? []).length === 0);
+    check(
+      "31. Clerk reads zero Case Law rows, even though real published rows exist",
+      (data ?? []).length === 0,
+    );
   }
   {
     const { data } = await c1Client.from("judgments").select("id").limit(5);
@@ -413,14 +577,20 @@ async function main() {
     const { data: anyCaseLaw } = await admin.from("case_law").select("id").limit(1).single();
     if (anyCaseLaw) {
       const { data } = await c1Client.rpc("can_view_case_law", { p_case_law_id: anyCaseLaw.id });
-      check("34. can_view_case_law() is false for the clerk on a real existing row (the same predicate Storage relies on)", data === false);
+      check(
+        "34. can_view_case_law() is false for the clerk on a real existing row (the same predicate Storage relies on)",
+        data === false,
+      );
     }
   }
   {
     const { data: anyJudgment } = await admin.from("judgments").select("id").limit(1).maybeSingle();
     if (anyJudgment) {
       const { data } = await c1Client.rpc("can_view_judgment", { p_judgment_id: anyJudgment.id });
-      check("35. can_view_judgment() is false for the clerk on a real existing row", data === false);
+      check(
+        "35. can_view_judgment() is false for the clerk on a real existing row",
+        data === false,
+      );
     }
   }
 
@@ -431,34 +601,58 @@ async function main() {
     // leaves role unchanged -- both are acceptable "cannot escalate"
     // outcomes; only an actual role change to 'admin' is a failure.
     const { data: after } = await admin.from("profiles").select("role").eq("id", c1.id).single();
-    check("36. Clerk cannot promote themselves to admin via direct profile update", after.role !== "admin");
+    check(
+      "36. Clerk cannot promote themselves to admin via direct profile update",
+      after.role !== "admin",
+    );
   }
   {
     // Same reasoning as #28: no client-facing UPDATE policy for a clerk
     // on this table means RLS matches zero rows -- a silent no-op, not
     // an error. Assert the row is unchanged, not that it errored.
-    await c1Client.from("clerk_access_requests").update({ status: "approved", reviewed_by: c1.id }).eq("id", gammaRequestId);
-    const { data } = await admin.from("clerk_access_requests").select("status, reviewed_by").eq("id", gammaRequestId).single();
-    check("37. Clerk cannot directly UPDATE a request's status/reviewer via raw table access", data.status === "pending" && data.reviewed_by === null);
+    await c1Client
+      .from("clerk_access_requests")
+      .update({ status: "approved", reviewed_by: c1.id })
+      .eq("id", gammaRequestId);
+    const { data } = await admin
+      .from("clerk_access_requests")
+      .select("status, reviewed_by")
+      .eq("id", gammaRequestId)
+      .single();
+    check(
+      "37. Clerk cannot directly UPDATE a request's status/reviewer via raw table access",
+      data.status === "pending" && data.reviewed_by === null,
+    );
   }
   {
     const { data, error } = await c1Client.rpc("decide_clerk_access_request", {
       p_request_id: gammaRequestId,
       p_decision: "approved",
     });
-    checkErr("38. Clerk cannot approve their OWN request via the RPC either (not a magistrate at Gamma)", error, true);
+    checkErr(
+      "38. Clerk cannot approve their OWN request via the RPC either (not a magistrate at Gamma)",
+      error,
+      true,
+    );
   }
 
   // --- Cancel / re-request ------------------------------------------------
   {
-    const { data, error } = await c1Client.rpc("cancel_clerk_access_request", { p_request_id: gammaRequestId });
+    const { data, error } = await c1Client.rpc("cancel_clerk_access_request", {
+      p_request_id: gammaRequestId,
+    });
     if (error) throw error;
     check("39. Clerk can cancel their own still-pending request", data.status === "cancelled");
   }
   {
-    const { data, error } = await c1Client.rpc("submit_clerk_access_request", { p_court_id: epsilon.id });
+    const { data, error } = await c1Client.rpc("submit_clerk_access_request", {
+      p_court_id: epsilon.id,
+    });
     if (error) throw error;
-    check("40. Clerk can request an additional court after cancelling a prior one", data.status === "pending");
+    check(
+      "40. Clerk can request an additional court after cancelling a prior one",
+      data.status === "pending",
+    );
     var epsilonRequestId = data.id;
   }
   {
@@ -467,7 +661,10 @@ async function main() {
       p_decision: "approved",
     });
     if (error) throw error;
-    check("41. M1 approves the new Epsilon request (clerk now has two independently-approved courts)", data.status === "approved");
+    check(
+      "41. M1 approves the new Epsilon request (clerk now has two independently-approved courts)",
+      data.status === "approved",
+    );
   }
 
   // --- Revocation is per-court, immediate, and preserves history ----------
@@ -484,17 +681,26 @@ async function main() {
       p_reason: "Test revocation",
     });
     if (error) throw error;
-    check("42. M1 revokes the clerk's Alpha access", data.ended_at !== null && data.ended_by === m1.id);
+    check(
+      "42. M1 revokes the clerk's Alpha access",
+      data.ended_at !== null && data.ended_by === m1.id,
+    );
   }
   {
     const { data } = await c1Client.from("docket_matters").select("id").eq("court_id", alpha.id);
-    check("43. Revocation takes effect immediately -- clerk now reads zero Alpha docket matters", (data ?? []).length === 0);
+    check(
+      "43. Revocation takes effect immediately -- clerk now reads zero Alpha docket matters",
+      (data ?? []).length === 0,
+    );
   }
   {
     const { error } = await c1Client
       .from("docket_matters")
       .insert({ court_id: epsilon.id, case_number: `EPS-${stamp}`, matter_title: "still works" });
-    check("44. Revoking Alpha did NOT affect the separately-approved Epsilon court (clerk can still write there)", !error);
+    check(
+      "44. Revoking Alpha did NOT affect the separately-approved Epsilon court (clerk can still write there)",
+      !error,
+    );
   }
   {
     const { data, error } = await m1Client.rpc("revoke_clerk_court_access", {
@@ -508,18 +714,246 @@ async function main() {
     );
   }
   {
-    const { data } = await admin.from("clerk_courts").select("id").eq("profile_id", c1.id).eq("court_id", alpha.id);
-    check("46. The historical (revoked) assignment row still exists -- never deleted", (data ?? []).length === 1);
+    const { data } = await admin
+      .from("clerk_courts")
+      .select("id")
+      .eq("profile_id", c1.id)
+      .eq("court_id", alpha.id);
+    check(
+      "46. The historical (revoked) assignment row still exists -- never deleted",
+      (data ?? []).length === 1,
+    );
   }
 
   // --- Existing magistrate pathways are unaffected ------------------------
   {
-    const { data, error } = await m1Client.from("docket_matters").select("id").eq("court_id", alpha.id);
+    const { data, error } = await m1Client
+      .from("docket_matters")
+      .select("id")
+      .eq("court_id", alpha.id);
     if (error) throw error;
-    check("47. M1 (ordinary magistrate) still reads Alpha's docket normally", (data ?? []).length >= 1);
+    check(
+      "47. M1 (ordinary magistrate) still reads Alpha's docket normally",
+      (data ?? []).length >= 1,
+    );
   }
 
-  console.log(failures > 0 ? `\n${failures} failure(s).` : "\nAll clerk-access-security tests passed.");
+  // --- 0154: profiles self-update cannot move court / reactivate / re-email --
+  // Threat: profiles.court_id feeds my_court_id(), which gates legacy `cases`
+  // and their documents; is_active / email are identity. Only role was
+  // pinned before 0154.
+  {
+    const { data: before } = await admin
+      .from("profiles")
+      .select("court_id, is_active, email, full_name")
+      .eq("id", m1.id)
+      .single();
+    const { error: courtErr } = await m1Client
+      .from("profiles")
+      .update({ court_id: beta.id })
+      .eq("id", m1.id);
+    const { data: afterCourt } = await admin
+      .from("profiles")
+      .select("court_id")
+      .eq("id", m1.id)
+      .single();
+    check(
+      "48. Magistrate cannot self-update profiles.court_id (WITH CHECK refuses or row unchanged)",
+      (courtErr !== null || afterCourt.court_id === before.court_id) &&
+        afterCourt.court_id !== beta.id,
+    );
+
+    const { error: activeErr } = await m1Client
+      .from("profiles")
+      .update({ is_active: false })
+      .eq("id", m1.id);
+    const { data: afterActive } = await admin
+      .from("profiles")
+      .select("is_active")
+      .eq("id", m1.id)
+      .single();
+    check(
+      "49. Magistrate cannot self-update profiles.is_active",
+      (activeErr !== null || afterActive.is_active === before.is_active) &&
+        afterActive.is_active === before.is_active,
+    );
+
+    const { error: emailErr } = await m1Client
+      .from("profiles")
+      .update({ email: `hijack-${stamp}@example.test` })
+      .eq("id", m1.id);
+    const { data: afterEmail } = await admin
+      .from("profiles")
+      .select("email")
+      .eq("id", m1.id)
+      .single();
+    check(
+      "50. Magistrate cannot self-update profiles.email",
+      (emailErr !== null || afterEmail.email === before.email) && afterEmail.email === before.email,
+    );
+
+    const { error: nameErr } = await m1Client
+      .from("profiles")
+      .update({ full_name: "Test Magistrate One (renamed)" })
+      .eq("id", m1.id);
+    const { data: afterName } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", m1.id)
+      .single();
+    check(
+      "51. Benign self-update (full_name) still succeeds under the pinned policy",
+      !nameErr && afterName.full_name === "Test Magistrate One (renamed)",
+    );
+    await admin.from("profiles").update({ full_name: before.full_name }).eq("id", m1.id);
+  }
+
+  // --- 0154: an EDIT-share recipient cannot drive a Judgment's lifecycle ----
+  // can_edit_judgment (0121) lets an active edit share change content; the
+  // lifecycle trigger and DELETE policy are owner-only after 0154.
+  {
+    const { data: judgment, error: jErr } = await m1Client
+      .from("judgments")
+      .insert({ title: `TEST Judgment ${stamp}`, owner_id: m1.id })
+      .select()
+      .single();
+    if (jErr) throw jErr;
+    created.judgments.push(judgment.id);
+
+    const { error: shareErr } = await m1Client.from("shares").insert({
+      item_type: "judgment",
+      item_id: judgment.id,
+      recipient_id: m2.id,
+      granted_by: m1.id,
+      permission: "edit",
+    });
+    checkErr("52. Owner grants M2 an EDIT share on the Judgment", shareErr, false);
+
+    const { error: editErr } = await m2Client
+      .from("judgments")
+      .update({ title: `TEST Judgment ${stamp} (edited by M2)` })
+      .eq("id", judgment.id);
+    const { data: afterEdit } = await admin
+      .from("judgments")
+      .select("title")
+      .eq("id", judgment.id)
+      .single();
+    check(
+      "53. Edit-share recipient CAN still edit content (view/edit split preserved)",
+      !editErr && afterEdit.title.endsWith("(edited by M2)"),
+    );
+
+    const { error: finalErr } = await m2Client
+      .from("judgments")
+      .update({ status: "final" })
+      .eq("id", judgment.id);
+    const { data: afterFinal } = await admin
+      .from("judgments")
+      .select("status, finalized_by")
+      .eq("id", judgment.id)
+      .single();
+    check(
+      "54. Edit-share recipient cannot finalise (trigger raises, row stays draft)",
+      finalErr !== null && afterFinal.status === "draft" && afterFinal.finalized_by === null,
+    );
+
+    const { error: discErr } = await m2Client
+      .from("judgments")
+      .update({ is_discoverable: true })
+      .eq("id", judgment.id);
+    const { data: afterDisc } = await admin
+      .from("judgments")
+      .select("is_discoverable")
+      .eq("id", judgment.id)
+      .single();
+    check(
+      "55. Edit-share recipient cannot make the Judgment discoverable",
+      discErr !== null && afterDisc.is_discoverable === false,
+    );
+
+    await m2Client.from("judgments").delete().eq("id", judgment.id);
+    const { data: afterDelete } = await admin.from("judgments").select("id").eq("id", judgment.id);
+    check(
+      "56. Edit-share recipient cannot delete the Judgment (DELETE policy is owner-only)",
+      (afterDelete ?? []).length === 1,
+    );
+
+    const { error: ownerFinalErr } = await m1Client
+      .from("judgments")
+      .update({ status: "final" })
+      .eq("id", judgment.id);
+    const { data: afterOwnerFinal } = await admin
+      .from("judgments")
+      .select("status, finalized_by")
+      .eq("id", judgment.id)
+      .single();
+    check(
+      "57. Owner can finalise",
+      !ownerFinalErr &&
+        afterOwnerFinal.status === "final" &&
+        afterOwnerFinal.finalized_by === m1.id,
+    );
+
+    const { error: unlockErr } = await m2Client
+      .from("judgments")
+      .update({ status: "draft" })
+      .eq("id", judgment.id);
+    const { data: afterUnlock } = await admin
+      .from("judgments")
+      .select("status")
+      .eq("id", judgment.id)
+      .single();
+    check(
+      "58. Edit-share recipient cannot unlock (final -> draft)",
+      unlockErr !== null && afterUnlock.status === "final",
+    );
+
+    const { error: ownerUnlockErr } = await m1Client
+      .from("judgments")
+      .update({ status: "draft" })
+      .eq("id", judgment.id);
+    check("59. Owner can unlock", !ownerUnlockErr);
+  }
+
+  // --- 0154: PUBLIC/anon EXECUTE revoked on six RPCs ---------------------
+  {
+    const anonClient = createClient(URL_, ANON_KEY);
+    const probes = [
+      ["can_manage_clerk_access", { p_court_id: alpha.id }],
+      ["court_has_no_clerk_approver", { p_court_id: alpha.id }],
+      ["current_profile_role", {}],
+      ["submit_magistrate_court_request", { p_court_id: alpha.id }],
+      ["return_unassigned_magistrate_to_requester", { p_profile_id: m1.id }],
+      [
+        "correct_unassigned_account_type",
+        { p_profile_id: m1.id, p_new_role: "magistrate", p_reason: "probe" },
+      ],
+    ];
+    for (const [name, args] of probes) {
+      const { error } = await anonClient.rpc(name, args);
+      check(
+        `60. anon cannot EXECUTE ${name} (permission denied, not a business-rule error)`,
+        error !== null && /permission denied/i.test(error.message ?? ""),
+      );
+    }
+  }
+
+  // --- 0154: rate limiter refuses an arbitrary bucket name ------------------
+  {
+    const { error } = await m1Client.rpc("enforce_rpc_rate_limit", {
+      p_rpc: "not_a_real_rpc",
+      p_max: 1,
+      p_window_seconds: 60,
+    });
+    check(
+      "61. enforce_rpc_rate_limit rejects a bucket name outside the wrapper allowlist",
+      error !== null && /Unknown rate-limited RPC/i.test(error.message ?? ""),
+    );
+  }
+
+  console.log(
+    failures > 0 ? `\n${failures} failure(s).` : "\nAll clerk-access-security tests passed.",
+  );
 }
 
 async function cleanup() {
@@ -537,6 +971,10 @@ async function cleanup() {
     for (const courtId of created.courts) {
       await admin.from("courts").delete().eq("id", courtId);
     }
+    for (const judgmentId of created.judgments) {
+      await admin.from("shares").delete().eq("item_type", "judgment").eq("item_id", judgmentId);
+      await admin.from("judgments").delete().eq("id", judgmentId);
+    }
     if (created.districtId) {
       await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     }
@@ -545,7 +983,10 @@ async function cleanup() {
     }
     console.log("Cleanup complete.");
   } catch (err) {
-    console.error("Cleanup encountered an error (some test fixtures may need manual removal):", err);
+    console.error(
+      "Cleanup encountered an error (some test fixtures may need manual removal):",
+      err,
+    );
   }
 }
 

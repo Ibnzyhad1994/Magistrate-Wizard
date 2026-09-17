@@ -48,12 +48,18 @@ check(
 );
 check(
   "commenced paper committal still at paper_committal",
-  currentStageForProtocol({ ...afterDisclosure, paper_committal_status: "commenced" }, "paper_committal"),
+  currentStageForProtocol(
+    { ...afterDisclosure, paper_committal_status: "commenced" },
+    "paper_committal",
+  ),
   "paper_committal",
 );
 check(
   "partial paper committal still at paper_committal",
-  currentStageForProtocol({ ...afterDisclosure, paper_committal_status: "partial" }, "paper_committal"),
+  currentStageForProtocol(
+    { ...afterDisclosure, paper_committal_status: "partial" },
+    "paper_committal",
+  ),
   "paper_committal",
 );
 

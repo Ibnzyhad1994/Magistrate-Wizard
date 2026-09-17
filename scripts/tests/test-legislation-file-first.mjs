@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS/RPC test for the Legislation file-first PDF library (0098).
 // Needs a running local Supabase instance and SUPABASE_SERVICE_ROLE_KEY.
 //
@@ -31,7 +32,9 @@ if (!SERVICE_KEY) {
   process.exit(1);
 }
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -55,7 +58,11 @@ async function signAs(emailAddr) {
   return client;
 }
 async function createUser(emailAddr, role) {
-  const { data, error } = await admin.auth.admin.createUser({ email: emailAddr, password, email_confirm: true });
+  const { data, error } = await admin.auth.admin.createUser({
+    email: emailAddr,
+    password,
+    email_confirm: true,
+  });
   if (error) throw error;
   const { error: roleErr } = await admin.from("profiles").update({ role }).eq("id", data.user.id);
   if (roleErr) throw roleErr;
@@ -114,7 +121,11 @@ async function uploadAndFinalize(client, { values, file, pageCount, hasTextLayer
 const created = { users: [], jurisdictionId: null, statutes: [], storagePaths: [] };
 
 async function main() {
-  const { data: regionalGroup } = await admin.from("legal_regional_groups").select("id").limit(1).single();
+  const { data: regionalGroup } = await admin
+    .from("legal_regional_groups")
+    .select("id")
+    .limit(1)
+    .single();
   const { data: jurisdiction, error: jErr } = await admin
     .from("legal_jurisdictions")
     .insert({ name: `TEST Legislation Jurisdiction ${stamp}`, regional_group_id: regionalGroup.id })
@@ -138,13 +149,21 @@ async function main() {
   {
     const { error } = await magistrateClient
       .from("statutes")
-      .insert({ code: `MAG-${stamp}`, title: "Should fail", jurisdiction: jurisdiction.name, jurisdiction_id: jurisdiction.id });
+      .insert({
+        code: `MAG-${stamp}`,
+        title: "Should fail",
+        jurisdiction: jurisdiction.name,
+        jurisdiction_id: jurisdiction.id,
+      });
     checkErr("1. A non-admin cannot create a statutes row (RLS)", error, true);
   }
 
   // --- 2-8: full upload flow via the admin client ---
   const pdfA = makeWellFormedMultiPagePdf(
-    [["The Vigilance Act, Part I."], ["Section 1. Short title.", "This Act may be cited as the Vigilance Act."]],
+    [
+      ["The Vigilance Act, Part I."],
+      ["Section 1. Short title.", "This Act may be cited as the Vigilance Act."],
+    ],
     "vigilance-act.pdf",
   );
 
@@ -165,19 +184,45 @@ async function main() {
   created.storagePaths.push(result.path);
 
   {
-    const { data: row } = await admin.from("statutes").select("*").eq("id", result.statuteId).single();
-    check("2. statutes row created with primary_document_id set", row.primary_document_id === result.documentId);
-    check("3. review_status is 'published' immediately (auto-publish, no review queue step)", row.review_status === "published");
+    const { data: row } = await admin
+      .from("statutes")
+      .select("*")
+      .eq("id", result.statuteId)
+      .single();
+    check(
+      "2. statutes row created with primary_document_id set",
+      row.primary_document_id === result.documentId,
+    );
+    check(
+      "3. review_status is 'published' immediately (auto-publish, no review queue step)",
+      row.review_status === "published",
+    );
     check("4. full_text is null -- no body-text ingestion occurred", row.full_text === null);
-    check("5. page_count/has_text_layer recorded from the client-computed values", row.page_count === 2 && row.has_text_layer === true);
+    check(
+      "5. page_count/has_text_layer recorded from the client-computed values",
+      row.page_count === 2 && row.has_text_layer === true,
+    );
   }
   {
-    const { data: jobs } = await admin.from("import_jobs").select("id").eq("target_statute_id", result.statuteId);
-    check("6. No import_jobs row was created for this file-first upload", (jobs ?? []).length === 0);
+    const { data: jobs } = await admin
+      .from("import_jobs")
+      .select("id")
+      .eq("target_statute_id", result.statuteId);
+    check(
+      "6. No import_jobs row was created for this file-first upload",
+      (jobs ?? []).length === 0,
+    );
   }
   {
-    const { data: docs } = await admin.from("documents").select("id").eq("entity_type", "statute").eq("entity_id", result.statuteId);
-    check("7. Exactly one documents row is linked to this statute", (docs ?? []).length === 1 && docs[0].id === result.documentId);
+    const { data: docs } = await admin
+      .from("documents")
+      .select("id")
+      .eq("entity_type", "statute")
+      .eq("entity_id", result.statuteId);
+    check(
+      "7. Exactly one documents row is linked to this statute",
+      (docs ?? []).length === 1 && docs[0].id === result.documentId,
+    );
   }
   {
     // Mirrors useStatutes()'s own published+current filter.
@@ -186,19 +231,34 @@ async function main() {
       .select("id, review_status, is_current_version")
       .eq("id", result.statuteId);
     const row = rows[0];
-    check("8. An ordinary magistrate can read the published record (library visibility)", row && row.review_status === "published");
+    check(
+      "8. An ordinary magistrate can read the published record (library visibility)",
+      row && row.review_status === "published",
+    );
   }
 
   // --- 9. District/jurisdiction-scoped uniqueness still enforced for a genuinely new Act ---
   {
     const { error } = await adminClient
       .from("statutes")
-      .insert({ code: `VIG-${stamp}`, title: "Duplicate code", jurisdiction: jurisdiction.name, jurisdiction_id: jurisdiction.id });
-    checkErr("9. A second CURRENT statute with the same code+jurisdiction is rejected (partial unique index)", error, true);
+      .insert({
+        code: `VIG-${stamp}`,
+        title: "Duplicate code",
+        jurisdiction: jurisdiction.name,
+        jurisdiction_id: jurisdiction.id,
+      });
+    checkErr(
+      "9. A second CURRENT statute with the same code+jurisdiction is rejected (partial unique index)",
+      error,
+      true,
+    );
   }
 
   // --- 10-14: replace/version flow ---
-  const pdfB = makeWellFormedMultiPagePdf([["The Vigilance Act (Revised), Part I."]], "vigilance-act-revised.pdf");
+  const pdfB = makeWellFormedMultiPagePdf(
+    [["The Vigilance Act (Revised), Part I."]],
+    "vigilance-act-revised.pdf",
+  );
   const replacement = await uploadAndFinalize(adminClient, {
     values: {
       code: `VIG-${stamp}`, // same code+jurisdiction as the row it supersedes -- must succeed via the partial index
@@ -215,26 +275,53 @@ async function main() {
   created.storagePaths.push(replacement.path);
 
   {
-    const { data: rows } = await admin.from("statutes").select("id, is_current_version").in("id", [result.statuteId, replacement.statuteId]);
+    const { data: rows } = await admin
+      .from("statutes")
+      .select("id, is_current_version")
+      .in("id", [result.statuteId, replacement.statuteId]);
     const original = rows.find((r) => r.id === result.statuteId);
     const revised = rows.find((r) => r.id === replacement.statuteId);
-    check("10. Replacement upload with the same code+jurisdiction succeeds (partial unique index)", !!revised);
-    check("11. The superseded row's is_current_version flips to false, atomically, as part of finalize", original.is_current_version === false);
+    check(
+      "10. Replacement upload with the same code+jurisdiction succeeds (partial unique index)",
+      !!revised,
+    );
+    check(
+      "11. The superseded row's is_current_version flips to false, atomically, as part of finalize",
+      original.is_current_version === false,
+    );
     check("12. The new row's is_current_version is true", revised.is_current_version === true);
   }
   {
-    const { data: original } = await admin.from("statutes").select("primary_document_id").eq("id", result.statuteId).single();
-    check("13. The superseded row's own PDF is untouched -- never overwritten by the replacement", original.primary_document_id === result.documentId);
+    const { data: original } = await admin
+      .from("statutes")
+      .select("primary_document_id")
+      .eq("id", result.statuteId)
+      .single();
+    check(
+      "13. The superseded row's own PDF is untouched -- never overwritten by the replacement",
+      original.primary_document_id === result.documentId,
+    );
   }
   {
     const { data: origDoc } = await admin.storage.from("documents").download(result.path);
-    check("14. The original (superseded) PDF blob still exists in Storage -- never deleted on replace", !!origDoc);
+    check(
+      "14. The original (superseded) PDF blob still exists in Storage -- never deleted on replace",
+      !!origDoc,
+    );
   }
   {
     // useStatutes()'s published+current filter should now surface ONLY the replacement, not the superseded original.
-    const { data: rows } = await magistrateClient.from("statutes").select("id, review_status, is_current_version").in("id", [result.statuteId, replacement.statuteId]);
-    const visible = rows.filter((r) => r.review_status === "published" && r.is_current_version !== false).map((r) => r.id);
-    check("15. Library view (published + current) shows the replacement, not the superseded original", visible.includes(replacement.statuteId) && !visible.includes(result.statuteId));
+    const { data: rows } = await magistrateClient
+      .from("statutes")
+      .select("id, review_status, is_current_version")
+      .in("id", [result.statuteId, replacement.statuteId]);
+    const visible = rows
+      .filter((r) => r.review_status === "published" && r.is_current_version !== false)
+      .map((r) => r.id);
+    check(
+      "15. Library view (published + current) shows the replacement, not the superseded original",
+      visible.includes(replacement.statuteId) && !visible.includes(result.statuteId),
+    );
   }
 
   // --- 16-17. Failure cleanup: a bad finalize call must not leave orphans ---
@@ -242,17 +329,34 @@ async function main() {
     const pdfC = makeWellFormedMultiPagePdf([["Orphan test."]], "orphan-test.pdf");
     const { data: draft, error: draftErr } = await adminClient
       .from("statutes")
-      .insert({ code: `ORPH-${stamp}`, title: "Orphan test", jurisdiction: jurisdiction.name, jurisdiction_id: jurisdiction.id, review_status: "draft" })
+      .insert({
+        code: `ORPH-${stamp}`,
+        title: "Orphan test",
+        jurisdiction: jurisdiction.name,
+        jurisdiction_id: jurisdiction.id,
+        review_status: "draft",
+      })
       .select()
       .single();
     if (draftErr) throw draftErr;
     const { data: userData } = await adminClient.auth.getUser();
     const path = `${userData.user.id}/statute/${draft.id}/${Date.now()}-orphan.pdf`;
-    const { error: uploadError } = await adminClient.storage.from("documents").upload(path, pdfC, { contentType: "application/pdf" });
+    const { error: uploadError } = await adminClient.storage
+      .from("documents")
+      .upload(path, pdfC, { contentType: "application/pdf" });
     if (uploadError) throw uploadError;
     const { data: document } = await adminClient
       .from("documents")
-      .insert({ uploaded_by: userData.user.id, file_name: "orphan.pdf", file_path: path, file_size: pdfC.size, mime_type: "application/pdf", entity_type: "statute", entity_id: draft.id, purpose: "attachment" })
+      .insert({
+        uploaded_by: userData.user.id,
+        file_name: "orphan.pdf",
+        file_path: path,
+        file_size: pdfC.size,
+        mime_type: "application/pdf",
+        entity_type: "statute",
+        entity_id: draft.id,
+        purpose: "attachment",
+      })
       .select()
       .single();
 
@@ -261,60 +365,113 @@ async function main() {
       p_statute_id: draft.id,
       p_document_id: "00000000-0000-0000-0000-000000000000",
     });
-    check("16. A finalize call with a mismatched document id does not silently succeed", !!finalizeError || true);
+    check(
+      "16. A finalize call with a mismatched document id does not silently succeed",
+      !!finalizeError || true,
+    );
     // The FK on primary_document_id would reject a nonexistent document id -- confirm the row was NOT finalized.
-    const { data: stillDraft } = await admin.from("statutes").select("review_status, primary_document_id").eq("id", draft.id).single();
-    check("16b. The statute row is still an unpublished draft after the failed finalize", stillDraft.review_status === "draft" && stillDraft.primary_document_id === null);
+    const { data: stillDraft } = await admin
+      .from("statutes")
+      .select("review_status, primary_document_id")
+      .eq("id", draft.id)
+      .single();
+    check(
+      "16b. The statute row is still an unpublished draft after the failed finalize",
+      stillDraft.review_status === "draft" && stillDraft.primary_document_id === null,
+    );
 
     // Now run the same cleanup sequence useCreateLegislationDocument's hook performs on failure.
     await adminClient.storage.from("documents").remove([path]);
     await admin.from("documents").delete().eq("id", document.id);
     await admin.from("statutes").delete().eq("id", draft.id);
 
-    const { data: gone } = await admin.from("statutes").select("id").eq("id", draft.id).maybeSingle();
-    const { data: docGone } = await admin.from("documents").select("id").eq("id", document.id).maybeSingle();
+    const { data: gone } = await admin
+      .from("statutes")
+      .select("id")
+      .eq("id", draft.id)
+      .maybeSingle();
+    const { data: docGone } = await admin
+      .from("documents")
+      .select("id")
+      .eq("id", document.id)
+      .maybeSingle();
     const { data: blobGone } = await admin.storage.from("documents").download(path);
     check("17. Cleanup after a failed finalize leaves no orphaned statutes row", gone === null);
-    check("17b. Cleanup after a failed finalize leaves no orphaned documents row", docGone === null);
-    check("17c. Cleanup after a failed finalize leaves no orphaned Storage blob", blobGone === null);
+    check(
+      "17b. Cleanup after a failed finalize leaves no orphaned documents row",
+      docGone === null,
+    );
+    check(
+      "17c. Cleanup after a failed finalize leaves no orphaned Storage blob",
+      blobGone === null,
+    );
   }
 
   // --- 18-21: clerk isolation ---
   {
     const { data } = await clerkClient.from("statutes").select("id").eq("id", result.statuteId);
-    check("18. A clerk cannot read the published Legislation record (can_view_statute excludes clerks)", (data ?? []).length === 0);
+    check(
+      "18. A clerk cannot read the published Legislation record (can_view_statute excludes clerks)",
+      (data ?? []).length === 0,
+    );
   }
   {
-    const { data } = await clerkClient.from("documents").select("id").eq("entity_type", "statute").eq("entity_id", result.statuteId);
+    const { data } = await clerkClient
+      .from("documents")
+      .select("id")
+      .eq("entity_type", "statute")
+      .eq("entity_id", result.statuteId);
     check("19. A clerk cannot read the linked documents row either", (data ?? []).length === 0);
   }
   {
     const { data: blob } = await clerkClient.storage.from("documents").download(result.path);
-    check("20. A clerk cannot download the Storage object directly by path (storage RLS)", blob === null);
+    check(
+      "20. A clerk cannot download the Storage object directly by path (storage RLS)",
+      blob === null,
+    );
   }
   {
     const { data, error } = await clerkClient.rpc("search_statutes", { p_query: "Vigilance" });
     if (error) throw error;
     const ids = (data ?? []).map((r) => r.id);
-    check("21. search_statutes leaks nothing to a clerk (zero results, not an error)", ids.length === 0);
+    check(
+      "21. search_statutes leaks nothing to a clerk (zero results, not an error)",
+      ids.length === 0,
+    );
   }
 
   // --- 22. search_statutes never leaks a draft to an ordinary magistrate ---
   {
-    const pdfDraft = makeWellFormedMultiPagePdf([["Draft Act text, never published."]], "draft-act.pdf");
+    const pdfDraft = makeWellFormedMultiPagePdf(
+      [["Draft Act text, never published."]],
+      "draft-act.pdf",
+    );
     const { data: draft } = await adminClient
       .from("statutes")
-      .insert({ code: `DRAFT-${stamp}`, title: `Unpublished Draft Act ${stamp}`, jurisdiction: jurisdiction.name, jurisdiction_id: jurisdiction.id, review_status: "draft" })
+      .insert({
+        code: `DRAFT-${stamp}`,
+        title: `Unpublished Draft Act ${stamp}`,
+        jurisdiction: jurisdiction.name,
+        jurisdiction_id: jurisdiction.id,
+        review_status: "draft",
+      })
       .select()
       .single();
     created.statutes.push(draft.id);
-    const { data, error } = await magistrateClient.rpc("search_statutes", { p_query: "Unpublished Draft Act" });
+    const { data, error } = await magistrateClient.rpc("search_statutes", {
+      p_query: "Unpublished Draft Act",
+    });
     if (error) throw error;
-    check("22. search_statutes does not surface a draft record to an ordinary magistrate", (data ?? []).every((r) => r.id !== draft.id));
+    check(
+      "22. search_statutes does not surface a draft record to an ordinary magistrate",
+      (data ?? []).every((r) => r.id !== draft.id),
+    );
     void pdfDraft;
   }
 
-  console.log(failures > 0 ? `\n${failures} failure(s).` : "\nAll legislation file-first tests passed.");
+  console.log(
+    failures > 0 ? `\n${failures} failure(s).` : "\nAll legislation file-first tests passed.",
+  );
 }
 
 async function cleanup() {

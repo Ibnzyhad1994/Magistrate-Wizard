@@ -1,3 +1,4 @@
+// @slow  long-running: `npm test` skips it, pass --slow (npm run test:slow) to include
 // Brutal ingest + OCR circuit — honesty-first limit map.
 // Fail only on crash or false success (invented / poison text sold as extracted).
 // Honest withhold and measured limits are PASS.
@@ -8,13 +9,13 @@
 //   BRUTAL_STAGES=0,3,7 npm run test:ingest-brutal
 //   npm run test:ingest-brutal:public   // MoLA / Parliament / CCJ PDFs + Caribbean scans
 
-import { writeFileSync, existsSync, readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { ingestDocument, ingestPastedText, classifyIngestSource } from "@/lib/ingest-document"
-import { characterErrorRate, containsNormalized, wordErrorRate } from "@/lib/ocr/accuracy"
-import { MAX_OCR_PAGES } from "@/lib/ocr/constants"
-import { terminateOcrWorker } from "@/lib/ocr/engine"
+import { writeFileSync, existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { ingestDocument, ingestPastedText, classifyIngestSource } from "@/lib/ingest-document";
+import { characterErrorRate, containsNormalized, wordErrorRate } from "@/lib/ocr/accuracy";
+import { MAX_OCR_PAGES } from "@/lib/ocr/constants";
+import { terminateOcrWorker } from "@/lib/ocr/engine";
 import {
   makeTextPdf,
   makeHexTextPdf,
@@ -27,14 +28,14 @@ import {
   makeFontBoilerplatePdf,
   makeBareLiteralNotTjPdf,
   makeGluedTextPdf,
-} from "../test-support/pdf-fixtures.mjs"
+} from "../test-support/pdf-fixtures.mjs";
 import {
   SCAN_GROUND_TRUTH,
   SCAN_MUST_CONTAIN,
   renderLegalScanJpeg,
   renderLegalScanPng,
   makeRenderedScanPdf,
-} from "../test-support/scanned-pdf-fixtures.mjs"
+} from "../test-support/scanned-pdf-fixtures.mjs";
 import {
   makeAsciiHexStreamPdf,
   makeAscii85StreamPdf,
@@ -45,7 +46,7 @@ import {
   makeAlignedSearchableScanPdf,
   makeMismatchedOverlayPdf,
   makeMultiPageScannedPdf,
-} from "../test-support/pdf-torture-fixtures.mjs"
+} from "../test-support/pdf-torture-fixtures.mjs";
 import {
   SYMBOLS_GOLDEN,
   SYMBOLS_MUST_RAW,
@@ -56,7 +57,7 @@ import {
   makeBlankScanPdf,
   makeLogoOnlyPng,
   makeOneByOnePng,
-} from "../test-support/ocr-degradation-fixtures.mjs"
+} from "../test-support/ocr-degradation-fixtures.mjs";
 import {
   makeFile,
   GOLDEN,
@@ -82,58 +83,64 @@ import {
   makeJpegPdfPolyglot,
   truncateJpeg,
   oleMagic,
-} from "../test-support/file-torture-fixtures.mjs"
+} from "../test-support/file-torture-fixtures.mjs";
 import {
   PUBLIC_FIXTURES,
   fetchCached,
   stripHtmlToText,
   IN_REPO_PDF,
   IN_REPO_MUST_CONTAIN,
-} from "../test-support/public-legal-fixtures.mjs"
+} from "../test-support/public-legal-fixtures.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const RESULTS_PATH = join(__dirname, "ingest-brutal-circuit-results.json")
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const RESULTS_PATH = join(__dirname, "ingest-brutal-circuit-results.json");
 
-const MUST = SCAN_MUST_CONTAIN
-const POISON = ["AdobeUCS2", "begincmap", "All Rights Reserved", "This font software", "LOREM IPSUM FONT LICENSE"]
+const MUST = SCAN_MUST_CONTAIN;
+const POISON = [
+  "AdobeUCS2",
+  "begincmap",
+  "All Rights Reserved",
+  "This font software",
+  "LOREM IPSUM FONT LICENSE",
+];
 
 const parseStages = () => {
-  const stagesArg = process.argv.find((a) => a.startsWith("--stages="))
-  const raw = stagesArg ? stagesArg.slice("--stages=".length) : process.env.BRUTAL_STAGES
+  const stagesArg = process.argv.find((a) => a.startsWith("--stages="));
+  const raw = stagesArg ? stagesArg.slice("--stages=".length) : process.env.BRUTAL_STAGES;
   if (raw && raw.trim()) {
     return new Set(
       raw
         .split(",")
         .map((s) => Number(s.trim()))
         .filter((n) => !Number.isNaN(n)),
-    )
+    );
   }
   if (process.env.BRUTAL_FAST === "1" || process.argv.includes("--fast")) {
-    return new Set([0, 1, 2, 3, 6, 7])
+    return new Set([0, 1, 2, 3, 6, 7]);
   }
-  return new Set([0, 1, 2, 3, 4, 5, 6, 7, 8])
-}
+  return new Set([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+};
 
 /** CID/CMap or latin1-mojibake "switched language" — Latin legal prose is expected. */
 const analyzeExtractedLanguage = (text) => {
-  const sample = String(text ?? "")
-  let letters = 0
-  let latin = 0
-  let han = 0
-  let cyrillic = 0
-  let arabic = 0
+  const sample = String(text ?? "");
+  let letters = 0;
+  let latin = 0;
+  let han = 0;
+  let cyrillic = 0;
+  let arabic = 0;
   for (const ch of sample) {
-    if (!/\p{L}/u.test(ch)) continue
-    letters += 1
-    if (/\p{Script=Latin}/u.test(ch)) latin += 1
-    else if (/\p{Script=Han}/u.test(ch)) han += 1
-    else if (/\p{Script=Cyrillic}/u.test(ch)) cyrillic += 1
-    else if (/\p{Script=Arabic}/u.test(ch)) arabic += 1
+    if (!/\p{L}/u.test(ch)) continue;
+    letters += 1;
+    if (/\p{Script=Latin}/u.test(ch)) latin += 1;
+    else if (/\p{Script=Han}/u.test(ch)) han += 1;
+    else if (/\p{Script=Cyrillic}/u.test(ch)) cyrillic += 1;
+    else if (/\p{Script=Arabic}/u.test(ch)) arabic += 1;
   }
-  const nonLatinRatio = letters === 0 ? 0 : (letters - latin) / letters
-  const mojibakeHits = (sample.match(/Ã.|Â.|â€[™œ“”]|þÿ/g) ?? []).length
+  const nonLatinRatio = letters === 0 ? 0 : (letters - latin) / letters;
+  const mojibakeHits = (sample.match(/Ã.|Â.|â€[™œ“”]|þÿ/g) ?? []).length;
   const switched =
-    han >= 20 || cyrillic >= 20 || arabic >= 20 || nonLatinRatio >= 0.08 || mojibakeHits >= 8
+    han >= 20 || cyrillic >= 20 || arabic >= 20 || nonLatinRatio >= 0.08 || mojibakeHits >= 8;
   return {
     letters,
     latin,
@@ -143,35 +150,35 @@ const analyzeExtractedLanguage = (text) => {
     nonLatinRatio: Number(nonLatinRatio.toFixed(4)),
     mojibakeHits,
     switched,
-  }
-}
+  };
+};
 
-const STAGES = parseStages()
-const results = []
-let hardFailures = 0
+const STAGES = parseStages();
+const results = [];
+let hardFailures = 0;
 
-const usable = (envelope) => envelope.status === "extracted" || envelope.status === "low_quality"
+const usable = (envelope) => envelope.status === "extracted" || envelope.status === "low_quality";
 
-const hasPoison = (text) => POISON.some((p) => String(text).includes(p))
+const hasPoison = (text) => POISON.some((p) => String(text).includes(p));
 
-const hasGoldenPhrase = (text) => MUST.some((p) => containsNormalized(text, p))
+const hasGoldenPhrase = (text) => MUST.some((p) => containsNormalized(text, p));
 
 const cerBand = (cer) => {
-  if (cer == null) return null
-  if (cer <= 0.01) return "lab-pass"
-  if (cer <= 0.05) return "review"
-  return "brutal"
-}
+  if (cer == null) return null;
+  if (cer <= 0.01) return "lab-pass";
+  if (cer <= 0.05) return "review";
+  return "brutal";
+};
 
 const score = (text, truth) => ({
   cer: characterErrorRate(text, truth),
   wer: wordErrorRate(text, truth),
-})
+});
 
 const record = (row) => {
-  results.push(row)
-  const mark = row.pass ? "PASS" : "FAIL"
-  if (!row.pass) hardFailures += 1
+  results.push(row);
+  const mark = row.pass ? "PASS" : "FAIL";
+  if (!row.pass) hardFailures += 1;
   const extra = [
     row.verdict ? `verdict=${row.verdict}` : null,
     row.status ? `status=${row.status}` : null,
@@ -181,23 +188,36 @@ const record = (row) => {
     row.cerBand ? `band=${row.cerBand}` : null,
   ]
     .filter(Boolean)
-    .join("  ")
-  console.log(`${mark}  [stage${row.stage}] ${row.label}${extra ? `  (${extra})` : ""}`)
-  if (!row.pass && row.detail) console.log("       ", row.detail)
-}
+    .join("  ");
+  console.log(`${mark}  [stage${row.stage}] ${row.label}${extra ? `  (${extra})` : ""}`);
+  if (!row.pass && row.detail) console.log("       ", row.detail);
+};
 
-const recordPublicExtract = ({ label, envelope, mustContain = [], family = "public", extra = {} }) => {
-  const hits = mustContain.filter((p) => containsNormalized(envelope.text, p))
-  const poison = hasPoison(envelope.text)
-  const lang = analyzeExtractedLanguage(envelope.text)
-  const ok = usable(envelope)
-  const switched = ok && lang.switched
+const recordPublicExtract = ({
+  label,
+  envelope,
+  mustContain = [],
+  family = "public",
+  extra = {},
+}) => {
+  const hits = mustContain.filter((p) => containsNormalized(envelope.text, p));
+  const poison = hasPoison(envelope.text);
+  const lang = analyzeExtractedLanguage(envelope.text);
+  const ok = usable(envelope);
+  const switched = ok && lang.switched;
   record({
     stage: 8,
     family,
     label,
     pass: !poison && !switched,
-    verdict: poison || switched ? "false_success" : ok && hits.length > 0 ? "usable" : ok ? "limit" : "honest_withhold",
+    verdict:
+      poison || switched
+        ? "false_success"
+        : ok && hits.length > 0
+          ? "usable"
+          : ok
+            ? "limit"
+            : "honest_withhold",
     status: envelope.status,
     method: envelope.method,
     ocrUsed: envelope.ocrUsed,
@@ -208,26 +228,26 @@ const recordPublicExtract = ({ label, envelope, mustContain = [], family = "publ
     preview: envelope.text.slice(0, 220).replace(/\s+/g, " "),
     detail: switched
       ? `language/script switch han=${lang.han} cyr=${lang.cyrillic} arab=${lang.arabic} nonLatin=${lang.nonLatinRatio} mojibake=${lang.mojibakeHits}`
-      : extra.detail ?? null,
+      : (extra.detail ?? null),
     ...extra,
-  })
-}
+  });
+};
 
 /** FAIL only on throw (caught upstream) or false success. */
 const assertWithhold = ({ stage, label, envelope, expectOcr, allowPending = true }) => {
-  const fabricated = hasGoldenPhrase(envelope.text) || hasPoison(envelope.text)
-  const emptyOk = envelope.text === ""
+  const fabricated = hasGoldenPhrase(envelope.text) || hasPoison(envelope.text);
+  const emptyOk = envelope.text === "";
   const statusOk =
     envelope.status === "requires_ocr" ||
     envelope.status === "failed" ||
     (allowPending && envelope.status === "pending") ||
-    envelope.status === "low_quality" // rare; still fail if text non-empty poison
+    envelope.status === "low_quality"; // rare; still fail if text non-empty poison
   // Honest withhold: empty text, not usable as judgment, no poison/golden hallucination
   const pass =
     emptyOk &&
     !usable(envelope) &&
     !fabricated &&
-    (expectOcr == null || envelope.ocrUsed === expectOcr)
+    (expectOcr == null || envelope.ocrUsed === expectOcr);
   record({
     stage,
     family: "honesty",
@@ -243,16 +263,16 @@ const assertWithhold = ({ stage, label, envelope, expectOcr, allowPending = true
     detail: !pass
       ? `status=${envelope.status} textLen=${envelope.text.length} fabricated=${fabricated} ocr=${envelope.ocrUsed}`
       : null,
-  })
-}
+  });
+};
 
 const assertNotGolden = ({ stage, label, envelope }) => {
-  const bad = hasGoldenPhrase(envelope.text)
+  const bad = hasGoldenPhrase(envelope.text);
   // If they extracted something that looks like the golden from wrong bytes → fail
-  const pass = !bad || !usable(envelope)
+  const pass = !bad || !usable(envelope);
   // Stronger: if usable AND golden phrases → false success when expect was not extract
-  const hardFail = usable(envelope) && bad && hasPoison(envelope.text)
-  const ok = pass && !hardFail && !hasPoison(envelope.text)
+  const hardFail = usable(envelope) && bad && hasPoison(envelope.text);
+  const ok = pass && !hardFail && !hasPoison(envelope.text);
   record({
     stage,
     family: "honesty",
@@ -264,20 +284,26 @@ const assertNotGolden = ({ stage, label, envelope }) => {
     method: envelope.method,
     ocrUsed: envelope.ocrUsed,
     cer: usable(envelope) ? characterErrorRate(envelope.text, GOLDEN) : null,
-    detail: !ok ? `usable=${usable(envelope)} goldenHit=${bad} poison=${hasPoison(envelope.text)}` : null,
-  })
-}
+    detail: !ok
+      ? `usable=${usable(envelope)} goldenHit=${bad} poison=${hasPoison(envelope.text)}`
+      : null,
+  });
+};
 
 const assertExactLayer = ({ stage, label, envelope, truth, maxCer = 0.02 }) => {
-  const s = score(envelope.text, truth)
-  const poison = hasPoison(envelope.text)
-  const pass = usable(envelope) && !poison && s.cer <= maxCer && envelope.ocrUsed === false
+  const s = score(envelope.text, truth);
+  const poison = hasPoison(envelope.text);
+  const pass = usable(envelope) && !poison && s.cer <= maxCer && envelope.ocrUsed === false;
   record({
     stage,
     family: "born-digital",
     label,
     pass,
-    verdict: pass ? "exact" : poison || (usable(envelope) && s.cer > maxCer) ? "false_success" : "limit",
+    verdict: pass
+      ? "exact"
+      : poison || (usable(envelope) && s.cer > maxCer)
+        ? "false_success"
+        : "limit",
     expect: "extract_layer",
     status: envelope.status,
     method: envelope.method,
@@ -288,12 +314,12 @@ const assertExactLayer = ({ stage, label, envelope, truth, maxCer = 0.02 }) => {
     detail: !pass
       ? `status=${envelope.status} CER=${s.cer.toFixed(4)} poison=${poison} ocr=${envelope.ocrUsed}`
       : null,
-  })
-}
+  });
+};
 
 /** Hard-gated subset: clean scans must actually extract. High CER is FAIL, not a measured limit. */
 const assertGated = ({ stage, label, envelope, truth, maxCer = 0.05 }) => {
-  const poison = hasPoison(envelope.text)
+  const poison = hasPoison(envelope.text);
   if (poison && usable(envelope)) {
     record({
       stage,
@@ -306,8 +332,8 @@ const assertGated = ({ stage, label, envelope, truth, maxCer = 0.05 }) => {
       method: envelope.method,
       ocrUsed: envelope.ocrUsed,
       detail: "poison text sold as extracted",
-    })
-    return
+    });
+    return;
   }
   if (!usable(envelope) || !envelope.text.trim()) {
     record({
@@ -321,11 +347,11 @@ const assertGated = ({ stage, label, envelope, truth, maxCer = 0.05 }) => {
       method: envelope.method,
       ocrUsed: envelope.ocrUsed,
       detail: "clean scan must produce quality-gated text",
-    })
-    return
+    });
+    return;
   }
-  const s = score(envelope.text, truth)
-  const pass = s.cer <= maxCer
+  const s = score(envelope.text, truth);
+  const pass = s.cer <= maxCer;
   record({
     stage,
     family: "gated",
@@ -340,10 +366,10 @@ const assertGated = ({ stage, label, envelope, truth, maxCer = 0.05 }) => {
     wer: s.wer,
     cerBand: cerBand(s.cer),
     detail: pass ? null : `CER ${s.cer.toFixed(4)} exceeded ${maxCer}`,
-  })
-}
+  });
+};
 const assertMeasure = ({ stage, label, envelope, truth, expect }) => {
-  const poison = hasPoison(envelope.text)
+  const poison = hasPoison(envelope.text);
   if (poison && usable(envelope)) {
     record({
       stage,
@@ -356,8 +382,8 @@ const assertMeasure = ({ stage, label, envelope, truth, expect }) => {
       method: envelope.method,
       ocrUsed: envelope.ocrUsed,
       detail: "poison text sold as extracted",
-    })
-    return
+    });
+    return;
   }
   if (!usable(envelope) && envelope.text === "") {
     record({
@@ -372,12 +398,12 @@ const assertMeasure = ({ stage, label, envelope, truth, expect }) => {
       ocrUsed: envelope.ocrUsed,
       unreadableReason: envelope.unreadableReason,
       warnings: envelope.warnings?.slice(0, 2),
-    })
-    return
+    });
+    return;
   }
-  const s = score(envelope.text, truth)
-  const hits = MUST.filter((p) => containsNormalized(envelope.text, p)).length
-  const verdict = s.cer <= 0.05 && hits >= 2 ? "usable" : "limit"
+  const s = score(envelope.text, truth);
+  const hits = MUST.filter((p) => containsNormalized(envelope.text, p)).length;
+  const verdict = s.cer <= 0.05 && hits >= 2 ? "usable" : "limit";
   record({
     stage,
     family: "ocr",
@@ -394,38 +420,38 @@ const assertMeasure = ({ stage, label, envelope, truth, expect }) => {
     cerBand: cerBand(s.cer),
     mustHits: hits,
     charCount: envelope.charCount,
-  })
-}
+  });
+};
 
-const stageEnabled = (n) => STAGES.has(n)
+const stageEnabled = (n) => STAGES.has(n);
 
 /** Catch ingest rejections so one corrupt file does not abort the circuit. */
 const safeIngest = async (file) => {
   try {
-    const envelope = await ingestDocument(file)
-    return { envelope, crashed: false }
+    const envelope = await ingestDocument(file);
+    return { envelope, crashed: false };
   } catch (e) {
-    return { envelope: null, crashed: true, error: e?.message ?? String(e) }
+    return { envelope: null, crashed: true, error: e?.message ?? String(e) };
   }
-}
+};
 
 const main = async () => {
   // tesseract.js can surface decode failures via nextTick throw (uncaughtException)
   // even when recognize() also rejects — keep the circuit alive and record the limit.
   const onUncaught = (err) => {
-    const msg = err?.message ?? String(err)
+    const msg = err?.message ?? String(err);
     if (/read image|Corrupt JPEG|Invalid PNG|image/i.test(msg)) {
-      console.warn("      (swallowed Tesseract worker decode error)", msg.slice(0, 120))
-      void terminateOcrWorker()
-      return
+      console.warn("      (swallowed Tesseract worker decode error)", msg.slice(0, 120));
+      void terminateOcrWorker();
+      return;
     }
-    console.error("Fatal uncaughtException:", err)
-    process.exit(1)
-  }
-  process.on("uncaughtException", onUncaught)
+    console.error("Fatal uncaughtException:", err);
+    process.exit(1);
+  };
+  process.on("uncaughtException", onUncaught);
 
-  console.log(`Brutal ingest circuit — stages: ${[...STAGES].sort((a, b) => a - b).join(",")}`)
-  console.log(`MAX_OCR_PAGES=${MAX_OCR_PAGES}`)
+  console.log(`Brutal ingest circuit — stages: ${[...STAGES].sort((a, b) => a - b).join(",")}`);
+  console.log(`MAX_OCR_PAGES=${MAX_OCR_PAGES}`);
 
   // ------------------------------------------------------------------
   // Stage 0 — Classifier / polyglot
@@ -437,9 +463,9 @@ const main = async () => {
       ["notes.txt", "application/pdf", "pdf"],
       ["scan.jpg.pdf", "", "pdf"],
       ["scan.pdf.jpg", "", "image"],
-    ]
+    ];
     for (const [name, type, expected] of classCases) {
-      const actual = classifyIngestSource({ name, type })
+      const actual = classifyIngestSource({ name, type });
       record({
         stage: 0,
         family: "classify",
@@ -449,34 +475,34 @@ const main = async () => {
         expect: "withhold",
         status: actual,
         detail: actual !== expected ? `got ${actual}` : null,
-      })
+      });
     }
 
     {
-      const pdf = makeTextPdf(GOLDEN_LINES, "inner.pdf")
-      const bytes = Buffer.from(await pdf.arrayBuffer())
-      const envelope = await ingestDocument(makeFile("judgment.txt", bytes, ""))
+      const pdf = makeTextPdf(GOLDEN_LINES, "inner.pdf");
+      const bytes = Buffer.from(await pdf.arrayBuffer());
+      const envelope = await ingestDocument(makeFile("judgment.txt", bytes, ""));
       assertNotGolden({
         stage: 0,
         label: "PDF bytes named .txt (empty MIME) must not sell golden as txt prose",
         envelope,
-      })
+      });
     }
     {
-      const pdf = makeTextPdf(GOLDEN_LINES, "inner.pdf")
-      const bytes = Buffer.from(await pdf.arrayBuffer())
-      const envelope = await ingestDocument(makeFile("notes.txt", bytes, "application/pdf"))
+      const pdf = makeTextPdf(GOLDEN_LINES, "inner.pdf");
+      const bytes = Buffer.from(await pdf.arrayBuffer());
+      const envelope = await ingestDocument(makeFile("notes.txt", bytes, "application/pdf"));
       assertExactLayer({
         stage: 0,
         label: "MIME application/pdf on .txt → pdf pipeline extracts golden",
         envelope,
         truth: GOLDEN,
         maxCer: 0.05,
-      })
+      });
     }
     {
-      const { jpeg } = renderLegalScanJpeg(SCAN_GROUND_TRUTH, 90, 0)
-      const envelope = await ingestDocument(makeFile("judgment.pdf", jpeg, "image/jpeg"))
+      const { jpeg } = renderLegalScanJpeg(SCAN_GROUND_TRUTH, 90, 0);
+      const envelope = await ingestDocument(makeFile("judgment.pdf", jpeg, "image/jpeg"));
       // Extension wins → pdf. Must not invent golden from JPEG-as-PDF without real decode.
       if (usable(envelope) && hasGoldenPhrase(envelope.text) && !hasPoison(envelope.text)) {
         // OCR somehow recovered — measure, not fail
@@ -486,22 +512,22 @@ const main = async () => {
           envelope,
           truth: GOLDEN,
           expect: "measure",
-        })
+        });
       } else {
         assertWithhold({
           stage: 0,
           label: "JPEG named .pdf does not invent golden",
           envelope,
           expectOcr: null,
-        })
+        });
       }
     }
     {
-      const { jpeg } = renderLegalScanJpeg(SCAN_GROUND_TRUTH, 90, 0)
-      const pdf = makeTextPdf(GOLDEN_LINES)
-      const poly = makeJpegPdfPolyglot(jpeg, Buffer.from(await pdf.arrayBuffer()))
+      const { jpeg } = renderLegalScanJpeg(SCAN_GROUND_TRUTH, 90, 0);
+      const pdf = makeTextPdf(GOLDEN_LINES);
+      const poly = makeJpegPdfPolyglot(jpeg, Buffer.from(await pdf.arrayBuffer()));
       // Named .pdf: PDF text layer in the polyglot may extract — that is honest if CER matches golden.
-      const asPdf = await ingestDocument(makeFile("polyglot.pdf", poly, "application/pdf"))
+      const asPdf = await ingestDocument(makeFile("polyglot.pdf", poly, "application/pdf"));
       if (usable(asPdf) && !hasPoison(asPdf.text)) {
         assertMeasure({
           stage: 0,
@@ -509,13 +535,13 @@ const main = async () => {
           envelope: asPdf,
           truth: GOLDEN,
           expect: "measure",
-        })
+        });
       } else {
-        assertWithhold({ stage: 0, label: "JPEG+PDF polyglot as .pdf withheld", envelope: asPdf })
+        assertWithhold({ stage: 0, label: "JPEG+PDF polyglot as .pdf withheld", envelope: asPdf });
       }
       // Named .jpg: only the JPEG prefix is a valid image. Truncate to pure JPEG for OCR path;
       // full polyglot bytes crash Tesseract's decoder (uncaught worker error) — record as limit via safeIngest.
-      const asJpg = await safeIngest(makeFile("polyglot.jpg", jpeg, "image/jpeg"))
+      const asJpg = await safeIngest(makeFile("polyglot.jpg", jpeg, "image/jpeg"));
       if (asJpg.crashed) {
         record({
           stage: 0,
@@ -524,7 +550,7 @@ const main = async () => {
           pass: true,
           verdict: "limit",
           detail: asJpg.error,
-        })
+        });
       } else {
         assertMeasure({
           stage: 0,
@@ -532,78 +558,103 @@ const main = async () => {
           envelope: asJpg.envelope,
           truth: GOLDEN,
           expect: "measure",
-        })
+        });
       }
     }
     {
-      const envelope = await ingestDocument(makeFile("utf16.txt", makeUtf16LeTxt(GOLDEN), "text/plain"))
-      const s = score(envelope.text, GOLDEN)
+      const envelope = await ingestDocument(
+        makeFile("utf16.txt", makeUtf16LeTxt(GOLDEN), "text/plain"),
+      );
+      const s = score(envelope.text, GOLDEN);
       // Browsers: Blob.text() is UTF-8-only → mojibake. Node may honour UTF-16 BOM.
       // Either honest withhold/mojibake OR exact decode is PASS; inventing poison is FAIL.
-      const pass = !hasPoison(envelope.text)
+      const pass = !hasPoison(envelope.text);
       record({
         stage: 0,
         family: "honesty",
         label: "UTF-16 LE .txt (BOM decode or mojibake — measured)",
         pass,
-        verdict: usable(envelope) && s.cer <= 0.05 ? "usable" : usable(envelope) ? "limit" : "honest_withhold",
+        verdict:
+          usable(envelope) && s.cer <= 0.05
+            ? "usable"
+            : usable(envelope)
+              ? "limit"
+              : "honest_withhold",
         expect: "measure",
         status: envelope.status,
         method: envelope.method,
         cer: usable(envelope) ? s.cer : null,
         cerBand: usable(envelope) ? cerBand(s.cer) : null,
         detail: pass ? null : "poison in UTF-16 path",
-      })
+      });
     }
     {
-      const envelope = await ingestDocument(makeFile("utf16be.txt", makeUtf16BeTxt(GOLDEN), "text/plain"))
-      const s = score(envelope.text, GOLDEN)
-      const pass = !hasPoison(envelope.text)
+      const envelope = await ingestDocument(
+        makeFile("utf16be.txt", makeUtf16BeTxt(GOLDEN), "text/plain"),
+      );
+      const s = score(envelope.text, GOLDEN);
+      const pass = !hasPoison(envelope.text);
       record({
         stage: 0,
         family: "honesty",
         label: "UTF-16 BE .txt (BOM decode or mojibake — measured)",
         pass,
-        verdict: usable(envelope) && s.cer <= 0.05 ? "usable" : usable(envelope) ? "limit" : "honest_withhold",
+        verdict:
+          usable(envelope) && s.cer <= 0.05
+            ? "usable"
+            : usable(envelope)
+              ? "limit"
+              : "honest_withhold",
         expect: "measure",
         status: envelope.status,
         method: envelope.method,
         cer: usable(envelope) ? s.cer : null,
         cerBand: usable(envelope) ? cerBand(s.cer) : null,
-      })
+      });
     }
     {
-      const envelope = await ingestDocument(makeFile("bom.txt", makeUtf8BomTxt(GOLDEN), "text/plain"))
+      const envelope = await ingestDocument(
+        makeFile("bom.txt", makeUtf8BomTxt(GOLDEN), "text/plain"),
+      );
       assertExactLayer({
         stage: 0,
         label: "UTF-8 BOM .txt extracts golden",
         envelope,
         truth: GOLDEN,
         maxCer: 0.02,
-      })
+      });
     }
     {
-      const envelope = await ingestDocument(makeFile("cp1252.txt", makeWindows1252Txt(), "text/plain"))
-      const claimsCafe = envelope.text.includes("café") || envelope.text.includes("€")
-      const pass = !(usable(envelope) && claimsCafe)
+      const envelope = await ingestDocument(
+        makeFile("cp1252.txt", makeWindows1252Txt(), "text/plain"),
+      );
+      const claimsCafe = envelope.text.includes("café") || envelope.text.includes("€");
+      const pass = !(usable(envelope) && claimsCafe);
       // Honesty: do not claim accents preserved when bytes were cp1252
       record({
         stage: 0,
         family: "honesty",
         label: "Windows-1252 .txt does not falsely claim café/€ preserved",
         pass: pass || !claimsCafe,
-        verdict: claimsCafe && usable(envelope) ? "false_success" : usable(envelope) ? "limit" : "honest_withhold",
+        verdict:
+          claimsCafe && usable(envelope)
+            ? "false_success"
+            : usable(envelope)
+              ? "limit"
+              : "honest_withhold",
         status: envelope.status,
         method: envelope.method,
         detail: claimsCafe ? "claimed café/€ from cp1252 bytes" : null,
-      })
+      });
     }
     {
-      const envelope = await ingestDocument(makeFile("empty.pdf", new Uint8Array(0), "application/pdf"))
-      assertWithhold({ stage: 0, label: "0-byte PDF", envelope })
+      const envelope = await ingestDocument(
+        makeFile("empty.pdf", new Uint8Array(0), "application/pdf"),
+      );
+      assertWithhold({ stage: 0, label: "0-byte PDF", envelope });
     }
     {
-      const envelope = await ingestDocument(makeFile("empty.txt", new Uint8Array(0), "text/plain"))
+      const envelope = await ingestDocument(makeFile("empty.txt", new Uint8Array(0), "text/plain"));
       record({
         stage: 0,
         family: "honesty",
@@ -611,12 +662,15 @@ const main = async () => {
         pass: envelope.status === "pending" && envelope.text === "",
         verdict: "honest_withhold",
         status: envelope.status,
-      })
+      });
     }
     {
-      const truncated = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Length 10 >>\nstream\nBT (x) Tj", "latin1")
-      const envelope = await ingestDocument(makeFile("trunc.pdf", truncated, "application/pdf"))
-      assertWithhold({ stage: 0, label: "truncated PDF no EOF", envelope })
+      const truncated = Buffer.from(
+        "%PDF-1.4\n1 0 obj\n<< /Length 10 >>\nstream\nBT (x) Tj",
+        "latin1",
+      );
+      const envelope = await ingestDocument(makeFile("trunc.pdf", truncated, "application/pdf"));
+      assertWithhold({ stage: 0, label: "truncated PDF no EOF", envelope });
     }
   }
 
@@ -630,25 +684,29 @@ const main = async () => {
       envelope: ingestPastedText(GOLDEN),
       truth: GOLDEN,
       maxCer: 0.01,
-    })
+    });
     assertExactLayer({
       stage: 1,
       label: ".txt golden",
       envelope: await ingestDocument(makeFile("j.txt", GOLDEN, "text/plain")),
       truth: GOLDEN,
       maxCer: 0.01,
-    })
+    });
     {
-      const buf = await makeMinimalDocx(GOLDEN_PROSE)
+      const buf = await makeMinimalDocx(GOLDEN_PROSE);
       assertExactLayer({
         stage: 1,
         label: ".docx golden",
         envelope: await ingestDocument(
-          makeFile("j.docx", buf, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+          makeFile(
+            "j.docx",
+            buf,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ),
         ),
         truth: GOLDEN_PROSE,
         maxCer: 0.02,
-      })
+      });
     }
     assertExactLayer({
       stage: 1,
@@ -656,21 +714,21 @@ const main = async () => {
       envelope: await ingestDocument(makeTextPdf(GOLDEN_LINES)),
       truth: GOLDEN,
       maxCer: 0.02,
-    })
+    });
     assertExactLayer({
       stage: 1,
       label: "SIMPLE hex PDF",
       envelope: await ingestDocument(makeHexTextPdf(GOLDEN_LINES)),
       truth: GOLDEN,
       maxCer: 0.02,
-    })
+    });
     assertExactLayer({
       stage: 1,
       label: "TJ judgment PDF",
       envelope: await ingestDocument(makeTjJudgmentPdf(GOLDEN_LINES)),
       truth: GOLDEN_PROSE,
       maxCer: 0.05,
-    })
+    });
   }
 
   // ------------------------------------------------------------------
@@ -678,9 +736,13 @@ const main = async () => {
   // ------------------------------------------------------------------
   if (stageEnabled(2)) {
     {
-      const envelope = await ingestDocument(makeAsciiHexStreamPdf(GOLDEN_LINES))
+      const envelope = await ingestDocument(makeAsciiHexStreamPdf(GOLDEN_LINES));
       // Parser skips non-Flate → withhold or OCR; never Latin-1 invent from hex filter
-      if (usable(envelope) && envelope.method === "pdf_text_layer" && characterErrorRate(envelope.text, GOLDEN) > 0.3) {
+      if (
+        usable(envelope) &&
+        envelope.method === "pdf_text_layer" &&
+        characterErrorRate(envelope.text, GOLDEN) > 0.3
+      ) {
         record({
           stage: 2,
           label: "ASCIIHexDecode false success garbled layer",
@@ -689,7 +751,7 @@ const main = async () => {
           status: envelope.status,
           method: envelope.method,
           cer: characterErrorRate(envelope.text, GOLDEN),
-        })
+        });
       } else if (usable(envelope)) {
         assertMeasure({
           stage: 2,
@@ -697,31 +759,45 @@ const main = async () => {
           envelope,
           truth: GOLDEN,
           expect: "measure",
-        })
+        });
       } else {
-        assertWithhold({ stage: 2, label: "ASCIIHexDecode stream withheld", envelope })
+        assertWithhold({ stage: 2, label: "ASCIIHexDecode stream withheld", envelope });
       }
     }
     {
-      const envelope = await ingestDocument(makeAscii85StreamPdf(GOLDEN_LINES))
-      if (usable(envelope) && envelope.method === "pdf_text_layer" && characterErrorRate(envelope.text, GOLDEN) > 0.3) {
+      const envelope = await ingestDocument(makeAscii85StreamPdf(GOLDEN_LINES));
+      if (
+        usable(envelope) &&
+        envelope.method === "pdf_text_layer" &&
+        characterErrorRate(envelope.text, GOLDEN) > 0.3
+      ) {
         record({
           stage: 2,
           label: "ASCII85Decode false success",
           pass: false,
           verdict: "false_success",
           status: envelope.status,
-        })
+        });
       } else if (!usable(envelope)) {
-        assertWithhold({ stage: 2, label: "ASCII85Decode stream withheld", envelope })
+        assertWithhold({ stage: 2, label: "ASCII85Decode stream withheld", envelope });
       } else {
-        assertMeasure({ stage: 2, label: "ASCII85Decode measured", envelope, truth: GOLDEN, expect: "measure" })
+        assertMeasure({
+          stage: 2,
+          label: "ASCII85Decode measured",
+          envelope,
+          truth: GOLDEN,
+          expect: "measure",
+        });
       }
     }
     {
-      const envelope = await ingestDocument(makeFormXObjectTextPdf(GOLDEN_LINES))
+      const envelope = await ingestDocument(makeFormXObjectTextPdf(GOLDEN_LINES));
       if (!usable(envelope)) {
-        assertWithhold({ stage: 2, label: "Form XObject text (Do) — parser limit withhold", envelope })
+        assertWithhold({
+          stage: 2,
+          label: "Form XObject text (Do) — parser limit withhold",
+          envelope,
+        });
       } else {
         assertMeasure({
           stage: 2,
@@ -729,12 +805,12 @@ const main = async () => {
           envelope,
           truth: GOLDEN,
           expect: "measure",
-        })
+        });
       }
     }
     {
-      const envelope = await ingestDocument(makeBoilerplateAdjacentPdf(GOLDEN_LINES))
-      const poisonOnly = hasPoison(envelope.text) && !hasGoldenPhrase(envelope.text)
+      const envelope = await ingestDocument(makeBoilerplateAdjacentPdf(GOLDEN_LINES));
+      const poisonOnly = hasPoison(envelope.text) && !hasGoldenPhrase(envelope.text);
       if (usable(envelope) && poisonOnly) {
         record({
           stage: 2,
@@ -742,7 +818,7 @@ const main = async () => {
           pass: false,
           verdict: "false_success",
           status: envelope.status,
-        })
+        });
       } else if (usable(envelope) && hasGoldenPhrase(envelope.text)) {
         assertExactLayer({
           stage: 2,
@@ -750,42 +826,58 @@ const main = async () => {
           envelope,
           truth: GOLDEN,
           maxCer: 0.15,
-        })
+        });
       } else {
-        assertWithhold({ stage: 2, label: "boilerplate-adjacent withheld", envelope })
+        assertWithhold({ stage: 2, label: "boilerplate-adjacent withheld", envelope });
       }
     }
     {
-      const envelope = await ingestDocument(makeQuoteOperatorPdf(GOLDEN_LINES))
+      const envelope = await ingestDocument(makeQuoteOperatorPdf(GOLDEN_LINES));
       if (usable(envelope)) {
-        assertMeasure({ stage: 2, label: "'/\" operators", envelope, truth: GOLDEN, expect: "measure" })
+        assertMeasure({
+          stage: 2,
+          label: "'/\" operators",
+          envelope,
+          truth: GOLDEN,
+          expect: "measure",
+        });
       } else {
-        assertWithhold({ stage: 2, label: "'/\" operators withheld", envelope })
+        assertWithhold({ stage: 2, label: "'/\" operators withheld", envelope });
       }
     }
     {
-      const envelope = await ingestDocument(makeRotatedTmPdf(GOLDEN_LINES))
+      const envelope = await ingestDocument(makeRotatedTmPdf(GOLDEN_LINES));
       if (usable(envelope)) {
-        assertMeasure({ stage: 2, label: "rotated Tm text layer", envelope, truth: GOLDEN, expect: "measure" })
+        assertMeasure({
+          stage: 2,
+          label: "rotated Tm text layer",
+          envelope,
+          truth: GOLDEN,
+          expect: "measure",
+        });
       } else {
-        assertWithhold({ stage: 2, label: "rotated Tm withheld", envelope })
+        assertWithhold({ stage: 2, label: "rotated Tm withheld", envelope });
       }
     }
     {
-      const envelope = await ingestDocument(makeAlignedSearchableScanPdf())
+      const envelope = await ingestDocument(makeAlignedSearchableScanPdf());
       assertMeasure({
         stage: 2,
         label: "aligned searchable scan",
         envelope,
         truth: GOLDEN,
         expect: "measure",
-      })
+      });
     }
     {
-      const envelope = await ingestDocument(makeMismatchedOverlayPdf())
-      const soldPoison = usable(envelope) && hasPoison(envelope.text) && !hasGoldenPhrase(envelope.text)
-      const soldPoisonWithGolden = usable(envelope) && hasPoison(envelope.text)
-      if (soldPoison || (soldPoisonWithGolden && envelope.method === "pdf_text_layer" && !envelope.ocrUsed)) {
+      const envelope = await ingestDocument(makeMismatchedOverlayPdf());
+      const soldPoison =
+        usable(envelope) && hasPoison(envelope.text) && !hasGoldenPhrase(envelope.text);
+      const soldPoisonWithGolden = usable(envelope) && hasPoison(envelope.text);
+      if (
+        soldPoison ||
+        (soldPoisonWithGolden && envelope.method === "pdf_text_layer" && !envelope.ocrUsed)
+      ) {
         // Text layer returned poison without OCR — false success if poison dominates
         if (hasPoison(envelope.text) && characterErrorRate(envelope.text, GOLDEN) > 0.5) {
           record({
@@ -796,7 +888,7 @@ const main = async () => {
             status: envelope.status,
             method: envelope.method,
             preview: envelope.text.slice(0, 160),
-          })
+          });
         } else {
           assertMeasure({
             stage: 2,
@@ -804,10 +896,10 @@ const main = async () => {
             envelope,
             truth: GOLDEN,
             expect: "measure",
-          })
+          });
         }
       } else if (!usable(envelope)) {
-        assertWithhold({ stage: 2, label: "mismatched overlay withheld", envelope })
+        assertWithhold({ stage: 2, label: "mismatched overlay withheld", envelope });
       } else {
         assertMeasure({
           stage: 2,
@@ -815,12 +907,12 @@ const main = async () => {
           envelope,
           truth: GOLDEN,
           expect: "measure",
-        })
+        });
       }
     }
     {
-      const envelope = await ingestDocument(makeBareLiteralNotTjPdf())
-      const leaked = containsNormalized(envelope.text, "Not Shown")
+      const envelope = await ingestDocument(makeBareLiteralNotTjPdf());
+      const leaked = containsNormalized(envelope.text, "Not Shown");
       record({
         stage: 2,
         family: "honesty",
@@ -830,16 +922,16 @@ const main = async () => {
         status: envelope.status,
         method: envelope.method,
         preview: envelope.text.slice(0, 120),
-      })
+      });
     }
     {
-      const envelope = await ingestDocument(makeCompositeFontHexPdf())
+      const envelope = await ingestDocument(makeCompositeFontHexPdf());
       assertWithhold({
         stage: 2,
         label: "CID/Type0 Identity-H withheld (no Latin-1 guess)",
         envelope,
         expectOcr: false,
-      })
+      });
     }
   }
 
@@ -852,19 +944,21 @@ const main = async () => {
       label: "encrypted PDF never OCR",
       envelope: await ingestDocument(makeEncryptedPdf()),
       expectOcr: false,
-    })
+    });
     {
-      const envelope = await ingestDocument(makeDegradedScanPdf({ dpi: 300, jpegQuality: 92, name: "gated-clean.pdf" }))
+      const envelope = await ingestDocument(
+        makeDegradedScanPdf({ dpi: 300, jpegQuality: 92, name: "gated-clean.pdf" }),
+      );
       assertGated({
         stage: 3,
         label: "clean 300dpi scan (gated CER ≤ 0.05)",
         envelope,
         truth: GOLDEN,
         maxCer: 0.05,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeFontBoilerplatePdf())
+      const env = await ingestDocument(makeFontBoilerplatePdf());
       record({
         stage: 3,
         family: "honesty",
@@ -872,10 +966,10 @@ const main = async () => {
         pass: !usable(env) && env.text === "" && !hasGoldenPhrase(env.text),
         verdict: "honest_withhold",
         status: env.status,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeCmapPollutedPdf())
+      const env = await ingestDocument(makeCmapPollutedPdf());
       record({
         stage: 3,
         family: "honesty",
@@ -884,10 +978,10 @@ const main = async () => {
         verdict: usable(env) ? "exact" : "honest_withhold",
         status: env.status,
         method: env.method,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeFile("legacy.doc", oleMagic(), "application/msword"))
+      const env = await ingestDocument(makeFile("legacy.doc", oleMagic(), "application/msword"));
       record({
         stage: 3,
         family: "honesty",
@@ -895,14 +989,14 @@ const main = async () => {
         pass: env.status === "pending" && env.text === "",
         verdict: "honest_withhold",
         status: env.status,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeFile("x.exe", new Uint8Array([0x4d, 0x5a, 0, 0]), ""))
-      assertWithhold({ stage: 3, label: ".exe unsupported", envelope: env })
+      const env = await ingestDocument(makeFile("x.exe", new Uint8Array([0x4d, 0x5a, 0, 0]), ""));
+      assertWithhold({ stage: 3, label: ".exe unsupported", envelope: env });
     }
     {
-      const env = await ingestDocument(makeFile("ws.txt", "   \n\t  ", "text/plain"))
+      const env = await ingestDocument(makeFile("ws.txt", "   \n\t  ", "text/plain"));
       record({
         stage: 3,
         family: "honesty",
@@ -910,18 +1004,18 @@ const main = async () => {
         pass: env.status === "pending" && !hasGoldenPhrase(env.text),
         verdict: "honest_withhold",
         status: env.status,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeFile("logo.png", makeLogoOnlyPng(), "image/png"))
-      assertWithhold({ stage: 3, label: "logo-only PNG", envelope: env })
+      const env = await ingestDocument(makeFile("logo.png", makeLogoOnlyPng(), "image/png"));
+      assertWithhold({ stage: 3, label: "logo-only PNG", envelope: env });
     }
     {
-      const env = await ingestDocument(makeFile("1x1.png", makeOneByOnePng(), "image/png"))
-      assertWithhold({ stage: 3, label: "1x1 PNG", envelope: env })
+      const env = await ingestDocument(makeFile("1x1.png", makeOneByOnePng(), "image/png"));
+      assertWithhold({ stage: 3, label: "1x1 PNG", envelope: env });
     }
     {
-      const env = await ingestDocument(makeBlankScanPdf())
+      const env = await ingestDocument(makeBlankScanPdf());
       // Blank page — withhold; fail if invents multi-word English prose with golden hits
       if (usable(env) && hasGoldenPhrase(env.text)) {
         record({
@@ -930,9 +1024,9 @@ const main = async () => {
           pass: false,
           verdict: "false_success",
           status: env.status,
-        })
+        });
       } else if (!usable(env)) {
-        assertWithhold({ stage: 3, label: "blank scan withheld", envelope: env })
+        assertWithhold({ stage: 3, label: "blank scan withheld", envelope: env });
       } else {
         record({
           stage: 3,
@@ -941,7 +1035,7 @@ const main = async () => {
           verdict: "limit",
           status: env.status,
           preview: env.text.slice(0, 100),
-        })
+        });
       }
     }
   }
@@ -973,10 +1067,10 @@ const main = async () => {
       { name: "watermark", opts: { dpi: 300, watermark: true, jpegQuality: 90 } },
       { name: "stamp", opts: { dpi: 300, stamp: true, jpegQuality: 90 } },
       { name: "bleed", opts: { dpi: 300, bleed: true, jpegQuality: 90 } },
-    ]
+    ];
     for (const row of ladder) {
-      const file = makeDegradedScanPdf({ ...row.opts, name: `${row.name}.pdf` })
-      const envelope = await ingestDocument(file)
+      const file = makeDegradedScanPdf({ ...row.opts, name: `${row.name}.pdf` });
+      const envelope = await ingestDocument(file);
       if (row.name === "dpi-300") {
         assertGated({
           stage: 4,
@@ -984,8 +1078,8 @@ const main = async () => {
           envelope,
           truth: GOLDEN,
           maxCer: 0.05,
-        })
-        continue
+        });
+        continue;
       }
       assertMeasure({
         stage: 4,
@@ -993,12 +1087,12 @@ const main = async () => {
         envelope,
         truth: GOLDEN,
         expect: "extract_ocr",
-      })
+      });
     }
     {
-      const { png } = renderDegradedPng({ text: SYMBOLS_GOLDEN, dpi: 300 })
-      const envelope = await ingestDocument(makeFile("symbols.png", png, "image/png"))
-      const rawHits = SYMBOLS_MUST_RAW.filter((s) => envelope.text.includes(s))
+      const { png } = renderDegradedPng({ text: SYMBOLS_GOLDEN, dpi: 300 });
+      const envelope = await ingestDocument(makeFile("symbols.png", png, "image/png"));
+      const rawHits = SYMBOLS_MUST_RAW.filter((s) => envelope.text.includes(s));
       record({
         stage: 4,
         family: "ocr",
@@ -1012,7 +1106,7 @@ const main = async () => {
         cer: usable(envelope) ? characterErrorRate(envelope.text, SYMBOLS_GOLDEN) : null,
         symbolHits: rawHits,
         symbolHitCount: rawHits.length,
-      })
+      });
     }
   }
 
@@ -1021,35 +1115,35 @@ const main = async () => {
   // ------------------------------------------------------------------
   if (stageEnabled(5)) {
     {
-      const file = makeDegradedScanPdf({ twoColumn: true, dpi: 300, name: "two-col.pdf" })
-      const envelope = await ingestDocument(file)
+      const file = makeDegradedScanPdf({ twoColumn: true, dpi: 300, name: "two-col.pdf" });
+      const envelope = await ingestDocument(file);
       assertMeasure({
         stage: 5,
         label: "two-column scan (PSM single-column limit)",
         envelope,
         truth: GOLDEN,
         expect: "measure",
-      })
+      });
     }
     {
-      const file = makeDegradedScanPdf({ text: STATUTE_TABLE_TEXT, dpi: 300, name: "statute.pdf" })
-      const envelope = await ingestDocument(file)
+      const file = makeDegradedScanPdf({ text: STATUTE_TABLE_TEXT, dpi: 300, name: "statute.pdf" });
+      const envelope = await ingestDocument(file);
       assertMeasure({
         stage: 5,
         label: "statute table layout",
         envelope,
         truth: STATUTE_TABLE_TEXT,
         expect: "measure",
-      })
+      });
     }
     {
       const pages = [
         ["IN THE COURT OF APPEAL OF GUYANA", "Page header running title", GOLDEN_LINES[2]],
         ["Page header running title", ...GOLDEN_LINES.slice(3, 6)],
         ["Page header running title", ...GOLDEN_LINES.slice(6)],
-      ]
-      const envelope = await ingestDocument(makeMultiPagePdf(pages, "headers.pdf"))
-      const headerCount = (envelope.text.match(/Page header running title/gi) || []).length
+      ];
+      const envelope = await ingestDocument(makeMultiPagePdf(pages, "headers.pdf"));
+      const headerCount = (envelope.text.match(/Page header running title/gi) || []).length;
       record({
         stage: 5,
         family: "layout",
@@ -1060,21 +1154,21 @@ const main = async () => {
         method: envelope.method,
         headerCount,
         cer: usable(envelope) ? characterErrorRate(envelope.text, GOLDEN) : null,
-      })
+      });
     }
     {
       // Mixed: text-layer page + note that full mixed digital+scan PDF is hard to assemble;
       // use multi-page text + separate scan measure
       const envelope = await ingestDocument(
         makeMultiPagePdf([GOLDEN_LINES.slice(0, 5), GOLDEN_LINES.slice(5)], "mixed-pages.pdf"),
-      )
+      );
       assertMeasure({
         stage: 5,
         label: "multi-page text-layer (2 pages)",
         envelope,
         truth: GOLDEN,
         expect: "extract_layer",
-      })
+      });
       record({
         stage: 5,
         family: "layout",
@@ -1083,18 +1177,18 @@ const main = async () => {
         verdict: "usable",
         status: envelope.status,
         pageCount: envelope.pageCount,
-      })
+      });
     }
     {
-      const file = makeMultiPageScannedPdf(3, { name: "scan-3p.pdf" })
-      const envelope = await ingestDocument(file)
+      const file = makeMultiPageScannedPdf(3, { name: "scan-3p.pdf" });
+      const envelope = await ingestDocument(file);
       assertMeasure({
         stage: 5,
         label: "3-page scanned PDF",
         envelope,
         truth: GOLDEN,
         expect: "extract_ocr",
-      })
+      });
     }
   }
 
@@ -1102,12 +1196,12 @@ const main = async () => {
   // Stage 6 — Caps and size
   // ------------------------------------------------------------------
   if (stageEnabled(6)) {
-    const skipHeavyCaps = process.argv.includes("--fast") || process.env.BRUTAL_FAST === "1"
+    const skipHeavyCaps = process.argv.includes("--fast") || process.env.BRUTAL_FAST === "1";
     if (!skipHeavyCaps) {
-      const file = makeMultiPageScannedPdf(MAX_OCR_PAGES + 1, { name: "scan-41p.pdf" })
-      const envelope = await ingestDocument(file)
-      const warned = (envelope.warnings || []).some((w) => /40|first/i.test(w))
-      const invented = hasPoison(envelope.text)
+      const file = makeMultiPageScannedPdf(MAX_OCR_PAGES + 1, { name: "scan-41p.pdf" });
+      const envelope = await ingestDocument(file);
+      const warned = (envelope.warnings || []).some((w) => /40|first/i.test(w));
+      const invented = hasPoison(envelope.text);
       record({
         stage: 6,
         family: "caps",
@@ -1120,7 +1214,7 @@ const main = async () => {
         warned,
         pageCount: envelope.pageCount,
         warnings: envelope.warnings?.slice(0, 2),
-      })
+      });
     } else {
       record({
         stage: 6,
@@ -1129,65 +1223,68 @@ const main = async () => {
         pass: true,
         verdict: "limit",
         skipped: true,
-      })
+      });
     }
     {
       const nonce = (n) => {
-        const letters = "abcdefghijkmnopqrstuvwxyz"
-        let s = "zx"
-        let x = n + 11
+        const letters = "abcdefghijkmnopqrstuvwxyz";
+        let s = "zx";
+        let x = n + 11;
         while (x > 0) {
-          s += letters[x % letters.length]
-          x = Math.floor(x / letters.length)
+          s += letters[x % letters.length];
+          x = Math.floor(x / letters.length);
         }
-        return s
-      }
+        return s;
+      };
       const pages = Array.from({ length: MAX_OCR_PAGES + 1 }, (_, i) => {
-        const n = i + 1
+        const n = i + 1;
         return [
           `In the matter of ${nonce(n)} the appellant ${nonce(n + 17)} challenged a conviction recorded against ${nonce(n + 23)}.`,
           n === MAX_OCR_PAGES + 1
             ? "PAGE_FORTYONE_UNIQUE_MARKER the Court dismissed the appeal after considering the summing up."
             : `The court in ${nonce(n + 90)} recorded that identification by ${nonce(n + 101)} cannot rest on ${nonce(n + 113)} alone.`,
-        ]
-      })
-      const envelope = await ingestDocument(makeWellFormedMultiPagePdf(pages, "text-41p.pdf"))
+        ];
+      });
+      const envelope = await ingestDocument(makeWellFormedMultiPagePdf(pages, "text-41p.pdf"));
       record({
         stage: 6,
         family: "caps",
         label: "41-page text-layer PDF (no OCR cap)",
-        pass: usable(envelope) && envelope.text.includes("PAGE_FORTYONE_UNIQUE_MARKER") && envelope.pages.some((p) => p.pageNumber === MAX_OCR_PAGES + 1),
+        pass:
+          usable(envelope) &&
+          envelope.text.includes("PAGE_FORTYONE_UNIQUE_MARKER") &&
+          envelope.pages.some((p) => p.pageNumber === MAX_OCR_PAGES + 1),
         verdict: usable(envelope) ? "usable" : "limit",
         status: envelope.status,
         method: envelope.method,
         ocrUsed: envelope.ocrUsed,
         pageCount: envelope.pageCount,
-      })
+      });
     }
     {
-      const { png } = renderDegradedPng({ dpi: 150, fontSize: 28 })
+      const { png } = renderDegradedPng({ dpi: 150, fontSize: 28 });
       // Upscale-ish large canvas
-      const { createCanvas } = await import("@napi-rs/canvas")
-      const big = createCanvas(4000, 5200)
-      const ctx = big.getContext("2d")
+      const { createCanvas } = await import("@napi-rs/canvas");
+      const big = createCanvas(4000, 5200);
+      const ctx = big.getContext("2d");
       const img = await import("@napi-rs/canvas").then(() => {
         // draw png into big canvas via createImageBitmap alternative: load from buffer
-        return null
-      })
-      void img
+        return null;
+      });
+      void img;
       // Simpler: just use 4000-wide degraded render
-      const large = renderDegradedPng({ dpi: 400, fontSize: 36 })
-      const envelope = await ingestDocument(makeFile("large.png", large.png, "image/png"))
+      const large = renderDegradedPng({ dpi: 400, fontSize: 36 });
+      const envelope = await ingestDocument(makeFile("large.png", large.png, "image/png"));
       assertMeasure({
         stage: 6,
         label: "large ~400dpi PNG",
         envelope,
         truth: GOLDEN,
         expect: "extract_ocr",
-      })
-      void png
-      void big
-      void ctx
+      });
+      void png;
+      void big;
+      void ctx;
     }
   }
 
@@ -1197,8 +1294,12 @@ const main = async () => {
   if (stageEnabled(7)) {
     {
       const env = await ingestDocument(
-        makeFile("empty.docx", await makeEmptyDocx(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-      )
+        makeFile(
+          "empty.docx",
+          await makeEmptyDocx(),
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+      );
       record({
         stage: 7,
         family: "files",
@@ -1206,13 +1307,17 @@ const main = async () => {
         pass: env.status === "pending" && env.text === "",
         verdict: "honest_withhold",
         status: env.status,
-      })
+      });
     }
     {
       const env = await ingestDocument(
-        makeFile("bad.docx", makeCorruptDocx(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-      )
-      assertWithhold({ stage: 7, label: "corrupt docx", envelope: env })
+        makeFile(
+          "bad.docx",
+          makeCorruptDocx(),
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+      );
+      assertWithhold({ stage: 7, label: "corrupt docx", envelope: env });
     }
     {
       const env = await ingestDocument(
@@ -1221,8 +1326,8 @@ const main = async () => {
           makeOleEncryptedDocx(),
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ),
-      )
-      assertWithhold({ stage: 7, label: "OLE-magic encrypted docx", envelope: env })
+      );
+      assertWithhold({ stage: 7, label: "OLE-magic encrypted docx", envelope: env });
     }
     {
       const env = await ingestDocument(
@@ -1231,7 +1336,7 @@ const main = async () => {
           await makeHeaderOnlyDocx(GOLDEN_PROSE),
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ),
-      )
+      );
       // mammoth skips headers — must be pending empty, not invent body
       record({
         stage: 7,
@@ -1242,7 +1347,7 @@ const main = async () => {
         status: env.status,
         method: env.method,
         charCount: env.charCount,
-      })
+      });
     }
     {
       const env = await ingestDocument(
@@ -1251,8 +1356,9 @@ const main = async () => {
           await makeTrackedChangesDocx(GOLDEN_PROSE),
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ),
-      )
-      const delLeaked = containsNormalized(env.text, "FAKE CITATION") || containsNormalized(env.text, "ZZZ 999")
+      );
+      const delLeaked =
+        containsNormalized(env.text, "FAKE CITATION") || containsNormalized(env.text, "ZZZ 999");
       record({
         stage: 7,
         family: "files",
@@ -1261,7 +1367,7 @@ const main = async () => {
         verdict: delLeaked ? "false_success" : usable(env) ? "usable" : "limit",
         status: env.status,
         method: env.method,
-      })
+      });
     }
     {
       const env = await ingestDocument(
@@ -1270,24 +1376,24 @@ const main = async () => {
           await makeFootnotesDocx(GOLDEN_PROSE.slice(0, 280), " manslaughter appeal affirmed."),
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ),
-      )
+      );
       assertMeasure({
         stage: 7,
         label: "docx body+footnotes",
         envelope: env,
         truth: GOLDEN_PROSE,
         expect: "extract_layer",
-      })
+      });
     }
     {
-      const { png } = renderLegalScanPng()
+      const { png } = renderLegalScanPng();
       const env = await ingestDocument(
         makeFile(
           "img.docx",
           await makeImageOnlyDocx(png),
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ),
-      )
+      );
       record({
         stage: 7,
         family: "files",
@@ -1296,7 +1402,7 @@ const main = async () => {
         verdict: "honest_withhold",
         status: env.status,
         ocrUsed: env.ocrUsed,
-      })
+      });
     }
     {
       const env = await ingestDocument(
@@ -1305,18 +1411,18 @@ const main = async () => {
           await makeDocxWithVba(GOLDEN_PROSE),
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ),
-      )
+      );
       assertMeasure({
         stage: 7,
         label: "docx with vbaProject.bin still extracts body",
         envelope: env,
         truth: GOLDEN_PROSE,
         expect: "extract_layer",
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeFile("macro.docm", await makeDocmStub(), ""))
-      assertWithhold({ stage: 7, label: ".docm unsupported", envelope: env })
+      const env = await ingestDocument(makeFile("macro.docm", await makeDocmStub(), ""));
+      assertWithhold({ stage: 7, label: ".docm unsupported", envelope: env });
     }
     for (const [name, mime] of [
       ["x.rtf", ""],
@@ -1332,7 +1438,7 @@ const main = async () => {
       ["x.heic", "image/heic"],
       ["x.svg", "image/svg+xml"],
     ]) {
-      const env = await ingestDocument(makeFile(name, Buffer.from("stub"), mime))
+      const env = await ingestDocument(makeFile(name, Buffer.from("stub"), mime));
       record({
         stage: 7,
         family: "files",
@@ -1340,29 +1446,29 @@ const main = async () => {
         pass: classifyIngestSource({ name, type: mime }) === "unsupported" && env.text === "",
         verdict: "honest_withhold",
         status: env.status,
-      })
+      });
     }
     {
-      const pdf = makeTextPdf(GOLDEN_LINES)
-      const zip = await makeZipOfPdfs([Buffer.from(await pdf.arrayBuffer())])
-      const env = await ingestDocument(makeFile("bundle.zip", zip, "application/zip"))
-      assertWithhold({ stage: 7, label: "zip-of-PDFs not unzipped", envelope: env })
+      const pdf = makeTextPdf(GOLDEN_LINES);
+      const zip = await makeZipOfPdfs([Buffer.from(await pdf.arrayBuffer())]);
+      const env = await ingestDocument(makeFile("bundle.zip", zip, "application/zip"));
+      assertWithhold({ stage: 7, label: "zip-of-PDFs not unzipped", envelope: env });
     }
     {
-      const { png } = renderDegradedPng({ background: "transparent", dpi: 200 })
-      const env = await ingestDocument(makeFile("alpha.png", png, "image/png"))
+      const { png } = renderDegradedPng({ background: "transparent", dpi: 200 });
+      const env = await ingestDocument(makeFile("alpha.png", png, "image/png"));
       assertMeasure({
         stage: 7,
         label: "transparent PNG",
         envelope: env,
         truth: GOLDEN,
         expect: "measure",
-      })
+      });
     }
     {
-      const { jpeg } = renderLegalScanJpeg(SCAN_GROUND_TRUTH, 90, 0)
-      const trunc = truncateJpeg(jpeg)
-      const got = await safeIngest(makeFile("trunc.jpg", trunc, "image/jpeg"))
+      const { jpeg } = renderLegalScanJpeg(SCAN_GROUND_TRUTH, 90, 0);
+      const trunc = truncateJpeg(jpeg);
+      const got = await safeIngest(makeFile("trunc.jpg", trunc, "image/jpeg"));
       if (got.crashed) {
         record({
           stage: 7,
@@ -1371,13 +1477,15 @@ const main = async () => {
           pass: true,
           verdict: "limit",
           detail: got.error,
-        })
+        });
       } else {
-        assertWithhold({ stage: 7, label: "truncated JPEG", envelope: got.envelope })
+        assertWithhold({ stage: 7, label: "truncated JPEG", envelope: got.envelope });
       }
     }
     {
-      const env = await ingestDocument(makeFile("page.txt", makeHtmlAsTxt(GOLDEN_PROSE), "text/plain"))
+      const env = await ingestDocument(
+        makeFile("page.txt", makeHtmlAsTxt(GOLDEN_PROSE), "text/plain"),
+      );
       // HTML as txt — may contain golden as source; must not invent extra legal prose beyond file
       record({
         stage: 7,
@@ -1387,17 +1495,19 @@ const main = async () => {
         verdict: usable(env) ? "limit" : "honest_withhold",
         status: env.status,
         method: env.method,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeFile("notes.txt", makeRtfAsTxt(), "text/plain"))
-      assertNotGolden({ stage: 7, label: "RTF-as-.txt is not a judgment", envelope: env })
+      const env = await ingestDocument(makeFile("notes.txt", makeRtfAsTxt(), "text/plain"));
+      assertNotGolden({ stage: 7, label: "RTF-as-.txt is not a judgment", envelope: env });
     }
     {
-      const big = GOLDEN.repeat(Math.ceil((10 * 1024 * 1024) / GOLDEN.length))
-      const t0 = Date.now()
-      const env = await ingestDocument(makeFile("huge.txt", big.slice(0, 10 * 1024 * 1024), "text/plain"))
-      const ms = Date.now() - t0
+      const big = GOLDEN.repeat(Math.ceil((10 * 1024 * 1024) / GOLDEN.length));
+      const t0 = Date.now();
+      const env = await ingestDocument(
+        makeFile("huge.txt", big.slice(0, 10 * 1024 * 1024), "text/plain"),
+      );
+      const ms = Date.now() - t0;
       record({
         stage: 7,
         family: "files",
@@ -1408,17 +1518,17 @@ const main = async () => {
         method: env.method,
         ms,
         charCount: env.charCount,
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeGluedTextPdf())
+      const env = await ingestDocument(makeGluedTextPdf());
       assertMeasure({
         stage: 7,
         label: "glued footer/header spacing",
         envelope: env,
         truth: GOLDEN,
         expect: "measure",
-      })
+      });
     }
   }
 
@@ -1427,22 +1537,26 @@ const main = async () => {
   // ------------------------------------------------------------------
   if (stageEnabled(8)) {
     {
-      const env = await ingestDocument(makeRenderedScanPdf({ jpegQuality: 92, name: "guyana-coa-scan.pdf" }))
+      const env = await ingestDocument(
+        makeRenderedScanPdf({ jpegQuality: 92, name: "guyana-coa-scan.pdf" }),
+      );
       recordPublicExtract({
         label: "Caribbean scan: Guyana Court of Appeal (300dpi)",
         envelope: env,
         mustContain: SCAN_MUST_CONTAIN,
         family: "caribbean-scan",
-      })
+      });
     }
     {
-      const env = await ingestDocument(makeDegradedScanPdf({ dpi: 150, jpegQuality: 55, name: "caribbean-degraded-scan.pdf" }))
+      const env = await ingestDocument(
+        makeDegradedScanPdf({ dpi: 150, jpegQuality: 55, name: "caribbean-degraded-scan.pdf" }),
+      );
       recordPublicExtract({
         label: "Caribbean scan: degraded 150dpi JPEG",
         envelope: env,
         mustContain: ["COURT OF APPEAL OF GUYANA", "RAMSINGH"],
         family: "caribbean-scan",
-      })
+      });
     }
     {
       const env = await ingestDocument(
@@ -1452,24 +1566,27 @@ const main = async () => {
           name: "caribbean-accent-scan.pdf",
           text: SYMBOLS_GOLDEN,
         }),
-      )
+      );
       recordPublicExtract({
-        label: "Caribbean scan: accented names stay Latin (José/café must not count as language switch)",
+        label:
+          "Caribbean scan: accented names stay Latin (José/café must not count as language switch)",
         envelope: env,
         mustContain: ["RAMSINGH"],
         family: "caribbean-scan",
-      })
+      });
     }
 
     if (existsSync(IN_REPO_PDF)) {
-      const bytes = readFileSync(IN_REPO_PDF)
-      const env = await ingestDocument(makeFile("00-how-to-read-these-guides.pdf", bytes, "application/pdf"))
+      const bytes = readFileSync(IN_REPO_PDF);
+      const env = await ingestDocument(
+        makeFile("00-how-to-read-these-guides.pdf", bytes, "application/pdf"),
+      );
       recordPublicExtract({
         label: "in-repo workflow PDF",
         envelope: env,
         mustContain: IN_REPO_MUST_CONTAIN,
         family: "public",
-      })
+      });
     } else {
       record({
         stage: 8,
@@ -1478,12 +1595,12 @@ const main = async () => {
         pass: true,
         verdict: "limit",
         skipped: true,
-      })
+      });
     }
 
     for (const fix of PUBLIC_FIXTURES) {
       if (fix.kind === "pdf") {
-        const got = await fetchCached(fix.id, fix.url, "pdf", 120000)
+        const got = await fetchCached(fix.id, fix.url, "pdf", 120000);
         if (!got.ok) {
           record({
             stage: 8,
@@ -1493,22 +1610,22 @@ const main = async () => {
             verdict: "limit",
             skipped: true,
             detail: got.reason,
-          })
-          continue
+          });
+          continue;
         }
         const env = await ingestDocument(makeFile(`${fix.id}.pdf`, got.bytes, "application/pdf"), {
           maxOcrPages: 5,
-        })
+        });
         recordPublicExtract({
           label: `${fix.id} must-contain`,
           envelope: env,
           mustContain: fix.mustContain,
           family: fix.family ?? "public",
           extra: { fromCache: got.fromCache, bytes: got.bytes.length },
-        })
+        });
       } else if (fix.kind === "pdf+html") {
-        const pdfGot = await fetchCached(`${fix.id}-pdf`, fix.pdfUrl, "pdf")
-        const htmlGot = await fetchCached(`${fix.id}-html`, fix.htmlUrl, "html")
+        const pdfGot = await fetchCached(`${fix.id}-pdf`, fix.pdfUrl, "pdf");
+        const htmlGot = await fetchCached(`${fix.id}-html`, fix.htmlUrl, "html");
         if (!pdfGot.ok) {
           record({
             stage: 8,
@@ -1517,16 +1634,18 @@ const main = async () => {
             pass: true,
             verdict: "limit",
             skipped: true,
-          })
-          continue
+          });
+          continue;
         }
-        const env = await ingestDocument(makeFile(`${fix.id}.pdf`, pdfGot.bytes, "application/pdf"))
-        const hits = fix.mustContain.filter((p) => containsNormalized(env.text, p))
-        let cer = null
+        const env = await ingestDocument(
+          makeFile(`${fix.id}.pdf`, pdfGot.bytes, "application/pdf"),
+        );
+        const hits = fix.mustContain.filter((p) => containsNormalized(env.text, p));
+        let cer = null;
         if (htmlGot.ok) {
-          const htmlText = stripHtmlToText(htmlGot.bytes.toString("utf8"))
+          const htmlText = stripHtmlToText(htmlGot.bytes.toString("utf8"));
           if (htmlText.length > 200 && usable(env)) {
-            cer = characterErrorRate(env.text, htmlText.slice(0, Math.max(env.text.length, 5000)))
+            cer = characterErrorRate(env.text, htmlText.slice(0, Math.max(env.text.length, 5000)));
           }
         }
         record({
@@ -1534,7 +1653,8 @@ const main = async () => {
           family: "public",
           label: `${fix.id} PDF vs HTML golden`,
           pass: !hasPoison(env.text),
-          verdict: usable(env) && hits.length > 0 ? "usable" : usable(env) ? "limit" : "honest_withhold",
+          verdict:
+            usable(env) && hits.length > 0 ? "usable" : usable(env) ? "limit" : "honest_withhold",
           status: env.status,
           method: env.method,
           ocrUsed: env.ocrUsed,
@@ -1542,7 +1662,7 @@ const main = async () => {
           cer,
           cerBand: cerBand(cer),
           htmlSkipped: !htmlGot.ok,
-        })
+        });
       }
     }
   }
@@ -1550,20 +1670,20 @@ const main = async () => {
   // ------------------------------------------------------------------
   // Summary + JSON
   // ------------------------------------------------------------------
-  const byStage = {}
-  const byVerdict = {}
+  const byStage = {};
+  const byVerdict = {};
   for (const r of results) {
-    const s = String(r.stage)
-    byStage[s] = byStage[s] || { total: 0, passed: 0, failed: 0 }
-    byStage[s].total += 1
-    if (r.pass) byStage[s].passed += 1
-    else byStage[s].failed += 1
-    const v = r.verdict || "unknown"
-    byVerdict[v] = (byVerdict[v] || 0) + 1
+    const s = String(r.stage);
+    byStage[s] = byStage[s] || { total: 0, passed: 0, failed: 0 };
+    byStage[s].total += 1;
+    if (r.pass) byStage[s].passed += 1;
+    else byStage[s].failed += 1;
+    const v = r.verdict || "unknown";
+    byVerdict[v] = (byVerdict[v] || 0) + 1;
   }
 
-  const limits = results.filter((r) => r.verdict === "limit").map((r) => r.label)
-  const falseSuccesses = results.filter((r) => !r.pass)
+  const limits = results.filter((r) => r.verdict === "limit").map((r) => r.label);
+  const falseSuccesses = results.filter((r) => !r.pass);
 
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -1574,32 +1694,43 @@ const main = async () => {
     byStage,
     byVerdict,
     limitsFound: limits,
-    falseSuccesses: falseSuccesses.map((r) => ({ label: r.label, detail: r.detail, stage: r.stage })),
+    falseSuccesses: falseSuccesses.map((r) => ({
+      label: r.label,
+      detail: r.detail,
+      stage: r.stage,
+    })),
     ocrLadder: results
       .filter((r) => r.stage === 4 && r.cer != null)
-      .map((r) => ({ label: r.label, cer: r.cer, wer: r.wer, band: r.cerBand, verdict: r.verdict })),
+      .map((r) => ({
+        label: r.label,
+        cer: r.cer,
+        wer: r.wer,
+        band: r.cerBand,
+        verdict: r.verdict,
+      })),
     results,
-  }
-  writeFileSync(RESULTS_PATH, JSON.stringify(payload, null, 2))
-  console.log("\n--- Brutal circuit summary ---")
-  console.log(`Total ${payload.total}  passed ${payload.passed}  hardFailures ${hardFailures}`)
-  console.log("By verdict:", byVerdict)
-  console.log("Results written to", RESULTS_PATH)
+  };
+  writeFileSync(RESULTS_PATH, JSON.stringify(payload, null, 2));
+  console.log("\n--- Brutal circuit summary ---");
+  console.log(`Total ${payload.total}  passed ${payload.passed}  hardFailures ${hardFailures}`);
+  console.log("By verdict:", byVerdict);
+  console.log("Results written to", RESULTS_PATH);
   try {
-    await terminateOcrWorker()
+    await terminateOcrWorker();
   } catch {
     /* ignore */
   }
-  process.removeListener("uncaughtException", onUncaught)
+  process.removeListener("uncaughtException", onUncaught);
   if (hardFailures > 0) {
-    console.error("HARD FAILURES:")
-    for (const f of falseSuccesses) console.error(`  stage${f.stage}: ${f.label} — ${f.detail || f.verdict}`)
-    process.exit(1)
+    console.error("HARD FAILURES:");
+    for (const f of falseSuccesses)
+      console.error(`  stage${f.stage}: ${f.label} — ${f.detail || f.verdict}`);
+    process.exit(1);
   }
-  process.exit(0)
-}
+  process.exit(0);
+};
 
 main().catch((e) => {
-  console.error("Brutal circuit crashed:", e)
-  process.exit(1)
-})
+  console.error("Brutal circuit crashed:", e);
+  process.exit(1);
+});

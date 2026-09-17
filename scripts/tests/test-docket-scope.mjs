@@ -1,4 +1,8 @@
-import { resolveDocketScope, docketScopeTitle, ALL_COURTS_PARAM } from "../../src/lib/docket-scope.ts";
+import {
+  resolveDocketScope,
+  docketScopeTitle,
+  ALL_COURTS_PARAM,
+} from "../../src/lib/docket-scope.ts";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -27,19 +31,31 @@ check(
 
 check(
   "multi-court, no param, no remembered scope -> All My Courts (no redirect)",
-  resolveDocketScope({ requestedCourtId: null, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: null }),
+  resolveDocketScope({
+    requestedCourtId: null,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: null,
+  }),
   { status: "resolved", courtId: null },
 );
 
 check(
   "multi-court, no param, valid remembered scope -> redirect to it",
-  resolveDocketScope({ requestedCourtId: null, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: KAMARANG }),
+  resolveDocketScope({
+    requestedCourtId: null,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: KAMARANG,
+  }),
   { status: "redirect", courtId: KAMARANG },
 );
 
 check(
   "multi-court, no param, remembered scope no longer authorized -> All My Courts, not the stale court",
-  resolveDocketScope({ requestedCourtId: null, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: OTHER }),
+  resolveDocketScope({
+    requestedCourtId: null,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: OTHER,
+  }),
   { status: "resolved", courtId: null },
 );
 
@@ -61,19 +77,31 @@ check(
 
 check(
   "explicit param for an authorized court -> resolved directly, no redirect",
-  resolveDocketScope({ requestedCourtId: VIGILANCE, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: null }),
+  resolveDocketScope({
+    requestedCourtId: VIGILANCE,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: null,
+  }),
   { status: "resolved", courtId: VIGILANCE },
 );
 
 check(
   "explicit param for a court the user is NOT authorized for -> redirect to All My Courts, never silently applied",
-  resolveDocketScope({ requestedCourtId: OTHER, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: null }),
+  resolveDocketScope({
+    requestedCourtId: OTHER,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: null,
+  }),
   { status: "redirect", courtId: null },
 );
 
 check(
   "explicit param for a REVOKED court (myCourtIds no longer includes it) -> redirect away immediately",
-  resolveDocketScope({ requestedCourtId: KAMARANG, myCourtIds: [VIGILANCE], rememberedCourtId: KAMARANG }),
+  resolveDocketScope({
+    requestedCourtId: KAMARANG,
+    myCourtIds: [VIGILANCE],
+    rememberedCourtId: KAMARANG,
+  }),
   { status: "redirect", courtId: VIGILANCE },
 );
 
@@ -90,26 +118,42 @@ check(
 
 check(
   "explicit ?court=all -> resolved to All My Courts directly, no redirect",
-  resolveDocketScope({ requestedCourtId: ALL_COURTS_PARAM, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: null }),
+  resolveDocketScope({
+    requestedCourtId: ALL_COURTS_PARAM,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: null,
+  }),
   { status: "resolved", courtId: null },
 );
 
 check(
   "explicit ?court=all overrides a still-remembered specific court (the bug this sentinel exists to prevent)",
-  resolveDocketScope({ requestedCourtId: ALL_COURTS_PARAM, myCourtIds: [VIGILANCE, KAMARANG], rememberedCourtId: KAMARANG }),
+  resolveDocketScope({
+    requestedCourtId: ALL_COURTS_PARAM,
+    myCourtIds: [VIGILANCE, KAMARANG],
+    rememberedCourtId: KAMARANG,
+  }),
   { status: "resolved", courtId: null },
 );
 
 check(
   "explicit ?court=all for a single-court user still resolves to All My Courts (their one court, trivially) rather than being treated as an unauthorized-court request",
-  resolveDocketScope({ requestedCourtId: ALL_COURTS_PARAM, myCourtIds: [VIGILANCE], rememberedCourtId: null }),
+  resolveDocketScope({
+    requestedCourtId: ALL_COURTS_PARAM,
+    myCourtIds: [VIGILANCE],
+    rememberedCourtId: null,
+  }),
   { status: "resolved", courtId: null },
 );
 
 // --- titles --------------------------------------------------------------
 
 check("title for All My Courts", docketScopeTitle(null), "Docket: All My Courts");
-check("title for a specific court", docketScopeTitle("Vigilance Magistrates' Court 1"), "Docket: Vigilance Magistrates' Court 1");
+check(
+  "title for a specific court",
+  docketScopeTitle("Vigilance Magistrates' Court 1"),
+  "Docket: Vigilance Magistrates' Court 1",
+);
 
 if (failures > 0) {
   console.log(`\n${failures} failure(s).`);

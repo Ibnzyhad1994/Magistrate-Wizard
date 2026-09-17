@@ -5,6 +5,10 @@ name: Migration CI
 # Seed is skipped so the job measures schema apply, not fixture load.
 # Hosted preview/prod drift is a separate read-only workflow
 # (.github/workflows/schema-alignment.yml), not this apply job.
+#
+# Runs on EVERY develop push (not only when supabase/** changes): a frontend
+# commit that depends on a hosted-only schema change is otherwise never
+# caught. PRs keep the path filter.
 
 on:
   pull_request:
@@ -15,10 +19,6 @@ on:
   push:
     branches:
       - develop
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
-      - ".github/workflows/migration-ci.yml"
 
 permissions:
   contents: read
@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
 
       - name: Cache Supabase CLI
         uses: actions/cache@v4

@@ -25,7 +25,7 @@ function check(label, condition) {
 // --- sanitizeDocxPageBody ---------------------------------------------------
 
 {
-  const out = sanitizeDocxPageBody('<script>alert(1)</script><p>hello</p>', purify);
+  const out = sanitizeDocxPageBody("<script>alert(1)</script><p>hello</p>", purify);
   check("script tags are stripped entirely, not just neutralized", !out.includes("<script"));
   check("surrounding safe content survives", out.includes("<p>hello</p>"));
 }
@@ -33,7 +33,10 @@ function check(label, condition) {
 {
   const out = sanitizeDocxPageBody('<p onclick="alert(1)" style="color:red">hi</p>', purify);
   check("event handler attributes are stripped", !out.includes("onclick"));
-  check("safe style attributes on an allowed tag survive (this preview's whole point)", out.includes('style="color:red"'));
+  check(
+    "safe style attributes on an allowed tag survive (this preview's whole point)",
+    out.includes('style="color:red"'),
+  );
 }
 
 {
@@ -46,7 +49,10 @@ function check(label, condition) {
     '<p style="background:url(https://evil.example/pixel.png)">hi</p>',
     purify,
   );
-  check("an external url() inside an inline style attribute is stripped", !out.includes("evil.example"));
+  check(
+    "an external url() inside an inline style attribute is stripped",
+    !out.includes("evil.example"),
+  );
 }
 
 {
@@ -64,12 +70,18 @@ function check(label, condition) {
 
 {
   const out = sanitizeDocxPageBody('<img src="data:image/png;base64,AAAA">', purify);
-  check("data:image/ src is preserved (embedded images from useBase64URL)", out.includes("data:image/png;base64,AAAA"));
+  check(
+    "data:image/ src is preserved (embedded images from useBase64URL)",
+    out.includes("data:image/png;base64,AAAA"),
+  );
 }
 
 {
   const out = sanitizeDocxPageBody('<img src="https://evil.example/track.png">', purify);
-  check("external https image src is stripped (no external resource loads)", !out.includes("evil.example"));
+  check(
+    "external https image src is stripped (no external resource loads)",
+    !out.includes("evil.example"),
+  );
 }
 
 {
@@ -86,7 +98,10 @@ function check(label, condition) {
 
 {
   const out = sanitizeDocxPageBody('<a href="#footnote-1">1</a>', purify);
-  check("fragment-only anchors (footnote/endnote refs) survive", out.includes('href="#footnote-1"'));
+  check(
+    "fragment-only anchors (footnote/endnote refs) survive",
+    out.includes('href="#footnote-1"'),
+  );
 }
 
 {
@@ -95,9 +110,15 @@ function check(label, condition) {
 }
 
 {
-  const out = sanitizeDocxPageBody('<form><input type="text"></form><table><tr><td>cell</td></tr></table>', purify);
+  const out = sanitizeDocxPageBody(
+    '<form><input type="text"></form><table><tr><td>cell</td></tr></table>',
+    purify,
+  );
   check("form/input are stripped", !out.includes("<form") && !out.includes("<input"));
-  check("legitimate table structure survives (Word tables must render)", out.includes("<table") && out.includes("<td>cell</td>"));
+  check(
+    "legitimate table structure survives (Word tables must render)",
+    out.includes("<table") && out.includes("<td>cell</td>"),
+  );
 }
 
 {
@@ -110,17 +131,23 @@ function check(label, condition) {
 {
   const css = "body{background:url(https://evil.example/pixel.png)}";
   const out = stripNonDataCssUrls(css);
-  check("external CSS url() is neutered (no tracking-pixel style beacons)", !out.includes("evil.example"));
+  check(
+    "external CSS url() is neutered (no tracking-pixel style beacons)",
+    !out.includes("evil.example"),
+  );
 }
 
 {
   const css = "@font-face{src:url(data:font/woff2;base64,AAAA)}";
   const out = stripNonDataCssUrls(css);
-  check("data: CSS url() (embedded fonts/images, useBase64URL) survives", out.includes("data:font/woff2;base64,AAAA"));
+  check(
+    "data: CSS url() (embedded fonts/images, useBase64URL) survives",
+    out.includes("data:font/woff2;base64,AAAA"),
+  );
 }
 
 {
-  const styleMarkup = '<style>p{color:red}</style><script>alert(1)</script>';
+  const styleMarkup = "<style>p{color:red}</style><script>alert(1)</script>";
   const out = sanitizeDocxPageStyle(styleMarkup, purify);
   check("a script sibling after the style tag is dropped", !out.includes("<script"));
   check("the style tag content survives", out.includes("color:red"));
@@ -131,7 +158,10 @@ function check(label, condition) {
   // an injected script -- must not survive as live markup.
   const styleMarkup = '<style>p{font-family:"</style><script>alert(1)</script>"}</style>';
   const out = sanitizeDocxPageStyle(styleMarkup, purify);
-  check("a </style> breakout attempt does not leave an executable <script> in the output", !out.includes("<script>alert"));
+  check(
+    "a </style> breakout attempt does not leave an executable <script> in the output",
+    !out.includes("<script>alert"),
+  );
 }
 
 if (failures > 0) {

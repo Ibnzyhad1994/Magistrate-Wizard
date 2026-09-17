@@ -14,8 +14,16 @@ function check(label, actual, expected) {
   }
 }
 
-check("loading status shows loader", resolveProtectedRouteGate({ status: "loading", profile: null }), "loading");
-check("unauthenticated goes to login", resolveProtectedRouteGate({ status: "unauthenticated", profile: null }), "login");
+check(
+  "loading status shows loader",
+  resolveProtectedRouteGate({ status: "loading", profile: null }),
+  "loading",
+);
+check(
+  "unauthenticated goes to login",
+  resolveProtectedRouteGate({ status: "unauthenticated", profile: null }),
+  "login",
+);
 check(
   "authenticated admin deep-link waits for profile",
   resolveProtectedRouteGate({

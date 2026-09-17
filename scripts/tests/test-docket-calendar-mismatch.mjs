@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 /**
  * Live local check that a 9 Sep sitting at Vigilance still counts on the
  * calendar when Docket is headed Kamarang, and that listing All My Courts
@@ -8,103 +9,103 @@
  *
  *   npm run test:docket-calendar-mismatch
  */
-import { createClient } from "@supabase/supabase-js"
-import { assertLocalSupabase } from "../test-support/assert-local-supabase.mjs"
+import { createClient } from "@supabase/supabase-js";
+import { assertLocalSupabase } from "../test-support/assert-local-supabase.mjs";
 
 // Deliberately NO fallback to the .env FILE. That file holds the PRODUCTION
 // project URL, so reading it here meant `npm run test:docket-calendar-mismatch`
 // quietly sent a password login for a fixture account to production Auth and
 // then reported "confirm local Supabase is running" — pointing the reader at
 // their laptop while the request went to the live system. Env var, then local.
-const URL_ = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321"
+const URL_ = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:56321";
 const ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 
-assertLocalSupabase(URL_, "test:docket-calendar-mismatch")
+assertLocalSupabase(URL_, "test:docket-calendar-mismatch");
 
-const EMAIL = "calendar@magistrate-wizard.local"
-const PASSWORD = "password123"
-const SITTING_DATE = "2026-09-09"
-const CASE_NUMBER = "2053/26"
+const EMAIL = "calendar@magistrate-wizard.local";
+const PASSWORD = "password123";
+const SITTING_DATE = "2026-09-09";
+const CASE_NUMBER = "2053/26";
 
-let failures = 0
+let failures = 0;
 function check(label, condition) {
-  console.log(`${condition ? "PASS" : "FAIL"} — ${label}`)
-  if (!condition) failures += 1
+  console.log(`${condition ? "PASS" : "FAIL"} — ${label}`);
+  if (!condition) failures += 1;
 }
 
 const client = createClient(URL_, ANON_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
-})
+});
 
 const { error: signInError } = await client.auth.signInWithPassword({
   email: EMAIL,
   password: PASSWORD,
-})
+});
 if (signInError) {
   console.error(
     "Could not sign in as calendar@magistrate-wizard.local. Apply supabase/seed.sql (`npx supabase db reset`) and confirm local Supabase is running.",
-  )
-  console.error(signInError.message)
-  process.exit(1)
+  );
+  console.error(signInError.message);
+  process.exit(1);
 }
 
-const { data: courts, error: courtsError } = await client.from("courts").select("id, name")
-if (courtsError) throw courtsError
-const kamarang = courts.find((c) => c.name === "Kamarang Magistrate's Court")
-const vigilance = courts.find((c) => c.name === "Vigilance Magistrates' Court 1")
-check("persona can read Kamarang Magistrate's Court", !!kamarang)
-check("persona can read Vigilance Magistrates' Court 1", !!vigilance)
+const { data: courts, error: courtsError } = await client.from("courts").select("id, name");
+if (courtsError) throw courtsError;
+const kamarang = courts.find((c) => c.name === "Kamarang Magistrate's Court");
+const vigilance = courts.find((c) => c.name === "Vigilance Magistrates' Court 1");
+check("persona can read Kamarang Magistrate's Court", !!kamarang);
+check("persona can read Vigilance Magistrates' Court 1", !!vigilance);
 
 const { data: snapshot, error: snapError } = await client.rpc("get_docket_capacity_snapshot", {
   p_scheduled_date: SITTING_DATE,
-})
-check("all-courts snapshot RPC succeeds", !snapError)
-if (snapError) console.error("  ", snapError.message)
-const trialRow = (snapshot ?? []).find((row) => row.category_name === "Criminal trial")
+});
+check("all-courts snapshot RPC succeeds", !snapError);
+if (snapError) console.error("  ", snapError.message);
+const trialRow = (snapshot ?? []).find((row) => row.category_name === "Criminal trial");
 check(
   "snapshot for 2026-09-09 with null court is 1 on Criminal trial",
   Number(trialRow?.scheduled_count) === 1 && Number(trialRow?.daily_capacity) === 10,
-)
+);
 check(
   "snapshot total_matters_count for 2026-09-09 is at least 1",
   Number(trialRow?.total_matters_count) >= 1,
-)
+);
 
 const { data: kamarangList, error: kamarangErr } = await client.rpc("list_docket_matters", {
   p_exact_date: SITTING_DATE,
   p_court_id: kamarang?.id,
-})
-check("list with Kamarang + that date succeeds", !kamarangErr)
+});
+check("list with Kamarang + that date succeeds", !kamarangErr);
 check(
   "list with Kamarang + that date is empty (the sitting is at Vigilance)",
   Array.isArray(kamarangList) && kamarangList.length === 0,
-)
+);
 
 const { data: allCourtsList, error: allErr } = await client.rpc("list_docket_matters", {
   p_exact_date: SITTING_DATE,
   p_limit: 500,
-})
-check("list with null court + that date succeeds", !allErr)
+});
+check("list with null court + that date succeeds", !allErr);
 check(
   "list with null court + that date returns 2053/26",
   (allCourtsList ?? []).some((row) => row.case_number === CASE_NUMBER),
-)
+);
 check(
   "snapshot total_matters_count matches the unfiltered day list",
   Number(trialRow?.total_matters_count) === (allCourtsList ?? []).length,
-)
+);
 
-const CANCEL_DATE = "2026-09-08"
+const CANCEL_DATE = "2026-09-08";
 const { data: matterRow, error: matterErr } = await client
   .from("docket_matters")
   .select("id")
   .eq("case_number", CASE_NUMBER)
-  .maybeSingle()
-check("persona can read 2053/26 for the cancelled-appearance check", !matterErr && !!matterRow)
+  .maybeSingle();
+check("persona can read 2053/26 for the cancelled-appearance check", !matterErr && !!matterRow);
 
-let cancelEventId = null
+let cancelEventId = null;
 if (matterRow?.id) {
   const { data: cancelEvent, error: cancelInsErr } = await client
     .from("docket_events")
@@ -115,49 +116,49 @@ if (matterRow?.id) {
       event_type: "Criminal trial",
     })
     .select("id")
-    .single()
-  check("can log a cancelled appearance on 2026-09-08", !cancelInsErr)
-  if (cancelInsErr) console.error("  ", cancelInsErr.message)
-  cancelEventId = cancelEvent?.id ?? null
+    .single();
+  check("can log a cancelled appearance on 2026-09-08", !cancelInsErr);
+  if (cancelInsErr) console.error("  ", cancelInsErr.message);
+  cancelEventId = cancelEvent?.id ?? null;
 
   const { data: cancelSnapshot, error: cancelSnapErr } = await client.rpc(
     "get_docket_capacity_snapshot",
     { p_scheduled_date: CANCEL_DATE },
-  )
+  );
   const { data: cancelList, error: cancelListErr } = await client.rpc("list_docket_matters", {
     p_exact_date: CANCEL_DATE,
     p_limit: 500,
-  })
-  check("cancelled-day snapshot RPC succeeds", !cancelSnapErr)
-  check("cancelled-day list RPC succeeds", !cancelListErr)
-  const cancelTotal = Number(cancelSnapshot?.[0]?.total_matters_count ?? 0)
+  });
+  check("cancelled-day snapshot RPC succeeds", !cancelSnapErr);
+  check("cancelled-day list RPC succeeds", !cancelListErr);
+  const cancelTotal = Number(cancelSnapshot?.[0]?.total_matters_count ?? 0);
   check(
     "cancelled appearance still counts in total_matters_count",
     cancelTotal >= 1 && cancelTotal === (cancelList ?? []).length,
-  )
+  );
 }
 
 if (cancelEventId) {
   const { error: hideErr } = await client
     .from("docket_events")
     .update({ event_status: "entered_in_error" })
-    .eq("id", cancelEventId)
-  check("cancelled test appearance can be marked entered_in_error", !hideErr)
+    .eq("id", cancelEventId);
+  check("cancelled test appearance can be marked entered_in_error", !hideErr);
 }
 
 const { data: noDateList, error: noDateErr } = await client.rpc("list_docket_matters", {
   p_exact_date: SITTING_DATE,
   p_court_id: vigilance?.id,
   p_next_date: ["no_date"],
-})
-check("list with Vigilance + date + no_date succeeds", !noDateErr)
+});
+check("list with Vigilance + date + no_date succeeds", !noDateErr);
 check(
   "list with Vigilance + date + no_date still returns 2053/26",
   (noDateList ?? []).some((row) => row.case_number === CASE_NUMBER),
-)
+);
 
-await client.auth.signOut({ scope: "local" })
-client.realtime.disconnect()
+await client.auth.signOut({ scope: "local" });
+client.realtime.disconnect();
 
-console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`)
-process.exit(failures === 0 ? 0 : 1)
+console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
+process.exit(failures === 0 ? 0 : 1);

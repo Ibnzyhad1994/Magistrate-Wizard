@@ -104,12 +104,28 @@ async function main() {
   // THE BUG: previously, resetFileDerivedState() either didn't exist or
   // wasn't called unconditionally before the async extraction, so a
   // failed File B left File A's proposed metadata sitting in the form.
-  check("File B (failed extraction): case name is NOT File A's value", stateAfterB.caseFields.case_name, "");
-  check("File B (failed extraction): citation is NOT File A's value", stateAfterB.caseFields.citation, "");
+  check(
+    "File B (failed extraction): case name is NOT File A's value",
+    stateAfterB.caseFields.case_name,
+    "",
+  );
+  check(
+    "File B (failed extraction): citation is NOT File A's value",
+    stateAfterB.caseFields.citation,
+    "",
+  );
   check("File B (failed extraction): court is NOT File A's value", stateAfterB.courtId, "");
-  check("File B (failed extraction): jurisdiction is NOT File A's value", stateAfterB.jurisdictionId, "");
+  check(
+    "File B (failed extraction): jurisdiction is NOT File A's value",
+    stateAfterB.jurisdictionId,
+    "",
+  );
   check("File B (failed extraction): text is NOT File A's value", stateAfterB.text, "");
-  check("File B (failed extraction): status is failed", stateAfterB.extractionEnvelope.status, "failed");
+  check(
+    "File B (failed extraction): status is failed",
+    stateAfterB.extractionEnvelope.status,
+    "failed",
+  );
 
   // Explicitly confirm the values are not merely different from A's but
   // are also not silently equal to A's by coincidence.

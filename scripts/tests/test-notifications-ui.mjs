@@ -47,7 +47,11 @@ check("one minute is singular", formatRelativeTime(ago(60 * SEC), now), "1 minut
 check("59 minutes stays in minutes", formatRelativeTime(ago(59 * MIN), now), "59 minutes ago");
 check("the case the user asked for", formatRelativeTime(ago(5 * HOUR), now), "5 hours ago");
 check("one hour is singular", formatRelativeTime(ago(HOUR), now), "1 hour ago");
-check("a day back reads as yesterday, not '1 days ago'", formatRelativeTime(ago(DAY), now), "yesterday");
+check(
+  "a day back reads as yesterday, not '1 days ago'",
+  formatRelativeTime(ago(DAY), now),
+  "yesterday",
+);
 check("three days", formatRelativeTime(ago(3 * DAY), now), "3 days ago");
 
 // Past a week, relative stops helping — "23 days ago" is harder to place
@@ -55,7 +59,11 @@ check("three days", formatRelativeTime(ago(3 * DAY), now), "3 days ago");
 // "Sept", not "Sep" — en-GB abbreviates September to four letters in
 // modern ICU, unlike every other month. Asserting the real output rather
 // than the one that looks tidier.
-check("eight days falls back to an absolute date", formatRelativeTime(ago(8 * DAY), now), "3 Sept 2026");
+check(
+  "eight days falls back to an absolute date",
+  formatRelativeTime(ago(8 * DAY), now),
+  "3 Sept 2026",
+);
 check(
   "the fallback is day-first (Commonwealth), never month-first",
   formatRelativeTime("2026-08-19T09:00:00.000Z", now),
@@ -63,8 +71,16 @@ check(
 );
 
 // A client clock a little ahead of the server must not print a future time.
-check("a slightly future timestamp degrades to just now", formatRelativeTime(new Date(now.getTime() + 20 * SEC), now), "just now");
-check("an unparseable date yields empty, never 'Invalid Date'", formatRelativeTime("not-a-date", now), "");
+check(
+  "a slightly future timestamp degrades to just now",
+  formatRelativeTime(new Date(now.getTime() + 20 * SEC), now),
+  "just now",
+);
+check(
+  "an unparseable date yields empty, never 'Invalid Date'",
+  formatRelativeTime("not-a-date", now),
+  "",
+);
 
 // --- tone -------------------------------------------------------------------
 
@@ -77,8 +93,16 @@ check("a revoked share reads as revoked", notificationTone("share_revoked"), "re
 
 // "Decided" covers both approval and refusal, so it must stay neutral —
 // colouring it green or red would assert a result the type doesn't carry.
-check("a decided clerk request stays neutral", notificationTone("clerk_request_decided"), "outcome");
-check("a decided court request stays neutral", notificationTone("court_request_decided"), "outcome");
+check(
+  "a decided clerk request stays neutral",
+  notificationTone("clerk_request_decided"),
+  "outcome",
+);
+check(
+  "a decided court request stays neutral",
+  notificationTone("court_request_decided"),
+  "outcome",
+);
 
 check(
   "an unknown type falls back to neutral rather than throwing",
@@ -99,7 +123,6 @@ check(
   NOTIFICATION_TYPES.filter((t) => notificationTypeLabel(t) === "Notice"),
   [],
 );
-
 
 // --- filter cache keys ------------------------------------------------------
 // Two chip orders that select the same notices must share one cache entry,
@@ -136,7 +159,10 @@ check(
 {
   const caller = ["court_request", "clerk_request"];
   notificationFilterKey({ types: caller });
-  check("normalizing does not mutate the caller's array", caller, ["court_request", "clerk_request"]);
+  check("normalizing does not mutate the caller's array", caller, [
+    "court_request",
+    "clerk_request",
+  ]);
 }
 
 check("no filter is not active", isNotificationFilterActive(undefined), false);
@@ -162,11 +188,13 @@ check(
 );
 check(
   "tone classes go through theme tokens, not literal colours",
-  TONES.filter(
-    (t) =>
-      !NOTIFICATION_TONE_ACCENT[t].includes("var(--notice-") ||
-      !NOTIFICATION_TONE_BADGE[t].includes("var(--notice-"),
-  ),
+  TONES.filter((t) => {
+    // Registered Tailwind utilities (bg-notice-action, text-notice-granted/40, ...)
+    // or the older arbitrary-value form both resolve to the --notice-* tokens.
+    const usesToken = (cls) =>
+      /(?:^|[\s:/])(?:bg|text|border|ring)-notice-[a-z]/.test(cls) || cls.includes("var(--notice-");
+    return !usesToken(NOTIFICATION_TONE_ACCENT[t]) || !usesToken(NOTIFICATION_TONE_BADGE[t]);
+  }),
   [],
 );
 check(

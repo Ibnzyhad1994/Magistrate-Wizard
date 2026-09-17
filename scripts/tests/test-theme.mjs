@@ -73,15 +73,44 @@ check("dark foreground is still pure white", tokenValue(darkBlock, "foreground")
 // Every token the light palette needs must exist in both, or a component
 // styled through it renders with an empty custom property in one theme.
 const TOKENS = [
-  "background", "foreground", "card", "card-foreground", "popover", "popover-foreground",
-  "primary", "primary-foreground", "secondary", "secondary-foreground",
-  "muted", "muted-foreground", "accent", "accent-foreground",
-  "destructive", "destructive-foreground", "border", "input", "ring",
-  "brass", "brass-foreground", "match",
-  "stage-progress", "stage-done", "stage-remand", "stage-dismissed", "stage-outcome-complete",
-  "notice-action", "notice-granted", "notice-revoked", "notice-outcome",
-  "capacity-available", "capacity-filling", "capacity-full", "capacity-over",
-  "sidebar-background", "sidebar-foreground", "sidebar-border",
+  "background",
+  "foreground",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "destructive-foreground",
+  "border",
+  "input",
+  "ring",
+  "brass",
+  "brass-foreground",
+  "match",
+  "stage-progress",
+  "stage-done",
+  "stage-remand",
+  "stage-dismissed",
+  "stage-outcome-complete",
+  "notice-action",
+  "notice-granted",
+  "notice-revoked",
+  "notice-outcome",
+  "capacity-available",
+  "capacity-filling",
+  "capacity-full",
+  "capacity-over",
+  "sidebar-background",
+  "sidebar-foreground",
+  "sidebar-border",
 ];
 check(
   "every token defined in dark is also defined in light",
@@ -108,13 +137,148 @@ for (const [label, block] of [
   );
 }
 
-check("high-contrast light canvas is white", lightness(tokenValue(hcLightBlock, "background")) > 95, true);
-check("high-contrast light ink is black", lightness(tokenValue(hcLightBlock, "foreground")) < 5, true);
-check("high-contrast dark canvas is black", lightness(tokenValue(hcDarkBlock, "background")) < 5, true);
-check("high-contrast dark muted ink stays bright", lightness(tokenValue(hcDarkBlock, "muted-foreground")) >= 90, true);
+check(
+  "high-contrast light canvas is white",
+  lightness(tokenValue(hcLightBlock, "background")) > 95,
+  true,
+);
+check(
+  "high-contrast light ink is black",
+  lightness(tokenValue(hcLightBlock, "foreground")) < 5,
+  true,
+);
+check(
+  "high-contrast dark canvas is black",
+  lightness(tokenValue(hcDarkBlock, "background")) < 5,
+  true,
+);
+check(
+  "high-contrast dark muted ink stays bright",
+  lightness(tokenValue(hcDarkBlock, "muted-foreground")) >= 90,
+  true,
+);
 check(
   "colourblind-safe does not use green for dismissed",
   tokenValue(cbDarkBlock, "stage-dismissed") !== tokenValue(darkBlock, "stage-dismissed"),
+  true,
+);
+
+// --- contrast ratios (WCAG 2.2 AA) -----------------------------------------
+// Computed from the real token values, per palette, so a "small tweak" to
+// a colour cannot quietly drop a pair below the line. 4.5:1 for text pairs,
+// 3:1 for the input border (non-text UI boundary, 1.4.11).
+
+function hslToRgb(hsl) {
+  const [h, s, l] = hsl.split(/\s+/).map((v) => parseFloat(v));
+  const S = s / 100;
+  const L = l / 100;
+  const c = (1 - Math.abs(2 * L - 1)) * S;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = L - c / 2;
+  let rgb;
+  if (h < 60) rgb = [c, x, 0];
+  else if (h < 120) rgb = [x, c, 0];
+  else if (h < 180) rgb = [0, c, x];
+  else if (h < 240) rgb = [0, x, c];
+  else if (h < 300) rgb = [x, 0, c];
+  else rgb = [c, 0, x];
+  return rgb.map((v) => v + m);
+}
+function luminance(rgb) {
+  const [r, g, b] = rgb.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a, b) {
+  const la = luminance(hslToRgb(a));
+  const lb = luminance(hslToRgb(b));
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+const CONTRAST_PAIRS = [
+  ["foreground", "background", 4.5],
+  ["muted-foreground", "background", 4.5],
+  ["muted-foreground", "card", 4.5],
+  ["input", "background", 3],
+  ["input", "card", 3],
+  ["primary-foreground", "primary", 4.5],
+  ["destructive-foreground", "destructive", 4.5],
+  ["link", "background", 4.5],
+  ["link", "card", 4.5],
+  // Amber is read as text in the docket stage cell and notification list.
+  ["stage-progress", "background", 4.5],
+  ["notice-action", "background", 4.5],
+];
+
+for (const [label, block] of [
+  ["light", rootBlock],
+  ["dark", darkBlock],
+  ["high-contrast light", hcLightBlock],
+  ["high-contrast dark", hcDarkBlock],
+  ["colourblind-safe light", cbLightBlock],
+  ["colourblind-safe dark", cbDarkBlock],
+]) {
+  const failing = CONTRAST_PAIRS.map(([fg, bg, min]) => {
+    const a = tokenValue(block, fg);
+    const b = tokenValue(block, bg);
+    if (!a || !b) return `${fg}/${bg}: missing token`;
+    const ratio = contrast(a, b);
+    return ratio >= min ? null : `${fg}/${bg}: ${ratio.toFixed(2)} < ${min}`;
+  }).filter(Boolean);
+  check(`${label}: every token pair meets its contrast minimum`, failing, []);
+}
+
+// The brand red doubles as the input ring, and --link must be at least as
+// legible as the primary it replaces for body links in the dark palettes.
+check(
+  "dark link is more legible than dark primary as text",
+  contrast(tokenValue(darkBlock, "link"), tokenValue(darkBlock, "background")) >
+    contrast(tokenValue(darkBlock, "primary"), tokenValue(darkBlock, "background")),
+  true,
+);
+
+// --- primitives use the tokens the assertions above protect ----------------
+const inputSrc = readFileSync("src/components/ui/input.tsx", "utf8");
+const selectSrc = readFileSync("src/components/ui/select.tsx", "utf8");
+const textareaSrc = readFileSync("src/components/ui/textarea.tsx", "utf8");
+check("Input border uses the --input token", inputSrc.includes("border-input"), true);
+check("Input no longer uses an opacity border", /border-foreground\/\d+/.test(inputSrc), false);
+check(
+  "Input placeholder is the muted token",
+  inputSrc.includes("placeholder:text-muted-foreground"),
+  true,
+);
+check(
+  "form controls are 16px on phones so iOS does not zoom on focus",
+  [inputSrc, selectSrc, textareaSrc].every(
+    (s) => s.includes("text-base") && s.includes("lg:text-sm"),
+  ),
+  true,
+);
+check("Input has a 44px touch target on phones", inputSrc.includes("min-h-11"), true);
+check("rich-text links use the --link token", css.includes("@apply text-link"), true);
+check("every palette has keyboard focus visible", /^\s*:focus-visible\s*\{/m.test(css), true);
+check(
+  "reduced motion collapses all animation, not just the tour",
+  /prefers-reduced-motion: reduce\)\s*\{\s*\*,/.test(css),
+  true,
+);
+check(
+  "Skeleton is hidden from assistive tech",
+  readFileSync("src/components/ui/skeleton.tsx", "utf8").includes('aria-hidden="true"'),
+  true,
+);
+const tailwindConfig = readFileSync("tailwind.config.ts", "utf8");
+check("dead netflix colour scale is gone", tailwindConfig.includes("netflix"), false);
+check(
+  "domain tokens are registered in Tailwind",
+  ["stage:", "notice:", "capacity:", "warning:", "success:"].every((k) =>
+    tailwindConfig.includes(k),
+  ),
+  true,
+);
+check(
+  "rounded-sm is no longer 0px",
+  tailwindConfig.includes('sm: "calc(var(--radius) - 2px)"'),
   true,
 );
 
@@ -123,7 +287,8 @@ check(
 // are not matched here. A PDF page is real paper, so that viewer may
 // keep literal black.
 
-const LITERAL = /(bg|text|border|ring|divide)-white|bg-\[#(181818|141414|333)\]|rgba\(255,\s*255,\s*255,/;
+const LITERAL =
+  /(bg|text|border|ring|divide)-white|bg-\[#(181818|141414|333)\]|rgba\(255,\s*255,\s*255,/;
 
 function tsxFiles(dir) {
   const out = [];
@@ -139,6 +304,11 @@ const offenders = tsxFiles("src").filter((file) => LITERAL.test(readFileSync(fil
 
 const ALLOWED = [
   "src/components/legislation/pdf-viewer-page.tsx", // a PDF page is real paper
+  // Translucent chips laid over capacity fills: the fill colour is a token
+  // (--capacity-*) and the chip must tint whatever fill it sits on, so it is
+  // white/25 on the dark fills and neutral-900/10 on the light ones — not a
+  // theme colour in its own right.
+  "src/pages/docket/docket-capacity-strip.tsx",
 ];
 check(
   "no component hardcodes a theme colour outside the documented exceptions",
@@ -151,7 +321,11 @@ check(
 // after the bundle boots, so a Light user sees a full dark flash every load.
 
 const html = readFileSync("index.html", "utf8");
-check("index.html resolves the theme before paint", html.includes("prefers-color-scheme: dark"), true);
+check(
+  "index.html resolves the theme before paint",
+  html.includes("prefers-color-scheme: dark"),
+  true,
+);
 check(
   "the bootstrap reads the same storage key the ThemeProvider writes",
   html.includes("magistrate-wizard-theme"),
@@ -177,12 +351,25 @@ check(
   html.includes('stored === "system"'),
   true,
 );
-check("the bootstrap maps high-contrast storage values", html.includes('stored === "high-contrast"'), true);
-check("the bootstrap maps colourblind-safe storage values", html.includes('stored === "colourblind"'), true);
-check("the bootstrap honours prefers-contrast for System", html.includes("prefers-contrast: more"), true);
+check(
+  "the bootstrap maps high-contrast storage values",
+  html.includes('stored === "high-contrast"'),
+  true,
+);
+check(
+  "the bootstrap maps colourblind-safe storage values",
+  html.includes('stored === "colourblind"'),
+  true,
+);
+check(
+  "the bootstrap honours prefers-contrast for System",
+  html.includes("prefers-contrast: more"),
+  true,
+);
 check(
   "the bootstrap toggles accessible modifier classes",
-  html.includes('classList.toggle("theme-high-contrast"') && html.includes('classList.toggle("theme-colourblind"'),
+  html.includes('classList.toggle("theme-high-contrast"') &&
+    html.includes('classList.toggle("theme-colourblind"'),
   true,
 );
 
@@ -195,14 +382,36 @@ const settings = readFileSync("src/pages/settings/settings-page.tsx", "utf8");
 
 check("product default theme is dark", themeLib.includes('DEFAULT_THEME: Theme = "dark"'), true);
 check("theme options list Dark first", /THEMES = \[\s*"dark"/.test(themeLib), true);
-check("theme options include high-contrast and colourblind-safe", themeLib.includes('"high-contrast"') && themeLib.includes('"colourblind"'), true);
-check("ThemeProvider defaults to DEFAULT_THEME", provider.includes("defaultTheme = DEFAULT_THEME"), true);
-check("ThemeProvider listens for prefers-contrast", provider.includes("prefers-contrast: more"), true);
+check(
+  "theme options include high-contrast and colourblind-safe",
+  themeLib.includes('"high-contrast"') && themeLib.includes('"colourblind"'),
+  true,
+);
+check(
+  "ThemeProvider defaults to DEFAULT_THEME",
+  provider.includes("defaultTheme = DEFAULT_THEME"),
+  true,
+);
+check(
+  "ThemeProvider listens for prefers-contrast",
+  provider.includes("prefers-contrast: more"),
+  true,
+);
 check("account menu includes the theme picker", userMenu.includes("ThemeMenuSub"), true);
 check("sign-in shell has no theme select", authLayout.includes("ThemeSelect"), false);
 check("settings uses the shared ThemeSelect", settings.includes("<ThemeSelect"), true);
-check("sign-in and sign-up play a brand splash", authLayout.includes("AuthSplash") && authLayout.includes("ROUTES.login") && authLayout.includes("ROUTES.register"), true);
-check("password recovery skips the brand splash", authLayout.includes("ROUTES.forgotPassword"), false);
+check(
+  "sign-in and sign-up play a brand splash",
+  authLayout.includes("AuthSplash") &&
+    authLayout.includes("ROUTES.login") &&
+    authLayout.includes("ROUTES.register"),
+  true,
+);
+check(
+  "password recovery skips the brand splash",
+  authLayout.includes("ROUTES.forgotPassword"),
+  false,
+);
 
 const topNav = readFileSync("src/components/layout/top-nav.tsx", "utf8");
 const titleCard = readFileSync("src/components/browse/title-card.tsx", "utf8");
@@ -211,15 +420,43 @@ const navSearch = readFileSync("src/components/layout/nav-search.tsx", "utf8");
 const billboard = readFileSync("src/components/browse/billboard.tsx", "utf8");
 const dashboard = readFileSync("src/pages/home-page.tsx", "utf8");
 check("hero overlay nav uses a black fade over dark art", topNav.includes("from-black/80"), true);
-check("hero overlay nav is only used on dark-family palettes", topNav.includes("isDarkPalette(resolvedTheme)"), true);
-check("billboard cinematic chrome follows dark-family palettes", billboard.includes("isDarkPalette(resolvedTheme)"), true);
+check(
+  "hero overlay nav is only used on dark-family palettes",
+  topNav.includes("isDarkPalette(resolvedTheme)"),
+  true,
+);
+check(
+  "billboard cinematic chrome follows dark-family palettes",
+  billboard.includes("isDarkPalette(resolvedTheme)"),
+  true,
+);
 check("paper and scrolled nav use the canvas token", topNav.includes("bg-background"), true);
-check("billboard registers cinematic chrome for the overlay nav", billboard.includes("useRegisterCinematicNav"), true);
-check("light hero uses paper ink", billboard.includes("text-foreground dark:text-primary-foreground"), true);
-check("light hero is not a black wash", billboard.includes("from-background via-background/75"), true);
-check("sitting caption lives on the hero, not the paper fade", dashboard.includes("caption="), true);
+check(
+  "billboard registers cinematic chrome for the overlay nav",
+  billboard.includes("useRegisterCinematicNav"),
+  true,
+);
+check(
+  "light hero uses paper ink",
+  billboard.includes("text-foreground dark:text-primary-foreground"),
+  true,
+);
+check(
+  "light hero is not a black wash",
+  billboard.includes("from-background via-background/75"),
+  true,
+);
+check(
+  "sitting caption lives on the hero, not the paper fade",
+  dashboard.includes("caption="),
+  true,
+);
 check("desktop search input is tokenized", topNav.includes("bg-black/70"), false);
-check("poster tiles use always-white ink on cinematic art", titleCard.includes("text-primary-foreground"), true);
+check(
+  "poster tiles use always-white ink on cinematic art",
+  titleCard.includes("text-primary-foreground"),
+  true,
+);
 check("calendar out-of-month cells are not a black wash", calendar.includes("bg-black/20"), false);
 check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);
 check("header search field uses canvas tokens", navSearch.includes("bg-secondary"), true);
@@ -231,11 +468,7 @@ const amberStripWithOutline = tsxFiles("src").filter((file) => {
   const src = readFileSync(file, "utf8");
   return /bg-amber-950\//.test(src) && src.includes('variant="outline"');
 });
-check(
-  "dark amber strips do not use theme outline buttons",
-  amberStripWithOutline,
-  [],
-);
+check("dark amber strips do not use theme outline buttons", amberStripWithOutline, []);
 const idleWarning = readFileSync("src/components/auth/session-idle-warning.tsx", "utf8");
 const offlineBanner = readFileSync("src/components/layout/offline-sync-banner.tsx", "utf8");
 check("idle warning action is the on-dark chip", idleWarning.includes('variant="onDark"'), true);

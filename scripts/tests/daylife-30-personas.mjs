@@ -1,3 +1,5 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
+// @slow  long-running: `npm test` skips it, pass --slow (npm run test:slow) to include
 /**
  * Day-in-the-life dispatch of 31 unique local users through the real
  * request/approve path (handle_new_user metadata + submit/decide RPCs),
@@ -27,7 +29,9 @@ const ADMIN_EMAIL = "admin@magistrate-wizard.local";
 const RUN = `DL${Date.now().toString(36).slice(-5).toUpperCase()}`;
 const DOMAIN = "magistrate-wizard.local";
 
-const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
+const admin = createClient(URL, SERVICE, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const anon = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const steps = [];
@@ -59,7 +63,11 @@ const clientAs = (token) =>
 async function signIn(email) {
   const { data, error } = await anon.auth.signInWithPassword({ email, password: PASSWORD });
   if (error) throw error;
-  return { user: data.user, token: data.session.access_token, sb: clientAs(data.session.access_token) };
+  return {
+    user: data.user,
+    token: data.session.access_token,
+    sb: clientAs(data.session.access_token),
+  };
 }
 
 async function pendingMag(profileId) {
@@ -90,7 +98,11 @@ async function activeMagCourts(profileId) {
 }
 
 async function ensureUser({ key, email, fullName, role, courtIds, note }) {
-  const { data: existing } = await admin.from("profiles").select("id, email, role").eq("email", email).maybeSingle();
+  const { data: existing } = await admin
+    .from("profiles")
+    .select("id, email, role")
+    .eq("email", email)
+    .maybeSingle();
   if (existing?.id) {
     log(true, key, "reuse existing profile", `${existing.role} ${existing.id}`);
     return existing.id;
@@ -131,7 +143,9 @@ async function pickOpenCourts(n) {
   if (courtErr) throw courtErr;
   const open = (courts ?? []).filter((c) => !taken.has(c.id));
   if (open.length < n) {
-    console.warn(`only ${open.length} open courts (wanted ${n}); reusing tail courts where scenarios do not seat a primary`);
+    console.warn(
+      `only ${open.length} open courts (wanted ${n}); reusing tail courts where scenarios do not seat a primary`,
+    );
   }
   if (!open.length) throw new Error("no active courts available");
   return { open, all: courts ?? [], occupied: [...taken] };
@@ -183,19 +197,83 @@ async function main() {
   };
 
   const specials = {
-    wrongCourt1: { key: "wrongCourt1", email: `daylife.wrongcourt1@${DOMAIN}`, fullName: "Daylife Wrong Court One", court: occupiedCourt },
-    wrongCourt2: { key: "wrongCourt2", email: `daylife.wrongcourt2@${DOMAIN}`, fullName: "Daylife Wrong Court Two", court: occupiedCourt },
-    clerkAsMag: { key: "clerkAsMag", email: `daylife.clerkasmag@${DOMAIN}`, fullName: "Daylife Clerk Signed As Mag", court: wrongRoleCourt },
-    magAsClerk: { key: "magAsClerk", email: `daylife.magasclerk@${DOMAIN}`, fullName: "Daylife Mag Signed As Clerk", court: magAsClerkCourt },
-    cancelledMag: { key: "cancelledMag", email: `daylife.cancelled@${DOMAIN}`, fullName: "Daylife Cancelled Mag", court: cancelCourt },
-    leftPending: { key: "leftPending", email: `daylife.pending@${DOMAIN}`, fullName: "Daylife Left Pending", court: pendingCourt },
-    duplicateMag: { key: "duplicateMag", email: `daylife.duplicate@${DOMAIN}`, fullName: "Daylife Duplicate Mag", court: duplicateCourt },
-    orphanClerk: { key: "orphanClerk", email: `daylife.orphanclerk@${DOMAIN}`, fullName: "Daylife Orphan Clerk", court: orphanCourt },
-    multiMag: { key: "multiMag", email: `daylife.multi@${DOMAIN}`, fullName: "Daylife Multi Court Mag", courts: [multiA, multiB] },
-    coveringMag: { key: "coveringMag", email: `daylife.covering@${DOMAIN}`, fullName: "Daylife Covering Mag", court: coveringCourt },
-    emptyMag: { key: "emptyMag", email: `daylife.empty@${DOMAIN}`, fullName: "Daylife Empty Docket Mag", court: emptyCourt },
-    outsider: { key: "outsider", email: `daylife.outsider@${DOMAIN}`, fullName: "Daylife Outsider Mag" },
-    relinquisher: { key: "relinquisher", email: `daylife.relinquish@${DOMAIN}`, fullName: "Daylife Relinquisher", court: relinqCourt },
+    wrongCourt1: {
+      key: "wrongCourt1",
+      email: `daylife.wrongcourt1@${DOMAIN}`,
+      fullName: "Daylife Wrong Court One",
+      court: occupiedCourt,
+    },
+    wrongCourt2: {
+      key: "wrongCourt2",
+      email: `daylife.wrongcourt2@${DOMAIN}`,
+      fullName: "Daylife Wrong Court Two",
+      court: occupiedCourt,
+    },
+    clerkAsMag: {
+      key: "clerkAsMag",
+      email: `daylife.clerkasmag@${DOMAIN}`,
+      fullName: "Daylife Clerk Signed As Mag",
+      court: wrongRoleCourt,
+    },
+    magAsClerk: {
+      key: "magAsClerk",
+      email: `daylife.magasclerk@${DOMAIN}`,
+      fullName: "Daylife Mag Signed As Clerk",
+      court: magAsClerkCourt,
+    },
+    cancelledMag: {
+      key: "cancelledMag",
+      email: `daylife.cancelled@${DOMAIN}`,
+      fullName: "Daylife Cancelled Mag",
+      court: cancelCourt,
+    },
+    leftPending: {
+      key: "leftPending",
+      email: `daylife.pending@${DOMAIN}`,
+      fullName: "Daylife Left Pending",
+      court: pendingCourt,
+    },
+    duplicateMag: {
+      key: "duplicateMag",
+      email: `daylife.duplicate@${DOMAIN}`,
+      fullName: "Daylife Duplicate Mag",
+      court: duplicateCourt,
+    },
+    orphanClerk: {
+      key: "orphanClerk",
+      email: `daylife.orphanclerk@${DOMAIN}`,
+      fullName: "Daylife Orphan Clerk",
+      court: orphanCourt,
+    },
+    multiMag: {
+      key: "multiMag",
+      email: `daylife.multi@${DOMAIN}`,
+      fullName: "Daylife Multi Court Mag",
+      courts: [multiA, multiB],
+    },
+    coveringMag: {
+      key: "coveringMag",
+      email: `daylife.covering@${DOMAIN}`,
+      fullName: "Daylife Covering Mag",
+      court: coveringCourt,
+    },
+    emptyMag: {
+      key: "emptyMag",
+      email: `daylife.empty@${DOMAIN}`,
+      fullName: "Daylife Empty Docket Mag",
+      court: emptyCourt,
+    },
+    outsider: {
+      key: "outsider",
+      email: `daylife.outsider@${DOMAIN}`,
+      fullName: "Daylife Outsider Mag",
+    },
+    relinquisher: {
+      key: "relinquisher",
+      email: `daylife.relinquish@${DOMAIN}`,
+      fullName: "Daylife Relinquisher",
+      court: relinqCourt,
+    },
   };
 
   const ids = {};
@@ -233,7 +311,10 @@ async function main() {
   });
   ids.cancelledMag = await ensureUser({ ...specials.cancelledMag, courtIds: [cancelCourt.id] });
   ids.leftPending = await ensureUser({ ...specials.leftPending, courtIds: [pendingCourt.id] });
-  ids.duplicateMag = await ensureUser({ ...specials.duplicateMag, courtIds: [specials.duplicateMag.court.id] });
+  ids.duplicateMag = await ensureUser({
+    ...specials.duplicateMag,
+    courtIds: [specials.duplicateMag.court.id],
+  });
   ids.orphanClerk = await ensureUser({
     key: specials.orphanClerk.key,
     email: specials.orphanClerk.email,
@@ -249,11 +330,20 @@ async function main() {
   });
   ids.coveringMag = await ensureUser({ ...specials.coveringMag, courtIds: [coveringCourt.id] });
   ids.emptyMag = await ensureUser({ ...specials.emptyMag, courtIds: [emptyCourt.id] });
-  ids.outsider = await ensureUser({ key: specials.outsider.key, email: specials.outsider.email, fullName: specials.outsider.fullName, courtIds: [] });
+  ids.outsider = await ensureUser({
+    key: specials.outsider.key,
+    email: specials.outsider.email,
+    fullName: specials.outsider.fullName,
+    courtIds: [],
+  });
   ids.relinquisher = await ensureUser({ ...specials.relinquisher, courtIds: [relinqCourt.id] });
 
   for (const [key, id] of Object.entries(ids)) {
-    const { data: profile } = await admin.from("profiles").select("email, role, full_name").eq("id", id).single();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("email, role, full_name")
+      .eq("id", id)
+      .single();
     const magReq = await pendingMag(id);
     const clerkReq = await pendingClerk(id);
     roster.push({
@@ -385,7 +475,9 @@ async function main() {
     const pending = await pendingMag(ids.cancelledMag);
     const actor = await signIn(specials.cancelledMag.email);
     if (pending[0]) {
-      const { error } = await actor.sb.rpc("cancel_magistrate_court_request", { p_request_id: pending[0].id });
+      const { error } = await actor.sb.rpc("cancel_magistrate_court_request", {
+        p_request_id: pending[0].id,
+      });
       log(!error, "cancelledMag", "cancel pending request", errMsg(error));
     }
     const { data, error } = await actor.sb.rpc("submit_magistrate_court_request", {
@@ -397,7 +489,7 @@ async function main() {
       "mag-rerequest-after-cancel",
       !error ? "hold" : "break",
       "Magistrate can request the same court again after cancelling",
-      error ? errMsg(error) : data?.id ?? "ok",
+      error ? errMsg(error) : (data?.id ?? "ok"),
     );
     if (data?.id) {
       await adminSession.sb.rpc("decide_magistrate_court_request", {
@@ -416,7 +508,12 @@ async function main() {
       p_court_id: specials.duplicateMag.court.id,
       p_note: "double click",
     });
-    log(!!error || !first, "duplicateMag", "second pending blocked", errMsg(error) || "no first pending");
+    log(
+      !!error || !first,
+      "duplicateMag",
+      "second pending blocked",
+      errMsg(error) || "no first pending",
+    );
     finding(
       "duplicate-pending-blocked",
       error || !first ? "hold" : "break",
@@ -441,7 +538,12 @@ async function main() {
       p_new_role: "clerk",
       p_reason: "You signed up as magistrate; you work as a court clerk.",
     });
-    log(!error && data === "clerk", "clerkAsMag", "correct_unassigned_account_type → clerk", errMsg(error) || data);
+    log(
+      !error && data === "clerk",
+      "clerkAsMag",
+      "correct_unassigned_account_type → clerk",
+      errMsg(error) || data,
+    );
     finding(
       "correct-account-type",
       !error && data === "clerk" ? "hold" : "break",
@@ -457,7 +559,12 @@ async function main() {
       p_new_role: "magistrate",
       p_reason: "You signed up as clerk; you are a magistrate.",
     });
-    log(!error && data === "magistrate", "magAsClerk", "correct_unassigned_account_type → magistrate", errMsg(error) || data);
+    log(
+      !error && data === "magistrate",
+      "magAsClerk",
+      "correct_unassigned_account_type → magistrate",
+      errMsg(error) || data,
+    );
     finding(
       "correct-account-type-to-magistrate",
       !error && data === "magistrate" ? "hold" : "break",
@@ -580,7 +687,9 @@ async function main() {
       "clerk-rerequest-rpc-allows",
       !againErr ? "degrade" : againErr ? "hold" : "break",
       "Clerk RPC allows (or blocks) a new pending row for a court that was already rejected — UI hides every historically requested court",
-      againErr ? `RPC blocked: ${errMsg(againErr)}` : `RPC allowed id=${again?.id}. UI filter requestedCourtIds includes all statuses.`,
+      againErr
+        ? `RPC blocked: ${errMsg(againErr)}`
+        : `RPC allowed id=${again?.id}. UI filter requestedCourtIds includes all statuses.`,
     );
   }
 
@@ -590,8 +699,15 @@ async function main() {
     const { data: needing, error: listErr } = await adminSession.sb.rpc(
       "list_clerk_access_requests_needing_admin_attention",
     );
-    log(!listErr, "orphanClerk", "list_clerk_access_requests_needing_admin_attention", errMsg(listErr));
-    const listed = (needing ?? []).some((r) => r.profile_id === ids.orphanClerk || r.id === pending[0]?.id);
+    log(
+      !listErr,
+      "orphanClerk",
+      "list_clerk_access_requests_needing_admin_attention",
+      errMsg(listErr),
+    );
+    const listed = (needing ?? []).some(
+      (r) => r.profile_id === ids.orphanClerk || r.id === pending[0]?.id,
+    );
     finding(
       "orphan-clerk-listed",
       listed || (pending.length && !listErr) ? "hold" : "degrade",
@@ -625,17 +741,29 @@ async function main() {
       "acting-assign-rpc-vs-ui",
       !error ? "degrade" : "hold",
       "RPC can assign acting/relief; admin roster UI always passes a court id string (regular only)",
-      error ? errMsg(error) : "acting assignment succeeded via RPC; roster mutate(courtToAssign) is regular-only",
+      error
+        ? errMsg(error)
+        : "acting assignment succeeded via RPC; roster mutate(courtToAssign) is regular-only",
     );
   }
 
   // People page: admin profiles.role update
   {
     const before = roster.find((r) => r.key === "leftPending");
-    const { error } = await adminSession.sb.from("profiles").update({ role: "clerk" }).eq("id", ids.leftPending);
-    const { data: after } = await admin.from("profiles").select("role").eq("id", ids.leftPending).single();
+    const { error } = await adminSession.sb
+      .from("profiles")
+      .update({ role: "clerk" })
+      .eq("id", ids.leftPending);
+    const { data: after } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", ids.leftPending)
+      .single();
     if (!error && after?.role === "clerk") {
-      await admin.from("profiles").update({ role: before?.role ?? "magistrate" }).eq("id", ids.leftPending);
+      await admin
+        .from("profiles")
+        .update({ role: before?.role ?? "magistrate" })
+        .eq("id", ids.leftPending);
       finding(
         "people-no-role-ui-but-rls-allows",
         "degrade",
@@ -672,7 +800,12 @@ async function main() {
         errMsg(error) || "unexpected success",
       );
     } else {
-      finding("self-approve-blocked", "hold", "No own pending request to self-approve (gate still in RPC)", "no pending row for seed admin");
+      finding(
+        "self-approve-blocked",
+        "hold",
+        "No own pending request to self-approve (gate still in RPC)",
+        "no pending row for seed admin",
+      );
     }
   }
 
@@ -716,7 +849,10 @@ async function main() {
         event_status: "scheduled",
       });
       log(!evErr, mag01.key, "schedule hearing", errMsg(evErr));
-      await sb.from("docket_matters").update({ arraignment_status: "done", custody_status: "on_bail" }).eq("id", matterId);
+      await sb
+        .from("docket_matters")
+        .update({ arraignment_status: "done", custody_status: "on_bail" })
+        .eq("id", matterId);
       log(true, mag01.key, "patch procedure");
       const { error: ndErr } = await sb.rpc("set_docket_matter_next_date", {
         p_docket_matter_id: matterId,
@@ -737,7 +873,9 @@ async function main() {
         .single();
       log(!jErr, mag01.key, "draft judgment", errMsg(jErr));
       if (!jErr) {
-        await sb.from("docket_matter_judgments").insert({ docket_matter_id: matterId, judgment_id: judgment.id });
+        await sb
+          .from("docket_matter_judgments")
+          .insert({ docket_matter_id: matterId, judgment_id: judgment.id });
         log(true, mag01.key, "link judgment");
       }
 
@@ -751,13 +889,18 @@ async function main() {
       });
       log(!nErr, mag01.key, "bench note", errMsg(nErr));
 
-      await sb.from("bookmarks").insert({ entity_type: "docket_matter", entity_id: matterId, user_id: user.id });
+      await sb
+        .from("bookmarks")
+        .insert({ entity_type: "docket_matter", entity_id: matterId, user_id: user.id });
       log(true, mag01.key, "bookmark");
 
       const { data: statutes, error: stErr } = await sb.from("statutes").select("id").limit(3);
       log(!stErr, mag01.key, "browse legislation", errMsg(stErr) || `${statutes?.length ?? 0}`);
 
-      const { data: hits, error: gErr } = await sb.rpc("global_search", { p_query: caseNumber, p_limit: 10 });
+      const { data: hits, error: gErr } = await sb.rpc("global_search", {
+        p_query: caseNumber,
+        p_limit: 10,
+      });
       log(!gErr, mag01.key, "global search", errMsg(gErr) || `${hits?.length ?? 0} hits`);
 
       const { data: report, error: rErr } = await sb.rpc("get_daily_docket_report_data", {
@@ -801,7 +944,13 @@ async function main() {
         if (resErr) log(false, mag01.key, "resolve share recipient", errMsg(resErr));
         else {
           const recipientId = resolved?.[0]?.profile_id ?? resolved?.[0]?.id;
-          if (!recipientId) log(false, mag01.key, "resolve share recipient", JSON.stringify(resolved)?.slice(0, 200));
+          if (!recipientId)
+            log(
+              false,
+              mag01.key,
+              "resolve share recipient",
+              JSON.stringify(resolved)?.slice(0, 200),
+            );
           else {
             const { error: shErr } = await sb.from("shares").insert({
               item_type: "docket_matter",
@@ -817,7 +966,9 @@ async function main() {
     }
     finding(
       "magistrate-sitting-day",
-      steps.filter((s) => s.persona === mag01.key && s.step === "create matter" && s.ok).length ? "hold" : "break",
+      steps.filter((s) => s.persona === mag01.key && s.step === "create matter" && s.ok).length
+        ? "hold"
+        : "break",
       "Approved magistrate can run a sitting-day: matter, parties, hearing, judgment, notes, search, report, callover, bin/restore",
       "see mag01 steps",
     );
@@ -825,8 +976,16 @@ async function main() {
 
   {
     const { sb } = await signIn(clerk01.email);
-    const { data: matters, error } = await sb.from("docket_matters").select("id, case_number").limit(5);
-    log(!error, clerk01.key, "clerk lists docket matters", errMsg(error) || `${matters?.length ?? 0}`);
+    const { data: matters, error } = await sb
+      .from("docket_matters")
+      .select("id, case_number")
+      .limit(5);
+    log(
+      !error,
+      clerk01.key,
+      "clerk lists docket matters",
+      errMsg(error) || `${matters?.length ?? 0}`,
+    );
     const { error: jErr } = await sb.from("judgments").insert({
       title: "Clerk should not draft this",
       case_number: `DL-${RUN}-CLERK`,
@@ -834,7 +993,12 @@ async function main() {
       judgment_date: "2026-09-10",
       content_text: "blocked?",
     });
-    log(!!jErr, clerk01.key, "clerk blocked from creating judgment", errMsg(jErr) || "unexpected success");
+    log(
+      !!jErr,
+      clerk01.key,
+      "clerk blocked from creating judgment",
+      errMsg(jErr) || "unexpected success",
+    );
     const { error: cErr } = await sb.from("docket_callovers").insert({
       court_id: magCourts[0].id,
       callover_date: "2026-09-12",
@@ -859,7 +1023,12 @@ async function main() {
       charge_or_issue: "n/a",
       status: "active",
     });
-    log(!!error, "outsider", "unassigned magistrate cannot create docket", errMsg(error) || "unexpected success");
+    log(
+      !!error,
+      "outsider",
+      "unassigned magistrate cannot create docket",
+      errMsg(error) || "unexpected success",
+    );
     finding(
       "unassigned-mag-no-docket",
       error ? "hold" : "break",
@@ -877,7 +1046,12 @@ async function main() {
   {
     const { sb } = await signIn(specials.multiMag.email);
     const seated = await activeMagCourts(ids.multiMag);
-    log(seated.length >= 2, "multiMag", "two court assignments", seated.map((s) => s.court_id).join(","));
+    log(
+      seated.length >= 2,
+      "multiMag",
+      "two court assignments",
+      seated.map((s) => s.court_id).join(","),
+    );
     finding(
       "multi-court-approve",
       seated.length >= 2 ? "hold" : "degrade",
@@ -936,7 +1110,12 @@ async function main() {
         errMsg(error) || "second primary allowed",
       );
     } else {
-      finding("primary-exclusivity", "hold", "No second pending on mag01 court to collide; exclusivity still in schema", "no row");
+      finding(
+        "primary-exclusivity",
+        "hold",
+        "No second pending on mag01 court to collide; exclusivity still in schema",
+        "no row",
+      );
     }
   }
 
@@ -958,7 +1137,9 @@ async function main() {
   };
   writeFileSync(RESULTS, JSON.stringify(payload, null, 2));
   console.log(`\nWrote ${RESULTS}`);
-  console.log(`steps ${payload.pass} pass / ${payload.fail} fail; findings hold=${payload.byVerdict.hold} degrade=${payload.byVerdict.degrade} break=${payload.byVerdict.break}`);
+  console.log(
+    `steps ${payload.pass} pass / ${payload.fail} fail; findings hold=${payload.byVerdict.hold} degrade=${payload.byVerdict.degrade} break=${payload.byVerdict.break}`,
+  );
 }
 
 main().catch((err) => {

@@ -61,28 +61,78 @@ function main() {
   // message — this mapping is additive, not a replacement for the
   // fallback safety net.
   {
-    const unknownViolation = { code: "23505", message: 'duplicate key value violates unique constraint "some_other_constraint_never_seen_before"' };
-    check("an unmapped 23505 still falls back to the generic message", getErrorMessage(unknownViolation), "That already exists.");
+    const unknownViolation = {
+      code: "23505",
+      message:
+        'duplicate key value violates unique constraint "some_other_constraint_never_seen_before"',
+    };
+    check(
+      "an unmapped 23505 still falls back to the generic message",
+      getErrorMessage(unknownViolation),
+      "That already exists.",
+    );
   }
 
   // Pre-existing mappings must still work (this pass only ADDED an entry,
   // never touched the others).
   {
-    const bookmarkViolation = { code: "23505", message: 'duplicate key value violates unique constraint "bookmarks_user_id_entity_type_entity_id"' };
-    check("pre-existing bookmark mapping untouched by this pass's addition", getErrorMessage(bookmarkViolation), "You've already bookmarked this.");
+    const bookmarkViolation = {
+      code: "23505",
+      message:
+        'duplicate key value violates unique constraint "bookmarks_user_id_entity_type_entity_id"',
+    };
+    check(
+      "pre-existing bookmark mapping untouched by this pass's addition",
+      getErrorMessage(bookmarkViolation),
+      "You've already bookmarked this.",
+    );
   }
 
   // readBareJobFilename / readDuplicateOfId — the read-side of the "bare
   // job row" architecture (recordBulkNonDraftJob's write side can't be
   // tested offline; it's a real Supabase insert, verified live instead).
   {
-    check("readBareJobFilename reads _originalFilename from a bare job's extracted_metadata", readBareJobFilename({ _originalFilename: "TEST_State_v_Beta_copy.pdf", _duplicateOfId: "abc-123" }), "TEST_State_v_Beta_copy.pdf");
-    check("readDuplicateOfId reads _duplicateOfId from a bare job's extracted_metadata", readDuplicateOfId({ _originalFilename: "TEST_State_v_Beta_copy.pdf", _duplicateOfId: "abc-123" }), "abc-123");
-    check("readDuplicateOfId is null when the field is explicitly null (a failed job, not a duplicate)", readDuplicateOfId({ _originalFilename: "TEST_Malformed_Fixture.pdf", _duplicateOfId: null }), null);
-    check("readBareJobFilename returns null for a normal draft-creating job's metadata (no _originalFilename key at all)", readBareJobFilename({ neutral_citation: "[2026] TEST 1" }), null);
-    check("readBareJobFilename is defensive against non-object input", readBareJobFilename(null), null);
-    check("readBareJobFilename is defensive against a non-string value under the key", readBareJobFilename({ _originalFilename: 12345 }), null);
-    check("readDuplicateOfId is defensive against non-object input", readDuplicateOfId(undefined), null);
+    check(
+      "readBareJobFilename reads _originalFilename from a bare job's extracted_metadata",
+      readBareJobFilename({
+        _originalFilename: "TEST_State_v_Beta_copy.pdf",
+        _duplicateOfId: "abc-123",
+      }),
+      "TEST_State_v_Beta_copy.pdf",
+    );
+    check(
+      "readDuplicateOfId reads _duplicateOfId from a bare job's extracted_metadata",
+      readDuplicateOfId({
+        _originalFilename: "TEST_State_v_Beta_copy.pdf",
+        _duplicateOfId: "abc-123",
+      }),
+      "abc-123",
+    );
+    check(
+      "readDuplicateOfId is null when the field is explicitly null (a failed job, not a duplicate)",
+      readDuplicateOfId({ _originalFilename: "TEST_Malformed_Fixture.pdf", _duplicateOfId: null }),
+      null,
+    );
+    check(
+      "readBareJobFilename returns null for a normal draft-creating job's metadata (no _originalFilename key at all)",
+      readBareJobFilename({ neutral_citation: "[2026] TEST 1" }),
+      null,
+    );
+    check(
+      "readBareJobFilename is defensive against non-object input",
+      readBareJobFilename(null),
+      null,
+    );
+    check(
+      "readBareJobFilename is defensive against a non-string value under the key",
+      readBareJobFilename({ _originalFilename: 12345 }),
+      null,
+    );
+    check(
+      "readDuplicateOfId is defensive against non-object input",
+      readDuplicateOfId(undefined),
+      null,
+    );
   }
 
   console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

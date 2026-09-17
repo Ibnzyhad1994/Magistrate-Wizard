@@ -43,7 +43,13 @@ check(
 
 check(
   "only options with a matching count survive, in the original reference order",
-  visibleFacetOptions(courts, new Map([["ccj", 5], ["gy-ca", 2]])),
+  visibleFacetOptions(
+    courts,
+    new Map([
+      ["ccj", 5],
+      ["gy-ca", 2],
+    ]),
+  ),
   [courts[0], courts[2]],
 );
 
@@ -56,8 +62,16 @@ check(
 // --- facetOptionLabel --------------------------------------------------
 
 check("labels with a nonzero count", facetOptionLabel("Robbery", 4), "Robbery (4)");
-check("labels with no count entry as the bare name", facetOptionLabel("Robbery", undefined), "Robbery");
-check("labels with an explicit zero count as the bare name (falsy)", facetOptionLabel("Robbery", 0), "Robbery");
+check(
+  "labels with no count entry as the bare name",
+  facetOptionLabel("Robbery", undefined),
+  "Robbery",
+);
+check(
+  "labels with an explicit zero count as the bare name (falsy)",
+  facetOptionLabel("Robbery", 0),
+  "Robbery",
+);
 
 // --- isFacetSelectionValid -----------------------------------------------
 

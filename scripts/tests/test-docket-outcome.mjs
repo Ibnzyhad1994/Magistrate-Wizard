@@ -31,17 +31,34 @@ function check(label, actual, expected) {
 
 // --- vocabulary matches what the 0131 CHECK constraints actually allow ---
 
-check("outcome_status has exactly two values, matching the live CHECK constraint",
-  [...OUTCOME_STATUSES], ["dismissed", "completed"]);
+check(
+  "outcome_status has exactly two values, matching the live CHECK constraint",
+  [...OUTCOME_STATUSES],
+  ["dismissed", "completed"],
+);
 
-check("arraignment_status gained 'not_found' alongside the existing two, matching the live CHECK constraint",
-  [...ARRAIGNMENT_STATUSES], ["not_started", "done", "not_found"]);
+check(
+  "arraignment_status gained 'not_found' alongside the existing two, matching the live CHECK constraint",
+  [...ARRAIGNMENT_STATUSES],
+  ["not_started", "done", "not_found"],
+);
 
-check("docket_matter_status gained 'dismissed', matching the live enum",
-  [...DOCKET_MATTER_STATUSES], ["active", "stayed", "completed", "archived", "dismissed"]);
+check(
+  "docket_matter_status gained 'dismissed', matching the live enum",
+  [...DOCKET_MATTER_STATUSES],
+  ["active", "stayed", "completed", "archived", "dismissed"],
+);
 
-check("'not_found' has a board label", PROCEDURE_VALUE_LABELS.not_found, "Not Found, To Be Summoned");
-check("every outcome value has a label", OUTCOME_STATUSES.every((v) => typeof OUTCOME_VALUE_LABELS[v] === "string"), true);
+check(
+  "'not_found' has a board label",
+  PROCEDURE_VALUE_LABELS.not_found,
+  "Not Found, To Be Summoned",
+);
+check(
+  "every outcome value has a label",
+  OUTCOME_STATUSES.every((v) => typeof OUTCOME_VALUE_LABELS[v] === "string"),
+  true,
+);
 
 // --- isOutcomeStatus ---
 
@@ -58,7 +75,11 @@ check("dismissed tones red", outcomeTone("dismissed"), "dismissed");
 check("completed tones blue", outcomeTone("completed"), "complete");
 check("no outcome tones muted", outcomeTone(null), "muted");
 check("an empty string tones muted", outcomeTone(""), "muted");
-check("an unrecognised value tones muted, not a false positive", outcomeTone("something_else"), "muted");
+check(
+  "an unrecognised value tones muted, not a false positive",
+  outcomeTone("something_else"),
+  "muted",
+);
 
 // --- label ---
 
@@ -83,13 +104,21 @@ const base = {
   appeal_status: "not_started",
 };
 
-check("arraignment_status='not_found' stays at the arraignment stage",
-  currentStage({ ...base, arraignment_status: "not_found" }), "arraignment");
-check("arraignment_status='not_started' also stays at arraignment (unchanged behaviour)",
-  currentStage({ ...base, arraignment_status: "not_started" }), "arraignment");
-check("arraignment_status='done' still advances past arraignment",
-  currentStage({ ...base, arraignment_status: "done" }), "custody");
-
+check(
+  "arraignment_status='not_found' stays at the arraignment stage",
+  currentStage({ ...base, arraignment_status: "not_found" }),
+  "arraignment",
+);
+check(
+  "arraignment_status='not_started' also stays at arraignment (unchanged behaviour)",
+  currentStage({ ...base, arraignment_status: "not_started" }),
+  "arraignment",
+);
+check(
+  "arraignment_status='done' still advances past arraignment",
+  currentStage({ ...base, arraignment_status: "done" }),
+  "custody",
+);
 
 // --- no one-way doors -------------------------------------------------------
 // Four columns (paper_committal_status and the three yes/no columns) used to
@@ -111,7 +140,9 @@ check(
   "Disclosure and Trial still offer their empty value instead of Clear (one control, not two)",
   ["disclosure_status", "trial_status"].map((key) => ({
     key,
-    emptyInMenu: procedureSelectableValues(key).map((o) => o.value).includes(procedureEmptyValue(key)),
+    emptyInMenu: procedureSelectableValues(key)
+      .map((o) => o.value)
+      .includes(procedureEmptyValue(key)),
     hasClear: procedureHasClear(key),
   })),
   [
@@ -122,9 +153,13 @@ check(
 
 check(
   "'unset' is still kept out of the yes/no menus -- it is not a result worth choosing",
-  BOARD_COLUMNS.filter((c) => c.kind === "yesno").filter((c) =>
-    procedureSelectableValues(c.key).map((o) => o.value).includes(procedureEmptyValue(c.key)),
-  ).map((c) => c.key),
+  BOARD_COLUMNS.filter((c) => c.kind === "yesno")
+    .filter((c) =>
+      procedureSelectableValues(c.key)
+        .map((o) => o.value)
+        .includes(procedureEmptyValue(c.key)),
+    )
+    .map((c) => c.key),
   [],
 );
 
@@ -137,16 +172,27 @@ check(
 
 const optionsFor = (p) => outcomeOptionsForProtocol(p).map((o) => o.value);
 
-check("criminal trial offers both dispositions", optionsFor("criminal_trial").sort(), ["completed", "dismissed"]);
-check("paper committal can now record a dismissal", optionsFor("paper_committal").sort(), ["completed", "dismissed"]);
-check("civil summons keeps Completed and Adjourned", optionsFor("civil_summons").sort(), ["adjourned", "completed"]);
+check("criminal trial offers both dispositions", optionsFor("criminal_trial").sort(), [
+  "completed",
+  "dismissed",
+]);
+check("paper committal can now record a dismissal", optionsFor("paper_committal").sort(), [
+  "completed",
+  "dismissed",
+]);
+check("civil summons keeps Completed and Adjourned", optionsFor("civil_summons").sort(), [
+  "adjourned",
+  "completed",
+]);
 
 check(
   "any protocol whose board can record a not-found accused can also dismiss the matter",
   ["criminal_trial", "paper_committal", "civil_summons"].filter((p) => {
     const canRecordNotFound =
       protocolColumns(p).some((c) => c.key === "arraignment_status") &&
-      procedureSelectableValues("arraignment_status", p).map((o) => o.value).includes("not_found");
+      procedureSelectableValues("arraignment_status", p)
+        .map((o) => o.value)
+        .includes("not_found");
     return canRecordNotFound && !optionsFor(p).includes("dismissed");
   }),
   [],

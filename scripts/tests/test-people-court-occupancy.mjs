@@ -156,8 +156,7 @@ check(
 );
 check(
   "signup no longer disables occupied courts",
-  registerPage.includes("Occupied — exception") &&
-    !registerPage.includes("disabled={isAssigned}"),
+  registerPage.includes("Occupied — exception") && !registerPage.includes("disabled={isAssigned}"),
   true,
 );
 check(
@@ -174,14 +173,12 @@ check(
 );
 check(
   "review panel asks replace vs co-sit",
-  reviewPanel.includes("Special seating exception") &&
-    reviewPanel.includes("occupiedResolution"),
+  reviewPanel.includes("Special seating exception") && reviewPanel.includes("occupiedResolution"),
   true,
 );
 check(
   "self-service can request an occupied court",
-  selfService.includes("Request exception") &&
-    selfService.includes('c.status === "assigned"'),
+  selfService.includes("Request exception") && selfService.includes('c.status === "assigned"'),
   true,
 );
 

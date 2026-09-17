@@ -1,10 +1,15 @@
 name: Playwright smokes
 
-# PR-only. Kept off develop-ci-automerge so that gate stays Docker-free.
-# Unauth job starts Vite only. Auth job starts local Supabase + seed.
+# Runs on pull requests, and is reused (workflow_call) by
+# develop-ci-automerge.yml so the develop gate has the same browser coverage
+# and main is never fast-forwarded past a failing smoke.
+# Unauth job starts Vite only. Auth job starts local Supabase + seed and runs
+# every spec except unauth.spec.ts (see `test:e2e:auth` in package.json), so
+# new authenticated specs are picked up without editing this file.
 
 on:
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -18,12 +23,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          npm install -g npm@11.6.2
-          npm ci
+        run: npm ci
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -43,12 +47,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          npm install -g npm@11.6.2
-          npm ci
+        run: npm ci
 
       - name: Cache Supabase CLI
         uses: actions/cache@v4
@@ -70,7 +73,7 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Authenticated smokes
+      - name: Authenticated smokes (every spec except unauth)
         env:
           CI: true
         run: npm run test:e2e:auth

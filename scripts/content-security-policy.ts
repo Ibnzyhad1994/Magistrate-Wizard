@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { createHash } from "node:crypto";
 
 /**
  * Production CSP for the Vite HTML meta tag / preview headers.
@@ -14,20 +14,23 @@ import { createHash } from "node:crypto"
  */
 export function supabaseCspOrigin(supabaseUrl: string): string {
   try {
-    return new URL(supabaseUrl).origin
+    return new URL(supabaseUrl).origin;
   } catch {
-    return String(supabaseUrl ?? "").replace(/\/+$/, "")
+    return String(supabaseUrl ?? "").replace(/\/+$/, "");
   }
 }
 
 export function buildCsp(supabaseUrl: string): string {
-  const origin = supabaseCspOrigin(supabaseUrl)
+  const origin = supabaseCspOrigin(supabaseUrl);
   return [
     "default-src 'self'",
     "script-src 'self' 'wasm-unsafe-eval'",
     "worker-src 'self' blob:",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    // Fonts are self-hosted (@fontsource, see src/main.tsx) so no Google
+    // Fonts origin is allowlisted — a stylesheet or font from anywhere but
+    // this origin is a bug, not a feature.
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     `img-src 'self' blob: data: ${origin}`,
     "media-src 'self' blob:",
     `connect-src 'self' ${origin} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
@@ -35,7 +38,7 @@ export function buildCsp(supabaseUrl: string): string {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-  ].join("; ")
+  ].join("; ");
 }
 
 /**
@@ -55,12 +58,12 @@ export function buildCsp(supabaseUrl: string): string {
  * can assert the real index.html against the real CSP.
  */
 export function cspWithInlineScriptHashes(csp: string, html: string): string {
-  const inline = [
-    ...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
-  ].map((match) => match[1] ?? "")
-  if (inline.length === 0) return csp
+  const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
+    (match) => match[1] ?? "",
+  );
+  if (inline.length === 0) return csp;
   const hashes = inline.map(
     (source) => `'sha256-${createHash("sha256").update(source, "utf8").digest("base64")}'`,
-  )
-  return csp.replace("script-src 'self'", `script-src 'self' ${hashes.join(" ")}`)
+  );
+  return csp.replace("script-src 'self'", `script-src 'self' ${hashes.join(" ")}`);
 }

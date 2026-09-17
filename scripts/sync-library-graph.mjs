@@ -151,7 +151,7 @@ const main = async () => {
   throwIf(srcStatErr, "select prod published statutes");
   const statuteRows = (srcStatutes ?? []).map((row) => {
     const name = prodJurNameById.get(row.jurisdiction_id);
-    const remapped = name ? jurIdByName.get(name) ?? null : null;
+    const remapped = name ? (jurIdByName.get(name) ?? null) : null;
     return {
       ...row,
       jurisdiction_id: remapped,

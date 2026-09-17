@@ -15,26 +15,33 @@
  * rather than a hard block.
  */
 
-const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "0.0.0.0", "::1", "[::1]", "host.docker.internal"])
+const LOCAL_HOSTS = new Set([
+  "127.0.0.1",
+  "localhost",
+  "0.0.0.0",
+  "::1",
+  "[::1]",
+  "host.docker.internal",
+]);
 
 export function isLocalSupabaseUrl(rawUrl) {
-  let host
+  let host;
   try {
-    host = new URL(rawUrl).hostname
+    host = new URL(rawUrl).hostname;
   } catch {
-    return false
+    return false;
   }
-  return LOCAL_HOSTS.has(host)
+  return LOCAL_HOSTS.has(host);
 }
 
 export function assertLocalSupabase(rawUrl, testName = "this test") {
-  if (isLocalSupabaseUrl(rawUrl)) return
+  if (isLocalSupabaseUrl(rawUrl)) return;
   if (process.env.ALLOW_REMOTE_SUPABASE === "1") {
     console.warn(
       `WARNING: ${testName} is running against a REMOTE Supabase project (${rawUrl}) ` +
         `because ALLOW_REMOTE_SUPABASE=1 is set.`,
-    )
-    return
+    );
+    return;
   }
   console.error(
     `\nRefusing to run ${testName} against a non-local Supabase project.\n` +
@@ -43,6 +50,6 @@ export function assertLocalSupabase(rawUrl, testName = "this test") {
       `point at production or staging by accident. Either start local Supabase\n` +
       `(\`npm run db:start && npm run db:reset\`) and unset VITE_SUPABASE_URL, or set\n` +
       `ALLOW_REMOTE_SUPABASE=1 if you genuinely intend to target that project.\n`,
-  )
-  process.exit(2)
+  );
+  process.exit(2);
 }

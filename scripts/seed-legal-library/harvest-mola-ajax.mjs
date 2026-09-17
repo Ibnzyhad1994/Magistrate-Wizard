@@ -89,7 +89,9 @@ for (let page = 1; page <= 80; page++) {
     items.push(item);
     added += 1;
   }
-  console.log(`MoLA ajax page ${page}: parsed=${parsed.length} new=${added} total=${items.length} html=${html.length}`);
+  console.log(
+    `MoLA ajax page ${page}: parsed=${parsed.length} new=${added} total=${items.length} html=${html.length}`,
+  );
   if (parsed.length === 0) {
     emptyStreak += 1;
     if (emptyStreak >= 2) break;

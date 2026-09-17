@@ -146,29 +146,129 @@ async function ensureClerkAssignment(profileId, courtId, approvedBy) {
 }
 
 const MAGISTRATES = [
-  { email: "magistrate@magistrate-wizard.local", fullName: "Local Magistrate", role: "magistrate", key: "seed-mag" },
-  { email: "mag02@magistrate-wizard.local", fullName: "Hon. Amina Persaud", role: "magistrate", key: "mag02" },
-  { email: "mag03@magistrate-wizard.local", fullName: "Hon. Ravi Narine", role: "magistrate", key: "mag03" },
-  { email: "mag04@magistrate-wizard.local", fullName: "Hon. Keisha Singh", role: "magistrate", key: "mag04" },
-  { email: "mag05@magistrate-wizard.local", fullName: "Hon. David Khan", role: "magistrate", key: "mag05" },
-  { email: "mag06@magistrate-wizard.local", fullName: "Hon. Priya Mohamed", role: "magistrate", key: "mag06" },
-  { email: "mag07@magistrate-wizard.local", fullName: "Hon. Marcus Williams", role: "magistrate", key: "mag07" },
-  { email: "mag08@magistrate-wizard.local", fullName: "Hon. Leila Baksh", role: "magistrate", key: "mag08" },
-  { email: "mag09@magistrate-wizard.local", fullName: "Hon. Omar Fraser", role: "magistrate", key: "mag09" },
-  { email: "mag10@magistrate-wizard.local", fullName: "Hon. Nadia Ali", role: "magistrate", key: "mag10" },
-  { email: "mag11@magistrate-wizard.local", fullName: "Hon. Christopher Gomes", role: "magistrate", key: "mag11" },
-  { email: "mag12@magistrate-wizard.local", fullName: "Hon. Sharmin Rahman", role: "magistrate", key: "mag12" },
-  { email: "mag13@magistrate-wizard.local", fullName: "Hon. Julian Adams", role: "magistrate", key: "mag13" },
-  { email: "mag14@magistrate-wizard.local", fullName: "Hon. Fatima Yusuf", role: "magistrate", key: "mag14" },
-  { email: "mag15@magistrate-wizard.local", fullName: "Hon. Andre Rodrigues", role: "magistrate", key: "mag15" },
-  { email: "mag16@magistrate-wizard.local", fullName: "Hon. Vanessa Chung", role: "magistrate", key: "mag16" },
-  { email: "mag17@magistrate-wizard.local", fullName: "Hon. Trevor Daniels", role: "magistrate", key: "mag17" },
+  {
+    email: "magistrate@magistrate-wizard.local",
+    fullName: "Local Magistrate",
+    role: "magistrate",
+    key: "seed-mag",
+  },
+  {
+    email: "mag02@magistrate-wizard.local",
+    fullName: "Hon. Amina Persaud",
+    role: "magistrate",
+    key: "mag02",
+  },
+  {
+    email: "mag03@magistrate-wizard.local",
+    fullName: "Hon. Ravi Narine",
+    role: "magistrate",
+    key: "mag03",
+  },
+  {
+    email: "mag04@magistrate-wizard.local",
+    fullName: "Hon. Keisha Singh",
+    role: "magistrate",
+    key: "mag04",
+  },
+  {
+    email: "mag05@magistrate-wizard.local",
+    fullName: "Hon. David Khan",
+    role: "magistrate",
+    key: "mag05",
+  },
+  {
+    email: "mag06@magistrate-wizard.local",
+    fullName: "Hon. Priya Mohamed",
+    role: "magistrate",
+    key: "mag06",
+  },
+  {
+    email: "mag07@magistrate-wizard.local",
+    fullName: "Hon. Marcus Williams",
+    role: "magistrate",
+    key: "mag07",
+  },
+  {
+    email: "mag08@magistrate-wizard.local",
+    fullName: "Hon. Leila Baksh",
+    role: "magistrate",
+    key: "mag08",
+  },
+  {
+    email: "mag09@magistrate-wizard.local",
+    fullName: "Hon. Omar Fraser",
+    role: "magistrate",
+    key: "mag09",
+  },
+  {
+    email: "mag10@magistrate-wizard.local",
+    fullName: "Hon. Nadia Ali",
+    role: "magistrate",
+    key: "mag10",
+  },
+  {
+    email: "mag11@magistrate-wizard.local",
+    fullName: "Hon. Christopher Gomes",
+    role: "magistrate",
+    key: "mag11",
+  },
+  {
+    email: "mag12@magistrate-wizard.local",
+    fullName: "Hon. Sharmin Rahman",
+    role: "magistrate",
+    key: "mag12",
+  },
+  {
+    email: "mag13@magistrate-wizard.local",
+    fullName: "Hon. Julian Adams",
+    role: "magistrate",
+    key: "mag13",
+  },
+  {
+    email: "mag14@magistrate-wizard.local",
+    fullName: "Hon. Fatima Yusuf",
+    role: "magistrate",
+    key: "mag14",
+  },
+  {
+    email: "mag15@magistrate-wizard.local",
+    fullName: "Hon. Andre Rodrigues",
+    role: "magistrate",
+    key: "mag15",
+  },
+  {
+    email: "mag16@magistrate-wizard.local",
+    fullName: "Hon. Vanessa Chung",
+    role: "magistrate",
+    key: "mag16",
+  },
+  {
+    email: "mag17@magistrate-wizard.local",
+    fullName: "Hon. Trevor Daniels",
+    role: "magistrate",
+    key: "mag17",
+  },
 ];
 
 const USERS = [
-  { email: "admin@magistrate-wizard.local", fullName: "Local Administrator", role: "admin", key: "admin" },
-  { email: "registrar@magistrate-wizard.local", fullName: "Hon. Registrar Clarke", role: "admin", key: "registrar" },
-  { email: "clerk.georgetown@magistrate-wizard.local", fullName: "Clerk S. Joseph", role: "clerk", key: "clerk" },
+  {
+    email: "admin@magistrate-wizard.local",
+    fullName: "Local Administrator",
+    role: "admin",
+    key: "admin",
+  },
+  {
+    email: "registrar@magistrate-wizard.local",
+    fullName: "Hon. Registrar Clarke",
+    role: "admin",
+    key: "registrar",
+  },
+  {
+    email: "clerk.georgetown@magistrate-wizard.local",
+    fullName: "Clerk S. Joseph",
+    role: "clerk",
+    key: "clerk",
+  },
   ...MAGISTRATES,
 ];
 
@@ -485,10 +585,7 @@ async function runMagistrateWorkflow(actor, court, shareWith, index) {
   if (gErr) fail(`${tag}: global search`, gErr);
   else log(true, `${tag}: global search`, `${globalHits?.length ?? 0} hits`);
 
-  const { data: statutes, error: stErr } = await sb
-    .from("statutes")
-    .select("id, title")
-    .limit(5);
+  const { data: statutes, error: stErr } = await sb.from("statutes").select("id, title").limit(5);
   if (stErr) fail(`${tag}: browse legislation`, stErr);
   else log(true, `${tag}: browse legislation`, `${statutes?.length ?? 0} visible`);
 
@@ -530,7 +627,11 @@ async function runShareRecipientChecks(grantor, recipientEmail) {
         "court assignment, not the view-share, is the access path",
       );
     } else {
-      await expect(blocked, `${recipientEmail}: view-share cannot edit`, updErr?.message ?? "0 rows");
+      await expect(
+        blocked,
+        `${recipientEmail}: view-share cannot edit`,
+        updErr?.message ?? "0 rows",
+      );
     }
   } else if (grantor.sharePermission === "edit") {
     const { error: updErr } = await sb
@@ -576,16 +677,22 @@ async function runAdminWorkflow(adminUser, targetProfileId, extraCourtId) {
     if (error) {
       if (alreadySeatedError(error)) log(true, `${tag}: assign acting court`, "already seated");
       else fail(`${tag}: assign acting court`, error);
-    }
-    else log(true, `${tag}: assign acting court`);
+    } else log(true, `${tag}: assign acting court`);
   }
 
-  const { data: sources, error: sErr } = await sb.from("legal_sources").select("id, name").limit(10);
+  const { data: sources, error: sErr } = await sb
+    .from("legal_sources")
+    .select("id, name")
+    .limit(10);
   if (sErr) fail(`${tag}: admin legal sources`, sErr);
   else log(true, `${tag}: admin legal sources`, `${sources?.length ?? 0} sources`);
 
   const { data: myMatters } = await sb.from("docket_matters").select("id").limit(1);
-  log(true, `${tag}: admin docket visibility`, `${myMatters?.length ?? 0} matters (court-gated, no admin bypass)`);
+  log(
+    true,
+    `${tag}: admin docket visibility`,
+    `${myMatters?.length ?? 0} matters (court-gated, no admin bypass)`,
+  );
 
   return user.id;
 }
@@ -616,10 +723,16 @@ async function main() {
     fail("load courts", courtErr ?? "no active courts");
     process.exit(1);
   }
-  log(true, "load courts", courts.map((c) => c.name).slice(0, 6).join("; "));
+  log(
+    true,
+    "load courts",
+    courts
+      .map((c) => c.name)
+      .slice(0, 6)
+      .join("; "),
+  );
 
-  const geo1 =
-    courts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? courts[0];
+  const geo1 = courts.find((c) => c.name === "Georgetown Magistrates' Court 1") ?? courts[0];
   const courtPool = courts.slice(0, 8);
 
   const roster = [];
@@ -759,7 +872,9 @@ async function main() {
 
   const passed = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok).length;
-  console.log(`\n=== ${passed} passed, ${failed} failed of ${results.length} checks (${roster.length} users, run ${RUN}) ===\n`);
+  console.log(
+    `\n=== ${passed} passed, ${failed} failed of ${results.length} checks (${roster.length} users, run ${RUN}) ===\n`,
+  );
   if (failed) {
     console.log("Failures:");
     for (const r of results.filter((x) => !x.ok)) {

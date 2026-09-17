@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 // Live RLS/RPC test for magistrate court-request signup (0106) and admin
 // visibility of unconfirmed requests (0115). Needs a running local
 // Supabase instance and SUPABASE_SERVICE_ROLE_KEY.
@@ -41,7 +42,9 @@ if (!URL_ || !ANON_KEY) {
   process.exit(1);
 }
 
-const admin = createClient(URL_, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+const admin = createClient(URL_, SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 let failures = 0;
 function check(label, condition) {
@@ -53,7 +56,9 @@ const stamp = Date.now();
 const email = (name) => `mcr-test-${name}-${stamp}@example.test`;
 
 async function signAs(emailAddr, password) {
-  const client = createClient(URL_, ANON_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+  const client = createClient(URL_, ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
   const { error } = await client.auth.signInWithPassword({ email: emailAddr, password });
   if (error) throw error;
   return client;
@@ -96,12 +101,25 @@ async function main() {
 
   const password = "Test-Password-123!";
 
-  const reviewer = await createUser(email("admin"), password, { full_name: "Test Reviewer Admin" }, { confirm: true });
+  const reviewer = await createUser(
+    email("admin"),
+    password,
+    { full_name: "Test Reviewer Admin" },
+    { confirm: true },
+  );
   created.users.push(reviewer.id);
-  const { error: roleErr } = await admin.from("profiles").update({ role: "admin" }).eq("id", reviewer.id);
+  const { error: roleErr } = await admin
+    .from("profiles")
+    .update({ role: "admin" })
+    .eq("id", reviewer.id);
   if (roleErr) throw roleErr;
 
-  const bystander = await createUser(email("bystander"), password, { full_name: "Test Bystander Magistrate" }, { confirm: true });
+  const bystander = await createUser(
+    email("bystander"),
+    password,
+    { full_name: "Test Bystander Magistrate" },
+    { confirm: true },
+  );
   created.users.push(bystander.id);
 
   const applicant = await createUser(
@@ -152,7 +170,9 @@ async function main() {
       .eq("profile_id", applicant.id)
       .single();
     if (requestErr) throw requestErr;
-    const { data, error } = await adminClient.rpc("list_magistrate_court_request_email_confirmation");
+    const { data, error } = await adminClient.rpc(
+      "list_magistrate_court_request_email_confirmation",
+    );
     if (error) throw error;
     const flagged = (data ?? []).find((r) => r.request_id === requestRow.id);
     check(
@@ -172,7 +192,9 @@ async function main() {
   }
 
   const applicantSignIn = await (async () => {
-    const client = createClient(URL_, ANON_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+    const client = createClient(URL_, ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
     const { error } = await client.auth.signInWithPassword({ email: applicant.email, password });
     return { client, error };
   })();
@@ -182,7 +204,9 @@ async function main() {
       true,
     );
   } else {
-    const { data, error } = await applicantSignIn.client.from("magistrate_court_requests").select("id, status");
+    const { data, error } = await applicantSignIn.client
+      .from("magistrate_court_requests")
+      .select("id, status");
     if (error) throw error;
     check(
       "6. Applicant can see their own pending request before email confirmation",
@@ -208,7 +232,10 @@ async function cleanup() {
     }
     console.log("Cleanup complete.");
   } catch (err) {
-    console.error("Cleanup encountered an error (some test fixtures may need manual removal):", err);
+    console.error(
+      "Cleanup encountered an error (some test fixtures may need manual removal):",
+      err,
+    );
   }
 }
 

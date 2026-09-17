@@ -44,7 +44,10 @@ export function makeTextPdf(lines, name = "clean.pdf") {
   const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
   const content = `BT /F1 12 Tf ${ops} ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -53,7 +56,10 @@ export function makeConcatenatedTextPdf(text, name = "concatenated.pdf") {
   const escaped = text.replace(/[()\\]/g, (c) => "\\" + c);
   const content = `BT /F1 12 Tf (${escaped}) Tj ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -73,7 +79,10 @@ export function makeFontBoilerplatePdf(name = "boilerplate.pdf") {
   const escaped = boilerplate.replace(/[()\\]/g, (c) => "\\" + c);
   const content = `BT (${escaped}) Tj ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -98,7 +107,10 @@ export function makeBinaryGarbagePdf(name = "binary-garbage.pdf") {
   const junkLatin1 = junkBytes.toString("latin1").replace(/[()\\]/g, (c) => "\\" + c);
   const content = `BT (${junkLatin1}) Tj ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -138,7 +150,10 @@ export function makeCmapPollutedPdf(name = "cmap-polluted.pdf") {
   const cmapCompressed = deflate(cmapContent);
   // Deliberately no /Type or /Subtype in this stream's own dictionary —
   // matches how real ToUnicode CMap stream objects are declared.
-  const cmapStreamObj = { dict: "/Length " + cmapCompressed.length + " /Filter /FlateDecode", bytes: cmapCompressed };
+  const cmapStreamObj = {
+    dict: "/Length " + cmapCompressed.length + " /Filter /FlateDecode",
+    bytes: cmapCompressed,
+  };
 
   const bodyLines = [
     "The State v Test Appellant",
@@ -148,10 +163,15 @@ export function makeCmapPollutedPdf(name = "cmap-polluted.pdf") {
     "Counsel submitted that certain admissions were wrongly admitted as hearsay evidence at trial.",
     "The Court considered the relevant authorities before dismissing the appeal in this matter.",
   ];
-  const ops = bodyLines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+  const ops = bodyLines
+    .map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`)
+    .join("\n");
   const bodyContent = `BT /F1 12 Tf ${ops} ET`;
   const bodyCompressed = deflate(bodyContent);
-  const bodyStreamObj = { dict: "/Length " + bodyCompressed.length + " /Filter /FlateDecode", bytes: bodyCompressed };
+  const bodyStreamObj = {
+    dict: "/Length " + bodyCompressed.length + " /Filter /FlateDecode",
+    bytes: bodyCompressed,
+  };
 
   // CMap stream ordered FIRST -- reproduces the observed real-world byte
   // order where the polluting stream appears ahead of the actual page
@@ -168,19 +188,23 @@ export function makeCmapPollutedPdf(name = "cmap-polluted.pdf") {
 export function makeTjArrayPdf(name = "tj-array.pdf") {
   const content = `BT /F1 12 Tf [(Hello) -250 (World) -300 (Testing)] TJ ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
 /** Long enough TJ-array judgment to clear the parser's 80-char confidence floor. */
 export function makeTjJudgmentPdf(lines, name = "tj-judgment.pdf") {
   const words = lines.join(" ").split(/\s+/).filter(Boolean);
-  const inner = words
-    .map((w) => `(${w.replace(/[()\\]/g, (c) => "\\" + c)}) -200`)
-    .join(" ");
+  const inner = words.map((w) => `(${w.replace(/[()\\]/g, (c) => "\\" + c)}) -200`).join(" ");
   const content = `BT /F1 12 Tf [${inner}] TJ ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -195,7 +219,10 @@ export function makeTjJudgmentPdf(lines, name = "tj-judgment.pdf") {
 export function makeBareLiteralNotTjPdf(name = "bare-literal-not-tj.pdf") {
   const content = `BT /F1 12 Tf (Real Shown Text) Tj (Not Shown) Tf ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -227,7 +254,10 @@ export function makeBodyCitationTrapPdf(name = "body-citation-trap.pdf") {
   const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
   const content = `BT /F1 12 Tf ${ops} ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -248,10 +278,15 @@ export function makeMultiPagePdf(pagesText, name = "multi-page.pdf") {
     // it doesn't participate in findStreamByteRanges at all; it exists
     // purely to mark "a new page starts here" in file-byte order.
     objects.push({ dict: null, isPageMarker: true, bytes: null });
-    const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+    const ops = lines
+      .map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`)
+      .join("\n");
     const content = `BT /F1 12 Tf ${ops} ET`;
     const compressed = deflate(content);
-    objects.push({ dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed });
+    objects.push({
+      dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+      bytes: compressed,
+    });
   }
   void objNum;
   return toFile(assembleMultiObjectPdf(objects), name);
@@ -294,7 +329,10 @@ export function makeGluedTextPdf(name = "glued-text.pdf") {
   // being rejected earlier as "too short" for an unrelated reason.
   const content = `BT /F1 12 Tf (The State v Dhannie Ramsingh) Tj T* ((1973) 20 WIR 138) Tj (Page 4 of 72) Tj (DPP v Beard and another matter entirely) Tj T* (The Court considered the relevant authorities at length before making its ruling in this matter and dismissing the appeal.) Tj ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -337,11 +375,16 @@ export function makeUncompressedTextPdf(lines, name = "uncompressed.pdf") {
  * survive as the same characters.
  */
 export function makeMixedEncodingPdf(literalLines, hexLines, name = "mixed-encoding.pdf") {
-  const litOps = literalLines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+  const litOps = literalLines
+    .map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`)
+    .join("\n");
   const hexOps = hexLines.map((line) => `<${hexEncode(line)}> Tj T*`).join("\n");
   const content = `BT /F1 12 Tf ${litOps}\n${hexOps} ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -349,7 +392,10 @@ export function makeHexTextPdf(lines, name = "hex-text.pdf") {
   const ops = lines.map((line) => `<${hexEncode(line)}> Tj T*`).join("\n");
   const content = `BT /F1 12 Tf ${ops} ET`;
   const compressed = deflate(content);
-  const streamObj = { dict: "/Length " + compressed.length + " /Filter /FlateDecode", bytes: compressed };
+  const streamObj = {
+    dict: "/Length " + compressed.length + " /Filter /FlateDecode",
+    bytes: compressed,
+  };
   return toFile(assemblePdf([streamObj]), name);
 }
 
@@ -375,7 +421,9 @@ export function makeCompositeFontHexPdf(name = "composite-font-hex.pdf") {
   const content = `BT /F1 12 Tf <${hexEncode(longLine)}> Tj ET`;
   const compressed = deflate(content);
   const parts = ["%PDF-1.4\n"];
-  parts.push("1 0 obj\n<< /Type /Font /Subtype /Type0 /BaseFont /TestCIDFont /Encoding /Identity-H >>\nendobj\n");
+  parts.push(
+    "1 0 obj\n<< /Type /Font /Subtype /Type0 /BaseFont /TestCIDFont /Encoding /Identity-H >>\nendobj\n",
+  );
   parts.push(`2 0 obj\n<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`);
   parts.push(compressed.toString("latin1"));
   parts.push("\nendstream\nendobj\n");
@@ -402,7 +450,9 @@ export function makeEncryptedPdf(name = "encrypted.pdf") {
   parts.push(`1 0 obj\n<< /Length ${notValidDeflateData.length} /Filter /FlateDecode >>\nstream\n`);
   parts.push(notValidDeflateData.toString("latin1"));
   parts.push("\nendstream\nendobj\n");
-  parts.push("2 0 obj\n<< /Filter /Standard /V 2 /R 3 /O (garbageowner) /U (garbageuser) /P -4 >>\nendobj\n");
+  parts.push(
+    "2 0 obj\n<< /Filter /Standard /V 2 /R 3 /O (garbageowner) /U (garbageuser) /P -4 >>\nendobj\n",
+  );
   parts.push("trailer\n<< /Root 1 0 R /Encrypt 2 0 R >>\n%%EOF");
   return toFile(Buffer.from(parts.join(""), "latin1"), name);
 }
@@ -410,7 +460,10 @@ export function makeEncryptedPdf(name = "encrypted.pdf") {
 /** No text operators at all, an image /Subtype declared — a scanned/image-only page, correctly requires OCR. */
 export function makeImageOnlyPdf(name = "image-only.pdf") {
   const fakeJpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8]);
-  const imageStream = { dict: "/Type /XObject /Subtype /Image /Filter /DCTDecode /Length " + fakeJpegBytes.length, bytes: fakeJpegBytes };
+  const imageStream = {
+    dict: "/Type /XObject /Subtype /Image /Filter /DCTDecode /Length " + fakeJpegBytes.length,
+    bytes: fakeJpegBytes,
+  };
   const contentStream = { dict: "/Length 20", bytes: Buffer.from("q 1 0 0 1 0 0 cm Q", "latin1") };
   return toFile(assemblePdf([imageStream, contentStream]), name);
 }
@@ -438,8 +491,7 @@ export function makeHomemadeShortPdfjsLongPdf(name = "homemade-short-pdfjs-long.
   }
   const page2Hex = hexEncode(tj(later)) + ">";
   const page2Bytes = Buffer.from(page2Hex, "latin1");
-  const font =
-    "7 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
+  const font = "7 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
   const parts = ["%PDF-1.4\n"];
   parts.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
   parts.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>\nendobj\n");
@@ -477,13 +529,17 @@ export function makeWellFormedMultiPagePdf(pagesLines, name = "well-formed-multi
     const pageObj = 3 + i * 2;
     const contentObj = 4 + i * 2;
     const lines = pagesLines[i];
-    const ops = lines.map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`).join("\n");
+    const ops = lines
+      .map((line) => `(${line.replace(/[()\\]/g, (c) => "\\" + c)}) Tj T*`)
+      .join("\n");
     const content = `BT /F1 12 Tf ${ops} ET`;
     const compressed = deflate(content);
     parts.push(
       `${pageObj} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${contentObj} 0 R /Resources << /Font << /F1 ${fontObj} 0 R >> >> >>\nendobj\n`,
     );
-    parts.push(`${contentObj} 0 obj\n<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`);
+    parts.push(
+      `${contentObj} 0 obj\n<< /Length ${compressed.length} /Filter /FlateDecode >>\nstream\n`,
+    );
     parts.push(compressed.toString("latin1"));
     parts.push("\nendstream\nendobj\n");
   }

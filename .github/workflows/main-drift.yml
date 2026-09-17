@@ -1,0 +1,63 @@
+name: Main drift check
+
+# `main` is only ever fast-forwarded from `develop` by develop-ci-automerge.yml.
+# When that gate is red for a while, main silently trails develop and nobody
+# is told. This scheduled check fails when origin/main is behind origin/develop
+# by more than MAX_BEHIND commits, and says so on the open "develop CI failing"
+# issue if there is one.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  MAX_BEHIND: 3
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count commits main is missing
+        id: count
+        run: |
+          git fetch origin main develop
+          behind=$(git rev-list --count origin/main..origin/develop)
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "origin/main is behind origin/develop by $behind commit(s) (limit $MAX_BEHIND)"
+
+      - name: Comment on the open CI issue
+        if: fromJSON(steps.count.outputs.behind) > fromJSON(env.MAX_BEHIND)
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          BEHIND: ${{ steps.count.outputs.behind }}
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            for (const issue of issues.filter((i) => i.title === "develop CI failing" && !i.pull_request)) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: `Drift check: \`main\` is now ${process.env.BEHIND} commits behind \`develop\` (limit ${process.env.MAX_BEHIND}). ${runUrl}`,
+              });
+            }
+
+      - name: Fail when main trails develop
+        if: fromJSON(steps.count.outputs.behind) > fromJSON(env.MAX_BEHIND)
+        run: |
+          echo "::error::origin/main is ${{ steps.count.outputs.behind }} commits behind origin/develop (limit $MAX_BEHIND). Check the develop CI gate."
+          exit 1

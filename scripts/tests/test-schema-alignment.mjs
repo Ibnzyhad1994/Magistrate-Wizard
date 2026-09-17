@@ -1,3 +1,4 @@
+// @live-db  opens a real Supabase connection: `npm test` skips it, `npm run test:live` includes it
 /**
  * Schema alignment between git migrations and hosted Supabase projects.
  *
@@ -72,7 +73,9 @@ function skip(label) {
 }
 
 function envFlag(name) {
-  const v = String(process.env[name] || "").trim().toLowerCase();
+  const v = String(process.env[name] || "")
+    .trim()
+    .toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }
 
@@ -119,7 +122,9 @@ function summarize(items, cap = 12) {
  */
 function parseLiveRow(row) {
   const rawVersion = String(row.version ?? row.id ?? "").trim();
-  const rawName = String(row.name ?? row.filename ?? "").replace(/\.sql$/i, "").trim();
+  const rawName = String(row.name ?? row.filename ?? "")
+    .replace(/\.sql$/i, "")
+    .trim();
   let prefix = null;
   let slug = rawName;
   const numbered = /^(\d{4})(?:[a-z])?_(.+)$/i.exec(rawName);
@@ -151,9 +156,7 @@ function versionCmp(a, b) {
 
 function tableProperties(spec, table) {
   return (
-    spec?.components?.schemas?.[table]?.properties ??
-    spec?.definitions?.[table]?.properties ??
-    null
+    spec?.components?.schemas?.[table]?.properties ?? spec?.definitions?.[table]?.properties ?? null
   );
 }
 
@@ -188,10 +191,7 @@ function listRepoMigrations() {
 function checkRepo(parsed, unparsed) {
   console.log("\n== repo migrations ==");
   if (unparsed.length) {
-    fail(
-      "every migration filename is NNNN_description.sql",
-      unparsed.join(", "),
-    );
+    fail("every migration filename is NNNN_description.sql", unparsed.join(", "));
   } else {
     pass(`migration filenames match NNNN_description.sql (${parsed.length} files)`);
   }
@@ -390,16 +390,10 @@ async function checkHistory(target, token, parsed) {
     pass(`${target.id} has no numbered versions newer than git ${gitMax}`);
   }
   if (extra.length) {
-    warn(
-      `${target.id} has historical numbered versions not in git (allowed)`,
-      summarize(extra),
-    );
+    warn(`${target.id} has historical numbered versions not in git (allowed)`, summarize(extra));
   }
   if (unnumbered.length) {
-    warn(
-      `${target.id} has unnumbered extra migrations (allowed)`,
-      summarize(unnumbered),
-    );
+    warn(`${target.id} has unnumbered extra migrations (allowed)`, summarize(unnumbered));
   }
 }
 
@@ -428,7 +422,9 @@ async function checkOpenApi(target, parsed) {
   const gitVersions = new Set(parsed.map((row) => row.version));
   for (const contract of CONTRACTS) {
     if (!contract.since.some((version) => gitVersions.has(version))) {
-      skip(`${target.id} ${contract.table}.${contract.column} (introducing migration not in this tree)`);
+      skip(
+        `${target.id} ${contract.table}.${contract.column} (introducing migration not in this tree)`,
+      );
       continue;
     }
     const props = tableProperties(body, contract.table);

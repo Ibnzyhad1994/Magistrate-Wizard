@@ -71,7 +71,10 @@ async function main() {
       await new Promise((r) => setTimeout(r, (5 - Number(item.id.split("-")[1])) * 2));
       item.result = `processed-${item.id}`;
     });
-    checkTrue("A. all 5 items processed", items.every((it) => it.result !== null));
+    checkTrue(
+      "A. all 5 items processed",
+      items.every((it) => it.result !== null),
+    );
     checkTrue(
       "A. every item's result matches its OWN id (no cross-item leakage)",
       items.every((it) => it.result === `processed-${it.id}`),
@@ -124,9 +127,19 @@ async function main() {
       },
       concurrency,
     );
-    checkTrue(`G. max concurrent workers (${maxObservedActive}) never exceeded the limit (${concurrency})`, maxObservedActive <= concurrency);
-    checkTrue("G. concurrency was actually exercised (more than 1 at a time)", maxObservedActive > 1);
-    check("G. DEFAULT_BULK_CONCURRENCY is a small, sane bound (Section 12: 2-4 documents)", DEFAULT_BULK_CONCURRENCY >= 2 && DEFAULT_BULK_CONCURRENCY <= 4, true);
+    checkTrue(
+      `G. max concurrent workers (${maxObservedActive}) never exceeded the limit (${concurrency})`,
+      maxObservedActive <= concurrency,
+    );
+    checkTrue(
+      "G. concurrency was actually exercised (more than 1 at a time)",
+      maxObservedActive > 1,
+    );
+    check(
+      "G. DEFAULT_BULK_CONCURRENCY is a small, sane bound (Section 12: 2-4 documents)",
+      DEFAULT_BULK_CONCURRENCY >= 2 && DEFAULT_BULK_CONCURRENCY <= 4,
+      true,
+    );
   }
 
   // BULK H — 50 synthetic items complete without state corruption: every
@@ -139,7 +152,10 @@ async function main() {
       await new Promise((r) => setTimeout(r, Math.random() * 3));
       item.result = { fromId: item.id, fromIndex: index };
     });
-    checkTrue("H. all 50 items completed", items.every((it) => it.result !== null));
+    checkTrue(
+      "H. all 50 items completed",
+      items.every((it) => it.result !== null),
+    );
     checkTrue(
       "H. every item's callback index matches its own id (no cross-assignment)",
       items.every((it) => it.result.fromId === it.id && it.result.fromIndex === it.id),
@@ -157,7 +173,10 @@ async function main() {
     const oversized = makeFile("huge.pdf", MAX_FILE_SIZE_BYTES + 1);
     const oversizedResult = validateFileForUpload(oversized);
     checkTrue("F. oversized file is rejected", !oversizedResult.ok);
-    checkTrue("F. oversized rejection reason is clear (Section 27: explain rejected files clearly)", !!oversizedResult.reason && oversizedResult.reason.length > 0);
+    checkTrue(
+      "F. oversized rejection reason is clear (Section 27: explain rejected files clearly)",
+      !!oversizedResult.reason && oversizedResult.reason.length > 0,
+    );
 
     const wrongType = makeFile("virus.exe", 1000, "application/x-msdownload");
     checkTrue("F. disallowed MIME type is rejected", !validateFileForUpload(wrongType).ok);
@@ -173,7 +192,10 @@ async function main() {
     const overBatch = validateBulkBatchSize(MAX_BULK_FILES_PER_BATCH + 1);
     checkTrue("F. a batch over the file-count ceiling is rejected", !overBatch.ok);
     checkTrue("F. batch-size rejection reason is clear", !!overBatch.reason);
-    checkTrue("F. a batch at exactly the ceiling is accepted", validateBulkBatchSize(MAX_BULK_FILES_PER_BATCH).ok);
+    checkTrue(
+      "F. a batch at exactly the ceiling is accepted",
+      validateBulkBatchSize(MAX_BULK_FILES_PER_BATCH).ok,
+    );
 
     // One bad file among several good ones must not doom the whole batch
     // — the caller marks only the bad one "rejected" and still processes
@@ -188,8 +210,16 @@ async function main() {
       }
       return item;
     });
-    check("F. exactly one of three items was rejected", initial.filter((it) => it.status === "rejected").length, 1);
-    check("F. the other two remain queued for processing", initial.filter((it) => it.status === "queued").length, 2);
+    check(
+      "F. exactly one of three items was rejected",
+      initial.filter((it) => it.status === "rejected").length,
+      1,
+    );
+    check(
+      "F. the other two remain queued for processing",
+      initial.filter((it) => it.status === "queued").length,
+      2,
+    );
     const summary = summarizeBulkQueue(initial);
     check("F. summarizeBulkQueue counts match (rejected)", summary.rejected, 1);
     check("F. summarizeBulkQueue counts match (queued)", summary.queued, 2);
@@ -206,16 +236,33 @@ async function main() {
   // legal-library-admin-page.tsx and is a UI/RPC-payload concern outside
   // what this pure module can assert on directly.
   {
-    const fromUnderscored = extractCaseNameFromFilename("The_State_v_Test_Appellant_(1973)_20_XYZ_138.pdf");
+    const fromUnderscored = extractCaseNameFromFilename(
+      "The_State_v_Test_Appellant_(1973)_20_XYZ_138.pdf",
+    );
     checkTrue("J. underscored filename yields a case name", !!fromUnderscored?.case_name);
-    checkTrue("J. underscored filename case name contains both parties", (fromUnderscored?.case_name ?? "").includes("Test Appellant"));
-    checkTrue("J. underscored filename citation was captured", !!fromUnderscored?.reported_citation);
+    checkTrue(
+      "J. underscored filename case name contains both parties",
+      (fromUnderscored?.case_name ?? "").includes("Test Appellant"),
+    );
+    checkTrue(
+      "J. underscored filename citation was captured",
+      !!fromUnderscored?.reported_citation,
+    );
 
-    const withDashSeparator = extractCaseNameFromFilename("Test_Respondent_(Anthony)_v_The_State_-_(1989)_42_XYZ_4.pdf");
-    checkTrue("J. dash-separated filename yields a case name with no trailing dash", !!withDashSeparator?.case_name && !withDashSeparator.case_name.endsWith("-"));
+    const withDashSeparator = extractCaseNameFromFilename(
+      "Test_Respondent_(Anthony)_v_The_State_-_(1989)_42_XYZ_4.pdf",
+    );
+    checkTrue(
+      "J. dash-separated filename yields a case name with no trailing dash",
+      !!withDashSeparator?.case_name && !withDashSeparator.case_name.endsWith("-"),
+    );
 
     const noUsefulPattern = extractCaseNameFromFilename("scan0001.pdf");
-    check("J. a filename with no case-name-shaped content yields nothing (never fabricated)", noUsefulPattern, undefined);
+    check(
+      "J. a filename with no case-name-shaped content yields nothing (never fabricated)",
+      noUsefulPattern,
+      undefined,
+    );
   }
 
   {

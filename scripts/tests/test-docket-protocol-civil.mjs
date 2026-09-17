@@ -39,11 +39,7 @@ check(
   protocolFromCategoryName("Liability matter"),
   "civil_summons",
 );
-check(
-  "Other keeps the Criminal Trial board",
-  protocolFromCategoryName("Other"),
-  "criminal_trial",
-);
+check("Other keeps the Criminal Trial board", protocolFromCategoryName("Other"), "criminal_trial");
 
 const blank = { ...EMPTY_PROTOCOL_SNAPSHOT };
 check(
@@ -99,19 +95,20 @@ check(
   {},
 );
 
-check(
-  "civil Outcome Adjourned does not write outcome_status",
-  outcomeBoardPatch("adjourned"),
-  { outcome_status: null, outcome_adjourned: true },
-);
-check(
-  "civil Outcome Completed still uses outcome_status",
-  outcomeBoardPatch("completed"),
-  { outcome_status: "completed", outcome_adjourned: false },
-);
+check("civil Outcome Adjourned does not write outcome_status", outcomeBoardPatch("adjourned"), {
+  outcome_status: null,
+  outcome_adjourned: true,
+});
+check("civil Outcome Completed still uses outcome_status", outcomeBoardPatch("completed"), {
+  outcome_status: "completed",
+  outcome_adjourned: false,
+});
 
 const civilOutcomes = outcomeOptionsForProtocol("civil_summons").map((o) => o.value);
-check("civil outcome options are Completed and Adjourned", civilOutcomes, ["completed", "adjourned"]);
+check("civil outcome options are Completed and Adjourned", civilOutcomes, [
+  "completed",
+  "adjourned",
+]);
 // Was "Completed only". That assertion encoded a real gap rather than a
 // rule: a paper-committal board carries an Arraignment column that accepts
 // "Not Found, To Be Summoned", so the exact situation the Outcome column was

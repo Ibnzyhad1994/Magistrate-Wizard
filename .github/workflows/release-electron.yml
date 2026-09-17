@@ -1,0 +1,62 @@
+name: Release Electron (Windows)
+
+# Builds the Windows NSIS installer on every `v*` tag push and uploads it as
+# a workflow artifact. Configuration is electron-builder.yml; the installer
+# lands in release/ as Magistrate-Wizard-Setup-<version>.exe.
+#
+# UNSIGNED: no code-signing certificate exists yet, so Windows SmartScreen
+# will warn on first run. Once a certificate is available, add
+# CSC_LINK / CSC_KEY_PASSWORD (electron-builder reads them from the
+# environment) as secrets and electron-builder signs automatically — nothing
+# else in this workflow changes. Auto-update is likewise out of scope until
+# the installer is signed (`--publish never`).
+#
+# Version flow (docs/native-and-calendar.md → "Release and version bump"):
+# bump package.json + native/version.json → npm run native:sync-version →
+# commit → tag vX.Y.Z → push tag. This workflow, release-android.yml and
+# build-check-ios.yml all run off that tag.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Sync native version from package.json / native/version.json
+        run: npm run native:sync-version
+
+      - name: Build NSIS installer (unsigned)
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: magistrate-wizard-windows-installer-unsigned
+          path: |
+            release/*.exe
+            release/*.blockmap
+          if-no-files-found: error

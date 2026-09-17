@@ -24,10 +24,7 @@ export const CASE_LAW_HOSTS = new Set([
 ]);
 
 /** Volume-level or association dumps — not a single official judgment URL. */
-export const REJECTED_HOSTS = new Set([
-  "guyanabarassociation.org",
-  "www.guyanabarassociation.org",
-]);
+export const REJECTED_HOSTS = new Set(["guyanabarassociation.org", "www.guyanabarassociation.org"]);
 
 const BUDGET_ACT_RE =
   /appropriation|fiscal enactments|estimates of (the )?public sector|supplementary estimates/i;
@@ -79,7 +76,9 @@ export function evaluateSeedItem(item, harvest = {}) {
   if (!title) reasons.push("missing title");
   if (!sourceUrl) reasons.push("missing official source_url");
   if (host && REJECTED_HOSTS.has(host)) {
-    reasons.push(`host ${host} is not an official primary source (volume dump / association archive)`);
+    reasons.push(
+      `host ${host} is not an official primary source (volume dump / association archive)`,
+    );
   }
   if (text && JUNK_TEXT_RE.test(text.slice(0, 800))) {
     reasons.push("full_text looks like a blocked or chrome page, not the instrument");
@@ -95,7 +94,13 @@ export function evaluateSeedItem(item, harvest = {}) {
     if (BUDGET_ACT_RE.test(title) || BUDGET_ACT_RE.test(String(item?.code ?? ""))) {
       reasons.push("budget / estimates Act — not library seed material");
     }
-    const identityBlob = [title, item?.code, item?.pdf_url, item?.original_filename, sourceUrl].join(" ");
+    const identityBlob = [
+      title,
+      item?.code,
+      item?.pdf_url,
+      item?.original_filename,
+      sourceUrl,
+    ].join(" ");
     const hasChapter = CHAPTER_CODE_RE.test(identityBlob);
     const hasActNumber = ACT_NUMBER_RE.test(identityBlob) || ACT_NO_FILE_RE.test(identityBlob);
     const namedActOnOfficialHost = /\bActs?\b/i.test(title) && LEGISLATION_HOSTS.has(host);
