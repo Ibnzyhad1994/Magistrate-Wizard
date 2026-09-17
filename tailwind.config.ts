@@ -20,6 +20,9 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        // Body links. Separate from `primary` because the dark palettes'
+        // brand red is a 3.9:1 button fill, not a 4.5:1 text colour.
+        link: "hsl(var(--link))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -55,12 +58,34 @@ const config: Config = {
         match: {
           DEFAULT: "hsl(var(--match))",
         },
-        netflix: {
-          red: "#E50914",
-          canvas: "#141414",
-          tile: "#181818",
-          hover: "#2f2f2f",
+        // Domain status tokens (defined per palette in index.css). Registered
+        // here so call sites write `bg-notice-action`, not
+        // `bg-[hsl(var(--notice-action))]`, and opacity modifiers work.
+        stage: {
+          progress: "hsl(var(--stage-progress))",
+          done: "hsl(var(--stage-done))",
+          remand: "hsl(var(--stage-remand))",
+          dismissed: "hsl(var(--stage-dismissed))",
+          "outcome-complete": "hsl(var(--stage-outcome-complete))",
         },
+        notice: {
+          action: "hsl(var(--notice-action))",
+          granted: "hsl(var(--notice-granted))",
+          revoked: "hsl(var(--notice-revoked))",
+          outcome: "hsl(var(--notice-outcome))",
+        },
+        capacity: {
+          available: "hsl(var(--capacity-available))",
+          filling: "hsl(var(--capacity-filling))",
+          full: "hsl(var(--capacity-full))",
+          over: "hsl(var(--capacity-over))",
+        },
+        // Semantic aliases so generic UI (alerts, toasts) never hardcodes
+        // amber/green and stays in step with the colourblind and
+        // high-contrast palettes.
+        warning: "hsl(var(--notice-action))",
+        success: "hsl(var(--notice-granted))",
+        info: "hsl(var(--notice-outcome))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -72,10 +97,25 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      // Explicit scale: sm 2px / md 4px / lg 6px with --radius: 0.25rem.
+      // `rounded` (Tailwind's default 0.25rem) equals `rounded-md`; prefer
+      // `rounded-md` so the scale reads in one direction.
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "calc(var(--radius) + 2px)",
+        md: "var(--radius)",
+        sm: "calc(var(--radius) - 2px)",
+      },
+      // Named stacking tiers. Use these instead of `z-[NN]` so the order is
+      // decided once: page chrome < modal < floating menus < hints < skip
+      // link < walkthrough < session lock.
+      zIndex: {
+        nav: "50",
+        dialog: "60",
+        popover: "70",
+        hint: "80",
+        skip: "100",
+        tour: "200",
+        lock: "220",
       },
       keyframes: {
         "accordion-down": {
@@ -102,22 +142,8 @@ const config: Config = {
         "card-in": "card-in 0.2s ease-out",
       },
       fontFamily: {
-        sans: [
-          "Inter",
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "sans-serif",
-        ],
-        serif: ["Source Serif 4", "ui-serif", "Georgia", "serif"],
-        brand: [
-          "Cinzel",
-          "Palatino Linotype",
-          "Palatino",
-          "ui-serif",
-          "Georgia",
-          "serif",
-        ],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
+        brand: ["Cinzel", "Palatino Linotype", "Palatino", "ui-serif", "Georgia", "serif"],
       },
     },
   },
