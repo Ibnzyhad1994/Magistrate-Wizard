@@ -34,7 +34,7 @@ const ALLOWED_TAGS = new Set([
   "th",
   "td",
   "hr",
-])
+]);
 
 export const escapeHtml = (text: string): string => {
   return text
@@ -42,8 +42,8 @@ export const escapeHtml = (text: string): string => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-}
+    .replace(/'/g, "&#39;");
+};
 
 const decodeHtmlEntitiesOnce = (value: string): string => {
   return value
@@ -54,24 +54,24 @@ const decodeHtmlEntitiesOnce = (value: string): string => {
     .replace(/&quot;/gi, '"')
     .replace(/&#0*39;|&apos;/gi, "'")
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
-      const code = parseInt(hex, 16)
-      return Number.isFinite(code) ? String.fromCodePoint(code) : ""
+      const code = parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : "";
     })
     .replace(/&#(\d+);/g, (_, dec) => {
-      const code = Number(dec)
-      return Number.isFinite(code) ? String.fromCodePoint(code) : ""
-    })
-}
+      const code = Number(dec);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : "";
+    });
+};
 
 const decodeHtmlEntities = (value: string): string => {
-  let current = value
+  let current = value;
   for (let i = 0; i < 3; i += 1) {
-    const next = decodeHtmlEntitiesOnce(current)
-    if (next === current) break
-    current = next
+    const next = decodeHtmlEntitiesOnce(current);
+    if (next === current) break;
+    current = next;
   }
-  return current
-}
+  return current;
+};
 
 /** True only for http(s), mailto, and in-page fragments. */
 export const isSafeHref = (href: string): boolean => {
@@ -81,17 +81,19 @@ export const isSafeHref = (href: string): boolean => {
   const trimmed = decodeHtmlEntities(href)
     .trim()
     // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001F\u007F]/g, "")
-  if (!trimmed) return false
-  if (trimmed.startsWith("#") && !trimmed.includes(":")) return true
-  let parsed: URL
+    .replace(/[\u0000-\u001F\u007F]/g, "");
+  if (!trimmed) return false;
+  if (trimmed.startsWith("#") && !trimmed.includes(":")) return true;
+  let parsed: URL;
   try {
-    parsed = new URL(trimmed)
+    parsed = new URL(trimmed);
   } catch {
-    return false
+    return false;
   }
-  return parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "mailto:"
-}
+  return (
+    parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "mailto:"
+  );
+};
 
 const dropDangerousBlocks = (html: string): string => {
   return html
@@ -104,23 +106,23 @@ const dropDangerousBlocks = (html: string): string => {
     .replace(/<textarea[\s\S]*?<\/textarea>/gi, "")
     .replace(/<xmp[\s\S]*?<\/xmp>/gi, "")
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
-    .replace(/<object[\s\S]*?<\/object>/gi, "")
-}
+    .replace(/<object[\s\S]*?<\/object>/gi, "");
+};
 
 const rewriteTag = (full: string, tag: string, attrs: string): string => {
-  const closing = full.startsWith("</")
-  const name = tag.toLowerCase()
-  if (!ALLOWED_TAGS.has(name)) return ""
-  if (closing) return `</${name}>`
-  if (name === "br" || name === "hr") return `<${name} />`
+  const closing = full.startsWith("</");
+  const name = tag.toLowerCase();
+  if (!ALLOWED_TAGS.has(name)) return "";
+  if (closing) return `</${name}>`;
+  if (name === "br" || name === "hr") return `<${name} />`;
   if (name === "a") {
-    const hrefMatch = attrs.match(/\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>/]+))/i)
-    const href = hrefMatch?.[2] ?? hrefMatch?.[3] ?? hrefMatch?.[4] ?? ""
-    if (!href || !isSafeHref(href)) return "<a>"
-    return `<a href="${escapeHtml(decodeHtmlEntities(href).trim())}" rel="noopener noreferrer" target="_blank">`
+    const hrefMatch = attrs.match(/\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>/]+))/i);
+    const href = hrefMatch?.[2] ?? hrefMatch?.[3] ?? hrefMatch?.[4] ?? "";
+    if (!href || !isSafeHref(href)) return "<a>";
+    return `<a href="${escapeHtml(decodeHtmlEntities(href).trim())}" rel="noopener noreferrer" target="_blank">`;
   }
-  return `<${name}>`
-}
+  return `<${name}>`;
+};
 
 /**
  * Allowlist tags. Attributes are stripped except a safe `href` on `<a>`.
@@ -131,8 +133,8 @@ export const sanitizePreviewHtml = (html: string): string => {
   return dropDangerousBlocks(html).replace(
     /<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g,
     (full, tag: string, attrs: string) => rewriteTag(full, tag, attrs ?? ""),
-  )
-}
+  );
+};
 
 const PREVIEW_SRCDOC_STYLES = {
   dark: [
@@ -155,15 +157,15 @@ const PREVIEW_SRCDOC_STYLES = {
     "table{width:100%;border-collapse:collapse}",
     "th,td{border:1px solid #ccc;padding:0.4rem;text-align:left}",
   ].join(""),
-} as const
+} as const;
 
 /** Sandboxed iframe document for HTML previews — scripts cannot run. */
 export const wrapSanitizedPreviewSrcDoc = (
   sanitizedHtml: string,
   scheme: "light" | "dark" = "dark",
 ): string => {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PREVIEW_SRCDOC_STYLES[scheme]}</style></head><body>${sanitizedHtml}</body></html>`
-}
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PREVIEW_SRCDOC_STYLES[scheme]}</style></head><body>${sanitizedHtml}</body></html>`;
+};
 
 /**
  * Neutral paper-page backdrop for the docx page-based preview — a fixed
@@ -176,7 +178,7 @@ const DOCX_PAGE_SRCDOC_STYLES = [
   "body{margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;font:14px/1.5 system-ui,sans-serif;color:#111}",
   ".docx-page-snapshot{display:flex;flex-direction:column;align-items:center;gap:24px}",
   ".docx-page-snapshot section{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.12)}",
-].join("")
+].join("");
 
 /**
  * Sandboxed iframe document for the docx page-based preview (docx-preview
@@ -185,5 +187,5 @@ const DOCX_PAGE_SRCDOC_STYLES = [
  * around already-safe content).
  */
 export const wrapDocxPagePreviewSrcDoc = (sanitizedFragment: string): string => {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${DOCX_PAGE_SRCDOC_STYLES}</style></head><body>${sanitizedFragment}</body></html>`
-}
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${DOCX_PAGE_SRCDOC_STYLES}</style></head><body>${sanitizedFragment}</body></html>`;
+};

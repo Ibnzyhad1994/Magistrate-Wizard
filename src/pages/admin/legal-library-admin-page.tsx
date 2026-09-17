@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -18,20 +18,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
+import { SafeExternalLink } from "@/components/common/safe-external-link";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { SaveIndicator, type SaveState } from "@/components/common/save-indicator";
@@ -55,9 +51,13 @@ import {
   readDuplicateOfId,
   readRejectedBeforeProcessing,
   readCancelledJob,
+  isInFlightImportJobStatus,
+  useUpdateImportJob,
+  useDeleteImportJob,
   type ImportBatchJobRow,
 } from "@/hooks/legal-library/use-import-jobs";
 import { useBulkImportCaseLaw } from "@/hooks/legal-library/use-bulk-import";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import {
   summarizeBulkQueue,
   BULK_STATUS_LABEL,
@@ -80,21 +80,29 @@ import {
 } from "@/hooks/legislation/use-legislation";
 import { useStatuteTags, useApplyStatuteTags } from "@/hooks/legislation/use-statute-tags";
 import { getDocumentViewUrl } from "@/hooks/use-documents";
-import { Field, JurisdictionField, CourtField, CategoryField } from "@/components/legal-library/taxonomy-fields";
+import {
+  Field,
+  JurisdictionField,
+  CourtField,
+  CategoryField,
+} from "@/components/legal-library/taxonomy-fields";
 import { LegislationPdfUploadPanel } from "@/pages/admin/legislation-pdf-upload-panel";
 import { OCR_METADATA_PAGES } from "@/lib/ocr/constants";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
-import { extractCaseLawMetadataWithConfidence, extractCaseNameFromFilename, normalizeWhitespace, shouldAutoFillCaseName, shouldProposeCaseName } from "@/lib/legal-extraction";
+import {
+  extractCaseLawMetadataWithConfidence,
+  extractCaseNameFromFilename,
+  normalizeWhitespace,
+  shouldAutoFillCaseName,
+  shouldProposeCaseName,
+} from "@/lib/legal-extraction";
 import { matchCanonicalCourtScored } from "@/lib/legal-taxonomy-match";
 import {
   isPlaceholderValue,
   validateCaseLawForPublish,
   validateLegislationForPublish,
 } from "@/lib/publication-validation";
-import {
-  emptyExtractionEnvelope,
-  type ExtractionEnvelope,
-} from "@/lib/extraction-pipeline";
+import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
 import { CLEAN_SCORE_THRESHOLD, type QualityHardFailReason } from "@/lib/extraction-quality";
 import {
   ingestDocument,
@@ -105,7 +113,7 @@ import {
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import type { CaseLaw, Statute, LegalAuthorityCourt } from "@/types/database.types";
+import type { CaseLaw, Statute, LegalAuthorityCourt } from "@/types";
 
 type ReviewRow<T> = T & {
   duplicate_warning: string | null;
@@ -135,7 +143,9 @@ function readCaseNameConfidence(extractedMetadata: unknown): "high" | "low" | "n
 }
 
 /** Pulls WHERE the case name actually came from (`_metadataConfidence.caseNameSource` — Section 16/17/35-J: filename-derived metadata must be recorded and shown as such, never presented as if it came from the document text). `null` = not recorded (older draft, no case name at all, or Legislation). */
-function readCaseNameSource(extractedMetadata: unknown): "document" | "filename" | "curator" | null {
+function readCaseNameSource(
+  extractedMetadata: unknown,
+): "document" | "filename" | "curator" | null {
   if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
   const confidence = (extractedMetadata as Record<string, unknown>)._metadataConfidence;
   if (!confidence || typeof confidence !== "object") return null;
@@ -177,7 +187,8 @@ const OCR_REASON_LABEL: Record<string, string> = {
 /** Plain-language label per QualityHardFailReason (extraction-quality.ts) -- shown when a "failed" status has a specific, known cause, instead of one generic "Extraction failed" for every reason. */
 const QUALITY_HARD_FAIL_LABEL: Record<QualityHardFailReason, string> = {
   too_short: "Extraction failed: too little text to be a real document",
-  repeated_running_header: "Extraction failed: mostly a repeated page header/footer, not the document body",
+  repeated_running_header:
+    "Extraction failed: mostly a repeated page header/footer, not the document body",
   printable_ratio: "Extraction failed: text looks garbled",
   replacement_chars: "Extraction failed: unreadable characters from a font-decoding error",
   boilerplate: "Extraction failed: looks like embedded file metadata, not document content",
@@ -192,27 +203,38 @@ function deriveIngestionUiState(
   if (envelope.status === "pending") return { label: "No text yet", tone: "neutral" };
   if (envelope.status === "failed") {
     const reason = envelope.hardFailReason;
-    return { label: (reason && QUALITY_HARD_FAIL_LABEL[reason]) ?? "Extraction failed", tone: "bad" };
+    return {
+      label: (reason && QUALITY_HARD_FAIL_LABEL[reason]) ?? "Extraction failed",
+      tone: "bad",
+    };
   }
   if (envelope.status === "requires_ocr") {
-    return { label: OCR_REASON_LABEL[envelope.unreadableReason ?? ""] ?? "Could not read this document", tone: "warn" };
+    return {
+      label: OCR_REASON_LABEL[envelope.unreadableReason ?? ""] ?? "Could not read this document",
+      tone: "warn",
+    };
   }
   if (envelope.ocrUsed) {
     if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
-      return { label: "Scan recognized: please verify against the original", tone: "warn" };
+      return { label: "Scan recognised: please verify against the original", tone: "warn" };
     }
-    return { label: "Text recognized from scan: please verify", tone: "warn" };
+    return { label: "Text recognised from scan: please verify", tone: "warn" };
   }
   // "extracted" or "low_quality" from here -- genuinely usable text exists.
   if (envelope.status === "low_quality" || envelope.structuralQuality === "poor") {
     return { label: "Text extracted: formatting requires review", tone: "warn" };
   }
-  if (caseNameConfidence === "low") return { label: "Metadata confidence low: review required", tone: "warn" };
-  if (caseNameConfidence === "none") return { label: "Metadata partially identified", tone: "warn" };
+  if (caseNameConfidence === "low")
+    return { label: "Metadata confidence low: review required", tone: "warn" };
+  if (caseNameConfidence === "none")
+    return { label: "Metadata partially identified", tone: "warn" };
   return { label: "Text extracted successfully", tone: "good" };
 }
 
-const TONE_BADGE_VARIANT: Record<IngestionUiTone, "canonical" | "destructive" | "outline" | "secondary"> = {
+const TONE_BADGE_VARIANT: Record<
+  IngestionUiTone,
+  "canonical" | "destructive" | "outline" | "secondary"
+> = {
   good: "canonical",
   bad: "destructive",
   warn: "outline",
@@ -252,7 +274,8 @@ function ExtractionStatusPanel({
     return (
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
-          No document text was extracted for this draft. Document text (if any) was entered manually.
+          No document text was extracted for this draft. Document text (if any) was entered
+          manually.
         </p>
         {envelope?.warnings[0] && (
           <p className="text-xs text-muted-foreground">{envelope.warnings[0]}</p>
@@ -302,32 +325,37 @@ function ExtractionStatusPanel({
         </p>
       )}
       {caseNameSource === "filename" && (
-        <p className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+        <p className="flex items-center gap-1 text-[11px] text-warning">
           <AlertTriangle className="h-3 w-3 shrink-0" />
-          Case name proposed from the file name, not the document text. Please verify against the original before
-          publishing.
+          Case name proposed from the file name, not the document text. Please verify against the
+          original before publishing.
         </p>
       )}
       {hasTechnicalDetail && (
         <details className="text-[11px] text-muted-foreground">
-          <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">Extraction details</summary>
+          <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">
+            Extraction details
+          </summary>
           <div className="mt-1 space-y-1 pl-3">
             <p>OCR used: {envelope.ocrUsed ? "Yes" : "No"}</p>
-            {envelope.charCount > 0 && <p>{envelope.charCount.toLocaleString()} characters extracted</p>}
+            {envelope.charCount > 0 && (
+              <p>{envelope.charCount.toLocaleString()} characters extracted</p>
+            )}
             {envelope.qualityScore !== null && envelope.qualityScore < CLEAN_SCORE_THRESHOLD && (
-              <p className="text-amber-700 dark:text-amber-400">
-                Below the automated clean-extraction threshold. Verify the text against the original before publishing.
+              <p className="text-warning">
+                Below the automated clean-extraction threshold. Verify the text against the original
+                before publishing.
               </p>
             )}
             {caseNameConfidence && caseNameConfidence !== "high" && (
-              <p className="text-amber-700 dark:text-amber-400">
+              <p className="text-warning">
                 {caseNameConfidence === "low"
                   ? "Case name confidence: Low. The proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
                   : "Case name confidence: None. No case name could be confidently identified. Please enter it manually."}
               </p>
             )}
             {envelope.warnings.length > 0 && (
-              <ul className="list-inside list-disc space-y-0.5 text-amber-700 dark:text-amber-400">
+              <ul className="list-inside list-disc space-y-0.5 text-warning">
                 {envelope.warnings.map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}
@@ -405,8 +433,8 @@ function TagReviewEditor({
     Array.from(new Set([...applied, ...proposedNames])),
   );
   const [syncedApplied, setSyncedApplied] = useState(applied);
-  const [syncedProposedKey, setSyncedProposedKey] = useState(() =>
-    proposedNames.join("\0") + "|" + highNames.join("\0"),
+  const [syncedProposedKey, setSyncedProposedKey] = useState(
+    () => proposedNames.join("\0") + "|" + highNames.join("\0"),
   );
   useEffect(() => {
     const proposedKey = proposedNames.join("\0") + "|" + highNames.join("\0");
@@ -430,8 +458,7 @@ function TagReviewEditor({
     setSyncedProposedKey(proposedKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, proposedNames.join("\0"), highNames.join("\0")]);
-  const dirty =
-    selected.size !== applied.length || [...selected].some((t) => !applied.includes(t));
+  const dirty = selected.size !== applied.length || [...selected].some((t) => !applied.includes(t));
 
   function toggle(name: string) {
     setSelected((prev) => {
@@ -550,9 +577,7 @@ function TagReviewEditor({
             >
               {selected.has(name) ? "✓ " : "+ "}
               {name}
-              {conf ? (
-                <span className="ml-1 text-[10px] opacity-70">{conf}</span>
-              ) : null}
+              {conf ? <span className="ml-1 text-[10px] opacity-70">{conf}</span> : null}
             </button>
           );
         })}
@@ -575,7 +600,12 @@ function TagReviewEditor({
           Add
         </Button>
         {dirty && (
-          <Button size="sm" className="h-8" disabled={isSaving} onClick={() => onSave([...selected])}>
+          <Button
+            size="sm"
+            className="h-8"
+            disabled={isSaving}
+            onClick={() => onSave([...selected])}
+          >
             Save tags
           </Button>
         )}
@@ -673,6 +703,16 @@ export default function LegalLibraryAdminPage() {
   // (ImportBatchesTab's meaning for the same param, above).
   const reviewFromBatchId = activeTab === "review" ? initialBatchId : null;
 
+  // Bulk-import state lives HERE, above <Tabs>, not inside the New Import
+  // tab: TabsContent unmounts on tab switch, and a running batch used to
+  // die with it (audit §7.5). Leaving the page mid-batch is still a loss
+  // (the File objects cannot be recovered), so both exits are guarded.
+  const bulk = useBulkImportCaseLaw();
+  useUnsavedChangesGuard(
+    bulk.isRunning,
+    "A bulk import is still running. Leave this page and cancel the files that have not finished?",
+  );
+
   function handleTabChange(value: string) {
     const next = new URLSearchParams(searchParams);
     next.set("tab", value);
@@ -703,7 +743,7 @@ export default function LegalLibraryAdminPage() {
           <SourcesTab />
         </TabsContent>
         <TabsContent value="import">
-          <ImportTab />
+          <ImportTab bulk={bulk} />
         </TabsContent>
         <TabsContent value="batches">
           <ImportBatchesTab initialBatchId={initialBatchId} />
@@ -793,11 +833,9 @@ function SourcesTab() {
           <div>
             <CardTitle className="text-base">Source registry</CardTitle>
             <CardDescription>
-              A record that a source is intended to be used, not an active
-              crawler. Adding a source here does not fetch anything; there is
-              no automated connector wired up in this build (source/URL
-              ingestion here is manual paste-and-submit only, see New
-              Import).
+              A record that a source is intended to be used, not an active crawler. Adding a source
+              here does not fetch anything; there is no automated connector wired up in this build
+              (source/URL ingestion here is manual paste-and-submit only, see New Import).
             </CardDescription>
           </div>
           <Button size="sm" onClick={() => setOpen((o) => !o)}>
@@ -808,22 +846,44 @@ function SourcesTab() {
         {open && (
           <CardContent className="space-y-3 border-t border-border pt-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                placeholder="Name (e.g. Guyana Ministry of Legal Affairs)"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-              <Input
-                placeholder="Jurisdiction (e.g. Guyana)"
-                value={form.jurisdiction}
-                onChange={(e) => setForm((f) => ({ ...f, jurisdiction: e.target.value }))}
-              />
-              <Input
-                placeholder="Base URL"
-                value={form.base_url}
-                onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))}
-              />
+              <div className="space-y-1">
+                <Label htmlFor="source-name" className="sr-only">
+                  Name
+                </Label>
+                <Input
+                  id="source-name"
+                  placeholder="Name (e.g. Guyana Ministry of Legal Affairs)"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="source-jurisdiction" className="sr-only">
+                  Jurisdiction
+                </Label>
+                <Input
+                  id="source-jurisdiction"
+                  placeholder="Jurisdiction (e.g. Guyana)"
+                  value={form.jurisdiction}
+                  onChange={(e) => setForm((f) => ({ ...f, jurisdiction: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="source-base-url" className="sr-only">
+                  Base URL
+                </Label>
+                <Input
+                  id="source-base-url"
+                  placeholder="Base URL"
+                  value={form.base_url}
+                  onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))}
+                />
+              </div>
+              <Label htmlFor="source-type" className="sr-only">
+                Source type
+              </Label>
               <Select
+                id="source-type"
                 value={form.source_type}
                 onChange={(e) => setForm((f) => ({ ...f, source_type: e.target.value }))}
               >
@@ -831,7 +891,11 @@ function SourcesTab() {
                 <option value="legislation">Legislation source</option>
                 <option value="mixed">Mixed (both)</option>
               </Select>
+              <Label htmlFor="source-connector-type" className="sr-only">
+                Connector type
+              </Label>
               <Select
+                id="source-connector-type"
                 value={form.connector_type}
                 onChange={(e) => setForm((f) => ({ ...f, connector_type: e.target.value }))}
               >
@@ -850,14 +914,25 @@ function SourcesTab() {
                 Canonical / trusted source
               </label>
             </div>
+            <Label htmlFor="source-notes" className="sr-only">
+              Notes
+            </Label>
             <Textarea
+              id="source-notes"
               placeholder="Notes: access terms, reliability, format quirks…"
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setOpen(false); reset(); }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setOpen(false);
+                  reset();
+                }}
+              >
                 Cancel
               </Button>
               <Button
@@ -875,7 +950,12 @@ function SourcesTab() {
                       notes: form.notes.trim() || null,
                       status: "proposed",
                     },
-                    { onSuccess: () => { setOpen(false); reset(); } },
+                    {
+                      onSuccess: () => {
+                        setOpen(false);
+                        reset();
+                      },
+                    },
                   )
                 }
               >
@@ -960,13 +1040,17 @@ function SourcesTab() {
 
 const EMPTY_CASE_FIELDS = { case_name: "", citation: "", decided_date: "" };
 
-function ImportTab() {
+function ImportTab({ bulk }: { bulk: BulkImportState }) {
   // Single-document import (the original flow) vs. Bulk import (Section
   // 10-13: select 1, 20, 200, or a whole folder at once). Deliberately a
   // sub-mode of the same tab rather than a brand-new top-level tab — New
   // Import is still fundamentally one workflow with two entry points, and
   // single-document import must not become more cumbersome to reach.
-  const [importMode, setImportMode] = useState<"single" | "bulk">("single");
+  // Reopens on Bulk when a batch is in progress or just finished, so
+  // coming back from another tab lands on the live queue.
+  const [importMode, setImportMode] = useState<"single" | "bulk">(
+    bulk.items.length > 0 ? "bulk" : "single",
+  );
 
   return (
     <div className="space-y-4">
@@ -974,8 +1058,10 @@ function ImportTab() {
         <button
           type="button"
           onClick={() => setImportMode("single")}
-          className={`rounded px-3 py-1.5 text-sm transition-colors ${
-            importMode === "single" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+          className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+            importMode === "single"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted"
           }`}
         >
           Single document
@@ -983,14 +1069,16 @@ function ImportTab() {
         <button
           type="button"
           onClick={() => setImportMode("bulk")}
-          className={`rounded px-3 py-1.5 text-sm transition-colors ${
-            importMode === "bulk" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+          className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+            importMode === "bulk"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted"
           }`}
         >
           Bulk import
         </button>
       </div>
-      {importMode === "single" ? <SingleImportPanel /> : <BulkImportPanel />}
+      {importMode === "single" ? <SingleImportPanel /> : <BulkImportPanel bulk={bulk} />}
     </div>
   );
 }
@@ -1002,9 +1090,12 @@ function SingleImportPanel() {
   const [jurisdictionId, setJurisdictionId] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
-  const [extractionEnvelope, setExtractionEnvelope] = useState<ExtractionEnvelope>(emptyExtractionEnvelope());
+  const [extractionEnvelope, setExtractionEnvelope] =
+    useState<ExtractionEnvelope>(emptyExtractionEnvelope());
   /** Case-name metadata confidence for the CURRENT file (Phase 3/8) — surfaced live in the New Import panel, not just after the draft is created. `null` = not yet computed / no case name found at all. */
-  const [caseNameConfidence, setCaseNameConfidence] = useState<"high" | "low" | "none" | null>(null);
+  const [caseNameConfidence, setCaseNameConfidence] = useState<"high" | "low" | "none" | null>(
+    null,
+  );
   // Case name/citation/decided date are the only free-text metadata the
   // curator ever types for Case Law now — Court/Jurisdiction are captured
   // ONCE via the canonical selects below, never as a second parallel
@@ -1100,23 +1191,29 @@ function SingleImportPanel() {
     applyExtractionResult(envelope);
 
     const fromFilename = extractCaseNameFromFilename(f.name);
-    const filenameCitation = fromFilename?.reported_citation ?? fromFilename?.neutral_citation ?? "";
+    const filenameCitation =
+      fromFilename?.reported_citation ?? fromFilename?.neutral_citation ?? "";
 
     if (envelope.status === "extracted" || envelope.status === "low_quality") {
       toast.success(ingestSuccessToast(envelope));
       if (contentType === "case_law") {
-        const normalizedPages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
-        const { fields: proposed, caseNameConfidence: computedConfidence } = extractCaseLawMetadataWithConfidence(
-          normalizeWhitespace(envelope.text),
-          normalizedPages,
-          { filename: f.name },
-        );
+        const normalizedPages = envelope.pages.map((p) => ({
+          pageNumber: p.pageNumber,
+          text: normalizeWhitespace(p.text),
+        }));
+        const { fields: proposed, caseNameConfidence: computedConfidence } =
+          extractCaseLawMetadataWithConfidence(
+            normalizeWhitespace(envelope.text),
+            normalizedPages,
+            { filename: f.name },
+          );
         setCaseNameConfidence(computedConfidence);
         const proposeName = shouldProposeCaseName(computedConfidence, envelope.ocrUsed);
         const highFill = shouldAutoFillCaseName(computedConfidence, envelope.ocrUsed);
         setCaseFields({
           case_name: proposeName ? (proposed.case_name ?? "") : "",
-          citation: filenameCitation || proposed.reported_citation || proposed.neutral_citation || "",
+          citation:
+            filenameCitation || proposed.reported_citation || proposed.neutral_citation || "",
           decided_date: proposed.decided_date_guess ?? "",
         });
         if (proposed.case_name && proposeName && !highFill) {
@@ -1126,7 +1223,7 @@ function SingleImportPanel() {
         } else if (proposed.case_name && !proposeName) {
           toast.message(
             envelope.ocrUsed
-              ? `A possible case name was recognized ("${proposed.case_name}") but was not auto-filled because this text came from a scan. Please verify it against the original.`
+              ? `A possible case name was recognised ("${proposed.case_name}") but was not auto-filled because this text came from a scan. Please verify it against the original.`
               : `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill. Please review the extracted text and enter the case name manually.`,
           );
         }
@@ -1198,13 +1295,16 @@ function SingleImportPanel() {
           <CardHeader>
             <CardTitle className="text-base">Legislation: file-first PDF library</CardTitle>
             <CardDescription>
-              Legislation is stored as the original PDF, never re-extracted
-              into ordinary content. The PDF itself is the authoritative
-              document. Publishes immediately once uploaded.
+              Legislation is stored as the original PDF, never re-extracted into ordinary content.
+              The PDF itself is the authoritative document. Publishes immediately once uploaded.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Label htmlFor="import-content-type" className="sr-only">
+              Content type
+            </Label>
             <Select
+              id="import-content-type"
               value={contentType}
               onChange={(e) => setContentType(e.target.value as "case_law" | "legislation")}
               className="max-w-xs"
@@ -1227,18 +1327,21 @@ function SingleImportPanel() {
         <CardHeader>
           <CardTitle className="text-base">Deterministic ingestion, no AI</CardTitle>
           <CardDescription>
-            Hashing, citation/date/section-heading parsing, and canonical tag
-            proposals run automatically over the text below. Since you're
-            entering this record's fields yourself, it publishes immediately
-            once created, unless it fails the same quality checks the
-            Review Queue's Publish button enforces (e.g. a missing field, or
-            extracted text that failed automated quality checks), in which
-            case it's left as a draft in the Review Queue for you to fix.
+            Hashing, citation/date/section-heading parsing, and canonical tag proposals run
+            automatically over the text below. Since you're entering this record's fields yourself,
+            it publishes immediately once created, unless it fails the same quality checks the
+            Review Queue's Publish button enforces (e.g. a missing field, or extracted text that
+            failed automated quality checks), in which case it's left as a draft in the Review Queue
+            for you to fix.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
+            <Label htmlFor="import-content-type" className="sr-only">
+              Content type
+            </Label>
             <Select
+              id="import-content-type"
               value={contentType}
               onChange={(e) => setContentType(e.target.value as "case_law" | "legislation")}
               className="max-w-xs"
@@ -1322,12 +1425,11 @@ function SingleImportPanel() {
             />
           </div>
 
-          <Field label="Document text" hint="Read automatically from PDFs, Word (.docx), Markdown, text files, and images. Paste manually for Word 97–2003 (.doc) or when extraction needs a check.">
-            <Textarea
-              value={text}
-              onChange={(e) => handleTextChange(e.target.value)}
-              rows={10}
-            />
+          <Field
+            label="Document text"
+            hint="Read automatically from PDFs, Word (.docx), Markdown, text files, and images. Paste manually for Word 97–2003 (.doc) or when extraction needs a check."
+          >
+            <Textarea value={text} onChange={(e) => handleTextChange(e.target.value)} rows={10} />
           </Field>
           {!text.trim() && !file && (
             <p className="text-xs text-muted-foreground">
@@ -1337,9 +1439,7 @@ function SingleImportPanel() {
 
           <div className="flex justify-end">
             <Button
-              disabled={
-                !canSubmitCaseLaw || (!text.trim() && !file) || ingestCaseLaw.isPending
-              }
+              disabled={!canSubmitCaseLaw || (!text.trim() && !file) || ingestCaseLaw.isPending}
               onClick={() =>
                 ingestCaseLaw.mutate(
                   {
@@ -1361,7 +1461,8 @@ function SingleImportPanel() {
                       // curator to catalog the same Court/Jurisdiction
                       // twice).
                       court: (courts ?? []).find((c) => c.id === courtId)?.canonical_name ?? "",
-                      jurisdiction: (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
+                      jurisdiction:
+                        (jurisdictions ?? []).find((j) => j.id === jurisdictionId)?.name ?? "",
                       court_id: courtId || null,
                       jurisdiction_id: jurisdictionId || null,
                       category_id: categoryId || null,
@@ -1384,7 +1485,10 @@ function SingleImportPanel() {
   );
 }
 
-const BULK_STATUS_TONE: Record<BulkItemStatus, "canonical" | "destructive" | "outline" | "secondary"> = {
+const BULK_STATUS_TONE: Record<
+  BulkItemStatus,
+  "canonical" | "destructive" | "outline" | "secondary"
+> = {
   queued: "secondary",
   hashing: "secondary",
   duplicate: "outline",
@@ -1424,8 +1528,11 @@ function BulkSummaryChip({
  * Queue; nothing here ever publishes anything (Section 3/21: "BULK
  * INGESTION IS NOT BULK PUBLICATION").
  */
-function BulkImportPanel() {
-  const { items, isRunning, startBulkImport, cancelBulkImport, reset, lastBatchId, retryItem } = useBulkImportCaseLaw();
+type BulkImportState = ReturnType<typeof useBulkImportCaseLaw>;
+
+function BulkImportPanel({ bulk }: { bulk: BulkImportState }) {
+  const { items, isRunning, startBulkImport, cancelBulkImport, reset, lastBatchId, retryItem } =
+    bulk;
   const { data: jurisdictions } = useLegalJurisdictions();
   const { data: courts } = useLegalAuthorityCourts();
   const navigate = useNavigate();
@@ -1440,7 +1547,13 @@ function BulkImportPanel() {
   // needs_review, duplicate, failed, rejected, completed) — still queued/
   // hashing/extracting counts as in progress.
   const doneCount =
-    summary.ready + summary.completed + summary.needs_review + summary.duplicate + summary.failed + summary.rejected + summary.cancelled;
+    summary.ready +
+    summary.completed +
+    summary.needs_review +
+    summary.duplicate +
+    summary.failed +
+    summary.rejected +
+    summary.cancelled;
 
   function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
@@ -1458,10 +1571,11 @@ function BulkImportPanel() {
       <CardHeader>
         <CardTitle className="text-base">Bulk import: Case Law</CardTitle>
         <CardDescription>
-          Select many judgments at once, individual files or an entire folder. Each file is preserved,
-          hashed, and processed independently with bounded concurrency; one bad file never stops the batch.
-          Every file becomes its own draft in the Review Queue; nothing is published automatically.
-          Legislation bulk import isn&apos;t available yet; use Single document for Acts.
+          Select many judgments at once, individual files or an entire folder. Each file is
+          preserved, hashed, and processed independently with bounded concurrency; one bad file
+          never stops the batch. Every file becomes its own draft in the Review Queue; nothing is
+          published automatically. Legislation bulk import isn&apos;t available yet; use Single
+          document for Acts.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1540,7 +1654,11 @@ function BulkImportPanel() {
         {hasItems && (
           <>
             <div className="flex flex-wrap gap-1.5">
-              <BulkSummaryChip label="Ready" count={summary.ready + summary.completed} tone="canonical" />
+              <BulkSummaryChip
+                label="Ready"
+                count={summary.ready + summary.completed}
+                tone="canonical"
+              />
               <BulkSummaryChip label="Needs review" count={summary.needs_review} tone="outline" />
               <BulkSummaryChip label="Duplicates" count={summary.duplicate} tone="outline" />
               <BulkSummaryChip
@@ -1570,16 +1688,24 @@ function BulkImportPanel() {
                       </span>
                     )}
                     {item.duplicateReason && (
-                      <span className="max-w-[16rem] truncate text-muted-foreground" title={item.duplicateReason}>
+                      <span
+                        className="max-w-[16rem] truncate text-muted-foreground"
+                        title={item.duplicateReason}
+                      >
                         {item.duplicateReason}
                       </span>
                     )}
                     {item.progressNote && item.status === "extracting" && (
-                      <span className="max-w-[16rem] truncate text-muted-foreground" title={item.progressNote}>
+                      <span
+                        className="max-w-[16rem] truncate text-muted-foreground"
+                        title={item.progressNote}
+                      >
                         {item.progressNote}
                       </span>
                     )}
-                    <Badge variant={BULK_STATUS_TONE[item.status]}>{BULK_STATUS_LABEL[item.status]}</Badge>
+                    <Badge variant={BULK_STATUS_TONE[item.status]}>
+                      {BULK_STATUS_LABEL[item.status]}
+                    </Badge>
                     {item.caseLawId && (
                       // Bulk import NEVER auto-publishes (§3/§21) — every
                       // successful item is a DRAFT, so "View" (the
@@ -1593,7 +1719,12 @@ function BulkImportPanel() {
                         variant="ghost"
                         className="h-6 px-2 text-[11px]"
                         onClick={() =>
-                          navigate(ROUTES.adminLegalLibraryReviewCaseLaw(item.caseLawId!, lastBatchId ?? undefined))
+                          navigate(
+                            ROUTES.adminLegalLibraryReviewCaseLaw(
+                              item.caseLawId!,
+                              lastBatchId ?? undefined,
+                            ),
+                          )
                         }
                       >
                         Review
@@ -1665,17 +1796,20 @@ const JOB_STATUS_TONE: Record<string, "canonical" | "destructive" | "outline" | 
   duplicate: "outline",
 };
 
-function batchJobDisplayStatus(row: ImportBatchJobRow): { label: string; tone: "canonical" | "destructive" | "outline" | "secondary" } {
+function batchJobDisplayStatus(row: ImportBatchJobRow): {
+  label: string;
+  tone: "canonical" | "destructive" | "outline" | "secondary";
+} {
   if (row.status === "failed" && readRejectedBeforeProcessing(row.extracted_metadata)) {
-    return { label: "Rejected", tone: "destructive" }
+    return { label: "Rejected", tone: "destructive" };
   }
   if (row.status === "failed" && readCancelledJob(row.extracted_metadata)) {
-    return { label: "Cancelled", tone: "outline" }
+    return { label: "Cancelled", tone: "outline" };
   }
   return {
     label: JOB_STATUS_LABEL[row.status] ?? row.status,
     tone: JOB_STATUS_TONE[row.status] ?? "secondary",
-  }
+  };
 }
 
 /**
@@ -1693,7 +1827,12 @@ function batchJobDisplayStatus(row: ImportBatchJobRow): { label: string; tone: "
 function BatchCountSummary({
   batch,
 }: {
-  batch: { total: number; expected_file_count: number | null; isLegacyIncomplete: boolean; isFullyAccounted: boolean };
+  batch: {
+    total: number;
+    expected_file_count: number | null;
+    isLegacyIncomplete: boolean;
+    isFullyAccounted: boolean;
+  };
 }) {
   if (batch.isLegacyIncomplete) {
     return (
@@ -1745,8 +1884,8 @@ function ImportBatchesTab({ initialBatchId }: { initialBatchId?: string | null }
           <div>
             <CardTitle className="text-base">Import batches</CardTitle>
             <CardDescription>
-              Every bulk import you've run, with what happened to each file. Return to any batch after
-              navigating away or refreshing; nothing here is temporary.
+              Every bulk import you've run, with what happened to each file. Return to any batch
+              after navigating away or refreshing; nothing here is temporary.
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => void refetch()}>
@@ -1819,7 +1958,13 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
     if (!r.contentQualityStatus) continue;
     qualityCounts[r.contentQualityStatus] = (qualityCounts[r.contentQualityStatus] ?? 0) + 1;
   }
-  const QUALITY_LABEL: Record<string, string> = { good: "Good", fair: "Fair", poor: "Poor", failed: "Failed", unknown: "Unassessed" };
+  const QUALITY_LABEL: Record<string, string> = {
+    good: "Good",
+    fair: "Fair",
+    poor: "Poor",
+    failed: "Failed",
+    unknown: "Unassessed",
+  };
   const QUALITY_TONE: Record<string, "canonical" | "destructive" | "outline" | "secondary"> = {
     good: "canonical",
     fair: "outline",
@@ -1832,7 +1977,9 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
   // review" (Section 11) walks the curator through every remaining
   // needs_review item in this SAME batch without making them return to
   // Import Batches and reopen it each time.
-  const needsReviewIds = rows.filter((r) => r.status === "needs_review" && r.target_case_law_id).map((r) => r.target_case_law_id as string);
+  const needsReviewIds = rows
+    .filter((r) => r.status === "needs_review" && r.target_case_law_id)
+    .map((r) => r.target_case_law_id as string);
 
   return (
     <div className="space-y-4">
@@ -1844,7 +1991,10 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
       {isPending ? (
         <Skeleton className="h-48 w-full" />
       ) : isError || !data ? (
-        <InlineError error={error ?? new Error("Batch not found.")} onRetry={() => void refetch()} />
+        <InlineError
+          error={error ?? new Error("Batch not found.")}
+          onRetry={() => void refetch()}
+        />
       ) : (
         <>
           <Card>
@@ -1867,7 +2017,9 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
                 {needsReviewIds.length > 0 && (
                   <Button
                     size="sm"
-                    onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(needsReviewIds[0], batchId))}
+                    onClick={() =>
+                      navigate(ROUTES.adminLegalLibraryReviewCaseLaw(needsReviewIds[0], batchId))
+                    }
                   >
                     Review next ({needsReviewIds.length} needs review)
                   </Button>
@@ -1897,9 +2049,9 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
                 </div>
               )}
               {(data.interruptedCount ?? 0) > 0 && (
-                <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">
-                  {data.interruptedCount} file{data.interruptedCount === 1 ? "" : "s"} never completed. Re-select
-                  files to resume.
+                <p className="mt-3 text-sm text-warning">
+                  {data.interruptedCount} file{data.interruptedCount === 1 ? "" : "s"} never
+                  completed. Re-select files to resume.
                 </p>
               )}
             </CardContent>
@@ -1925,26 +2077,102 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
  * original file was never uploaded for a failed/duplicate outcome, see
  * this pass's final report on original-file preservation limitations).
  */
+/**
+ * Why "Quality: Failed" -- the hard-fail reason the extraction pipeline
+ * recorded on the job, in the same plain words the Review Queue uses,
+ * rather than a bare red badge with no explanation.
+ */
+function batchRowQualityReason(row: ImportBatchJobRow): string {
+  const reason = readExtractionEnvelope(row.extracted_metadata)?.hardFailReason;
+  return (
+    (reason && QUALITY_HARD_FAIL_LABEL[reason]) ??
+    "Extracted text failed the automated quality checks; open Review to paste or correct the text."
+  );
+}
+
 function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string }) {
   const navigate = useNavigate();
   const duplicateOfId = readDuplicateOfId(row.extracted_metadata);
   const display = batchJobDisplayStatus(row);
+  // Recovery for rows left queued/extracting by a closed or refreshed
+  // page: the File is gone, so the honest options are to mark the job
+  // failed (keeps the batch's accounting) or remove it. Neither touches
+  // any case_law/statute row -- a stuck job has no draft yet.
+  const stuck =
+    isInFlightImportJobStatus(row.status) && !row.target_case_law_id && !row.target_statute_id;
+  const updateJob = useUpdateImportJob();
+  const deleteJob = useDeleteImportJob();
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
       <div className="min-w-0">
         <p className="truncate font-medium text-foreground">{row.displayName ?? row.filename}</p>
-        {row.displayName && <p className="truncate text-xs text-muted-foreground">{row.filename}</p>}
-        {row.duplicate_warning && (
-          <p className="mt-0.5 max-w-xl text-xs text-amber-700 dark:text-amber-400">{row.duplicate_warning}</p>
+        {row.displayName && (
+          <p className="truncate text-xs text-muted-foreground">{row.filename}</p>
         )}
-        {row.error_summary && <p className="mt-0.5 max-w-xl text-xs text-destructive">{row.error_summary}</p>}
+        {row.duplicate_warning && (
+          <p className="mt-0.5 max-w-xl text-xs text-warning">{row.duplicate_warning}</p>
+        )}
+        {row.error_summary && (
+          <p className="mt-0.5 max-w-xl text-xs text-destructive">{row.error_summary}</p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Badge variant={display.tone}>{display.label}</Badge>
-        {row.contentQualityStatus === "failed" && <Badge variant="destructive">Quality: Failed</Badge>}
+        {row.contentQualityStatus === "failed" && (
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <Badge variant="destructive">Quality: Failed</Badge>
+            <span className="max-w-xs text-xs text-destructive">{batchRowQualityReason(row)}</span>
+          </span>
+        )}
+        {stuck && (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={updateJob.isPending}
+              onClick={() =>
+                updateJob.mutate({
+                  id: row.id,
+                  values: {
+                    status: "failed",
+                    error_summary:
+                      "Marked failed by an administrator: the import never finished (the page was closed or refreshed mid-batch). Re-select the file to import it.",
+                    completed_at: new Date().toISOString(),
+                  },
+                })
+              }
+            >
+              Mark failed
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={deleteJob.isPending}
+              onClick={() => setConfirmRemove(true)}
+            >
+              Remove
+            </Button>
+            <AlertDialog
+              open={confirmRemove}
+              onOpenChange={setConfirmRemove}
+              title="Remove this import job?"
+              description={`"${row.filename}" never finished processing and has no draft. Removing it deletes the job record only; you can re-select the file to import it again.`}
+              confirmLabel="Remove"
+              isConfirming={deleteJob.isPending}
+              onConfirm={() =>
+                deleteJob.mutate(row.id, { onSuccess: () => setConfirmRemove(false) })
+              }
+            />
+          </>
+        )}
         {row.target_case_law_id && row.reviewStatus === "published" && (
-          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.caseLawDetail(row.target_case_law_id as string))}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(ROUTES.caseLawDetail(row.target_case_law_id as string))}
+          >
             View
           </Button>
         )}
@@ -1952,13 +2180,21 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(row.target_case_law_id as string, batchId))}
+            onClick={() =>
+              navigate(
+                ROUTES.adminLegalLibraryReviewCaseLaw(row.target_case_law_id as string, batchId),
+              )
+            }
           >
             Review
           </Button>
         )}
         {row.target_statute_id && row.reviewStatus === "published" && (
-          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.legislationDetail(row.target_statute_id as string))}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(ROUTES.legislationDetail(row.target_statute_id as string))}
+          >
             View
           </Button>
         )}
@@ -1966,13 +2202,21 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate(ROUTES.adminLegalLibraryReviewStatute(row.target_statute_id as string, batchId))}
+            onClick={() =>
+              navigate(
+                ROUTES.adminLegalLibraryReviewStatute(row.target_statute_id as string, batchId),
+              )
+            }
           >
             Review
           </Button>
         )}
         {row.status === "duplicate" && duplicateOfId && (
-          <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.caseLawDetail(duplicateOfId))}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(ROUTES.caseLawDetail(duplicateOfId))}
+          >
             View existing
           </Button>
         )}
@@ -2004,7 +2248,8 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
  * curator sees once a card is open (every relevant warning is still shown
  * there regardless of which bucket it landed in here).
  */
-type ReviewCategory = "failed" | "ocr_required" | "possible_duplicate" | "ready_to_publish" | "needs_review";
+type ReviewCategory =
+  "failed" | "ocr_required" | "possible_duplicate" | "ready_to_publish" | "needs_review";
 
 const REVIEW_CATEGORY_LABEL: Record<ReviewCategory, string> = {
   needs_review: "Needs review",
@@ -2100,8 +2345,14 @@ function ReviewQueueTab({
     setStatuteVisible(REVIEW_PAGE_SIZE);
   }, [activeCategory]);
 
-  const caseLawCategorized = (caseLawQueue ?? []).map((row) => ({ row, category: categorizeCaseLawRow(row) }));
-  const statuteCategorized = (statuteQueue ?? []).map((row) => ({ row, category: categorizeStatuteRow(row) }));
+  const caseLawCategorized = (caseLawQueue ?? []).map((row) => ({
+    row,
+    category: categorizeCaseLawRow(row),
+  }));
+  const statuteCategorized = (statuteQueue ?? []).map((row) => ({
+    row,
+    category: categorizeStatuteRow(row),
+  }));
 
   const counts: Record<ReviewCategory, number> = {
     needs_review: 0,
@@ -2116,7 +2367,9 @@ function ReviewQueueTab({
 
   const qualityScoreOf = (row: ReviewRow<CaseLaw> | ReviewRow<Statute>) =>
     readExtractionEnvelope(row.extracted_metadata)?.qualityScore ?? 1;
-  const bySortMode = <T extends { row: ReviewRow<CaseLaw> | ReviewRow<Statute> }>(items: T[]): T[] => {
+  const bySortMode = <T extends { row: ReviewRow<CaseLaw> | ReviewRow<Statute> }>(
+    items: T[],
+  ): T[] => {
     if (sortMode !== "quality") return items;
     // Stable sort: lowest quality score first, so the items most likely to
     // need a curator's attention surface at the top of a large queue
@@ -2125,10 +2378,14 @@ function ReviewQueueTab({
   };
 
   const filteredCaseLawAll = bySortMode(
-    activeCategory === "all" ? caseLawCategorized : caseLawCategorized.filter((c) => c.category === activeCategory),
+    activeCategory === "all"
+      ? caseLawCategorized
+      : caseLawCategorized.filter((c) => c.category === activeCategory),
   );
   const filteredStatuteAll = bySortMode(
-    activeCategory === "all" ? statuteCategorized : statuteCategorized.filter((c) => c.category === activeCategory),
+    activeCategory === "all"
+      ? statuteCategorized
+      : statuteCategorized.filter((c) => c.category === activeCategory),
   );
 
   // A deep-linked highlight target must stay visible even if it would
@@ -2144,12 +2401,15 @@ function ReviewQueueTab({
     ? filteredStatuteAll.findIndex((s) => s.row.id === highlightStatuteId)
     : -1;
   const effectiveStatuteVisible =
-    statuteHighlightIndex >= 0 ? Math.max(statuteVisible, statuteHighlightIndex + 1) : statuteVisible;
+    statuteHighlightIndex >= 0
+      ? Math.max(statuteVisible, statuteHighlightIndex + 1)
+      : statuteVisible;
 
   const filteredCaseLaw = filteredCaseLawAll.slice(0, effectiveCaseLawVisible);
   const filteredStatute = filteredStatuteAll.slice(0, effectiveStatuteVisible);
 
-  const activeLabel = activeCategory === "all" ? null : REVIEW_CATEGORY_LABEL[activeCategory].toLowerCase();
+  const activeLabel =
+    activeCategory === "all" ? null : REVIEW_CATEGORY_LABEL[activeCategory].toLowerCase();
 
   return (
     <div className="space-y-6">
@@ -2189,7 +2449,9 @@ function ReviewQueueTab({
               type="button"
               onClick={() => setSortMode("newest")}
               className={`rounded-full border px-2 py-0.5 transition-colors ${
-                sortMode === "newest" ? "border-primary text-primary" : "border-border hover:bg-muted"
+                sortMode === "newest"
+                  ? "border-primary text-primary"
+                  : "border-border hover:bg-muted"
               }`}
             >
               Newest first
@@ -2198,7 +2460,9 @@ function ReviewQueueTab({
               type="button"
               onClick={() => setSortMode("quality")}
               className={`rounded-full border px-2 py-0.5 transition-colors ${
-                sortMode === "quality" ? "border-primary text-primary" : "border-border hover:bg-muted"
+                sortMode === "quality"
+                  ? "border-primary text-primary"
+                  : "border-border hover:bg-muted"
               }`}
             >
               Lowest quality first
@@ -2213,7 +2477,9 @@ function ReviewQueueTab({
           <Skeleton className="mt-2 h-24 w-full" />
         ) : filteredCaseLawAll.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            {activeLabel ? `No Case Law drafts in "${activeLabel}".` : "No Case Law drafts awaiting review."}
+            {activeLabel
+              ? `No Case Law drafts in "${activeLabel}".`
+              : "No Case Law drafts awaiting review."}
           </p>
         ) : (
           <div className="mt-2 space-y-3">
@@ -2232,8 +2498,9 @@ function ReviewQueueTab({
                 size="sm"
                 onClick={() => setCaseLawVisible((n) => n + REVIEW_PAGE_SIZE)}
               >
-                Show {Math.min(REVIEW_PAGE_SIZE, filteredCaseLawAll.length - effectiveCaseLawVisible)} more (
-                {filteredCaseLawAll.length - effectiveCaseLawVisible} remaining)
+                Show{" "}
+                {Math.min(REVIEW_PAGE_SIZE, filteredCaseLawAll.length - effectiveCaseLawVisible)}{" "}
+                more ({filteredCaseLawAll.length - effectiveCaseLawVisible} remaining)
               </Button>
             )}
           </div>
@@ -2246,7 +2513,9 @@ function ReviewQueueTab({
           <Skeleton className="mt-2 h-24 w-full" />
         ) : filteredStatuteAll.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            {activeLabel ? `No Legislation drafts in "${activeLabel}".` : "No Legislation drafts awaiting review."}
+            {activeLabel
+              ? `No Legislation drafts in "${activeLabel}".`
+              : "No Legislation drafts awaiting review."}
           </p>
         ) : (
           <div className="mt-2 space-y-3">
@@ -2265,8 +2534,9 @@ function ReviewQueueTab({
                 size="sm"
                 onClick={() => setStatuteVisible((n) => n + REVIEW_PAGE_SIZE)}
               >
-                Show {Math.min(REVIEW_PAGE_SIZE, filteredStatuteAll.length - effectiveStatuteVisible)} more (
-                {filteredStatuteAll.length - effectiveStatuteVisible} remaining)
+                Show{" "}
+                {Math.min(REVIEW_PAGE_SIZE, filteredStatuteAll.length - effectiveStatuteVisible)}{" "}
+                more ({filteredStatuteAll.length - effectiveStatuteVisible} remaining)
               </Button>
             )}
           </div>
@@ -2329,7 +2599,8 @@ function CaseLawReviewCard({
   const [reprocessNote, setReprocessNote] = useState<string | null>(null);
   const fullTextRef = useRef<HTMLTextAreaElement>(null);
   const reviewEnvelope = readExtractionEnvelope(row.extracted_metadata);
-  const needsPaste = reviewEnvelope?.status === "requires_ocr" || reviewEnvelope?.status === "failed";
+  const needsPaste =
+    reviewEnvelope?.status === "requires_ocr" || reviewEnvelope?.status === "failed";
   useEffect(() => {
     if (needsPaste) fullTextRef.current?.focus();
   }, [needsPaste, row.id]);
@@ -2410,7 +2681,7 @@ function CaseLawReviewCard({
         courts: courts ?? [],
         jurisdictions: jurisdictions ?? [],
         maxOcrPages,
-        onProgress: (page, total) => setReprocessNote(`Recognizing page ${page} of ${total}`),
+        onProgress: (page, total) => setReprocessNote(`Recognising page ${page} of ${total}`),
       },
       {
         onSuccess: (result) => {
@@ -2435,7 +2706,8 @@ function CaseLawReviewCard({
     case_name: fields.case_name,
     citation: fields.citation,
     court: (courts ?? []).find((c) => c.id === fields.court_id)?.canonical_name ?? row.court,
-    jurisdiction: (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? row.jurisdiction,
+    jurisdiction:
+      (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? row.jurisdiction,
     court_id: fields.court_id,
     jurisdiction_id: fields.jurisdiction_id,
     content_quality_status: row.content_quality_status,
@@ -2443,7 +2715,7 @@ function CaseLawReviewCard({
   const canPublish = validationErrors.length === 0 && !dirty;
 
   const sourceName = row.source_id
-    ? (sources ?? []).find((s) => s.id === row.source_id)?.name ?? "Unknown source"
+    ? ((sources ?? []).find((s) => s.id === row.source_id)?.name ?? "Unknown source")
     : null;
   const appliedTagNames = (appliedTags ?? [])
     .map((t) => (t.tags as unknown as { name: string } | null)?.name)
@@ -2456,9 +2728,13 @@ function CaseLawReviewCard({
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-base">{row.case_name}</CardTitle>
             <Badge variant="outline">Case Law</Badge>
-            {row.job_status && <Badge variant="secondary">{JOB_STATUS_LABEL[row.job_status] ?? row.job_status}</Badge>}
+            {row.job_status && (
+              <Badge variant="secondary">
+                {JOB_STATUS_LABEL[row.job_status] ?? row.job_status}
+              </Badge>
+            )}
             {isPlaceholderValue(row.case_name) && (
-              <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400">
+              <Badge variant="outline" className="gap-1 text-warning">
                 <AlertTriangle className="h-3 w-3" />
                 Case name requires review
               </Badge>
@@ -2471,7 +2747,11 @@ function CaseLawReviewCard({
         </div>
         <div className="flex items-center gap-1">
           {fromBatchId && (
-            <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.adminLegalLibraryBatch(fromBatchId))}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigate(ROUTES.adminLegalLibraryBatch(fromBatchId))}
+            >
               <ArrowLeft className="h-4 w-4" />
               Back to batch
             </Button>
@@ -2483,7 +2763,7 @@ function CaseLawReviewCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {row.duplicate_warning && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <div className="flex items-start gap-2 rounded-md border border-warning bg-warning/10 p-2 text-xs text-warning">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{row.duplicate_warning}</span>
           </div>
@@ -2532,20 +2812,28 @@ function CaseLawReviewCard({
             at ingest time (Section 14/4F — "No summary or full text on
             record" previously had no path to resolution short of direct
             database access). */}
-        <details className="rounded-md border border-border p-2.5 text-sm" open={needsPaste || undefined}>
+        <details
+          className="rounded-md border border-border p-2.5 text-sm"
+          open={needsPaste || undefined}
+        >
           <summary className="cursor-pointer select-none text-sm font-medium text-foreground">
             Summary and full text
             {!fields.summary && !fields.full_text && (
-              <span className="ml-2 text-xs font-normal text-muted-foreground">(none on record yet)</span>
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (none on record yet)
+              </span>
             )}
             {needsPaste && (
-              <span className="ml-2 text-xs font-normal text-amber-700 dark:text-amber-400">
+              <span className="ml-2 text-xs font-normal text-warning">
                 (paste the judgment text here)
               </span>
             )}
           </summary>
           <div className="mt-3 space-y-3">
-            <Field label="Summary" hint="Optional: a short curator-written synopsis, distinct from the full text below.">
+            <Field
+              label="Summary"
+              hint="Optional: a short curator-written synopsis, distinct from the full text below."
+            >
               <Textarea
                 value={fields.summary}
                 onChange={(e) => setFields((f) => ({ ...f, summary: e.target.value }))}
@@ -2595,9 +2883,9 @@ function CaseLawReviewCard({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
           <span>Source repository: {sourceName ?? "unassigned"}</span>
           {row.source_url && (
-            <a href={row.source_url} target="_blank" rel="noopener noreferrer" className="underline">
+            <SafeExternalLink href={row.source_url} className="underline">
               Source URL
-            </a>
+            </SafeExternalLink>
           )}
           <OriginalDocumentLink documentId={row.uploaded_document_id} />
         </div>
@@ -2727,6 +3015,7 @@ function StatuteReviewCard({
   const [confirmReject, setConfirmReject] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
   const [fullTextDraft, setFullTextDraft] = useState(row.full_text ?? "");
+  const fullTextId = useId();
   const dirty =
     fields.title !== row.title ||
     fields.code !== row.code ||
@@ -2740,7 +3029,7 @@ function StatuteReviewCard({
   const fullTextDirty = fullTextDraft !== (row.full_text ?? "");
 
   const sourceName = row.source_id
-    ? (sources ?? []).find((s) => s.id === row.source_id)?.name ?? "Unknown source"
+    ? ((sources ?? []).find((s) => s.id === row.source_id)?.name ?? "Unknown source")
     : null;
   const appliedTagNames = (appliedTags ?? [])
     .map((t) => (t.tags as unknown as { name: string } | null)?.name)
@@ -2763,7 +3052,11 @@ function StatuteReviewCard({
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-base">{row.title}</CardTitle>
             <Badge variant="outline">Legislation</Badge>
-            {row.job_status && <Badge variant="secondary">{JOB_STATUS_LABEL[row.job_status] ?? row.job_status}</Badge>}
+            {row.job_status && (
+              <Badge variant="secondary">
+                {JOB_STATUS_LABEL[row.job_status] ?? row.job_status}
+              </Badge>
+            )}
           </div>
           <CardDescription>
             {row.review_status === "needs_review" ? "Needs review" : "Draft"} · Created{" "}
@@ -2772,19 +3065,27 @@ function StatuteReviewCard({
         </div>
         <div className="flex items-center gap-1">
           {fromBatchId && (
-            <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.adminLegalLibraryBatch(fromBatchId))}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigate(ROUTES.adminLegalLibraryBatch(fromBatchId))}
+            >
               <ArrowLeft className="h-4 w-4" />
               Back to batch
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => navigate(ROUTES.legislationDetail(row.id))}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(ROUTES.legislationDetail(row.id))}
+          >
             View full record
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {row.duplicate_warning && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <div className="flex items-start gap-2 rounded-md border border-warning bg-warning/10 p-2 text-xs text-warning">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{row.duplicate_warning}</span>
           </div>
@@ -2798,65 +3099,83 @@ function StatuteReviewCard({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span>Source: {sourceName ?? "unassigned"}</span>
           {row.source_url && (
-            <a href={row.source_url} target="_blank" rel="noopener noreferrer" className="underline">
+            <SafeExternalLink href={row.source_url} className="underline">
               Source URL
-            </a>
+            </SafeExternalLink>
           )}
           <OriginalDocumentLink documentId={row.uploaded_document_id} />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input
-            value={fields.title}
-            onChange={(e) => setFields((f) => ({ ...f, title: e.target.value }))}
-            placeholder="Title"
-          />
-          <Input
-            value={fields.code}
-            onChange={(e) => setFields((f) => ({ ...f, code: e.target.value }))}
-            placeholder="Code"
-          />
-          <Input
-            value={fields.jurisdiction}
-            onChange={(e) => setFields((f) => ({ ...f, jurisdiction: e.target.value }))}
-            placeholder="Jurisdiction (free text)"
-          />
-          <Input
-            value={fields.chapter_number}
-            onChange={(e) => setFields((f) => ({ ...f, chapter_number: e.target.value }))}
-            placeholder="Chapter number"
-          />
+          <Field label="Title" required>
+            <Input
+              value={fields.title}
+              onChange={(e) => setFields((f) => ({ ...f, title: e.target.value }))}
+            />
+          </Field>
+          <Field label="Code" required>
+            <Input
+              value={fields.code}
+              onChange={(e) => setFields((f) => ({ ...f, code: e.target.value }))}
+            />
+          </Field>
+          <Field label="Jurisdiction (free text)">
+            <Input
+              value={fields.jurisdiction}
+              onChange={(e) => setFields((f) => ({ ...f, jurisdiction: e.target.value }))}
+            />
+          </Field>
+          <Field label="Chapter number">
+            <Input
+              value={fields.chapter_number}
+              onChange={(e) => setFields((f) => ({ ...f, chapter_number: e.target.value }))}
+            />
+          </Field>
           <JurisdictionField
             value={fields.jurisdiction_id}
             onChange={(id) => setFields((f) => ({ ...f, jurisdiction_id: id }))}
             jurisdictions={jurisdictions ?? []}
           />
-          <Input
-            value={fields.short_title}
-            onChange={(e) => setFields((f) => ({ ...f, short_title: e.target.value }))}
-            placeholder="Short title"
-          />
-          <Input
-            value={fields.act_number}
-            onChange={(e) => setFields((f) => ({ ...f, act_number: e.target.value }))}
-            placeholder="Act number (e.g. 13 of 2025)"
-          />
-          <Input
-            value={fields.enactment_year}
-            onChange={(e) => setFields((f) => ({ ...f, enactment_year: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
-            placeholder="Enactment year"
-            inputMode="numeric"
-          />
-          <Input
-            value={fields.instrument_type}
-            onChange={(e) => setFields((f) => ({ ...f, instrument_type: e.target.value }))}
-            placeholder="Instrument type (Act / Ordinance / Regulations)"
-          />
+          <Field label="Short title">
+            <Input
+              value={fields.short_title}
+              onChange={(e) => setFields((f) => ({ ...f, short_title: e.target.value }))}
+            />
+          </Field>
+          <Field label="Act number" hint="e.g. 13 of 2025">
+            <Input
+              value={fields.act_number}
+              onChange={(e) => setFields((f) => ({ ...f, act_number: e.target.value }))}
+            />
+          </Field>
+          <Field label="Enactment year">
+            <Input
+              value={fields.enactment_year}
+              onChange={(e) =>
+                setFields((f) => ({
+                  ...f,
+                  enactment_year: e.target.value.replace(/\D/g, "").slice(0, 4),
+                }))
+              }
+              inputMode="numeric"
+            />
+          </Field>
+          <Field label="Instrument type" hint="Act / Ordinance / Regulations">
+            <Input
+              value={fields.instrument_type}
+              onChange={(e) => setFields((f) => ({ ...f, instrument_type: e.target.value }))}
+            />
+          </Field>
         </div>
 
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" size="sm" variant="ghost" onClick={() => setShowFullText((v) => !v)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowFullText((v) => !v)}
+            >
               {showFullText ? "Hide full text" : "Show / edit full text"}
             </Button>
             <Button
@@ -2884,12 +3203,18 @@ function StatuteReviewCard({
             </Button>
           </div>
           {showFullText && (
-            <textarea
-              className="min-h-40 w-full rounded-md border border-border bg-background p-2 text-xs"
-              value={fullTextDraft}
-              onChange={(e) => setFullTextDraft(e.target.value)}
-              placeholder="Full text: paste the corrected/complete document text here, then Re-check extraction quality."
-            />
+            <>
+              <Label htmlFor={fullTextId} className="sr-only">
+                Full text
+              </Label>
+              <textarea
+                id={fullTextId}
+                className="min-h-40 w-full rounded-md border border-border bg-background p-2 text-xs"
+                value={fullTextDraft}
+                onChange={(e) => setFullTextDraft(e.target.value)}
+                placeholder="Full text: paste the corrected/complete document text here, then Re-check extraction quality."
+              />
+            </>
           )}
           {fullTextDirty && (
             <p className="text-[11px] text-muted-foreground">
@@ -2941,7 +3266,9 @@ function StatuteReviewCard({
           <div className="flex flex-col items-end gap-1">
             <Button
               size="sm"
-              disabled={statuteValidationErrors.length > 0 || dirty || fullTextDirty || setStatus.isPending}
+              disabled={
+                statuteValidationErrors.length > 0 || dirty || fullTextDirty || setStatus.isPending
+              }
               onClick={() => setStatus.mutate({ id: row.id, review_status: "published" })}
             >
               <CheckCircle2 className="h-4 w-4" />

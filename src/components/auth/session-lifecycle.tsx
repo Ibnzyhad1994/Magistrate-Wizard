@@ -10,10 +10,7 @@ import {
 } from "@/lib/auth/session-policy";
 import { bumpRememberUntil } from "@/lib/auth/session-storage";
 import { lockCurrentSession } from "@/lib/auth/session-lock";
-import {
-  completeSessionUnlock,
-  finishPostUnlockReloadIfNeeded,
-} from "@/lib/auth/session-recovery";
+import { completeSessionUnlock, finishPostUnlockReloadIfNeeded } from "@/lib/auth/session-recovery";
 import { useAuthStore } from "@/store/auth-store";
 
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart"] as const;

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BrowseViewSelect } from "@/components/browse/browse-view-select";
+import { usePageTitle } from "@/hooks/use-page-title";
 import type { BrowseView } from "@/lib/browse-prefs";
 
 interface BrowseHeaderProps {
@@ -22,6 +23,7 @@ export function BrowseHeader({
   onViewSelectChange,
   dataTour,
 }: BrowseHeaderProps) {
+  usePageTitle(title);
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -31,9 +33,7 @@ export function BrowseHeader({
         >
           {title}
         </h1>
-        {description && (
-          <p className="mt-2 max-w-2xl text-sm text-foreground/65">{description}</p>
-        )}
+        {description && <p className="mt-2 max-w-2xl text-sm text-foreground/65">{description}</p>}
       </div>
       {(showViewSelect || action) && (
         <div className="flex shrink-0 flex-wrap items-center gap-2">

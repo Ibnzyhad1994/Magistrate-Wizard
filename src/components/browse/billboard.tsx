@@ -76,6 +76,8 @@ export function Billboard({
         <img
           src={imageUrl}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
         />
       ) : (
@@ -84,9 +86,7 @@ export function Billboard({
           <Icon
             className={cn(
               "absolute right-[6%] top-[18%] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10",
-              isDetail
-                ? "h-[18vh] w-[18vh] max-w-[32vw]"
-                : "h-[55vh] w-[55vh] max-w-[46vw]",
+              isDetail ? "h-[18vh] w-[18vh] max-w-[32vw]" : "h-[55vh] w-[55vh] max-w-[46vw]",
             )}
             strokeWidth={1}
             aria-hidden="true"
@@ -115,9 +115,7 @@ export function Billboard({
           data-tour-focus={isDetail ? "" : undefined}
           className={cn(
             "w-fit font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg",
-            isDetail
-              ? "text-2xl sm:text-3xl lg:text-4xl"
-              : "text-4xl sm:text-5xl lg:text-6xl",
+            isDetail ? "text-2xl sm:text-3xl lg:text-4xl" : "text-4xl sm:text-5xl lg:text-6xl",
           )}
         >
           {title}
@@ -138,18 +136,13 @@ export function Billboard({
           <p
             className={cn(
               "max-w-xl leading-relaxed text-foreground/80 dark:text-primary-foreground/85",
-              isDetail
-                ? "mt-2 line-clamp-2 text-sm"
-                : "mt-4 line-clamp-3 text-sm sm:text-base",
+              isDetail ? "mt-2 line-clamp-2 text-sm" : "mt-4 line-clamp-3 text-sm sm:text-base",
             )}
           >
             {description}
           </p>
         )}
-        <div
-          data-tour-focus=""
-          className={cn("flex flex-wrap gap-3", isDetail ? "mt-4" : "mt-6")}
-        >
+        <div data-tour-focus="" className={cn("flex flex-wrap gap-3", isDetail ? "mt-4" : "mt-6")}>
           {primaryAction && (
             <BillboardButton
               action={primaryAction}

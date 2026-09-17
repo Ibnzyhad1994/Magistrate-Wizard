@@ -21,6 +21,7 @@ import { notificationTone, notificationTypeLabel } from "@/lib/notifications";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { NOTIFICATION_TONE_ACCENT } from "@/lib/notification-tone-classes";
 import { ROUTES } from "@/routes/paths";
+import { isSafeInternalPath } from "@/lib/safe-navigation";
 
 /**
  * Unread indicator and triage peek for the in-app notification system
@@ -55,11 +56,9 @@ export function NotificationBell({ className }: { className?: string }) {
   const { data: unread = 0 } = useUnreadNotificationCount();
   // Only fetched while the menu is open — the bell is on every page, and
   // the badge count alone does not need any rows.
-  const { data, isPending } = useNotifications(
-    NOTIFICATION_PEEK_SIZE,
-    undefined,
-    { enabled: open },
-  );
+  const { data, isPending } = useNotifications(NOTIFICATION_PEEK_SIZE, undefined, {
+    enabled: open,
+  });
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
 
@@ -79,9 +78,7 @@ export function NotificationBell({ className }: { className?: string }) {
             "relative min-h-11 min-w-11 shrink-0 touch-manipulation text-current hover:bg-foreground/10 hover:text-current",
             className,
           )}
-          aria-label={
-            hasUnread ? `Notifications, ${unread} unread` : "Notifications, none unread"
-          }
+          aria-label={hasUnread ? `Notifications, ${unread} unread` : "Notifications, none unread"}
         >
           <Bell className="h-5 w-5" />
           {hasUnread && (
@@ -140,7 +137,7 @@ export function NotificationBell({ className }: { className?: string }) {
                     onClick={() => {
                       if (unreadRow) markRead.mutate(row.id);
                       setOpen(false);
-                      if (row.link) navigate(row.link);
+                      if (isSafeInternalPath(row.link)) navigate(row.link);
                     }}
                     className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                   >
@@ -155,6 +152,7 @@ export function NotificationBell({ className }: { className?: string }) {
                         className={`block truncate text-sm ${
                           unreadRow ? "font-semibold text-foreground" : "text-muted-foreground"
                         }`}
+                        title={row.title}
                       >
                         {row.title}
                       </span>

@@ -15,33 +15,91 @@
  * whether it's running in a browser or Node.
  */
 
-import type { DOMPurify as DOMPurifyInstance } from "dompurify"
-import { isSafeHref } from "@/lib/html-sanitize"
+import type { DOMPurify as DOMPurifyInstance } from "dompurify";
+import { isSafeHref } from "@/lib/html-sanitize";
 
 const BODY_ALLOWED_TAGS = [
-  "div", "span", "p", "br", "hr",
-  "h1", "h2", "h3", "h4", "h5", "h6",
-  "strong", "b", "em", "i", "u", "s", "sup", "sub",
-  "ul", "ol", "li",
-  "table", "thead", "tbody", "tfoot", "tr", "th", "td", "colgroup", "col", "caption",
-  "a", "img",
-  "header", "footer", "section", "article", "figure", "figcaption",
-  "blockquote", "small",
-]
+  "div",
+  "span",
+  "p",
+  "br",
+  "hr",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "strong",
+  "b",
+  "em",
+  "i",
+  "u",
+  "s",
+  "sup",
+  "sub",
+  "ul",
+  "ol",
+  "li",
+  "table",
+  "thead",
+  "tbody",
+  "tfoot",
+  "tr",
+  "th",
+  "td",
+  "colgroup",
+  "col",
+  "caption",
+  "a",
+  "img",
+  "header",
+  "footer",
+  "section",
+  "article",
+  "figure",
+  "figcaption",
+  "blockquote",
+  "small",
+];
 
 const BODY_ALLOWED_ATTR = [
-  "style", "class", "id", "href", "src",
-  "colspan", "rowspan", "width", "height",
-  "align", "valign", "dir", "lang", "title", "alt",
-]
+  "style",
+  "class",
+  "id",
+  "href",
+  "src",
+  "colspan",
+  "rowspan",
+  "width",
+  "height",
+  "align",
+  "valign",
+  "dir",
+  "lang",
+  "title",
+  "alt",
+];
 
 const BODY_FORBID_TAGS = [
-  "script", "iframe", "object", "embed", "form", "input", "button",
-  "textarea", "svg", "math", "link", "meta", "base", "style",
-]
+  "script",
+  "iframe",
+  "object",
+  "embed",
+  "form",
+  "input",
+  "button",
+  "textarea",
+  "svg",
+  "math",
+  "link",
+  "meta",
+  "base",
+  "style",
+];
 
 /** Only https(s)/mailto links or fragment anchors (footnote/endnote refs), and only data:image/... for embedded images. Anything else is stripped, not merely left inert. */
-const BODY_ALLOWED_URI_REGEXP = /^(?:https?:|mailto:|data:image\/|#)/i
+const BODY_ALLOWED_URI_REGEXP = /^(?:https?:|mailto:|data:image\/|#)/i;
 
 /**
  * Sanitizes docx-preview's rendered page body (its `bodyContainer.innerHTML`
@@ -55,18 +113,18 @@ const BODY_ALLOWED_URI_REGEXP = /^(?:https?:|mailto:|data:image\/|#)/i
 export const sanitizeDocxPageBody = (html: string, purify: DOMPurifyInstance): string => {
   const onAttr = (node: Element) => {
     if (node.tagName === "A" && node.hasAttribute("href")) {
-      const href = node.getAttribute("href") ?? ""
+      const href = node.getAttribute("href") ?? "";
       if (!isSafeHref(href)) {
-        node.removeAttribute("href")
+        node.removeAttribute("href");
       } else {
-        node.setAttribute("rel", "noopener noreferrer")
-        node.setAttribute("target", "_blank")
+        node.setAttribute("rel", "noopener noreferrer");
+        node.setAttribute("target", "_blank");
       }
     }
     if (node.tagName === "IMG" && node.hasAttribute("src")) {
-      const src = (node.getAttribute("src") ?? "").trim().toLowerCase()
+      const src = (node.getAttribute("src") ?? "").trim().toLowerCase();
       if (!src.startsWith("data:image/")) {
-        node.removeAttribute("src")
+        node.removeAttribute("src");
       }
     }
     // stripNonDataCssUrls (below) already scrubs the generated <style>
@@ -74,10 +132,10 @@ export const sanitizeDocxPageBody = (html: string, purify: DOMPurifyInstance): s
     // the identical treatment, or a crafted external url() here beacons
     // to an attacker server the moment the preview renders.
     if (node.hasAttribute("style")) {
-      node.setAttribute("style", stripNonDataCssUrls(node.getAttribute("style") ?? ""))
+      node.setAttribute("style", stripNonDataCssUrls(node.getAttribute("style") ?? ""));
     }
-  }
-  purify.addHook("afterSanitizeAttributes", onAttr)
+  };
+  purify.addHook("afterSanitizeAttributes", onAttr);
   try {
     return purify.sanitize(html, {
       ALLOWED_TAGS: BODY_ALLOWED_TAGS,
@@ -85,11 +143,11 @@ export const sanitizeDocxPageBody = (html: string, purify: DOMPurifyInstance): s
       FORBID_TAGS: BODY_FORBID_TAGS,
       ALLOW_DATA_ATTR: false,
       ALLOWED_URI_REGEXP: BODY_ALLOWED_URI_REGEXP,
-    })
+    });
   } finally {
-    purify.removeHook("afterSanitizeAttributes")
+    purify.removeHook("afterSanitizeAttributes");
   }
-}
+};
 
 /**
  * Strips any CSS `url(...)` that isn't a `data:` URI — closes off a crafted
@@ -101,9 +159,9 @@ export const sanitizeDocxPageBody = (html: string, purify: DOMPurifyInstance): s
  */
 export const stripNonDataCssUrls = (css: string): string => {
   return css.replace(/url\(\s*(['"]?)([^'")]*)\1\s*\)/gi, (full, _quote, value: string) => {
-    return value.trim().toLowerCase().startsWith("data:") ? full : "url()"
-  })
-}
+    return value.trim().toLowerCase().startsWith("data:") ? full : "url()";
+  });
+};
 
 /**
  * Sanitizes docx-preview's generated `<style>` block(s) (its
@@ -122,6 +180,6 @@ export const sanitizeDocxPageStyle = (styleMarkup: string, purify: DOMPurifyInst
     // implicit <head> and only returns <body> content, silently dropping
     // it entirely -- confirmed via test-docx-page-preview-sanitize.mjs.
     FORCE_BODY: true,
-  })
-  return stripNonDataCssUrls(structurallySafe)
-}
+  });
+  return stripNonDataCssUrls(structurallySafe);
+};

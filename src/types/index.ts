@@ -6,21 +6,8 @@ export type {
   TablesUpdate,
   Enums,
   CompositeTypes,
-  Profile,
-  Court,
-  Case,
-  CaseParty,
-  BenchNote,
-  Statute,
-  CaseLaw,
-  Tag,
-  Document,
-  Comment,
-  Bookmark,
-  AuditLogEntry,
-  AuthEventLogEntry,
-  SearchResult,
 } from "./database.types";
+export type * from "./db-aliases";
 
 import type { LucideIcon } from "lucide-react";
 

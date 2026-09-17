@@ -4,6 +4,29 @@ import { toast } from "sonner";
 
 const key = (matterId: string) => ["docket-assignments", matterId] as const;
 
+interface AssignmentIdentityRow {
+  assignment_id: string;
+  profile_id: string | null;
+  display_name: string | null;
+}
+
+/**
+ * `resolve_docket_assignment_identities` (0155): one round trip for every
+ * assignment on a matter instead of one RPC per row. Same SECURITY DEFINER
+ * envelope and per-row docket-read predicate as the singular RPC.
+ *
+ * `src/types/database.types.ts` is generated from the live schema and does
+ * not yet carry 0155, so the call is typed here; collapse this back to a
+ * plain `supabase.rpc(...)` once `supabase gen types` is re-run.
+ */
+const resolveAssignmentIdentities = (ids: string[]) =>
+  (
+    supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => PromiseLike<{ data: AssignmentIdentityRow[] | null; error: { message: string } | null }>
+  )("resolve_docket_assignment_identities", { p_ids: ids });
+
 export interface ResolvedAssignment {
   id: string;
   reason: string;
@@ -23,7 +46,7 @@ export interface ResolvedAssignment {
  * someone else" workflow in the backend, so none is built here.
  * `reason` is fixed to `'retained_part_heard'` by a live CHECK
  * constraint (the only value the column currently allows). Identity is
- * resolved via `resolve_docket_assignment_identity()` rather than a
+ * resolved via `resolve_docket_assignment_identities()` rather than a
  * broad `profiles` SELECT.
  */
 export function useDocketAssignments(matterId: string | undefined) {
@@ -38,20 +61,15 @@ export function useDocketAssignments(matterId: string | undefined) {
       if (error) throw error;
       if (!assignments || assignments.length === 0) return [];
 
-      const resolved = await Promise.all(
-        assignments.map(async (a) => {
-          const { data: identity, error: identityError } = await supabase.rpc(
-            "resolve_docket_assignment_identity",
-            { p_assignment_id: a.id },
-          );
-          if (identityError) throw identityError;
-          return {
-            ...a,
-            display_name: identity?.[0]?.display_name ?? null,
-          };
-        }),
+      const { data: identities, error: identityError } = await resolveAssignmentIdentities(
+        assignments.map((a) => a.id),
       );
-      return resolved;
+      if (identityError) throw identityError;
+      const byAssignment = new Map((identities ?? []).map((row) => [row.assignment_id, row]));
+      return assignments.map((a) => ({
+        ...a,
+        display_name: byAssignment.get(a.id)?.display_name ?? null,
+      }));
     },
     enabled: !!matterId,
   });

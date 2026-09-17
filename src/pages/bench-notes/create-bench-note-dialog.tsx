@@ -125,7 +125,7 @@ export function CreateBenchNoteDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New Bench Note</DialogTitle>
           <DialogDescription>
@@ -191,6 +191,7 @@ export function CreateBenchNoteDialog({
                       <FormLabel>{PARENT_TYPE_LABELS[parentType]}</FormLabel>
                       <Input
                         placeholder={`Search ${PARENT_TYPE_LABELS[parentType].toLowerCase()}s…`}
+                        aria-label={`Search ${PARENT_TYPE_LABELS[parentType].toLowerCase()}s`}
                         value={parentFilter}
                         onChange={(e) => setParentFilter(e.target.value)}
                       />
@@ -235,9 +236,7 @@ export function CreateBenchNoteDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={createBenchNote.isPending}>
-                {createBenchNote.isPending && (
-                  <LoadingSpinner className="text-current" size={16} />
-                )}
+                {createBenchNote.isPending && <LoadingSpinner className="text-current" size={16} />}
                 Create note
               </Button>
             </DialogFooter>

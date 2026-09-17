@@ -18,18 +18,9 @@ interface ContentRowProps {
  * On mobile the edge chevrons stay available whenever the row overflows,
  * so a magistrate can page tiles without relying only on a swipe.
  */
-export function ContentRow({
-  title,
-  href,
-  children,
-  isLoading,
-  className,
-}: ContentRowProps) {
+export function ContentRow({ title, href, children, isLoading, className }: ContentRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { canScrollLeft, canScrollRight } = useHScroll(scrollerRef, [
-    isLoading,
-    children,
-  ]);
+  const { canScrollLeft, canScrollRight } = useHScroll(scrollerRef, [isLoading, children]);
 
   const handleScroll = (direction: -1 | 1) => {
     const node = scrollerRef.current;
@@ -48,9 +39,7 @@ export function ContentRow({
             {title}
           </Link>
         ) : (
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
-            {title}
-          </h2>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
         )}
         {href && (
           <Link
@@ -79,12 +68,10 @@ export function ContentRow({
         </button>
         <div
           ref={scrollerRef}
-          className="browse-gutter flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none scroll-px-[4vw]"
+          className="browse-gutter scrollbar-none flex snap-x snap-mandatory scroll-px-[4vw] gap-2 overflow-x-auto overscroll-x-contain scroll-smooth"
         >
           {isLoading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <TitleCardSkeleton key={i} layout="tiles" />
-              ))
+            ? Array.from({ length: 6 }).map((_, i) => <TitleCardSkeleton key={i} layout="tiles" />)
             : children}
         </div>
         <button

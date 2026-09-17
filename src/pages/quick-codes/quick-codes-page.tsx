@@ -57,8 +57,12 @@ import {
   type QuickCodeFieldsFormValues,
 } from "@/lib/validations/quick-code";
 import { toast } from "sonner";
-import { useAddBookmark, useIsBookmarked, useRemoveBookmark } from "@/hooks/bookmarks/use-bookmarks";
-import type { QuickCode } from "@/types/database.types";
+import {
+  useAddBookmark,
+  useIsBookmarked,
+  useRemoveBookmark,
+} from "@/hooks/bookmarks/use-bookmarks";
+import type { QuickCode } from "@/types";
 import { cn } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
 
@@ -90,11 +94,14 @@ export default function QuickCodesPage() {
       const timeout = setTimeout(() => setFlashId(null), 2500);
       // Clear the param so refreshing/reordering later doesn't re-trigger
       // the scroll, while leaving the highlight visible for this visit.
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("qc");
-        return next;
-      }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("qc");
+          return next;
+        },
+        { replace: true },
+      );
       return () => clearTimeout(timeout);
     }
   }, [highlightId, data, setSearchParams]);
@@ -209,7 +216,7 @@ export default function QuickCodesPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <Table>
+            <Table aria-label="Quick codes">
               <TableHeader>
                 <TableRow>
                   <TableHead>Code word</TableHead>
@@ -227,7 +234,9 @@ export default function QuickCodesPage() {
                       if (el) rowRefs.current.set(qc.id, el);
                       else rowRefs.current.delete(qc.id);
                     }}
-                    className={cn(flashId === qc.id && "bg-primary/10 transition-colors duration-1000")}
+                    className={cn(
+                      flashId === qc.id && "bg-primary/10 transition-colors duration-1000",
+                    )}
                   >
                     <TableCell className="font-mono font-medium text-foreground">
                       {qc.code_word}
@@ -289,11 +298,7 @@ export default function QuickCodesPage() {
         </Card>
       )}
 
-      <QuickCodeFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        editing={editing}
-      />
+      <QuickCodeFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} />
 
       <AssociationsDialog
         quickCode={associationsFor}
@@ -344,7 +349,11 @@ function QuickCodeBookmarkButton({ quickCodeId }: { quickCodeId: string }) {
         aria-label="Remove bookmark"
         disabled={removeBookmark.isPending}
         onClick={() =>
-          removeBookmark.mutate({ id: existing.id, entityType: "quick_code", entityId: quickCodeId })
+          removeBookmark.mutate({
+            id: existing.id,
+            entityType: "quick_code",
+            entityId: quickCodeId,
+          })
         }
       >
         <BookmarkCheck className="h-4 w-4 text-primary" />
@@ -413,12 +422,11 @@ function QuickCodeFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit Quick Code" : "New Quick Code"}</DialogTitle>
           <DialogDescription>
-            Private to you. Code word must be unique among your own Quick
-            Codes.
+            Private to you. Code word must be unique among your own Quick Codes.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -542,9 +550,7 @@ function AssociationsDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Associations for {quickCode?.code_word}</DialogTitle>
-          <DialogDescription>
-            Where this Quick Code has been linked.
-          </DialogDescription>
+          <DialogDescription>Where this Quick Code has been linked.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <AssociationGroup

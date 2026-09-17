@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 import { supabase } from "@/lib/supabase";
 import {
   duplicateCaseNumbers,
@@ -43,10 +42,11 @@ export async function buildMatterPack(args: {
   }
 
   const ids = authorized.map((row) => row.id);
-  const [{ data: parties, error: partyError }, { data: events, error: eventError }] = await Promise.all([
-    supabase.from("docket_matter_parties").select("*").in("docket_matter_id", ids),
-    supabase.from("docket_events").select("*").in("docket_matter_id", ids),
-  ]);
+  const [{ data: parties, error: partyError }, { data: events, error: eventError }] =
+    await Promise.all([
+      supabase.from("docket_matter_parties").select("*").in("docket_matter_id", ids),
+      supabase.from("docket_events").select("*").in("docket_matter_id", ids),
+    ]);
   if (partyError) throw partyError;
   if (eventError) throw eventError;
 
@@ -66,7 +66,7 @@ export async function buildMatterPack(args: {
   }
 
   const packed: MatterPackMatter[] = authorized.flatMap((row) => {
-    const record: Record<string, unknown> = { ...row }
+    const record: Record<string, unknown> = { ...row };
     record.parties = (parties ?? []).filter((party) => party.docket_matter_id === row.id);
     record.events = (events ?? []).filter((event) => event.docket_matter_id === row.id);
     const matter = sanitizeMatterForPack(record);
@@ -81,11 +81,16 @@ export async function buildMatterPack(args: {
     matters: packed,
   };
 
+  // JSZip is fetched when a pack is actually built or read, not on app load.
+  const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
   packed.forEach((matter, index) => {
     const slug = matter.case_number.replace(/[^\w.-]+/g, "_");
-    zip.file(`matters/${String(index + 1).padStart(2, "0")}-${slug}.json`, JSON.stringify(matter, null, 2));
+    zip.file(
+      `matters/${String(index + 1).padStart(2, "0")}-${slug}.json`,
+      JSON.stringify(matter, null, 2),
+    );
   });
   if (args.includeFiles) {
     zip.file(
@@ -110,6 +115,7 @@ export async function readMatterPackFile(file: File): Promise<MatterPackManifest
     if (!parsed.ok) throw new Error(parsed.error);
     return parsed.pack;
   }
+  const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const manifestFile = zip.file("manifest.json");
   if (!manifestFile) throw new Error("That zip has no manifest.json.");
@@ -125,7 +131,9 @@ export async function importMatterPack(args: {
   existing: Array<{ case_number: string; court_id: string }>;
 }) {
   const dupes = new Set(
-    duplicateCaseNumbers(args.pack.matters, args.existing, args.courtId).map((value) => value.toLowerCase()),
+    duplicateCaseNumbers(args.pack.matters, args.existing, args.courtId).map((value) =>
+      value.toLowerCase(),
+    ),
   );
   let created = 0;
   let skipped = 0;

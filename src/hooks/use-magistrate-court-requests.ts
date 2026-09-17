@@ -34,7 +34,12 @@ export interface MyMagistrateCourtAssignment {
   court_id: string;
   assignment_type: string;
   started_at: string;
-  courts: { id: string; name: string; jurisdiction: string; magisterial_districts: { name: string } | null } | null;
+  courts: {
+    id: string;
+    name: string;
+    jurisdiction: string;
+    magisterial_districts: { name: string } | null;
+  } | null;
 }
 
 export interface CourtForMagistrateRequest {
@@ -124,6 +129,40 @@ export function useMyMagistrateCourtAssignments() {
   });
 }
 
+export interface MyEndedMagistrateCourtAssignment extends MyMagistrateCourtAssignment {
+  ended_at: string;
+  end_reason: string | null;
+}
+
+/**
+ * The caller's own ENDED magistrate_courts rows, most recent first, with
+ * the recorded end_reason. A sitting can be ended without the magistrate
+ * doing anything (first-sign-in occupancy, 0152; admin replace / co-sit /
+ * transfer), so without this the page shows "Request a court" with no
+ * explanation of what happened to the one they had.
+ */
+export function useMyEndedMagistrateCourtAssignments() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["magistrate-court-requests", "my-ended-assignments"],
+    queryFn: async (): Promise<MyEndedMagistrateCourtAssignment[]> => {
+      const { data, error } = await supabase
+        .from("magistrate_courts")
+        .select(
+          "id, court_id, assignment_type, started_at, ended_at, end_reason, courts(id, name, jurisdiction, magisterial_districts(name))",
+        )
+        .eq("profile_id", user!.id)
+        .not("ended_at", "is", null)
+        .order("ended_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data as unknown as MyEndedMagistrateCourtAssignment[];
+    },
+    enabled: !!user,
+    staleTime: 15_000,
+  });
+}
+
 /** Every active-or-inactive court with a status personalized to the caller. */
 export function useCourtsForMagistrateRequest() {
   const { user } = useAuth();
@@ -143,7 +182,12 @@ function invalidateAfterAssignmentChange(queryClient: ReturnType<typeof useQuery
   void queryClient.invalidateQueries({ queryKey: magistrateCourtRequestKeys.myRequests });
   void queryClient.invalidateQueries({ queryKey: magistrateCourtRequestKeys.courtsForRequest });
   void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "my-assignments"] });
-  void queryClient.invalidateQueries({ queryKey: ["magistrate-court-requests", "has-approved-court"] });
+  void queryClient.invalidateQueries({
+    queryKey: ["magistrate-court-requests", "my-ended-assignments"],
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ["magistrate-court-requests", "has-approved-court"],
+  });
   void queryClient.invalidateQueries({ queryKey: ["docket", "my-current-courts"] });
   void queryClient.invalidateQueries({ queryKey: ["dashboard", "current-courts"] });
 }
@@ -162,12 +206,14 @@ export function useSubmitMagistrateCourtRequest() {
       return data;
     },
     onSuccess: (data) => {
-      const kind = data && typeof data === "object" && "request_kind" in data
-        ? (data as { request_kind?: string }).request_kind
-        : undefined;
+      const kind =
+        data && typeof data === "object" && "request_kind" in data
+          ? (data as { request_kind?: string }).request_kind
+          : undefined;
       toast.success(occupiedExceptionSubmitMessage(kind === "occupied_exception"));
       invalidateAfterAssignmentChange(queryClient);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -187,6 +233,7 @@ export function useCancelMagistrateCourtRequest() {
       toast.success("Request cancelled.");
       invalidateAfterAssignmentChange(queryClient);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -211,6 +258,7 @@ export function useRelinquishMagistrateCourt() {
       toast.success("Court assignment relinquished.");
       invalidateAfterAssignmentChange(queryClient);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

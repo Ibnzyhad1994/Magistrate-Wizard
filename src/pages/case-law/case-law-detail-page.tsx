@@ -28,6 +28,7 @@ import { SaveState } from "@/components/common/save-state";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { DateOnlyInput } from "@/components/common/date-only-input";
+import { SafeExternalLink } from "@/components/common/safe-external-link";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useCaseLawItem,
@@ -50,13 +51,11 @@ import {
   useDeleteCaseLawDocketLink,
 } from "@/hooks/case-law/use-case-law-docket-links";
 import { LinkDocketMatterDialog } from "@/pages/case-law/link-docket-matter-dialog";
-import {
-  caseLawFieldsSchema,
-  type CaseLawFieldsFormValues,
-} from "@/lib/validations/case-law";
+import { caseLawFieldsSchema, type CaseLawFieldsFormValues } from "@/lib/validations/case-law";
 import { formatDate, formatDateTime, toTitleCase } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Billboard } from "@/components/browse";
 import { SharingPanel } from "@/components/sharing/sharing-panel";
 import { isShareableCaseLaw } from "@/lib/shares";
@@ -67,6 +66,7 @@ export default function CaseLawDetailPage() {
   const back = useBackNav(ROUTES.caseLaw, "Back to Case Law");
   const { user, hasRole } = useAuth();
   const { data: caseLaw, isPending, isError, error, refetch } = useCaseLawItem(id);
+  usePageTitle(caseLaw?.case_name ?? null);
   const deleteCaseLaw = useDeleteCaseLaw();
   const deleteCanonicalCaseLaw = useDeleteCanonicalCaseLaw();
   const setReviewStatus = useSetCaseLawReviewStatus();
@@ -85,9 +85,7 @@ export default function CaseLawDetailPage() {
   if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
   if (!caseLaw) {
     return (
-      <InlineError
-        error={new Error("This entry doesn't exist, or you don't have access to it.")}
-      />
+      <InlineError error={new Error("This entry doesn't exist, or you don't have access to it.")} />
     );
   }
 
@@ -117,121 +115,123 @@ export default function CaseLawDetailPage() {
           <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />
         </div>
 
-      {isOwner && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            This permanently deletes your research entry, including its
-            annotations.
-          </p>
-        </div>
-      )}
+        {isOwner && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              This permanently deletes your research entry, including its annotations.
+            </p>
+          </div>
+        )}
 
-      {isOwner && isShareableCaseLaw(caseLaw.owner_id) && (
-        <SharingPanel itemType="case_law" itemId={caseLaw.id} canManage />
-      )}
+        {isOwner && isShareableCaseLaw(caseLaw.owner_id) && (
+          <SharingPanel itemType="case_law" itemId={caseLaw.id} canManage />
+        )}
 
-      {isCanonical && isAdmin && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={setReviewStatus.isPending}
-            onClick={() =>
-              setReviewStatus.mutate(
-                { id: caseLaw.id, review_status: "needs_review" },
-                {
-                  onSuccess: () => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(caseLaw.id)),
-                },
-              )
-            }
-          >
-            <Pencil className="h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={() => setConfirmDeleteCanonical(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Edit reopens this record for review. It moves to the Review
-            Queue, off the public library, until you publish it again.
-            Delete permanently removes it for every magistrate, including
-            any attached documents.
-          </p>
-        </div>
-      )}
+        {isCanonical && isAdmin && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={setReviewStatus.isPending}
+              onClick={() =>
+                setReviewStatus.mutate(
+                  { id: caseLaw.id, review_status: "needs_review" },
+                  {
+                    onSuccess: () => navigate(ROUTES.adminLegalLibraryReviewCaseLaw(caseLaw.id)),
+                  },
+                )
+              }
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setConfirmDeleteCanonical(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Edit reopens this record for review. It moves to the Review Queue, off the public
+              library, until you publish it again. Delete permanently removes it for every
+              magistrate, including any attached documents.
+            </p>
+          </div>
+        )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <FieldsCard caseLaw={caseLaw} isEditable={isEditable} />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <FieldsCard caseLaw={caseLaw} isEditable={isEditable} />
+          </div>
+          <div className="space-y-4">
+            {isOwner && <DiscoverabilityCard caseLaw={caseLaw} />}
+            <TagsCard caseLawId={caseLaw.id} />
+            <LinkedMattersCard caseLawId={caseLaw.id} />
+          </div>
         </div>
-        <div className="space-y-4">
-          {isOwner && <DiscoverabilityCard caseLaw={caseLaw} />}
-          <TagsCard caseLawId={caseLaw.id} />
-          <LinkedMattersCard caseLawId={caseLaw.id} />
-        </div>
-      </div>
 
-      <Tabs defaultValue="annotations">
-        <TabsList>
-          <TabsTrigger value="annotations">My Annotations</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-        </TabsList>
-        <TabsContent value="annotations">
-          <AnnotationsPanel caseLawId={caseLaw.id} />
-        </TabsContent>
-        <TabsContent value="documents">
-          {/* Attaching to canonical Case Law is Admin-only per the live
+        <Tabs defaultValue="annotations">
+          <TabsList>
+            <TabsTrigger value="annotations">My Annotations</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+          </TabsList>
+          <TabsContent value="annotations">
+            <AnnotationsPanel caseLawId={caseLaw.id} />
+          </TabsContent>
+          <TabsContent value="documents">
+            {/* Attaching to canonical Case Law is Admin-only per the live
               documents INSERT policy (can_edit_case_law) — hide Upload
               rather than show a control that will always be RLS-denied
               for an ordinary magistrate viewing canonical/discoverable
               research they don't own. */}
-          <DocumentsPanel entityType="case_law" entityId={caseLaw.id} canUpload={isOwner || (isCanonical && isAdmin)} />
-        </TabsContent>
-      </Tabs>
+            <DocumentsPanel
+              entityType="case_law"
+              entityId={caseLaw.id}
+              canUpload={isOwner || (isCanonical && isAdmin)}
+            />
+          </TabsContent>
+        </Tabs>
 
-      <AlertDialog
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        title="Delete this research entry?"
-        description="This permanently deletes the entry and your annotations on it. This cannot be undone."
-        confirmLabel="Delete"
-        isConfirming={deleteCaseLaw.isPending}
-        onConfirm={() =>
-          deleteCaseLaw.mutate(caseLaw.id, {
-            onSuccess: () => navigate(ROUTES.caseLaw),
-          })
-        }
-      />
+        <AlertDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title="Delete this research entry?"
+          description="This permanently deletes the entry and your annotations on it. This cannot be undone."
+          confirmLabel="Delete"
+          isConfirming={deleteCaseLaw.isPending}
+          onConfirm={() =>
+            deleteCaseLaw.mutate(caseLaw.id, {
+              onSuccess: () => navigate(ROUTES.caseLaw),
+            })
+          }
+        />
 
-      <AlertDialog
-        open={confirmDeleteCanonical}
-        onOpenChange={setConfirmDeleteCanonical}
-        title="Delete this canonical Case Law record?"
-        description="This permanently removes it from the shared library for every magistrate, including its tags, links to Docket Matters, and any attached documents. This cannot be undone."
-        confirmLabel="Delete"
-        isConfirming={deleteCanonicalCaseLaw.isPending}
-        onConfirm={() =>
-          deleteCanonicalCaseLaw.mutate(caseLaw.id, {
-            onSuccess: () => navigate(ROUTES.caseLaw),
-          })
-        }
-      />
-    </div>
+        <AlertDialog
+          open={confirmDeleteCanonical}
+          onOpenChange={setConfirmDeleteCanonical}
+          title="Delete this canonical Case Law record?"
+          description="This permanently removes it from the shared library for every magistrate, including its tags, links to Docket Matters, and any attached documents. This cannot be undone."
+          confirmLabel="Delete"
+          isConfirming={deleteCanonicalCaseLaw.isPending}
+          onConfirm={() =>
+            deleteCanonicalCaseLaw.mutate(caseLaw.id, {
+              onSuccess: () => navigate(ROUTES.caseLaw),
+            })
+          }
+        />
+      </div>
     </>
   );
 }
@@ -252,13 +252,7 @@ interface CaseLawDetail {
   category_id: string | null;
 }
 
-function FieldsCard({
-  caseLaw,
-  isEditable,
-}: {
-  caseLaw: CaseLawDetail;
-  isEditable: boolean;
-}) {
+function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditable: boolean }) {
   const updateFields = useUpdateCaseLawFields(caseLaw.id);
   const { data: categories } = useLegalCaseCategories();
   const categoryName = (categories ?? []).find((c) => c.id === caseLaw.category_id)?.name;
@@ -324,14 +318,12 @@ function FieldsCard({
           )}
           {caseLaw.source_url && (
             <p>
-              <a
+              <SafeExternalLink
                 href={caseLaw.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-primary hover:underline"
               >
                 Source <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+              </SafeExternalLink>
             </p>
           )}
           {caseLaw.summary && (
@@ -447,7 +439,10 @@ function FieldsCard({
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Select value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)}>
+                    <Select
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    >
                       <option value="">No category</option>
                       {(categories ?? []).map((c) => (
                         <option key={c.id} value={c.id}>
@@ -527,13 +522,11 @@ function DiscoverabilityCard({ caseLaw }: { caseLaw: { id: string; is_discoverab
             disabled={setDiscoverable.isPending}
           />
           <span>
-            <span className="font-medium text-foreground">
-              Discoverable to other magistrates
-            </span>
+            <span className="font-medium text-foreground">Discoverable to other magistrates</span>
             <br />
             <span className="text-muted-foreground">
-              Other magistrates will be able to see this research entry
-              (but never your private annotations on it).
+              Other magistrates will be able to see this research entry (but never your private
+              annotations on it).
             </span>
           </span>
         </label>
@@ -687,13 +680,13 @@ function AnnotationsPanel({ caseLawId }: { caseLawId: string }) {
   return (
     <div className="mt-4 space-y-4">
       <p className="text-xs text-muted-foreground">
-        Private to you. No other user can see these, even on canonical or
-        discoverable Case Law.
+        Private to you. No other user can see these, even on canonical or discoverable Case Law.
       </p>
       <Card>
         <CardContent className="space-y-2 p-4">
           <Textarea
             placeholder="Add a private annotation…"
+            aria-label="New private annotation"
             rows={3}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -732,6 +725,7 @@ function AnnotationsPanel({ caseLawId }: { caseLawId: string }) {
                   <div className="space-y-2">
                     <Textarea
                       rows={3}
+                      aria-label="Edit annotation"
                       value={editingText}
                       onChange={(e) => setEditingText(e.target.value)}
                     />

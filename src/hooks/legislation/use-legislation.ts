@@ -28,6 +28,9 @@ export const legislationKeys = {
   detail: (id: string) => ["legislation", "detail", id] as const,
   reviewQueue: ["legislation", "review-queue"] as const,
   provisions: (statuteId: string) => ["legislation", "provisions", statuteId] as const,
+  /** One provision's body text (`useStatuteProvision`); the prefix invalidates all of them. */
+  provisionBodies: ["legislation", "provision"] as const,
+  provision: (provisionId: string) => ["legislation", "provision", provisionId] as const,
 };
 
 /**
@@ -220,9 +223,14 @@ export function useCreateLegislationDocument() {
         p_has_text_layer: input.hasTextLayer ?? undefined,
       });
       if (finalizeError) {
-        const { error: removeError } = await supabase.storage.from("documents").remove([document.file_path]);
+        const { error: removeError } = await supabase.storage
+          .from("documents")
+          .remove([document.file_path]);
         if (removeError) {
-          console.error("Storage cleanup failed after a failed Legislation finalize step:", removeError);
+          console.error(
+            "Storage cleanup failed after a failed Legislation finalize step:",
+            removeError,
+          );
         } else {
           await supabase.from("documents").delete().eq("id", document.id);
         }
@@ -236,6 +244,7 @@ export function useCreateLegislationDocument() {
       toast.success("Legislation uploaded and published.");
       void queryClient.invalidateQueries({ queryKey: legislationKeys.all });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -330,14 +339,13 @@ export function useSetStatuteReviewStatus() {
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
-      toast.success(
-        variables.review_status === "published" ? "Published." : "Status updated.",
-      );
+      toast.success(variables.review_status === "published" ? "Published." : "Status updated.");
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: legislationKeys.all });
       void queryClient.invalidateQueries({ queryKey: legislationKeys.detail(variables.id) });
       void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -388,6 +396,7 @@ export function useRejectCanonicalStatute() {
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -423,7 +432,10 @@ export function useDeleteCanonicalStatute() {
           .from("documents")
           .remove(docs.map((d) => d.file_path));
         if (removeError) {
-          console.error("Storage cleanup failed during canonical Legislation deletion:", removeError);
+          console.error(
+            "Storage cleanup failed during canonical Legislation deletion:",
+            removeError,
+          );
           throw new Error(
             `Could not remove ${docs.length} attached file(s) from storage. The record was left in place so nothing is silently lost -- retry deletion once storage cleanup succeeds.`,
           );
@@ -438,6 +450,7 @@ export function useDeleteCanonicalStatute() {
       void queryClient.invalidateQueries({ queryKey: legislationKeys.all });
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -452,6 +465,12 @@ export function useDeleteCanonicalStatute() {
  * per Act) make client-side tree assembly reasonable; this does not scale
  * to loading an entire multi-thousand-Act library, which is why this
  * hook is scoped to a single statute id.
+ *
+ * Navigation columns only — no `body_text`. The viewer renders this list
+ * as a table of contents, and pulling every section's full text (an Act
+ * can run to megabytes) to draw headings made opening a long Act slow on
+ * courthouse links. The selected provision's body comes from
+ * `useStatuteProvision` below.
  */
 export function useStatuteProvisions(statuteId: string | undefined) {
   return useQuery({
@@ -459,13 +478,30 @@ export function useStatuteProvisions(statuteId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("statute_provisions")
-        .select("*")
+        .select("id, statute_id, parent_provision_id, level, number, heading, sort_order")
         .eq("statute_id", statuteId as string)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return data;
     },
     enabled: !!statuteId,
+  });
+}
+
+/** Body text for one provision, fetched only for the node being read. */
+export function useStatuteProvision(provisionId: string | undefined) {
+  return useQuery({
+    queryKey: legislationKeys.provision(provisionId ?? ""),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("statute_provisions")
+        .select("id, body_text")
+        .eq("id", provisionId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!provisionId,
   });
 }
 
@@ -508,6 +544,7 @@ export function useUpdateProvision(statuteId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: legislationKeys.provisions(statuteId) });
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.provisionBodies });
     },
   });
 }
@@ -521,6 +558,7 @@ export function useDeleteProvision(statuteId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: legislationKeys.provisions(statuteId) });
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.provisionBodies });
     },
   });
 }

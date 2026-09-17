@@ -1,23 +1,39 @@
-import { useMemo, useSyncExternalStore } from "react"
-import { useAuthStore } from "@/store/auth-store"
-import { pendingEventIds, pendingJobCount, type OutboxJob } from "@/lib/offline/outbox"
-import { getOutboxJobs, subscribeOfflineStore } from "@/lib/offline/store"
+import { useMemo, useSyncExternalStore } from "react";
+import { useAuthStore } from "@/store/auth-store";
+import {
+  pendingEventIds,
+  pendingJobCount,
+  type FailedOutboxJob,
+  type OutboxJob,
+} from "@/lib/offline/outbox";
+import { getFailedJobs, getOutboxJobs, subscribeOfflineStore } from "@/lib/offline/store";
 
-const EMPTY: OutboxJob[] = []
+const EMPTY: OutboxJob[] = [];
+const EMPTY_FAILED: FailedOutboxJob[] = [];
+
+/** Queued hearings the flush gave up on (permission refusal or conflict), until discarded. */
+export function useFailedHearings() {
+  const profileId = useAuthStore((state) => state.user?.id);
+  return useSyncExternalStore(
+    subscribeOfflineStore,
+    () => (profileId ? getFailedJobs(profileId) : EMPTY_FAILED),
+    () => EMPTY_FAILED,
+  );
+}
 
 export function useOutboxJobs() {
-  const profileId = useAuthStore((state) => state.user?.id)
+  const profileId = useAuthStore((state) => state.user?.id);
   const jobs = useSyncExternalStore(
     subscribeOfflineStore,
     () => (profileId ? getOutboxJobs(profileId) : EMPTY),
     () => EMPTY,
-  )
-  return jobs
+  );
+  return jobs;
 }
 
 export function usePendingHearings() {
-  const jobs = useOutboxJobs()
-  const count = pendingJobCount(jobs)
-  const eventIds = useMemo(() => pendingEventIds(jobs), [jobs])
-  return { jobs, count, eventIds }
+  const jobs = useOutboxJobs();
+  const count = pendingJobCount(jobs);
+  const eventIds = useMemo(() => pendingEventIds(jobs), [jobs]);
+  return { jobs, count, eventIds };
 }

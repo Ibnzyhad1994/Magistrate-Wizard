@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEffect, useId, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { DateOnlyInput } from "@/components/common/date-only-input";
@@ -39,17 +46,29 @@ export function NextDateCell({
   const [open, setOpen] = useState(false);
 
   if (!canEdit) {
-    return <span className="whitespace-nowrap text-xs text-foreground/70">{nextDate ? formatDate(nextDate) : NOT_SET}</span>;
+    return (
+      <span className="whitespace-nowrap text-xs text-foreground/70">
+        {nextDate ? formatDate(nextDate) : NOT_SET}
+      </span>
+    );
   }
 
   return (
     <>
-      <HintTooltip label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Click to set the next hearing date"}>
+      <HintTooltip
+        label={
+          nextDate
+            ? `Change next date, currently ${formatDate(nextDate)}`
+            : "Click to set the next hearing date"
+        }
+      >
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
-          aria-label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"}
+          className="whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
+          aria-label={
+            nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"
+          }
         >
           {nextDate ? formatDate(nextDate) : "+ Set date"}
         </button>
@@ -88,6 +107,7 @@ export function NextDateDialog({
 }) {
   const { data: categories } = useDocketMatterCategories();
   const setNextDate = useSetDocketMatterNextDate();
+  const fieldId = useId();
   // Carrying the previous appearance's category forward by default is
   // what actually fixes the reported "capacity shows 0/3 while matters
   // are visibly scheduled" bug in practice — every prior appearance that
@@ -137,18 +157,36 @@ export function NextDateDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{currentDate ? "Change next date" : "Set next date"}</DialogTitle>
+          <DialogDescription>
+            Schedules the next appearance. A matter category is checked against the court's daily
+            capacity.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-muted-foreground">Date</label>
-          <DateOnlyInput value={date} onChange={setDate} aria-label="Next date" />
+          <label
+            htmlFor={`${fieldId}-date`}
+            className="block text-xs font-medium text-muted-foreground"
+          >
+            Date
+          </label>
+          <DateOnlyInput
+            id={`${fieldId}-date`}
+            value={date}
+            onChange={setDate}
+            aria-label="Next date"
+          />
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-muted-foreground">
+          <label
+            htmlFor={`${fieldId}-category`}
+            className="block text-xs font-medium text-muted-foreground"
+          >
             Matter category (optional, only checked against capacity if set)
           </label>
           <Select
+            id={`${fieldId}-category`}
             value={categoryId}
             onChange={(e) => {
               setCategoryId(e.target.value);
@@ -165,7 +203,12 @@ export function NextDateDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={setNextDate.isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={setNextDate.isPending}
+          >
             Cancel
           </Button>
           <Button

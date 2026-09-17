@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/auth/password-input";
@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function RegisterPage() {
   const { signUp, isSigningUp } = useAuth();
@@ -90,12 +90,9 @@ export default function RegisterPage() {
   return (
     <Card className={AUTH_PANEL_CLASS}>
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
-          Sign Up
-        </CardTitle>
+        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">Sign Up</h1>
         <CardDescription className="text-foreground/70">
-          Set up your {APP_NAME} account to start building your knowledge
-          base.
+          Set up your {APP_NAME} account to start building your knowledge base.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-8 pb-10 sm:px-16 sm:pb-12">
@@ -122,12 +119,12 @@ export default function RegisterPage() {
                           "rounded-sm border px-4 py-3 text-left text-sm font-medium transition-colors",
                           field.value === type
                             ? "border-primary bg-primary/10 text-foreground"
-                            : "border-foreground/15 bg-secondary text-foreground/70 hover:border-foreground/30",
+                            : "border-border bg-secondary text-foreground/70 hover:border-foreground/30",
                         )}
                         aria-pressed={field.value === type}
                       >
                         {type === "magistrate" ? "Magistrate" : "Court Clerk"}
-                        <span className="mt-1 block text-xs font-normal text-foreground/50">
+                        <span className="mt-1 block text-xs font-normal text-muted-foreground">
                           {type === "magistrate"
                             ? "You sit the court. A Court Assignment Administrator must approve your court."
                             : "A magistrate at each court you request must approve your access."}
@@ -141,10 +138,10 @@ export default function RegisterPage() {
             />
 
             {accountType === "clerk" && (
-              <p className="rounded-sm border border-foreground/10 bg-foreground/5 px-3 py-2 text-xs text-foreground/60">
-                Court access must be approved by the magistrate assigned to each
-                court you request. You'll be able to sign in and check your
-                request status once your email is verified, even before approval.
+              <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+                Court access must be approved by the magistrate assigned to each court you request.
+                You'll be able to sign in and check your request status once your email is verified,
+                even before approval.
               </p>
             )}
 
@@ -224,11 +221,10 @@ export default function RegisterPage() {
             />
 
             {accountType === "magistrate" && (
-              <p className="rounded-sm border border-foreground/10 bg-foreground/5 px-3 py-2 text-xs text-foreground/60">
-                Selecting a court submits a request, not an immediate assignment. A Court
-                Assignment Administrator reviews each requested court independently. You'll be
-                able to sign in and check your request status once your email is verified, even
-                before approval.
+              <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+                Selecting a court submits a request, not an immediate assignment. A Court Assignment
+                Administrator reviews each requested court independently. You'll be able to sign in
+                and check your request status once your email is verified, even before approval.
               </p>
             )}
 
@@ -237,7 +233,9 @@ export default function RegisterPage() {
               name="staffId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground/80">Staff / employee ID (optional)</FormLabel>
+                  <FormLabel className="text-foreground/80">
+                    Staff / employee ID (optional)
+                  </FormLabel>
                   <FormControl>
                     <Input className={fieldClassName} {...field} />
                   </FormControl>
@@ -253,7 +251,7 @@ export default function RegisterPage() {
                   void districtsQuery.refetch();
                   void courtsQuery.refetch();
                 }}
-                className="border-foreground/15 bg-foreground/5 py-4"
+                className="border-border bg-foreground/5 py-4"
               />
             )}
 
@@ -277,15 +275,17 @@ export default function RegisterPage() {
                       {!accountType
                         ? "Choose an account type first"
                         : districtsQuery.isPending
-                        ? "Loading districts…"
-                        : districtsQuery.isError
-                          ? "Districts unavailable"
-                          : (districts ?? []).length === 0
-                            ? "No districts available"
-                            : "Select a district…"}
+                          ? "Loading districts…"
+                          : districtsQuery.isError
+                            ? "Districts unavailable"
+                            : (districts ?? []).length === 0
+                              ? "No districts available"
+                              : "Select a district…"}
                     </option>
                     {(districts ?? []).map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
                     ))}
                   </Select>
                   <FormMessage />
@@ -299,27 +299,33 @@ export default function RegisterPage() {
               render={() => (
                 <FormItem>
                   <FormLabel className="text-foreground/80">
-                    {accountType === "clerk" ? "Court(s) you need access to" : "Court(s) you are requesting"}
+                    {accountType === "clerk"
+                      ? "Court(s) you need access to"
+                      : "Court(s) you are requesting"}
                   </FormLabel>
-                  <div className="space-y-2 rounded-sm border border-foreground/15 bg-secondary p-3">
+                  <div className="space-y-2 rounded-sm border border-border bg-secondary p-3">
                     {courtsQuery.isPending ? (
-                      <p className="text-sm text-foreground/50">Loading courts…</p>
+                      <p className="text-sm text-muted-foreground">Loading courts…</p>
                     ) : courtsQuery.isError ? (
-                      <p className="text-sm text-foreground/50">Courts could not be loaded.</p>
+                      <p className="text-sm text-muted-foreground">Courts could not be loaded.</p>
                     ) : !accountType ? (
-                      <p className="text-sm text-foreground/50">Choose Magistrate or Court Clerk first.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Choose Magistrate or Court Clerk first.
+                      </p>
                     ) : !districtId ? (
-                      <p className="text-sm text-foreground/50">Select a district first.</p>
+                      <p className="text-sm text-muted-foreground">Select a district first.</p>
                     ) : courtsInDistrict.length === 0 ? (
-                      <p className="text-sm text-foreground/50">No courts found in this district.</p>
+                      <p className="text-sm text-muted-foreground">
+                        No courts found in this district.
+                      </p>
                     ) : (
                       <>
                         {accountType === "magistrate" && assignedInDistrict.length > 0 && (
-                          <p className="text-sm text-[hsl(var(--notice-action))]">
-                            Courts marked occupied already have a signed-in primary magistrate.
-                            You can still request one as a special exception. An administrator
-                            decides whether to replace that magistrate or seat two at that court.
-                            The request does not fill the court until you have signed in.
+                          <p className="text-sm text-notice-action">
+                            Courts marked occupied already have a signed-in primary magistrate. You
+                            can still request one as a special exception. An administrator decides
+                            whether to replace that magistrate or seat two at that court. The
+                            request does not fill the court until you have signed in.
                           </p>
                         )}
                         <div className="max-h-48 space-y-2 overflow-y-auto">
@@ -345,7 +351,7 @@ export default function RegisterPage() {
                                   {court.name}
                                 </span>
                                 {isAssigned && (
-                                  <span className="text-[11px] uppercase tracking-wide text-[hsl(var(--notice-action))]">
+                                  <span className="text-[11px] uppercase tracking-wide text-notice-action">
                                     Occupied — exception
                                   </span>
                                 )}
@@ -378,7 +384,7 @@ export default function RegisterPage() {
                           ? "e.g. your clerk's office, or the magistrate you work with"
                           : "e.g. context for your request"
                       }
-                      className="border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50"
+                      className="border border-border bg-secondary text-foreground placeholder:text-muted-foreground"
                       {...field}
                     />
                   </FormControl>
@@ -400,10 +406,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-sm text-foreground/70">
           Already have an account?{" "}
-          <Link
-            to={ROUTES.login}
-            className="font-medium text-foreground hover:underline"
-          >
+          <Link to={ROUTES.login} className="font-medium text-foreground hover:underline">
             Sign In
           </Link>
         </p>

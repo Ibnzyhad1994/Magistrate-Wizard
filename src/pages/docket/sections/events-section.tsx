@@ -10,10 +10,13 @@ import { useDocketEvents } from "@/hooks/docket/use-docket-events";
 import { usePendingHearings } from "@/hooks/offline/use-pending-hearings";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
-import { useDocketMatterCategories, useDocketCapacitySnapshot } from "@/hooks/docket/use-docket-capacity";
+import {
+  useDocketMatterCategories,
+  useDocketCapacitySnapshot,
+} from "@/hooks/docket/use-docket-capacity";
 import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
-import type { DocketEvent } from "@/types/database.types";
+import type { DocketEvent } from "@/types";
 
 /**
  * One event's own category/date utilisation, rendered as a colored chip
@@ -61,8 +64,7 @@ export function EventsSection({ matterId }: EventsSectionProps) {
   const { eventIds: pendingIds } = usePendingHearings();
   const canEdit = access?.canEdit ?? false;
   const [dialogEvent, setDialogEvent] = useState<DocketEvent | "new" | null>(null);
-  const categoryName = (id: string | null) =>
-    (categories ?? []).find((c) => c.id === id)?.name;
+  const categoryName = (id: string | null) => (categories ?? []).find((c) => c.id === id)?.name;
 
   return (
     <div className="mt-4 space-y-4">
@@ -102,61 +104,55 @@ export function EventsSection({ matterId }: EventsSectionProps) {
           {data.map((event) => {
             const pending = pendingIds.has(event.id);
             return (
-            <Card
-              key={event.id}
-              className={
-                canEdit
-                  ? "cursor-pointer transition-colors hover:bg-muted/40"
-                  : undefined
-              }
-              onClick={canEdit ? () => setDialogEvent(event) : undefined}
-            >
-              <CardContent className="flex flex-wrap items-start justify-between gap-2 p-4">
-                <div className="min-w-0 space-y-1">
-                  <p className="font-medium text-foreground">
-                    {formatDate(event.scheduled_date)}
-                    {event.scheduled_time ? ` at ${formatTimeOnly(event.scheduled_time)}` : ""}
-                    {event.event_type ? ` · ${event.event_type}` : ""}
-                  </p>
-                  {event.stage_at_event && (
-                    <p className="text-sm text-muted-foreground">
-                      Stage: {event.stage_at_event}
+              <Card
+                key={event.id}
+                className={
+                  canEdit ? "cursor-pointer transition-colors hover:bg-muted/40" : undefined
+                }
+                onClick={canEdit ? () => setDialogEvent(event) : undefined}
+              >
+                <CardContent className="flex flex-wrap items-start justify-between gap-2 p-4">
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-medium text-foreground">
+                      {formatDate(event.scheduled_date)}
+                      {event.scheduled_time ? ` at ${formatTimeOnly(event.scheduled_time)}` : ""}
+                      {event.event_type ? ` · ${event.event_type}` : ""}
                     </p>
-                  )}
-                  {event.category_id && categoryName(event.category_id) && (
-                    <EventCategoryChip
-                      scheduledDate={event.scheduled_date}
-                      categoryId={event.category_id}
-                      categoryName={categoryName(event.category_id) as string}
-                    />
-                  )}
-                  {event.location && (
-                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      {event.location}
-                    </p>
-                  )}
-                  {event.outcome_at_event && (
-                    <p className="text-sm text-muted-foreground">
-                      Outcome: {event.outcome_at_event}
-                    </p>
-                  )}
-                  {event.orders_made_at_event && (
-                    <p className="text-sm text-muted-foreground">
-                      Orders: {event.orders_made_at_event}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {pending ? (
-                    <Badge variant="outline">On this device</Badge>
-                  ) : null}
-                  <Badge variant={STATUS_VARIANT[event.event_status] ?? "outline"}>
-                    {toTitleCase(event.event_status)}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+                    {event.stage_at_event && (
+                      <p className="text-sm text-muted-foreground">Stage: {event.stage_at_event}</p>
+                    )}
+                    {event.category_id && categoryName(event.category_id) && (
+                      <EventCategoryChip
+                        scheduledDate={event.scheduled_date}
+                        categoryId={event.category_id}
+                        categoryName={categoryName(event.category_id) as string}
+                      />
+                    )}
+                    {event.location && (
+                      <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        {event.location}
+                      </p>
+                    )}
+                    {event.outcome_at_event && (
+                      <p className="text-sm text-muted-foreground">
+                        Outcome: {event.outcome_at_event}
+                      </p>
+                    )}
+                    {event.orders_made_at_event && (
+                      <p className="text-sm text-muted-foreground">
+                        Orders: {event.orders_made_at_event}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {pending ? <Badge variant="outline">On this device</Badge> : null}
+                    <Badge variant={STATUS_VARIANT[event.event_status] ?? "outline"}>
+                      {toTitleCase(event.event_status)}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

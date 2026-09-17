@@ -7,17 +7,21 @@
  * bytes.
  */
 
-import { isAbortError, throwIfAborted } from "@/lib/async-timeout"
-import type { ExtractionEnvelope } from "@/lib/extraction-pipeline"
-import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality"
-import { assessExtractionLanguage, LANGUAGE_HONESTY_MESSAGE } from "@/lib/extraction-language"
-import { LOW_OCR_MEAN_CONFIDENCE, MAX_OCR_PAGES, MIN_OCR_MEAN_CONFIDENCE } from "@/lib/ocr/constants"
-import { extractEmbeddedJpegImages } from "@/lib/ocr/embedded-images"
-import { recognizeImage, yieldForUi } from "@/lib/ocr/engine"
-import { postprocessOcrText } from "@/lib/ocr/postprocess"
-import { rasterizePdfPages } from "@/lib/ocr/rasterize-pdf"
-import { sanitizeExtractedText } from "@/lib/text-sanitize"
-import type { PdfPageResult } from "@/lib/pdf-text-extraction"
+import { isAbortError, throwIfAborted } from "@/lib/async-timeout";
+import type { ExtractionEnvelope } from "@/lib/extraction-pipeline";
+import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD } from "@/lib/extraction-quality";
+import { assessExtractionLanguage, LANGUAGE_HONESTY_MESSAGE } from "@/lib/extraction-language";
+import {
+  LOW_OCR_MEAN_CONFIDENCE,
+  MAX_OCR_PAGES,
+  MIN_OCR_MEAN_CONFIDENCE,
+} from "@/lib/ocr/constants";
+import { extractEmbeddedJpegImages } from "@/lib/ocr/embedded-images";
+import { recognizeImage, yieldForUi } from "@/lib/ocr/engine";
+import { postprocessOcrText } from "@/lib/ocr/postprocess";
+import { rasterizePdfPages } from "@/lib/ocr/rasterize-pdf";
+import { sanitizeExtractedText } from "@/lib/text-sanitize";
+import type { PdfPageResult } from "@/lib/pdf-text-extraction";
 
 const unavailable = (warnings: string[]): ExtractionEnvelope => ({
   status: "requires_ocr",
@@ -33,7 +37,7 @@ const unavailable = (warnings: string[]): ExtractionEnvelope => ({
   pages: [],
   pageCount: 0,
   unreadableReason: "no_text_found",
-})
+});
 
 const failedOcr = (warnings: string[], ocrUsed: boolean): ExtractionEnvelope => ({
   status: "requires_ocr",
@@ -49,25 +53,28 @@ const failedOcr = (warnings: string[], ocrUsed: boolean): ExtractionEnvelope => 
   pages: [],
   pageCount: 0,
   unreadableReason: "no_text_found",
-})
+});
 
 export interface OcrRunOptions {
-  onProgress?: (page: number, total: number) => void
-  maxPages?: number
-  signal?: AbortSignal
+  onProgress?: (page: number, total: number) => void;
+  maxPages?: number;
+  signal?: AbortSignal;
 }
 
 /**
  * Prefer rasterized page images. Embedded JPEGs are often thumbnails in
  * mixed PDFs; use them only when rasterize cannot produce pages.
  */
-export function shouldUseEmbeddedJpegsForOcr(rasterPageCount: number, embeddedJpegCount: number): boolean {
-  return rasterPageCount === 0 && embeddedJpegCount > 0
+export function shouldUseEmbeddedJpegsForOcr(
+  rasterPageCount: number,
+  embeddedJpegCount: number,
+): boolean {
+  return rasterPageCount === 0 && embeddedJpegCount > 0;
 }
 
 interface PageImage {
-  pageNumber: number
-  bytes: Uint8Array
+  pageNumber: number;
+  bytes: Uint8Array;
 }
 
 const collectPageImages = async (
@@ -75,116 +82,127 @@ const collectPageImages = async (
   maxPages: number,
   signal?: AbortSignal,
 ): Promise<{ images: PageImage[]; warnings: string[] }> => {
-  const warnings: string[] = []
-  let rasterCount = 0
+  const warnings: string[] = [];
+  let rasterCount = 0;
 
   try {
-    const raster = await rasterizePdfPages(file, { maxPages, signal })
-    rasterCount = raster.length
+    const raster = await rasterizePdfPages(file, { maxPages, signal });
+    rasterCount = raster.length;
     if (raster.length > 0) {
       if (raster.length >= maxPages) {
         warnings.push(
           `Only the first ${maxPages} pages were recognized. Paste any remaining pages manually if needed.`,
-        )
+        );
       }
       return {
         images: raster.map((p) => ({ pageNumber: p.pageNumber, bytes: p.png })),
         warnings,
-      }
+      };
     }
   } catch (e) {
-    if (isAbortError(e)) throw e
-    const name = e && typeof e === "object" && "name" in e ? String((e as { name: string }).name) : ""
+    if (isAbortError(e)) throw e;
+    const name =
+      e && typeof e === "object" && "name" in e ? String((e as { name: string }).name) : "";
     if (name !== "InvalidPDFException") {
-      console.error("PDF rasterization for OCR failed:", e)
-      warnings.push("Could not render PDF pages for text recognition.")
+      console.error("PDF rasterization for OCR failed:", e);
+      warnings.push("Could not render PDF pages for text recognition.");
     }
   }
 
   try {
-    const embedded = await extractEmbeddedJpegImages(file)
-    const substantial = embedded.filter((img) => img.bytes.length >= 20_000)
+    const embedded = await extractEmbeddedJpegImages(file);
+    const substantial = embedded.filter((img) => img.bytes.length >= 20_000);
     if (shouldUseEmbeddedJpegsForOcr(rasterCount, substantial.length)) {
       return {
-        images: substantial.slice(0, maxPages).map((img, i) => ({ pageNumber: i + 1, bytes: img.bytes })),
+        images: substantial
+          .slice(0, maxPages)
+          .map((img, i) => ({ pageNumber: i + 1, bytes: img.bytes })),
         warnings,
-      }
+      };
     }
   } catch (e) {
-    console.error("Embedded JPEG extraction for OCR failed:", e)
+    console.error("Embedded JPEG extraction for OCR failed:", e);
   }
 
-  return { images: [], warnings }
-}
+  return { images: [], warnings };
+};
 
 const toRecognizeInput = (bytes: Uint8Array): Buffer | Blob => {
   if (typeof window === "undefined") {
-    return Buffer.from(bytes)
+    return Buffer.from(bytes);
   }
-  const copy = new Uint8Array(bytes.byteLength)
-  copy.set(bytes)
-  return new Blob([copy], { type: "image/png" })
-}
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new Blob([copy], { type: "image/png" });
+};
 
 export const runOcr = async (file: File, options?: OcrRunOptions): Promise<ExtractionEnvelope> => {
-  throwIfAborted(options?.signal)
-  const maxPages = options?.maxPages ?? MAX_OCR_PAGES
-  const { images, warnings: collectWarnings } = await collectPageImages(file, maxPages, options?.signal)
+  throwIfAborted(options?.signal);
+  const maxPages = options?.maxPages ?? MAX_OCR_PAGES;
+  const { images, warnings: collectWarnings } = await collectPageImages(
+    file,
+    maxPages,
+    options?.signal,
+  );
   if (images.length === 0) {
     return unavailable([
       ...collectWarnings,
       "No scanned pages could be rendered for text recognition. Paste the text manually, or try a different copy of the document.",
-    ])
+    ]);
   }
 
-  const pageTexts: PdfPageResult[] = []
-  const confidences: number[] = []
-  const warnings = [...collectWarnings]
+  const pageTexts: PdfPageResult[] = [];
+  const confidences: number[] = [];
+  const warnings = [...collectWarnings];
 
   for (let i = 0; i < images.length; i++) {
-    throwIfAborted(options?.signal)
-    const image = images[i]
-    options?.onProgress?.(image.pageNumber, images.length)
+    throwIfAborted(options?.signal);
+    const image = images[i];
+    options?.onProgress?.(image.pageNumber, images.length);
     try {
-      const result = await recognizeImage(toRecognizeInput(image.bytes), options?.signal)
-      const cleaned = postprocessOcrText(result.text)
+      const result = await recognizeImage(toRecognizeInput(image.bytes), options?.signal);
+      const cleaned = postprocessOcrText(result.text);
       pageTexts.push({
         pageNumber: image.pageNumber,
         text: cleaned,
         characterCount: cleaned.length,
-      })
-      confidences.push(result.confidence)
+      });
+      confidences.push(result.confidence);
     } catch (e) {
-      if (isAbortError(e)) throw e
-      console.error(`OCR failed on page ${image.pageNumber}:`, e)
-      warnings.push(`Text recognition failed on page ${image.pageNumber}.`)
+      if (isAbortError(e)) throw e;
+      console.error(`OCR failed on page ${image.pageNumber}:`, e);
+      warnings.push(`Text recognition failed on page ${image.pageNumber}.`);
     }
     // Let the admin tab paint between pages — critical on slower machines.
-    if (i < images.length - 1) await yieldForUi()
+    if (i < images.length - 1) await yieldForUi();
   }
 
   if (pageTexts.length === 0) {
     return failedOcr(
       [...warnings, "Text recognition ran but could not read any page of this document."],
       true,
-    )
+    );
   }
 
   const combined = pageTexts
     .map((p) => p.text)
     .filter((t) => t.trim())
-    .join("\n\n")
-  const sanitized = sanitizeExtractedText(combined)
-  const quality = assessExtractionQuality(sanitized.text)
+    .join("\n\n");
+  const sanitized = sanitizeExtractedText(combined);
+  const quality = assessExtractionQuality(sanitized.text);
   const meanConfidence =
-    confidences.length > 0 ? confidences.reduce((s, n) => s + n, 0) / confidences.length : 0
+    confidences.length > 0 ? confidences.reduce((s, n) => s + n, 0) / confidences.length : 0;
 
   if (sanitized.removedCount > 0) {
-    warnings.push(`Removed ${sanitized.removedCount} character(s) that cannot be safely stored from recognized text.`)
+    warnings.push(
+      `Removed ${sanitized.removedCount} character(s) that cannot be safely stored from recognized text.`,
+    );
   }
-  warnings.push(...quality.warnings)
+  warnings.push(...quality.warnings);
   if (meanConfidence > 0 && meanConfidence < LOW_OCR_MEAN_CONFIDENCE) {
-    warnings.push("Recognized text has modest engine confidence. Please read it against the original scan.")
+    warnings.push(
+      "Recognized text has modest engine confidence. Please read it against the original scan.",
+    );
   }
 
   if (!quality.passed || meanConfidence < MIN_OCR_MEAN_CONFIDENCE) {
@@ -196,19 +214,26 @@ export const runOcr = async (file: File, options?: OcrRunOptions): Promise<Extra
           : "Recognized text did not pass quality checks and was withheld.",
       ],
       true,
-    )
+    );
   }
 
-  const lang = assessExtractionLanguage(sanitized.text)
+  const lang = assessExtractionLanguage(sanitized.text);
   if (!lang.ok && lang.reason) {
-    return failedOcr([...warnings, LANGUAGE_HONESTY_MESSAGE[lang.reason]], true)
+    return failedOcr([...warnings, LANGUAGE_HONESTY_MESSAGE[lang.reason]], true);
   }
 
-  const status = quality.score >= CLEAN_SCORE_THRESHOLD && meanConfidence >= LOW_OCR_MEAN_CONFIDENCE ? "extracted" : "low_quality"
+  const status =
+    quality.score >= CLEAN_SCORE_THRESHOLD && meanConfidence >= LOW_OCR_MEAN_CONFIDENCE
+      ? "extracted"
+      : "low_quality";
   const pages: PdfPageResult[] = pageTexts.map((p) => {
-    const pageSanitized = sanitizeExtractedText(p.text)
-    return { pageNumber: p.pageNumber, text: pageSanitized.text, characterCount: pageSanitized.text.length }
-  })
+    const pageSanitized = sanitizeExtractedText(p.text);
+    return {
+      pageNumber: p.pageNumber,
+      text: pageSanitized.text,
+      characterCount: pageSanitized.text.length,
+    };
+  });
 
   return {
     status,
@@ -224,5 +249,5 @@ export const runOcr = async (file: File, options?: OcrRunOptions): Promise<Extra
     pages,
     pageCount: pages.length,
     unreadableReason: null,
-  }
-}
+  };
+};

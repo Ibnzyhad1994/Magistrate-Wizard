@@ -52,13 +52,7 @@ export function SaveState({
     wasDirty.current = isDirty;
   }, [isDirty, isSaving]);
 
-  const label = isSaving
-    ? "Saving…"
-    : isDirty
-      ? "Unsaved changes"
-      : justSaved
-        ? "Saved"
-        : null;
+  const label = isSaving ? "Saving…" : isDirty ? "Unsaved changes" : justSaved ? "Saved" : null;
 
   if (!label) return null;
 
@@ -70,15 +64,12 @@ export function SaveState({
       aria-live="polite"
       className={cn(
         "inline-flex items-center gap-1.5 text-[11px] font-medium tabular-nums",
-        isDirty && !isSaving ? "text-[hsl(var(--stage-progress))]" : "text-foreground/45",
+        isDirty && !isSaving ? "text-stage-progress" : "text-muted-foreground",
         className,
       )}
     >
       {isDirty && !isSaving && (
-        <span
-          aria-hidden="true"
-          className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--stage-progress))]"
-        />
+        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-stage-progress" />
       )}
       {label}
     </span>

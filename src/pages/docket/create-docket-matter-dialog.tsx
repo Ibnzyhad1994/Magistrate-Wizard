@@ -43,6 +43,10 @@ import {
   type ProcedureColumnKey,
 } from "@/lib/docket-procedure";
 import { broughtForwardStageNotice } from "@/lib/callover";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { getErrorMessage } from "@/lib/utils";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   boardColumnPatch,
   isProtectionCategory,
@@ -104,12 +108,11 @@ export function CreateDocketMatterDialog({
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const { data: categories } = useDocketMatterCategories();
   const createMatter = useCreateDocketMatter();
-  const lockedCourt = defaultCourtId ? myCourts?.find((c) => c.court_id === defaultCourtId) : undefined;
+  const lockedCourt = defaultCourtId
+    ? myCourts?.find((c) => c.court_id === defaultCourtId)
+    : undefined;
   const otherCategoryId = categories?.find((c) => c.name === OTHER_MATTER_CATEGORY_NAME)?.id;
-  const schema = useMemo(
-    () => docketMatterSchemaForCategories(otherCategoryId),
-    [otherCategoryId],
-  );
+  const schema = useMemo(() => docketMatterSchemaForCategories(otherCategoryId), [otherCategoryId]);
 
   const form = useForm<DocketMatterFormValues>({
     resolver: zodResolver(schema),
@@ -149,6 +152,39 @@ export function CreateDocketMatterDialog({
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
   const missingDistrict = !!selectedCourtId && !!selectedCourt && !selectedCourt.district_id;
 
+  // Case numbers are unique per district (docket_matters_district_case_
+  // number_unique, 0020). Look the pair up as the person types so the
+  // collision is shown next to the field, with a link, instead of only as
+  // a toast after Submit. RLS applies: a matter this person cannot see is
+  // not found here, and the constraint still catches it on insert (the
+  // catch in onSubmit re-runs this lookup so the notice appears then too).
+  // The bin is not excluded: a binned matter still holds the number.
+  const watchedDistrictId = form.watch("district_id");
+  const watchedCaseNumber = form.watch("case_number");
+  const debouncedCaseNumber = useDebouncedValue(watchedCaseNumber.trim());
+  const duplicateLookup = useQuery({
+    queryKey: ["docket-matters", "case-number-check", watchedDistrictId, debouncedCaseNumber],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("docket_matters")
+        .select("id, case_number, matter_title, deleted_at")
+        .eq("district_id", watchedDistrictId)
+        .eq("case_number", debouncedCaseNumber)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!watchedDistrictId && debouncedCaseNumber.length >= 2,
+    staleTime: 10_000,
+    meta: { silent: true },
+  });
+  const duplicate =
+    duplicateLookup.data && duplicateLookup.data.case_number === watchedCaseNumber.trim()
+      ? duplicateLookup.data
+      : null;
+  const [submitDuplicate, setSubmitDuplicate] = useState(false);
+
   // Brought-forward intake (0129). Collapsed by default, so the ordinary
   // creation flow is unchanged: a matter with none of these set takes the
   // column defaults and lands at Arraignment exactly as before.
@@ -158,9 +194,7 @@ export function CreateDocketMatterDialog({
     ...seededValues,
     workflow_protocol: createProtocol,
     category_name: selectedCategoryName,
-    decision_amount: seededValues.decision_amount
-      ? Number(seededValues.decision_amount)
-      : null,
+    decision_amount: seededValues.decision_amount ? Number(seededValues.decision_amount) : null,
   });
 
   function handleCourtChange(courtId: string) {
@@ -170,9 +204,13 @@ export function CreateDocketMatterDialog({
   }
 
   async function onSubmit(values: DocketMatterFormValues) {
-    if (otherCategoryId && values.category_id === otherCategoryId && !values.category_other?.trim()) {
-      form.setError("category_other", { type: "manual", message: "Describe the matter type" })
-      return
+    if (
+      otherCategoryId &&
+      values.category_id === otherCategoryId &&
+      !values.category_other?.trim()
+    ) {
+      form.setError("category_other", { type: "manual", message: "Describe the matter type" });
+      return;
     }
     try {
       const categoryName = categories?.find((c) => c.id === values.category_id)?.name;
@@ -184,8 +222,8 @@ export function CreateDocketMatterDialog({
                   boardColumnPatch(
                     "decision",
                     isProtectionCategory(categoryName)
-                      ? values.decision_granted ?? ""
-                      : values.decision_amount ?? "",
+                      ? (values.decision_granted ?? "")
+                      : (values.decision_amount ?? ""),
                     categoryName,
                   ),
                 );
@@ -218,21 +256,31 @@ export function CreateDocketMatterDialog({
       onOpenChange(false);
       form.reset();
       setBroughtForward(false);
+      setSubmitDuplicate(false);
       if (onCreated) onCreated(created.id);
       else navigate(ROUTES.docketMatter(created.id));
-    } catch {
-      // Surfaced globally via the mutation cache toast subscriber.
+    } catch (err) {
+      // Surfaced globally via the mutation cache toast subscriber. A
+      // district/case-number collision is also pinned to the field.
+      if (/case number already exists/i.test(getErrorMessage(err))) {
+        setSubmitDuplicate(true);
+        form.setError("case_number", {
+          type: "manual",
+          message: "That case number already exists in this district.",
+        });
+        void duplicateLookup.refetch();
+      }
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New docket matter</DialogTitle>
           <DialogDescription>
-            Create a new matter on your docket. You can add events, parties,
-            and other details afterward.
+            Create a new matter on your docket. You can add events, parties, and other details
+            afterward.
           </DialogDescription>
         </DialogHeader>
 
@@ -306,8 +354,7 @@ export function CreateDocketMatterDialog({
                     </span>
                   ) : (
                     <span className="text-destructive">
-                      Not set. Contact an administrator before creating a
-                      matter here.
+                      Not set. Contact an administrator before creating a matter here.
                     </span>
                   )}
                 </p>
@@ -320,8 +367,46 @@ export function CreateDocketMatterDialog({
                   <FormItem>
                     <FormLabel>Case number</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. 12345/2026" {...field} />
+                      <Input
+                        placeholder="e.g. 12345/2026"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (submitDuplicate) {
+                            setSubmitDuplicate(false);
+                            form.clearErrors("case_number");
+                          }
+                        }}
+                      />
                     </FormControl>
+                    {duplicate ? (
+                      <p role="status" className="text-xs text-notice-action">
+                        {duplicate.deleted_at
+                          ? "This case number belongs to a matter in the bin. Restore it from the "
+                          : "This case number is already used in this district by "}
+                        {duplicate.deleted_at ? (
+                          <Link
+                            to={ROUTES.docketBin}
+                            className="font-medium underline underline-offset-2"
+                          >
+                            Docket bin
+                          </Link>
+                        ) : (
+                          <Link
+                            to={ROUTES.docketMatter(duplicate.id)}
+                            className="font-medium underline underline-offset-2"
+                          >
+                            {duplicate.matter_title}
+                          </Link>
+                        )}
+                        {duplicate.deleted_at ? " instead of creating it again." : "."}
+                      </p>
+                    ) : submitDuplicate ? (
+                      <p role="status" className="text-xs text-muted-foreground">
+                        The existing matter is not visible to you. Ask a magistrate at that court,
+                        or use a different case number.
+                      </p>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -427,9 +512,9 @@ export function CreateDocketMatterDialog({
                 {broughtForward && (
                   <div className="space-y-4 border-t border-input px-3 py-3">
                     <p className="text-xs text-muted-foreground">
-                      For a matter inherited from a predecessor, transferred in, or
-                      pre-dating this docket. Record where it actually stands so it
-                      appears at the right stage instead of at the start of the board.
+                      For a matter inherited from a predecessor, transferred in, or pre-dating this
+                      docket. Record where it actually stands so it appears at the right stage
+                      instead of at the start of the board.
                     </p>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -445,7 +530,11 @@ export function CreateDocketMatterDialog({
                                   <FormItem>
                                     <FormLabel className="text-xs">{column.label}</FormLabel>
                                     <FormControl>
-                                      <Select {...field} value={field.value ?? ""} aria-label={column.label}>
+                                      <Select
+                                        {...field}
+                                        value={field.value ?? ""}
+                                        aria-label={column.label}
+                                      >
                                         <option value="">Not recorded</option>
                                         {column.values.map((value) => (
                                           <option key={value} value={value}>
@@ -510,10 +599,7 @@ export function CreateDocketMatterDialog({
                     </div>
 
                     <p className="rounded-sm bg-muted px-2.5 py-2 text-xs text-foreground">
-                      {broughtForwardStageNotice(
-                        previewStage,
-                        procedureStageLabel(previewStage),
-                      )}
+                      {broughtForwardStageNotice(previewStage, procedureStageLabel(previewStage))}
                     </p>
 
                     <FormField
@@ -539,7 +625,9 @@ export function CreateDocketMatterDialog({
                       name="brought_forward_at"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Date it entered this docket (optional)</FormLabel>
+                          <FormLabel className="text-xs">
+                            Date it entered this docket (optional)
+                          </FormLabel>
                           <FormControl>
                             <DateOnlyInput
                               value={field.value ?? ""}
@@ -564,10 +652,11 @@ export function CreateDocketMatterDialog({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMatter.isPending || missingDistrict}>
-                  {createMatter.isPending && (
-                    <LoadingSpinner className="text-current" size={16} />
-                  )}
+                <Button
+                  type="submit"
+                  disabled={createMatter.isPending || missingDistrict || !!duplicate}
+                >
+                  {createMatter.isPending && <LoadingSpinner className="text-current" size={16} />}
                   Create matter
                 </Button>
               </DialogFooter>

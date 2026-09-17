@@ -1,9 +1,9 @@
-import { procedureStageLabel } from "@/lib/docket-procedure"
-import { DashboardHeading } from "@/components/dashboard/dashboard-folio"
+import { procedureStageLabel } from "@/lib/docket-procedure";
+import { DashboardHeading } from "@/components/dashboard/dashboard-folio";
 
 export function StageLedger({ counts }: { counts: Record<string, number> }) {
-  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1])
-  const max = Math.max(1, ...rows.map(([, count]) => count))
+  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...rows.map(([, count]) => count));
 
   return (
     <section aria-labelledby="stage-ledger-heading">
@@ -19,7 +19,10 @@ export function StageLedger({ counts }: { counts: Record<string, number> }) {
       ) : (
         <ul className="space-y-3">
           {rows.map(([stage, count]) => (
-            <li key={stage} className="grid grid-cols-[minmax(0,7.5rem)_1fr_1.75rem] items-center gap-3 text-xs">
+            <li
+              key={stage}
+              className="grid grid-cols-[minmax(0,7.5rem)_1fr_1.75rem] items-center gap-3 text-xs"
+            >
               <span className="truncate text-muted-foreground">{procedureStageLabel(stage)}</span>
               <span className="h-0.5 bg-foreground/15">
                 <span
@@ -33,25 +36,21 @@ export function StageLedger({ counts }: { counts: Record<string, number> }) {
         </ul>
       )}
     </section>
-  )
+  );
 }
 
-export function Sparkline({
-  points,
-}: {
-  points: Array<{ date: string; count: number }>
-}) {
-  const max = Math.max(1, ...points.map((point) => point.count))
-  const width = 320
-  const height = 72
-  const step = points.length > 1 ? width / (points.length - 1) : width
+export function Sparkline({ points }: { points: Array<{ date: string; count: number }> }) {
+  const max = Math.max(1, ...points.map((point) => point.count));
+  const width = 320;
+  const height = 72;
+  const step = points.length > 1 ? width / (points.length - 1) : width;
   const coords = points.map((point, index) => {
-    const x = points.length === 1 ? width / 2 : index * step
-    const y = height - 8 - (point.count / max) * (height - 16)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-  const polyline = coords.join(" ")
-  const area = `0,${height} ${polyline} ${width},${height}`
+    const x = points.length === 1 ? width / 2 : index * step;
+    const y = height - 8 - (point.count / max) * (height - 16);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const polyline = coords.join(" ");
+  const area = `0,${height} ${polyline} ${width},${height}`;
 
   return (
     <section aria-labelledby="sparkline-heading">
@@ -90,5 +89,5 @@ export function Sparkline({
         />
       </svg>
     </section>
-  )
+  );
 }

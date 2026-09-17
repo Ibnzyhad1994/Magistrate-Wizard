@@ -31,9 +31,7 @@ export function useDocketParties(matterId: string | undefined) {
 export function useCreateDocketParty(matterId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (
-      values: Omit<TablesInsert<"docket_matter_parties">, "docket_matter_id">,
-    ) => {
+    mutationFn: async (values: Omit<TablesInsert<"docket_matter_parties">, "docket_matter_id">) => {
       const { data, error } = await supabase
         .from("docket_matter_parties")
         .insert({ ...values, docket_matter_id: matterId })

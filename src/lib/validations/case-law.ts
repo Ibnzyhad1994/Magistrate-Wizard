@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSafeHref } from "@/lib/html-sanitize";
 
 /**
  * Shared shape for creating/editing PERSONAL research (owner_id = caller).
@@ -11,7 +12,12 @@ export const caseLawFieldsSchema = z.object({
   court: z.string().min(1, "Court is required").max(300),
   jurisdiction: z.string().min(1, "Jurisdiction is required").max(200),
   decided_date: z.string().optional().or(z.literal("")),
-  source_url: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  source_url: z
+    .string()
+    .url("Enter a valid URL")
+    .refine(isSafeHref, "Enter an http(s) URL")
+    .optional()
+    .or(z.literal("")),
   summary: z.string().max(5000).optional().or(z.literal("")),
   full_text: z.string().optional().or(z.literal("")),
   category_id: z.string().optional().or(z.literal("")),

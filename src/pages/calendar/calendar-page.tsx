@@ -120,7 +120,9 @@ export default function CalendarPage() {
             <Button variant="ghost" size="icon" onClick={handlePrev} aria-label="Previous month">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <p className="min-w-[9rem] text-center text-sm font-semibold text-foreground">{monthLabel}</p>
+            <p className="min-w-[9rem] text-center text-sm font-semibold text-foreground">
+              {monthLabel}
+            </p>
             <Button variant="ghost" size="icon" onClick={handleNext} aria-label="Next month">
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -149,7 +151,7 @@ export default function CalendarPage() {
       {view === "month" && !isPending && !isError ? (
         <div
           className={cn(
-            "overflow-x-auto rounded-md border border-foreground/10 bg-card transition-opacity duration-150",
+            "overflow-x-auto rounded-md border border-border bg-card transition-opacity duration-150",
             // Month navigation now holds the previous month's grid while
             // the next loads (placeholderData) instead of blanking to
             // skeletons — dimming keeps that legible as "refreshing"
@@ -158,11 +160,11 @@ export default function CalendarPage() {
           )}
           aria-busy={isFetching}
         >
-          <div className="grid grid-cols-7 border-b border-foreground/10">
+          <div className="grid grid-cols-7 border-b border-border">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="px-0.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-foreground/50 sm:px-2 sm:text-[11px]"
+                className="px-0.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-2 sm:text-[11px]"
               >
                 {day}
               </div>
@@ -189,13 +191,16 @@ export default function CalendarPage() {
                   >
                     {Number(date.slice(8))}
                   </div>
-                  <div className="flex flex-wrap gap-0.5 sm:hidden" aria-hidden={dayEvents.length === 0}>
+                  <div
+                    className="flex flex-wrap gap-0.5 sm:hidden"
+                    aria-hidden={dayEvents.length === 0}
+                  >
                     {dayEvents.slice(0, 3).map((event) => (
                       <span
                         key={event.id}
                         className={cn(
                           "h-1.5 w-1.5 rounded-full bg-primary",
-                          event.pending && "bg-[hsl(var(--notice-action))]",
+                          event.pending && "bg-notice-action",
                           isInactiveEventStatus(event.event_status) && "bg-foreground/30",
                         )}
                       />
@@ -209,21 +214,22 @@ export default function CalendarPage() {
                           onClick={() => handleOpenEvent(event)}
                           className={cn(
                             "block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-foreground/90 hover:bg-foreground/10",
-                            isInactiveEventStatus(event.event_status) && "text-foreground/40 line-through",
-                            event.pending && "text-[hsl(var(--notice-action))]",
+                            isInactiveEventStatus(event.event_status) &&
+                              "text-muted-foreground line-through",
+                            event.pending && "text-notice-action",
                           )}
                           title={event.court_name ?? undefined}
                           aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
                         >
-                          {event.scheduled_time
-                            ? `${formatTimeOnly(event.scheduled_time)} · `
-                            : ""}
+                          {event.scheduled_time ? `${formatTimeOnly(event.scheduled_time)} · ` : ""}
                           {event.case_number}
                         </button>
                       </li>
                     ))}
                     {dayEvents.length > 3 ? (
-                      <li className="px-1 text-[10px] text-foreground/45">+{dayEvents.length - 3} more</li>
+                      <li className="px-1 text-[10px] text-muted-foreground">
+                        +{dayEvents.length - 3} more
+                      </li>
                     ) : null}
                   </ul>
                 </div>
@@ -236,7 +242,7 @@ export default function CalendarPage() {
       {view === "agenda" && !isPending && !isError && events.length > 0 ? (
         <ol
           className={cn(
-            "divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10 bg-card transition-opacity duration-150",
+            "divide-y divide-foreground/10 overflow-hidden rounded-md border border-border bg-card transition-opacity duration-150",
             isFetching && "opacity-60",
           )}
           aria-busy={isFetching}
@@ -249,7 +255,7 @@ export default function CalendarPage() {
                 className={cn(
                   "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-foreground/5 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
-                  event.pending && "text-[hsl(var(--notice-action))]",
+                  event.pending && "text-notice-action",
                 )}
               >
                 <div>
@@ -261,7 +267,7 @@ export default function CalendarPage() {
                       {event.court_name}
                     </span>
                   )}
-                  <p className="text-xs text-foreground/60">
+                  <p className="text-xs text-muted-foreground">
                     {toTitleCase(event.event_type || "Hearing")}
                     {event.location ? ` · ${event.location}` : ""}
                     {event.pending ? " · On this device" : ""}
@@ -272,7 +278,9 @@ export default function CalendarPage() {
                 </div>
                 <p className="text-xs text-foreground/70">
                   {formatDate(event.scheduled_date)}
-                  {event.scheduled_time ? ` · ${formatTimeOnly(event.scheduled_time)}` : " · All day"}
+                  {event.scheduled_time
+                    ? ` · ${formatTimeOnly(event.scheduled_time)}`
+                    : " · All day"}
                 </p>
               </button>
             </li>

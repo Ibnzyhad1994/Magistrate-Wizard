@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Trash2, FileDown } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
@@ -11,7 +11,7 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
-import { RichTextEditor } from "@/components/common/rich-text-editor";
+import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { SaveIndicator } from "@/components/common/save-indicator";
 import {
@@ -22,8 +22,9 @@ import {
 } from "@/hooks/bench-notes/use-bench-notes";
 import { useBenchNoteParent } from "@/hooks/bench-notes/use-bench-note-parent";
 import { ROUTES } from "@/routes/paths";
-import { toTitleCase } from "@/lib/utils";
+import { formatDateTime, toTitleCase } from "@/lib/utils";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Billboard } from "@/components/browse";
 import { generateBenchNotePdf, benchNotePdfFileName } from "@/lib/export/bench-note-pdf";
 
@@ -45,6 +46,7 @@ export default function BenchNoteDetailPage() {
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.benchNotes, "Back to Bench Notes");
   const { data: note, isPending, isError, error, refetch } = useBenchNote(id);
+  usePageTitle(note?.title ?? null);
   const deleteBenchNote = useDeleteBenchNote();
   const updateFields = useUpdateBenchNoteFields(id ?? "");
   const updateContent = useUpdateBenchNoteContent(id ?? "");
@@ -55,6 +57,8 @@ export default function BenchNoteDetailPage() {
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [title, setTitle] = useState("");
+  const titleId = useId();
+  const statusId = useId();
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
   // Real debounced autosave (this previously required an explicit "Save
@@ -120,9 +124,7 @@ export default function BenchNoteDetailPage() {
   if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
   if (!note) {
     return (
-      <InlineError
-        error={new Error("This note doesn't exist, or you don't have access to it.")}
-      />
+      <InlineError error={new Error("This note doesn't exist, or you don't have access to it.")} />
     );
   }
 
@@ -163,7 +165,7 @@ export default function BenchNoteDetailPage() {
                   : (PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type),
                 status: note.status,
                 contentText: note.content_text,
-                generatedAtLabel: new Date().toLocaleString(),
+                generatedAtLabel: formatDateTime(new Date()),
               });
               doc.save(benchNotePdfFileName(note.title));
             }}
@@ -173,99 +175,103 @@ export default function BenchNoteDetailPage() {
           </Button>
         </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-destructive hover:text-destructive"
-          onClick={() => setConfirmDelete(true)}
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete
-        </Button>
-      </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Title</label>
-              <div className="flex gap-2">
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-                {title !== note.title && title.trim() && (
-                  <Button
-                    size="sm"
-                    disabled={updateFields.isPending}
-                    onClick={() => updateFields.mutate({ title: title.trim() })}
-                  >
-                    Save
-                  </Button>
-                )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor={titleId} className="text-sm font-medium text-foreground">
+                  Title
+                </label>
+                <div className="flex gap-2">
+                  <Input id={titleId} value={title} onChange={(e) => setTitle(e.target.value)} />
+                  {title !== note.title && title.trim() && (
+                    <Button
+                      size="sm"
+                      disabled={updateFields.isPending}
+                      onClick={() => updateFields.mutate({ title: title.trim() })}
+                    >
+                      Save
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor={statusId} className="text-sm font-medium text-foreground">
+                  Status
+                </label>
+                <Select
+                  id={statusId}
+                  value={note.status}
+                  onChange={(e) =>
+                    updateFields.mutate({ status: e.target.value as "draft" | "published" })
+                  }
+                  disabled={updateFields.isPending}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </Select>
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Status</label>
-              <Select
-                value={note.status}
-                onChange={(e) =>
-                  updateFields.mutate({ status: e.target.value as "draft" | "published" })
-                }
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <Checkbox
+                checked={note.is_private}
+                onCheckedChange={(checked) => updateFields.mutate({ is_private: checked })}
                 disabled={updateFields.isPending}
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-              </Select>
-            </div>
-          </div>
-          <label className="flex cursor-pointer items-start gap-2 text-sm">
-            <Checkbox
-              checked={note.is_private}
-              onCheckedChange={(checked) => updateFields.mutate({ is_private: checked })}
-              disabled={updateFields.isPending}
-            />
-            <span>
-              <span className="font-medium text-foreground">Mark as private</span>
-              <br />
-              <span className="text-muted-foreground">
-                For your own organization only. Bench Notes are always
-                restricted to you regardless of this setting; no other user
-                can ever see this note.
+              />
+              <span>
+                <span className="font-medium text-foreground">Mark as private</span>
+                <br />
+                <span className="text-muted-foreground">
+                  For your own organization only. Bench Notes are always restricted to you
+                  regardless of this setting; no other user can ever see this note.
+                </span>
               </span>
-            </span>
-          </label>
-        </CardContent>
-      </Card>
+            </label>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Content</CardTitle>
-          <SaveIndicator state={saveState} onRetry={persist} />
-        </CardHeader>
-        <CardContent>
-          <RichTextEditor
-            key={note.id}
-            content={(note.content as JSONContent | null) ?? null}
-            placeholder="Write your note…"
-            onChange={handleEditorChange}
-          />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Content</CardTitle>
+            <SaveIndicator state={saveState} onRetry={persist} />
+          </CardHeader>
+          <CardContent>
+            <RichTextEditor
+              key={note.id}
+              content={(note.content as JSONContent | null) ?? null}
+              placeholder="Write your note…"
+              onChange={handleEditorChange}
+            />
+          </CardContent>
+        </Card>
 
-      <AlertDialog
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        title="Delete this Bench Note?"
-        description="This permanently deletes the note. This cannot be undone."
-        confirmLabel="Delete"
-        isConfirming={deleteBenchNote.isPending}
-        onConfirm={() =>
-          deleteBenchNote.mutate(note.id, { onSuccess: () => navigate(ROUTES.benchNotes) })
-        }
-      />
-    </div>
+        <AlertDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title="Delete this Bench Note?"
+          description="This permanently deletes the note. This cannot be undone."
+          confirmLabel="Delete"
+          isConfirming={deleteBenchNote.isPending}
+          onConfirm={() =>
+            deleteBenchNote.mutate(note.id, { onSuccess: () => navigate(ROUTES.benchNotes) })
+          }
+        />
+      </div>
     </>
   );
 }

@@ -22,10 +22,7 @@ import {
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useCreateJudgment } from "@/hooks/judgments/use-judgments";
-import {
-  judgmentCreateSchema,
-  type JudgmentCreateFormValues,
-} from "@/lib/validations/judgment";
+import { judgmentCreateSchema, type JudgmentCreateFormValues } from "@/lib/validations/judgment";
 import { ROUTES } from "@/routes/paths";
 
 interface CreateJudgmentDialogProps {
@@ -61,12 +58,11 @@ export function CreateJudgmentDialog({ open, onOpenChange }: CreateJudgmentDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New draft judgment</DialogTitle>
           <DialogDescription>
-            Start a draft. All fields except title are optional and can be
-            filled in afterward.
+            Start a draft. All fields except title are optional and can be filled in afterward.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -155,9 +151,7 @@ export function CreateJudgmentDialog({ open, onOpenChange }: CreateJudgmentDialo
                 Cancel
               </Button>
               <Button type="submit" disabled={createJudgment.isPending}>
-                {createJudgment.isPending && (
-                  <LoadingSpinner className="text-current" size={16} />
-                )}
+                {createJudgment.isPending && <LoadingSpinner className="text-current" size={16} />}
                 Create draft
               </Button>
             </DialogFooter>

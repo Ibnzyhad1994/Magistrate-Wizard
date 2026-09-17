@@ -56,7 +56,7 @@ export default function IssueReportsAdminPage() {
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               filter === s
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-foreground/15 text-foreground/70 hover:bg-foreground/5"
+                : "border-border text-foreground/70 hover:bg-foreground/5"
             }`}
           >
             {s === "all" ? "All" : STATUS_LABELS[s as IssueReportStatus]}
@@ -85,7 +85,7 @@ export default function IssueReportsAdminPage() {
                     {r.type === "bug" ? (
                       <Bug className="h-4 w-4 shrink-0 text-destructive" />
                     ) : (
-                      <Lightbulb className="h-4 w-4 shrink-0 text-[hsl(var(--notice-action))]" />
+                      <Lightbulb className="h-4 w-4 shrink-0 text-notice-action" />
                     )}
                     <p className="font-medium text-foreground">{r.title}</p>
                   </div>
@@ -94,9 +94,7 @@ export default function IssueReportsAdminPage() {
                   </Badge>
                 </div>
 
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                  {r.description}
-                </p>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{r.description}</p>
 
                 <p className="text-xs text-muted-foreground">
                   {r.profiles?.full_name || r.profiles?.email || "Unknown reporter"}

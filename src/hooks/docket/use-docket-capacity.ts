@@ -70,6 +70,7 @@ export function useUpsertDocketCapacitySetting() {
       void queryClient.invalidateQueries({ queryKey: docketCapacityKeys.settings });
       void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -88,6 +89,7 @@ export function useDeleteDocketCapacitySetting() {
       void queryClient.invalidateQueries({ queryKey: docketCapacityKeys.settings });
       void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -117,13 +119,7 @@ export function useDocketCapacitySnapshot(date: string | undefined) {
 
 export function useNextAvailableDocketDate() {
   return useMutation({
-    mutationFn: async ({
-      categoryId,
-      startDate,
-    }: {
-      categoryId: string;
-      startDate: string;
-    }) => {
+    mutationFn: async ({ categoryId, startDate }: { categoryId: string; startDate: string }) => {
       const { data, error } = await supabase.rpc("find_next_available_docket_date", {
         p_category_id: categoryId,
         p_start_date: startDate,
@@ -191,6 +187,7 @@ export function useScheduleDocketEventWithCapacity(matterId: string) {
         void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
       }
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -233,10 +230,13 @@ export function useSetDocketMatterNextDate() {
       if (result.status === "created") {
         toast.success("Next date saved.");
         void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
-        void queryClient.invalidateQueries({ queryKey: ["docket-events", variables.docketMatterId] });
+        void queryClient.invalidateQueries({
+          queryKey: ["docket-events", variables.docketMatterId],
+        });
         void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
       }
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }

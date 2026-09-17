@@ -8,7 +8,13 @@ import {
 import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
 import { HintTooltip } from "@/components/ui/tooltip";
 import { getCapacityStyle } from "@/lib/docket-capacity";
-import { daysOfWeek, weekOfLabel, weekStartSunday, addDaysIso, dayOfLabel } from "@/lib/docket-week";
+import {
+  daysOfWeek,
+  weekOfLabel,
+  weekStartSunday,
+  addDaysIso,
+  dayOfLabel,
+} from "@/lib/docket-week";
 import { formatDate, getLocalDateOnly, parseDateOnly } from "@/lib/utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -22,12 +28,12 @@ const CAPACITY_VIEWS = [
 type CapacityView = (typeof CAPACITY_VIEWS)[number]["id"];
 
 const dayTotalHint = (count: number) =>
-  `${count} matter${count === 1 ? "" : "s"} listed that day, all classifications and stages`
+  `${count} matter${count === 1 ? "" : "s"} listed that day, all classifications and stages`;
 
 const loadPillClass = (onDarkTile: boolean) =>
   `inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-semibold leading-none ${
     onDarkTile ? "bg-white/25" : "bg-neutral-900/15"
-  }`
+  }`;
 
 function WeekdayRow() {
   return (
@@ -128,7 +134,7 @@ function DayTile({
       className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors ${
         size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20"
       } ${style.textClass} ${
-        today ? "border-2 border-[hsl(var(--stage-outcome-complete))]" : "border-border"
+        today ? "border-2 border-stage-outcome-complete" : "border-border"
       } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
       style={{ backgroundColor: style.bg }}
     >
@@ -302,7 +308,7 @@ export function DocketCapacityStrip({
           </div>
         </div>
         <div
-          role="radiogroup"
+          role="group"
           aria-label="Capacity calendar view"
           className="grid w-full grid-cols-3 rounded-md border border-foreground/15 p-0.5"
         >
@@ -314,8 +320,6 @@ export function DocketCapacityStrip({
                 key={view.id}
                 size="sm"
                 type="button"
-                role="radio"
-                aria-checked={selected}
                 aria-pressed={selected}
                 variant={selected ? "secondary" : "ghost"}
                 className="min-h-11 w-full px-1 text-xs sm:text-sm"
@@ -383,12 +387,12 @@ export function DocketCapacityStrip({
           <>
             <p className="text-xs text-muted-foreground">
               <HintTooltip label={captionTotalHint}>
-                <span
-                  tabIndex={0}
-                  className="cursor-help rounded-sm underline decoration-dotted underline-offset-2"
+                <button
+                  type="button"
+                  className="cursor-help rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {selectedTotal} matter{selectedTotal === 1 ? "" : "s"} in all
-                </span>
+                </button>
               </HintTooltip>
               . Appearances on{" "}
               {formatDate(selectedDate, {
@@ -401,12 +405,12 @@ export function DocketCapacityStrip({
             </p>
             <div className="flex flex-wrap gap-2">
               <HintTooltip label={captionTotalHint}>
-                <span
-                  tabIndex={0}
-                  className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   All: {selectedTotal}
-                </span>
+                </button>
               </HintTooltip>
               {(categories ?? []).map((cat) => {
                 const row = (snapshot ?? []).find((s) => s.category_id === cat.id);
@@ -425,8 +429,8 @@ export function DocketCapacityStrip({
           </>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Showing all matters at {courtLabel}. Capacity tiles count sittings you preside
-            across every court you sit. Select a date to list those files below.
+            Showing all matters at {courtLabel}. Capacity tiles count sittings you preside across
+            every court you sit. Select a date to list those files below.
           </p>
         )}
       </div>

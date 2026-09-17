@@ -1,20 +1,20 @@
-import { useEffect } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
-import { supabase } from "@/lib/supabase"
-import { useAuthStore } from "@/store/auth-store"
-import { QUERY_STALE_TIME_MS } from "@/lib/constants"
-import { notificationFilterKey, type NotificationFilter } from "@/lib/notification-filter"
-import type { Tables } from "@/types/database.types"
+import { useEffect, useSyncExternalStore } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/auth-store";
+import { QUERY_STALE_TIME_MS } from "@/lib/constants";
+import { notificationFilterKey, type NotificationFilter } from "@/lib/notification-filter";
+import type { Tables } from "@/types/database.types";
 
-export type NotificationRow = Tables<"notifications">
-export type { NotificationFilter }
+export type NotificationRow = Tables<"notifications">;
+export type { NotificationFilter };
 
 /** Rows fetched per page. "Load more" raises the requested limit by this much. */
-export const NOTIFICATIONS_PAGE_SIZE = 50
+export const NOTIFICATIONS_PAGE_SIZE = 50;
 
 /** Newest few shown in the bell's dropdown — a peek for triage, not the list. */
-export const NOTIFICATION_PEEK_SIZE = 8
+export const NOTIFICATION_PEEK_SIZE = 8;
 
 /**
  * Realtime carries new notices (0143), so polling is a fallback rather than
@@ -23,21 +23,49 @@ export const NOTIFICATION_PEEK_SIZE = 8
  * never seeing a notice again would be a worse failure than a slow one.
  * Five minutes is frequent enough to self-heal a dropped socket and rare
  * enough not to matter.
+ *
+ * The polls only run while the channel is NOT `SUBSCRIBED`. With a live
+ * socket every change already invalidates the queries, so the intervals
+ * were pure duplicate traffic on every open tab.
  */
-const NOTIFICATION_FALLBACK_POLL_MS = 5 * 60_000
+const NOTIFICATION_FALLBACK_POLL_MS = 5 * 60_000;
+const UNREAD_COUNT_FALLBACK_POLL_MS = 60_000;
+
+// Whether the realtime channel is currently delivering. Module-level so the
+// badge and the list page (different components, one socket) agree without
+// threading state through props.
+let realtimeSubscribed = false;
+const realtimeListeners = new Set<() => void>();
+const setRealtimeSubscribed = (next: boolean) => {
+  if (realtimeSubscribed === next) return;
+  realtimeSubscribed = next;
+  for (const listener of realtimeListeners) listener();
+};
+const subscribeRealtimeStatus = (listener: () => void) => {
+  realtimeListeners.add(listener);
+  return () => {
+    realtimeListeners.delete(listener);
+  };
+};
+const getRealtimeSubscribed = () => realtimeSubscribed;
+
+/** True while the notifications realtime channel is `SUBSCRIBED`. */
+export function useNotificationsRealtimeSubscribed() {
+  return useSyncExternalStore(subscribeRealtimeStatus, getRealtimeSubscribed, () => false);
+}
 
 export const notificationKeys = {
   all: ["notifications"] as const,
   page: (limit: number, filter?: NotificationFilter) =>
     ["notifications", "page", limit, notificationFilterKey(filter)] as const,
   unreadCount: ["notifications", "unread-count"] as const,
-}
+};
 
 export interface NotificationsPage {
-  rows: NotificationRow[]
+  rows: NotificationRow[];
   /** Total matching the CURRENT filter, independent of `limit` — so the UI can say when it's showing a subset. */
-  totalCount: number
-  hasMore: boolean
+  totalCount: number;
+  hasMore: boolean;
 }
 
 export function useNotifications(
@@ -48,6 +76,7 @@ export function useNotifications(
   // navigation just to render a count it gets from a separate query.
   options?: { enabled?: boolean },
 ) {
+  const subscribed = useNotificationsRealtimeSubscribed();
   return useQuery({
     enabled: options?.enabled ?? true,
     queryKey: notificationKeys.page(limit, filter),
@@ -59,22 +88,22 @@ export function useNotifications(
         .from("notifications")
         .select("id, user_id, type, title, body, link, read_at, created_at", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(limit)
-      if (filter?.unreadOnly) query = query.is("read_at", null)
-      if (filter?.types && filter.types.length > 0) query = query.in("type", filter.types)
+        .limit(limit);
+      if (filter?.unreadOnly) query = query.is("read_at", null);
+      if (filter?.types && filter.types.length > 0) query = query.in("type", filter.types);
 
-      const { data, error, count } = await query
-      if (error) throw error
-      const rows = data ?? []
-      const totalCount = count ?? rows.length
-      return { rows, totalCount, hasMore: totalCount > rows.length }
+      const { data, error, count } = await query;
+      if (error) throw error;
+      const rows = data ?? [];
+      const totalCount = count ?? rows.length;
+      return { rows, totalCount, hasMore: totalCount > rows.length };
     },
     staleTime: QUERY_STALE_TIME_MS,
-    refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
+    refetchInterval: subscribed ? false : NOTIFICATION_FALLBACK_POLL_MS,
     // "Load more" and changing a filter both change the key — without this
     // the whole list would blank to a skeleton on every such change.
     placeholderData: (previousData) => previousData,
-  })
+  });
 }
 
 /**
@@ -93,11 +122,11 @@ export function useNotifications(
  * would discard.
  */
 export function useNotificationsRealtime() {
-  const queryClient = useQueryClient()
-  const userId = useAuthStore((state) => state.user?.id)
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((state) => state.user?.id);
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId) return;
     const channel = supabase
       .channel(`notifications:${userId}`)
       .on(
@@ -109,15 +138,25 @@ export function useNotificationsRealtime() {
           filter: `user_id=eq.${userId}`,
         },
         () => {
-          void queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+          void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        const live = status === "SUBSCRIBED";
+        // Coming back after a drop: anything that landed while the socket
+        // was down was never pushed, so refetch once rather than wait for
+        // the next fallback poll.
+        if (live && !realtimeSubscribed) {
+          void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+        }
+        setRealtimeSubscribed(live);
+      });
 
     return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [userId, queryClient])
+      setRealtimeSubscribed(false);
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
 }
 
 /**
@@ -127,74 +166,74 @@ export function useNotificationsRealtime() {
  * notices than the current page holds. Transfers no rows.
  */
 export function useUnreadNotificationCount() {
+  const subscribed = useNotificationsRealtimeSubscribed();
   return useQuery({
     queryKey: notificationKeys.unreadCount,
     queryFn: async (): Promise<number> => {
       const { count, error } = await supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
-        .is("read_at", null)
-      if (error) throw error
-      return count ?? 0
+        .is("read_at", null);
+      if (error) throw error;
+      return count ?? 0;
     },
     staleTime: QUERY_STALE_TIME_MS,
-    refetchInterval: 60_000,
+    refetchInterval: subscribed ? false : UNREAD_COUNT_FALLBACK_POLL_MS,
     // The badge is decoration on every page — a transient failure to
     // count should never surface a toast over whatever the user is doing.
     meta: { silent: true },
-  })
+  });
 }
 
 /** Invalidate every notification-derived query: the paged list and the badge count. */
 function invalidateNotifications(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+  void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
 }
 
 export function useMarkNotificationRead() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
         .eq("id", id)
-        .is("read_at", null)
-      if (error) throw error
+        .is("read_at", null);
+      if (error) throw error;
     },
     // Optimistic: marking read is a trivially reversible, low-stakes act,
     // and waiting for a round-trip made the click feel unregistered on a
     // slow connection.
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: notificationKeys.all })
-      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all })
-      const now = new Date().toISOString()
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all });
+      const now = new Date().toISOString();
 
-      queryClient.setQueriesData<NotificationsPage>(
-        { queryKey: notificationKeys.all },
-        (old) =>
-          old && Array.isArray(old.rows)
-            ? {
-                ...old,
-                rows: old.rows.map((row) =>
-                  row.id === id && row.read_at === null ? { ...row, read_at: now } : row,
-                ),
-              }
-            : old,
-      )
+      queryClient.setQueriesData<NotificationsPage>({ queryKey: notificationKeys.all }, (old) =>
+        old && Array.isArray(old.rows)
+          ? {
+              ...old,
+              rows: old.rows.map((row) =>
+                row.id === id && row.read_at === null ? { ...row, read_at: now } : row,
+              ),
+            }
+          : old,
+      );
       queryClient.setQueryData<number>(notificationKeys.unreadCount, (old) =>
         typeof old === "number" ? Math.max(0, old - 1) : old,
-      )
+      );
 
-      return { previous }
+      return { previous };
     },
+    meta: { silent: true },
     onError: (error: Error, _id, context) => {
       for (const [key, value] of context?.previous ?? []) {
-        queryClient.setQueryData(key, value)
+        queryClient.setQueryData(key, value);
       }
-      toast.error(error.message || "Could not mark that notice as read")
+      toast.error(error.message || "Could not mark that notice as read");
     },
     onSettled: () => invalidateNotifications(queryClient),
-  })
+  });
 }
 
 /**
@@ -204,46 +243,45 @@ export function useMarkNotificationRead() {
  * (0123) pins every column except read_at precisely so this is possible.
  */
 export function useMarkNotificationUnread() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("notifications")
         .update({ read_at: null })
         .eq("id", id)
-        .not("read_at", "is", null)
-      if (error) throw error
+        .not("read_at", "is", null);
+      if (error) throw error;
     },
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: notificationKeys.all })
-      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all })
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all });
 
-      queryClient.setQueriesData<NotificationsPage>(
-        { queryKey: notificationKeys.all },
-        (old) =>
-          old && Array.isArray(old.rows)
-            ? {
-                ...old,
-                rows: old.rows.map((row) =>
-                  row.id === id && row.read_at !== null ? { ...row, read_at: null } : row,
-                ),
-              }
-            : old,
-      )
+      queryClient.setQueriesData<NotificationsPage>({ queryKey: notificationKeys.all }, (old) =>
+        old && Array.isArray(old.rows)
+          ? {
+              ...old,
+              rows: old.rows.map((row) =>
+                row.id === id && row.read_at !== null ? { ...row, read_at: null } : row,
+              ),
+            }
+          : old,
+      );
       queryClient.setQueryData<number>(notificationKeys.unreadCount, (old) =>
         typeof old === "number" ? old + 1 : old,
-      )
+      );
 
-      return { previous }
+      return { previous };
     },
+    meta: { silent: true },
     onError: (error: Error, _id, context) => {
       for (const [key, value] of context?.previous ?? []) {
-        queryClient.setQueryData(key, value)
+        queryClient.setQueryData(key, value);
       }
-      toast.error(error.message || "Could not mark that notice as unread")
+      toast.error(error.message || "Could not mark that notice as unread");
     },
     onSettled: () => invalidateNotifications(queryClient),
-  })
+  });
 }
 
 /**
@@ -257,94 +295,91 @@ export function useMarkNotificationUnread() {
  * no confirmation step.
  */
 export function useDismissNotification() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notifications").delete().eq("id", id)
-      if (error) throw error
+      const { error } = await supabase.from("notifications").delete().eq("id", id);
+      if (error) throw error;
     },
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: notificationKeys.all })
-      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all })
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all });
 
       // Whether this changes the badge depends on the row we are removing,
       // so read it out of the cache before dropping it.
-      let wasUnread = false
+      let wasUnread = false;
       for (const [, value] of previous) {
-        const page = value as NotificationsPage | undefined
-        const hit = page?.rows?.find((row) => row.id === id)
+        const page = value as NotificationsPage | undefined;
+        const hit = page?.rows?.find((row) => row.id === id);
         if (hit) {
-          wasUnread = hit.read_at === null
-          break
+          wasUnread = hit.read_at === null;
+          break;
         }
       }
 
-      queryClient.setQueriesData<NotificationsPage>(
-        { queryKey: notificationKeys.all },
-        (old) => {
-          if (!old || !Array.isArray(old.rows)) return old
-          const rows = old.rows.filter((row) => row.id !== id)
-          if (rows.length === old.rows.length) return old
-          const totalCount = Math.max(0, old.totalCount - 1)
-          return { ...old, rows, totalCount, hasMore: totalCount > rows.length }
-        },
-      )
+      queryClient.setQueriesData<NotificationsPage>({ queryKey: notificationKeys.all }, (old) => {
+        if (!old || !Array.isArray(old.rows)) return old;
+        const rows = old.rows.filter((row) => row.id !== id);
+        if (rows.length === old.rows.length) return old;
+        const totalCount = Math.max(0, old.totalCount - 1);
+        return { ...old, rows, totalCount, hasMore: totalCount > rows.length };
+      });
       if (wasUnread) {
         queryClient.setQueryData<number>(notificationKeys.unreadCount, (old) =>
           typeof old === "number" ? Math.max(0, old - 1) : old,
-        )
+        );
       }
 
-      return { previous }
+      return { previous };
     },
+    meta: { silent: true },
     onError: (error: Error, _id, context) => {
       for (const [key, value] of context?.previous ?? []) {
-        queryClient.setQueryData(key, value)
+        queryClient.setQueryData(key, value);
       }
-      toast.error(error.message || "Could not dismiss that notice")
+      toast.error(error.message || "Could not dismiss that notice");
     },
     onSettled: () => invalidateNotifications(queryClient),
-  })
+  });
 }
 
 export function useMarkAllNotificationsRead() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       const { error } = await supabase
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
-        .is("read_at", null)
-      if (error) throw error
+        .is("read_at", null);
+      if (error) throw error;
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: notificationKeys.all })
-      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all })
-      const now = new Date().toISOString()
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previous = queryClient.getQueriesData({ queryKey: notificationKeys.all });
+      const now = new Date().toISOString();
 
-      queryClient.setQueriesData<NotificationsPage>(
-        { queryKey: notificationKeys.all },
-        (old) =>
-          old && Array.isArray(old.rows)
-            ? {
-                ...old,
-                rows: old.rows.map((row) => (row.read_at === null ? { ...row, read_at: now } : row)),
-              }
-            : old,
-      )
-      queryClient.setQueryData<number>(notificationKeys.unreadCount, 0)
+      queryClient.setQueriesData<NotificationsPage>({ queryKey: notificationKeys.all }, (old) =>
+        old && Array.isArray(old.rows)
+          ? {
+              ...old,
+              rows: old.rows.map((row) => (row.read_at === null ? { ...row, read_at: now } : row)),
+            }
+          : old,
+      );
+      queryClient.setQueryData<number>(notificationKeys.unreadCount, 0);
 
-      return { previous }
+      return { previous };
     },
+    meta: { silent: true },
     onError: (error: Error, _vars, context) => {
       for (const [key, value] of context?.previous ?? []) {
-        queryClient.setQueryData(key, value)
+        queryClient.setQueryData(key, value);
       }
-      toast.error(error.message || "Could not mark notices as read")
+      toast.error(error.message || "Could not mark notices as read");
     },
     onSuccess: () => {
-      toast.success("All notices marked as read")
+      toast.success("All notices marked as read");
     },
     onSettled: () => invalidateNotifications(queryClient),
-  })
+  });
 }

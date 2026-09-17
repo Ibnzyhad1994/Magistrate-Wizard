@@ -190,7 +190,9 @@ export function useAuth() {
       // there's no app session to continue into anyway. A clean sign-in
       // with the new password is the correct next step, not a surprise
       // one on a page that never looked logged in.
-      await supabase.auth.signOut({ scope: "local" });
+      // Global scope: a password change must also end every other session
+      // that may be holding the old credential (0154 audit, §3.3).
+      await supabase.auth.signOut({ scope: "global" });
     },
     onSuccess: () => {
       toast.success("Password updated — sign in with your new password.");

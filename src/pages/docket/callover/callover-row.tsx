@@ -8,10 +8,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { HintTooltip } from "@/components/ui/tooltip";
 import { NextDateDialog } from "@/pages/docket/next-date-cell";
 import { useUpdateDocketMatter } from "@/hooks/docket/use-docket-matters";
-import {
-  CALLOVER_OUTCOME_VALUES,
-  outcomeSuggestsCompletion,
-} from "@/lib/callover";
+import { CALLOVER_OUTCOME_VALUES, outcomeSuggestsCompletion } from "@/lib/callover";
 import { procedureStageLabel } from "@/lib/docket-procedure";
 import { NOT_SET } from "@/lib/empty-display";
 import { ROUTES } from "@/routes/paths";
@@ -100,12 +97,12 @@ export function CalloverRow({
             to={ROUTES.docketMatter(row.docket_matter_id)}
             className="block min-w-0 hover:underline"
           >
-            <p className="truncate text-xs font-semibold text-foreground/55">
+            <p className="truncate text-xs font-semibold text-muted-foreground">
               {matter?.case_number ?? "—"}
             </p>
             <p className="truncate text-sm text-foreground">{matter?.matter_title ?? "Matter"}</p>
             {matter?.charge_or_issue && (
-              <p className="hidden truncate text-xs text-foreground/45 sm:block">
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
                 {matter.charge_or_issue}
               </p>
             )}
@@ -182,7 +179,7 @@ export function CalloverRow({
               <button
                 type="button"
                 onClick={() => setDateOpen(true)}
-                className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
+                className="whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
               >
                 {row.next_date ? formatDate(row.next_date) : "+ Set date"}
               </button>
@@ -223,7 +220,7 @@ export function CalloverRow({
             </HintTooltip>
           )}
           {called && (
-            <span className="text-[11px] text-foreground/45">
+            <span className="text-[11px] text-muted-foreground">
               {/* Once called, the row is part of the sitting's record and
                   the database refuses to delete it (0129). */}
               Called

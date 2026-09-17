@@ -1,32 +1,32 @@
-import { Link } from "react-router-dom"
-import { getCapacityStyle } from "@/lib/docket-capacity"
-import { useDocketCapacitySnapshot } from "@/hooks/docket/use-docket-capacity"
-import { HintTooltip } from "@/components/ui/tooltip"
-import { DashboardHeading } from "@/components/dashboard/dashboard-folio"
-import { ROUTES } from "@/routes/paths"
-import { cn, parseDateOnly } from "@/lib/utils"
+import { Link } from "react-router-dom";
+import { getCapacityStyle } from "@/lib/docket-capacity";
+import { useDocketCapacitySnapshot } from "@/hooks/docket/use-docket-capacity";
+import { HintTooltip } from "@/components/ui/tooltip";
+import { DashboardHeading } from "@/components/dashboard/dashboard-folio";
+import { ROUTES } from "@/routes/paths";
+import { cn, parseDateOnly } from "@/lib/utils";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function DayCell({ date, today }: { date: string; today: string }) {
-  const { data: snapshot, isPending } = useDocketCapacitySnapshot(date)
-  const configured = (snapshot ?? []).filter((row) => row.daily_capacity != null)
+  const { data: snapshot, isPending } = useDocketCapacitySnapshot(date);
+  const configured = (snapshot ?? []).filter((row) => row.daily_capacity != null);
   const worst = configured.reduce<(typeof configured)[number] | null>((acc, row) => {
-    if (!acc) return row
-    const nextRatio = row.scheduled_count / (row.daily_capacity as number)
-    const accRatio = acc.scheduled_count / (acc.daily_capacity as number)
-    return nextRatio > accRatio ? row : acc
-  }, null)
+    if (!acc) return row;
+    const nextRatio = row.scheduled_count / (row.daily_capacity as number);
+    const accRatio = acc.scheduled_count / (acc.daily_capacity as number);
+    return nextRatio > accRatio ? row : acc;
+  }, null);
   const style = worst
     ? getCapacityStyle(worst.scheduled_count, worst.daily_capacity)
-    : getCapacityStyle(0, null)
-  const total = Number(snapshot?.[0]?.total_matters_count ?? 0)
-  const weekday = WEEKDAYS[parseDateOnly(date).getDay()]
-  const dayNum = Number(date.slice(-2))
-  const isToday = date === today
+    : getCapacityStyle(0, null);
+  const total = Number(snapshot?.[0]?.total_matters_count ?? 0);
+  const weekday = WEEKDAYS[parseDateOnly(date).getDay()];
+  const dayNum = Number(date.slice(-2));
+  const isToday = date === today;
   const hint = worst
     ? `${total} listed. ${worst.category_name} ${worst.scheduled_count} of ${worst.daily_capacity}.`
-    : `${total} listed. Capacity not set.`
+    : `${total} listed. Capacity not set.`;
 
   return (
     <HintTooltip label={hint}>
@@ -39,7 +39,9 @@ function DayCell({ date, today }: { date: string; today: string }) {
         )}
         style={{ backgroundColor: isPending ? undefined : style.bg }}
       >
-        <span className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${style.textClass}`}>
+        <span
+          className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${style.textClass}`}
+        >
           {weekday}
         </span>
         <span className={`font-brand text-2xl leading-none ${style.textClass}`}>{dayNum}</span>
@@ -48,7 +50,7 @@ function DayCell({ date, today }: { date: string; today: string }) {
         </span>
       </Link>
     </HintTooltip>
-  )
+  );
 }
 
 export function CapacityWeek({ dates, today }: { dates: string[]; today: string }) {
@@ -67,5 +69,5 @@ export function CapacityWeek({ dates, today }: { dates: string[]; today: string 
         ))}
       </div>
     </section>
-  )
+  );
 }

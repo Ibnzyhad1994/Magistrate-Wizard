@@ -160,8 +160,16 @@ const MAX_PLAUSIBLE_AVG_WORD_LENGTH = 30;
 const STRUCTURAL_CHECK_MIN_LENGTH = 400;
 
 /** Character-level bucket from printable/control/replacement ratios alone — independent of structure. */
-function classifyCharacterQuality(printableRatio: number, controlRatio: number, replacementRatio: number): QualityBucket {
-  if (printableRatio < MIN_PRINTABLE_RATIO || controlRatio > MAX_CONTROL_RATIO || replacementRatio > MAX_REPLACEMENT_RATIO) {
+function classifyCharacterQuality(
+  printableRatio: number,
+  controlRatio: number,
+  replacementRatio: number,
+): QualityBucket {
+  if (
+    printableRatio < MIN_PRINTABLE_RATIO ||
+    controlRatio > MAX_CONTROL_RATIO ||
+    replacementRatio > MAX_REPLACEMENT_RATIO
+  ) {
     return "poor";
   }
   if (printableRatio >= 0.97 && controlRatio === 0 && replacementRatio === 0) return "good";
@@ -169,7 +177,11 @@ function classifyCharacterQuality(printableRatio: number, controlRatio: number, 
 }
 
 /** Structural bucket from word-shape/sentence-boundary signals alone — independent of character composition (this is precisely the dimension a character-only gate cannot see). */
-function classifyStructuralQuality(length: number, avgWordLength: number, sentenceBoundaryCount: number): QualityBucket {
+function classifyStructuralQuality(
+  length: number,
+  avgWordLength: number,
+  sentenceBoundaryCount: number,
+): QualityBucket {
   if (length < STRUCTURAL_CHECK_MIN_LENGTH) return "fair"; // too short to judge structure confidently either way
   if (avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH) return "poor";
   if (sentenceBoundaryCount === 0) return "fair"; // readable words, but no confirmed sentence structure
@@ -188,7 +200,10 @@ function classifyStructuralQuality(length: number, avgWordLength: number, senten
  * header/footer has low coverage; one whose extracted text IS the running
  * header/footer, repeated, has high coverage.
  */
-function computeRepeatedBlockCoverage(text: string): { coverageRatio: number; distinctContentLength: number } {
+function computeRepeatedBlockCoverage(text: string): {
+  coverageRatio: number;
+  distinctContentLength: number;
+} {
   const normalized = text.toLowerCase().replace(/\d+/g, "#");
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length < REPEATED_BLOCK_MIN_WORDS || text.length < REPEATED_BLOCK_MIN_LENGTH) {
@@ -249,7 +264,8 @@ function classifyHardFailReason(
   if (replacementRatio > MAX_REPLACEMENT_RATIO) return "replacement_chars";
   if (controlRatio > MAX_CONTROL_RATIO) return "control_chars";
   if (printableRatio < MIN_PRINTABLE_RATIO) return "printable_ratio";
-  if (length >= STRUCTURAL_CHECK_MIN_LENGTH && avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH) return "structural_incoherence";
+  if (length >= STRUCTURAL_CHECK_MIN_LENGTH && avgWordLength > MAX_PLAUSIBLE_AVG_WORD_LENGTH)
+    return "structural_incoherence";
   return undefined;
 }
 
@@ -269,7 +285,9 @@ export function assessExtractionQuality(text: string): QualityAssessment {
       score: 0,
       passed: false,
       hardFailReason: "too_short",
-      warnings: [`Extracted text is too short (${length} characters) to reliably represent a judgment or legislative document.`],
+      warnings: [
+        `Extracted text is too short (${length} characters) to reliably represent a judgment or legislative document.`,
+      ],
       characterQuality: "poor",
       structuralQuality: "poor",
       metrics: {
@@ -323,7 +341,8 @@ export function assessExtractionQuality(text: string): QualityAssessment {
   // above for why this is a separate, content-agnostic check from the
   // character-level ratios above it.
   const words = text.split(/\s+/).filter(Boolean);
-  const avgWordLength = words.length > 0 ? words.reduce((sum, w) => sum + w.length, 0) / words.length : 0;
+  const avgWordLength =
+    words.length > 0 ? words.reduce((sum, w) => sum + w.length, 0) / words.length : 0;
   const sentenceBoundaryCount = (text.match(/[.!?](\s+[A-Z]|\s*$)/g) ?? []).length;
   const repeatedBlock = computeRepeatedBlockCoverage(text);
 
@@ -333,7 +352,9 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     );
   }
   if (replacementRatio > MAX_REPLACEMENT_RATIO) {
-    warnings.push("Contains repeated replacement/missing-glyph characters (�), indicating a font-decoding failure.");
+    warnings.push(
+      "Contains repeated replacement/missing-glyph characters (�), indicating a font-decoding failure.",
+    );
   }
   if (controlRatio > MAX_CONTROL_RATIO) {
     warnings.push("Contains an unusually high proportion of control characters for prose text.");
@@ -345,17 +366,26 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     warnings.push("Word/whitespace pattern doesn't resemble normal prose.");
   }
   if (boilerplateMarkerHits >= 2) {
-    warnings.push("Extracted text appears to contain embedded PDF font/licensing metadata rather than document content.");
+    warnings.push(
+      "Extracted text appears to contain embedded PDF font/licensing metadata rather than document content.",
+    );
   }
-  if (repeatedBlock.coverageRatio >= REPEATED_BLOCK_HARD_FAIL_COVERAGE || repeatedBlock.distinctContentLength < REPEATED_BLOCK_MIN_DISTINCT_CHARS) {
+  if (
+    repeatedBlock.coverageRatio >= REPEATED_BLOCK_HARD_FAIL_COVERAGE ||
+    repeatedBlock.distinctContentLength < REPEATED_BLOCK_MIN_DISTINCT_CHARS
+  ) {
     warnings.push(
       "Extracted text is mostly a repeated block (e.g. a running page header/footer) with little or no distinct document content.",
     );
   } else if (repeatedBlock.coverageRatio > REPEATED_BLOCK_WARN_COVERAGE) {
-    warnings.push("A sizeable portion of the extracted text is a repeated block. Verify the document body was fully captured.");
+    warnings.push(
+      "A sizeable portion of the extracted text is a repeated block. Verify the document body was fully captured.",
+    );
   }
   if (/(\S{1,20})(\s+\1){6,}/i.test(text)) {
-    warnings.push("Contains an excessively repeated token, a common artifact of scanning the wrong PDF stream.");
+    warnings.push(
+      "Contains an excessively repeated token, a common artifact of scanning the wrong PDF stream.",
+    );
   }
   const punctuationCount = (text.match(/[^\w\s]/gu) ?? []).length;
   if (punctuationCount / length > 0.35) {
@@ -365,13 +395,20 @@ export function assessExtractionQuality(text: string): QualityAssessment {
     warnings.push(
       `Average "word" length (${avgWordLength.toFixed(1)} characters) is far outside normal prose. Text does not appear to be genuine word-broken content.`,
     );
-  } else if (length >= STRUCTURAL_CHECK_MIN_LENGTH && sentenceBoundaryCount === 0 && whitespaceRatio > 0.05 && whitespaceRatio < 0.5) {
+  } else if (
+    length >= STRUCTURAL_CHECK_MIN_LENGTH &&
+    sentenceBoundaryCount === 0 &&
+    whitespaceRatio > 0.05 &&
+    whitespaceRatio < 0.5
+  ) {
     // Softer signal, warning-only (not a hard fail): plenty of normal
     // word breaks, but not one ordinary sentence-ending boundary in
     // several hundred+ characters. Legitimate for some legislative
     // fragments (a long list of undivided defined terms, for example),
     // so this only nudges the score down rather than hard-failing.
-    warnings.push("No ordinary sentence-ending punctuation found despite the text's length. Reading order may be unreliable.");
+    warnings.push(
+      "No ordinary sentence-ending punctuation found despite the text's length. Reading order may be unreliable.",
+    );
   }
 
   const hardFailReason = classifyHardFailReason(

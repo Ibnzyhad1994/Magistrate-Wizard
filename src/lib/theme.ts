@@ -72,8 +72,11 @@ export function canvasScheme(resolved: ResolvedTheme): "light" | "dark" {
   return isDarkPalette(resolved) ? "dark" : "light";
 }
 
-export function paletteModifierClass(resolved: ResolvedTheme): "theme-high-contrast" | "theme-colourblind" | null {
-  if (resolved === "high-contrast" || resolved === "high-contrast-light") return "theme-high-contrast";
+export function paletteModifierClass(
+  resolved: ResolvedTheme,
+): "theme-high-contrast" | "theme-colourblind" | null {
+  if (resolved === "high-contrast" || resolved === "high-contrast-light")
+    return "theme-high-contrast";
   if (resolved === "colourblind" || resolved === "colourblind-light") return "theme-colourblind";
   return null;
 }
@@ -115,7 +118,10 @@ export function readStoredTheme(storageKey: string, fallback: Theme = DEFAULT_TH
   }
 }
 
-export function applyResolvedTheme(resolved: ResolvedTheme, root: HTMLElement = document.documentElement) {
+export function applyResolvedTheme(
+  resolved: ResolvedTheme,
+  root: HTMLElement = document.documentElement,
+) {
   root.classList.remove(...PALETTE_CLASSES);
   const scheme = canvasScheme(resolved);
   root.classList.add(scheme);

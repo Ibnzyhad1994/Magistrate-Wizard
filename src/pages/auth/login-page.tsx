@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/auth/password-input";
@@ -24,7 +24,7 @@ import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
 import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function LoginPage() {
   const { signIn, isSigningIn } = useAuth();
@@ -39,8 +39,9 @@ export default function LoginPage() {
   async function onSubmit(values: LoginFormValues) {
     try {
       await signIn(values);
-      const from = (location.state as { from?: { pathname: string; search?: string; hash?: string } } | null)
-        ?.from;
+      const from = (
+        location.state as { from?: { pathname: string; search?: string; hash?: string } } | null
+      )?.from;
       navigate(pathFromLoginRedirect(from, ROUTES.home), { replace: true });
     } catch {
       // Errors surface globally via the mutation cache toast subscriber
@@ -51,9 +52,7 @@ export default function LoginPage() {
   return (
     <Card className={AUTH_PANEL_CLASS}>
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
-          Sign In
-        </CardTitle>
+        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">Sign In</h1>
         <CardDescription className="text-foreground/70">
           Enter your credentials to access your {APP_NAME} workspace.
         </CardDescription>
@@ -123,9 +122,9 @@ export default function LoginPage() {
                     </FormControl>
                     <div className="space-y-1">
                       <FormLabel className="text-foreground/80">Remember me</FormLabel>
-                      <FormDescription className="text-foreground/50">
-                        Stay signed in on this browser for 14 days. Still locks after
-                        1 hour idle. Do not use on a shared bench computer.
+                      <FormDescription className="text-muted-foreground">
+                        Stay signed in on this browser for 14 days. Still locks after 1 hour idle.
+                        Do not use on a shared bench computer.
                       </FormDescription>
                     </div>
                   </div>
@@ -146,10 +145,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-sm text-foreground/70">
           Don&apos;t have an account?{" "}
-          <Link
-            to={ROUTES.register}
-            className="font-medium text-foreground hover:underline"
-          >
+          <Link to={ROUTES.register} className="font-medium text-foreground hover:underline">
             Create one
           </Link>
         </p>

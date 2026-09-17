@@ -5,12 +5,12 @@
  */
 
 export interface MachineProposal {
-  case_name: string
-  citation: string
-  court_id: string | null
-  jurisdiction_id: string | null
-  decided_date: string
-  full_text: string
+  case_name: string;
+  citation: string;
+  court_id: string | null;
+  jurisdiction_id: string | null;
+  decided_date: string;
+  full_text: string;
 }
 
 const PLACEHOLDERS = new Set([
@@ -26,17 +26,17 @@ const PLACEHOLDERS = new Set([
   "pending review",
   "court",
   "jurisdiction",
-])
+]);
 
 export function isMachineProposalPlaceholder(value: string | null | undefined): boolean {
-  return PLACEHOLDERS.has((value ?? "").trim().toLowerCase())
+  return PLACEHOLDERS.has((value ?? "").trim().toLowerCase());
 }
 
 export function readLastMachineProposal(extractedMetadata: unknown): MachineProposal | null {
-  if (!extractedMetadata || typeof extractedMetadata !== "object") return null
-  const raw = (extractedMetadata as Record<string, unknown>)._lastMachineProposal
-  if (!raw || typeof raw !== "object") return null
-  const row = raw as Record<string, unknown>
+  if (!extractedMetadata || typeof extractedMetadata !== "object") return null;
+  const raw = (extractedMetadata as Record<string, unknown>)._lastMachineProposal;
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
   return {
     case_name: typeof row.case_name === "string" ? row.case_name : "",
     citation: typeof row.citation === "string" ? row.citation : "",
@@ -44,33 +44,43 @@ export function readLastMachineProposal(extractedMetadata: unknown): MachineProp
     jurisdiction_id: typeof row.jurisdiction_id === "string" ? row.jurisdiction_id : null,
     decided_date: typeof row.decided_date === "string" ? row.decided_date : "",
     full_text: typeof row.full_text === "string" ? row.full_text : "",
-  }
+  };
 }
 
 export function shouldOverwriteMachineField(
   current: string | null | undefined,
   lastProposal: string | null | undefined,
 ): boolean {
-  const cur = (current ?? "").trim()
-  const last = (lastProposal ?? "").trim()
-  if (isMachineProposalPlaceholder(cur)) return true
-  if (!last) return false
-  return cur === last
+  const cur = (current ?? "").trim();
+  const last = (lastProposal ?? "").trim();
+  if (isMachineProposalPlaceholder(cur)) return true;
+  if (!last) return false;
+  return cur === last;
 }
 
-export function mergeReprocessFields<T extends MachineProposal>(current: T, next: T, last: T | null): T {
-  const baseline: T = last ?? ({
-    case_name: "",
-    citation: "",
-    court_id: null,
-    jurisdiction_id: null,
-    decided_date: "",
-    full_text: "",
-  } as T)
+export function mergeReprocessFields<T extends MachineProposal>(
+  current: T,
+  next: T,
+  last: T | null,
+): T {
+  const baseline: T =
+    last ??
+    ({
+      case_name: "",
+      citation: "",
+      court_id: null,
+      jurisdiction_id: null,
+      decided_date: "",
+      full_text: "",
+    } as T);
   return {
     ...current,
-    case_name: shouldOverwriteMachineField(current.case_name, baseline.case_name) ? next.case_name : current.case_name,
-    citation: shouldOverwriteMachineField(current.citation, baseline.citation) ? next.citation : current.citation,
+    case_name: shouldOverwriteMachineField(current.case_name, baseline.case_name)
+      ? next.case_name
+      : current.case_name,
+    citation: shouldOverwriteMachineField(current.citation, baseline.citation)
+      ? next.citation
+      : current.citation,
     court_id: shouldOverwriteMachineField(current.court_id, baseline.court_id)
       ? next.court_id
       : current.court_id,
@@ -80,6 +90,8 @@ export function mergeReprocessFields<T extends MachineProposal>(current: T, next
     decided_date: shouldOverwriteMachineField(current.decided_date, baseline.decided_date)
       ? next.decided_date
       : current.decided_date,
-    full_text: shouldOverwriteMachineField(current.full_text, baseline.full_text) ? next.full_text : current.full_text,
-  }
+    full_text: shouldOverwriteMachineField(current.full_text, baseline.full_text)
+      ? next.full_text
+      : current.full_text,
+  };
 }

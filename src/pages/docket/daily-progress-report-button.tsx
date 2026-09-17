@@ -21,7 +21,13 @@ import { getErrorMessage } from "@/lib/utils";
  * spans every authorized court for that date (each row still carries its
  * own court_name, exactly like the on-screen combined view).
  */
-export function DailyProgressReportButton({ date, courtId }: { date: string; courtId: string | null }) {
+export function DailyProgressReportButton({
+  date,
+  courtId,
+}: {
+  date: string;
+  courtId: string | null;
+}) {
   const { profile } = useAuth();
   const fetchReport = useDailyDocketReportData();
 
@@ -58,7 +64,12 @@ export function DailyProgressReportButton({ date, courtId }: { date: string; cou
   }
 
   return (
-    <Button size="sm" variant="outline" onClick={() => void onGenerate()} disabled={fetchReport.isPending}>
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => void onGenerate()}
+      disabled={fetchReport.isPending}
+    >
       {fetchReport.isPending ? <LoadingSpinner size={14} /> : <FileDown className="h-4 w-4" />}
       Generate Daily Progress Report
     </Button>

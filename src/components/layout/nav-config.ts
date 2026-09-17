@@ -41,12 +41,7 @@ export interface AppNavItem extends NavItem {
   visibleWhilePending?: boolean;
 }
 
-export const NAV_GROUP_ORDER: NavGroupId[] = [
-  "court",
-  "research",
-  "workbench",
-  "admin",
-];
+export const NAV_GROUP_ORDER: NavGroupId[] = ["court", "research", "workbench", "admin"];
 
 export const NAV_GROUP_LABELS: Record<NavGroupId, string> = {
   court: "Court",

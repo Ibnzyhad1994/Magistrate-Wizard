@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Share2, Plus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +88,7 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
           }
         />
       ) : (
-        <Table>
+        <Table aria-label="Active shares">
           <TableHeader>
             <TableRow>
               <TableHead>Recipient</TableHead>
@@ -136,7 +136,7 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             History
           </p>
-          <Table>
+          <Table aria-label="Share history">
             <TableBody>
               {revokedShares.map((share) => (
                 <TableRow key={share.id}>
@@ -204,6 +204,7 @@ export function CreateShareDialog({
   const [permission, setPermission] = useState<"view" | "edit">("view");
   const [resolved, setResolved] = useState<ResolvedRecipient | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const permissionId = useId();
 
   const resolveRecipient = useResolveShareRecipient(itemType, itemId);
   const createShare = useCreateShare(itemType, itemId);
@@ -250,8 +251,7 @@ export function CreateShareDialog({
         <DialogHeader>
           <DialogTitle>Share this {noun}</DialogTitle>
           <DialogDescription>
-            Enter the exact email address of the magistrate or clerk you want
-            to share with.
+            Enter the exact email address of the magistrate or clerk you want to share with.
           </DialogDescription>
         </DialogHeader>
 
@@ -290,16 +290,18 @@ export function CreateShareDialog({
 
           {notFound && (
             <p className="text-sm text-destructive">
-              No eligible recipient found for that email. Double-check the
-              address: they must be an active user, and you must be allowed to
-              share this {noun}.
+              No eligible recipient found for that email. Double-check the address: they must be an
+              active user, and you must be allowed to share this {noun}.
             </p>
           )}
 
           {resolved && (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Permission</label>
+              <label htmlFor={permissionId} className="text-sm font-medium text-foreground">
+                Permission
+              </label>
               <Select
+                id={permissionId}
                 value={permission}
                 onChange={(e) => setPermission(e.target.value as "view" | "edit")}
                 aria-label="Share permission"

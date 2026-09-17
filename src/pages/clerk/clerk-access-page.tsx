@@ -1,16 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Gavel, X } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
@@ -59,6 +53,8 @@ export default function ClerkAccessPage() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [districtId, setDistrictId] = useState("");
   const [courtId, setCourtId] = useState("");
+  const districtSelectId = useId();
+  const courtSelectId = useId();
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
   // Best-effort: a signup-time request (created by handle_new_user()
@@ -106,7 +102,7 @@ export default function ClerkAccessPage() {
       />
 
       {approvedCount === 0 && !isPending && (
-        <Card className="max-w-2xl border-foreground/10 bg-foreground/5">
+        <Card className="max-w-2xl border-border bg-foreground/5">
           <CardContent className="flex items-start gap-4 pt-6">
             <Gavel className="mt-0.5 h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div>
@@ -143,23 +139,34 @@ export default function ClerkAccessPage() {
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : (requests ?? []).length === 0 ? (
-        <EmptyState icon={Gavel} title="No court access requested yet" description="Request access to a court to begin." />
+        <EmptyState
+          icon={Gavel}
+          title="No court access requested yet"
+          description="Request access to a court to begin."
+        />
       ) : (
         <div className="max-w-2xl space-y-3">
           {(requests ?? []).map((r) => (
-            <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+            <Card key={r.id} className="border-border bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
                   <p className="text-xs text-muted-foreground">
                     Requested {formatDate(r.requested_at)}
-                    {r.status === "rejected" && r.rejection_reason ? ` · ${r.rejection_reason}` : ""}
+                    {r.status === "rejected" && r.rejection_reason
+                      ? ` · ${r.rejection_reason}`
+                      : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
                   {r.status === "pending" && (
-                    <Button size="icon" variant="ghost" aria-label="Cancel request" onClick={() => setPendingCancelId(r.id)}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Cancel request"
+                      onClick={() => setPendingCancelId(r.id)}
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   )}
@@ -175,46 +182,67 @@ export default function ClerkAccessPage() {
           Request access to another court
         </Button>
       ) : (
-        <Card className="max-w-lg border-foreground/10 bg-foreground/5">
+        <Card className="max-w-lg border-border bg-foreground/5">
           <CardHeader>
             <CardTitle className="text-base">Request court access</CardTitle>
-            <CardDescription>Your request goes to that court's assigned magistrate for approval.</CardDescription>
+            <CardDescription>
+              Your request goes to that court's assigned magistrate for approval.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Magisterial District</label>
-              <Select value={districtId} onChange={(e) => { setDistrictId(e.target.value); setCourtId(""); }}>
+              <label htmlFor={districtSelectId} className="text-sm font-medium text-foreground">
+                Magisterial District
+              </label>
+              <Select
+                id={districtSelectId}
+                value={districtId}
+                onChange={(e) => {
+                  setDistrictId(e.target.value);
+                  setCourtId("");
+                }}
+              >
                 <option value="">Select a district…</option>
                 {(districts ?? []).map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Court</label>
-              <Select value={courtId} onChange={(e) => setCourtId(e.target.value)} disabled={!districtId}>
-                <option value="">{districtId ? "Select a court…" : "Select a district first"}</option>
+              <label htmlFor={courtSelectId} className="text-sm font-medium text-foreground">
+                Court
+              </label>
+              <Select
+                id={courtSelectId}
+                value={courtId}
+                onChange={(e) => setCourtId(e.target.value)}
+                disabled={!districtId}
+              >
+                <option value="">
+                  {districtId ? "Select a court…" : "Select a district first"}
+                </option>
                 {courtsInDistrict.length === 0 && districtId ? (
                   <option value="" disabled>
                     No courts left to request in this district
                   </option>
                 ) : (
                   courtsInDistrict.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
                   ))
                 )}
               </Select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={resetRequestForm}>Cancel</Button>
+              <Button variant="ghost" onClick={resetRequestForm}>
+                Cancel
+              </Button>
               <Button
                 disabled={!courtId || submit.isPending}
-                onClick={() =>
-                  submit.mutate(
-                    { courtId },
-                    { onSuccess: resetRequestForm },
-                  )
-                }
+                onClick={() => submit.mutate({ courtId }, { onSuccess: resetRequestForm })}
               >
                 Submit request
               </Button>
@@ -231,7 +259,8 @@ export default function ClerkAccessPage() {
         confirmLabel="Cancel request"
         isConfirming={cancel.isPending}
         onConfirm={() => {
-          if (pendingCancelId) cancel.mutate(pendingCancelId, { onSuccess: () => setPendingCancelId(null) });
+          if (pendingCancelId)
+            cancel.mutate(pendingCancelId, { onSuccess: () => setPendingCancelId(null) });
         }}
       />
     </BrowsePage>

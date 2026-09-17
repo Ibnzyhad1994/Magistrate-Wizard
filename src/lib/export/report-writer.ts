@@ -59,9 +59,14 @@ export class PdfReportWriter {
       this.doc.setFont("helvetica", "normal");
       this.doc.setFontSize(8);
       this.doc.setTextColor(140);
-      this.doc.text(`Page ${p} of ${totalPages}`, PDF_PAGE_WIDTH - PDF_MARGIN, PDF_PAGE_HEIGHT - 20, {
-        align: "right",
-      });
+      this.doc.text(
+        `Page ${p} of ${totalPages}`,
+        PDF_PAGE_WIDTH - PDF_MARGIN,
+        PDF_PAGE_HEIGHT - 20,
+        {
+          align: "right",
+        },
+      );
     }
   }
 }

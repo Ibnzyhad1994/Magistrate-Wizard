@@ -48,6 +48,7 @@ export function useCreateIssueReport() {
         variables.type === "bug" ? "Bug report sent. Thank you." : "Suggestion sent. Thank you.",
       );
     },
+    meta: { silent: true },
     onError: () => {
       toast.error("Couldn't send your report. Please try again.");
     },

@@ -1,22 +1,18 @@
-import { Link } from "react-router-dom"
-import { DashboardHeading } from "@/components/dashboard/dashboard-folio"
-import { ROUTES } from "@/routes/paths"
-import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils"
-import type { EventPulseRow } from "@/lib/dashboard-insights"
-import { isOverdueScheduled } from "@/lib/dashboard-insights"
+import { Link } from "react-router-dom";
+import { DashboardHeading } from "@/components/dashboard/dashboard-folio";
+import { ROUTES } from "@/routes/paths";
+import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
+import type { EventPulseRow } from "@/lib/dashboard-insights";
+import { isOverdueScheduled } from "@/lib/dashboard-insights";
 
-export function AppearanceTimeline({
-  events,
-  today,
-}: {
-  events: EventPulseRow[]
-  today: string
-}) {
+export function AppearanceTimeline({ events, today }: { events: EventPulseRow[]; today: string }) {
   const upcoming = events
-    .filter((event) => event.event_status !== "cancelled" && event.event_status !== "entered_in_error")
+    .filter(
+      (event) => event.event_status !== "cancelled" && event.event_status !== "entered_in_error",
+    )
     .filter((event) => event.scheduled_date >= today)
-    .slice(0, 12)
-  const overdue = events.filter((event) => isOverdueScheduled(event, today)).slice(0, 8)
+    .slice(0, 12);
+  const overdue = events.filter((event) => isOverdueScheduled(event, today)).slice(0, 8);
 
   return (
     <section aria-labelledby="timeline-heading">
@@ -53,7 +49,10 @@ export function AppearanceTimeline({
       ) : (
         <ol className="relative space-y-0 before:absolute before:bottom-2 before:left-[4.35rem] before:top-2 before:w-px before:bg-foreground/15 sm:before:left-[5.1rem]">
           {upcoming.map((event) => (
-            <li key={event.id} className="grid grid-cols-[4.25rem_1fr] gap-4 border-b border-foreground/10 py-3 last:border-0 sm:grid-cols-[5rem_1fr]">
+            <li
+              key={event.id}
+              className="grid grid-cols-[4.25rem_1fr] gap-4 border-b border-border py-3 last:border-0 sm:grid-cols-[5rem_1fr]"
+            >
               <div className="text-right">
                 <p className="font-brand text-sm tabular-nums leading-tight text-foreground">
                   {formatDate(event.scheduled_date, { day: "numeric", month: "short" })}
@@ -79,5 +78,5 @@ export function AppearanceTimeline({
         </ol>
       )}
     </section>
-  )
+  );
 }

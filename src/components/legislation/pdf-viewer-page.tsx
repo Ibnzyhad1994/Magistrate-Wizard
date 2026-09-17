@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { PdfjsDocument, PdfjsTextItem } from "@/lib/legislation-pdf";
 import {
+  clampRedactionBox,
   isUsableRedactionBox,
   normalizedToPixelRect,
   pixelRectToNormalized,
@@ -25,6 +26,13 @@ interface ViewportLike {
   convertToViewportPoint: (x: number, y: number) => number[];
 }
 
+/** Keyboard nudge, as a fraction of the page: 1% per arrow press, 5% with Ctrl/Cmd. */
+const KEY_STEP = 0.01;
+const KEY_STEP_LARGE = 0.05;
+
+/** Where "Add box" drops a fresh box: a line-height strip near the middle of the page, ready to be moved and resized with the keyboard. */
+const DEFAULT_KEYBOARD_BOX = { x: 0.3, y: 0.45, width: 0.4, height: 0.05 };
+
 function highlightRect(item: PdfjsTextItem, h: PageHighlight, viewport: ViewportLike) {
   const [, , , , e, f] = item.transform;
   const total = item.str.length || 1;
@@ -43,11 +51,39 @@ function highlightRect(item: PdfjsTextItem, h: PageHighlight, viewport: Viewport
 }
 
 /**
+ * Applies one arrow-key press to a box. Plain arrows move it; Shift+arrows
+ * resize it (right/down grow, left/up shrink). Returns null for keys that
+ * are not handled so the caller can let them through.
+ */
+function nudgeRedactionBox(box: RedactionBox, e: KeyboardEvent): RedactionBox | null {
+  const step = e.ctrlKey || e.metaKey ? KEY_STEP_LARGE : KEY_STEP;
+  const dx = e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0;
+  const dy = e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0;
+  if (dx === 0 && dy === 0) return null;
+  if (e.shiftKey) {
+    return clampRedactionBox({
+      ...box,
+      width: Math.max(0.004, box.width + dx),
+      height: Math.max(0.004, box.height + dy),
+    });
+  }
+  return clampRedactionBox({
+    ...box,
+    x: Math.min(Math.max(0, box.x + dx), 1 - box.width),
+    y: Math.min(Math.max(0, box.y + dy), 1 - box.height),
+  });
+}
+
+/**
  * One page of a Legislation PDF — canvas render (the ORIGINAL page,
  * unaltered, per §"the PDF itself must be the authoritative visual
  * source") plus an absolutely-positioned highlight overlay for search
  * matches. `IntersectionObserver`-gated so a long Act only keeps nearby
  * pages rendered, bounding memory during continuous scroll.
+ *
+ * Redaction has two equivalent paths (WCAG 2.1.1): drawing a box with the
+ * pointer, or "Add box" followed by arrow keys (move), Shift+arrows
+ * (resize) and Delete (remove) on the focused box.
  */
 export function PdfViewerPage({
   doc,
@@ -61,6 +97,7 @@ export function PdfViewerPage({
   redactMode = false,
   redactionBoxes = [],
   onRedactionBox,
+  onUpdateRedactionBox,
   onRemoveRedactionBox,
   onRedactBlockedByRotation,
 }: {
@@ -76,18 +113,31 @@ export function PdfViewerPage({
   redactMode?: boolean;
   redactionBoxes?: PageRedactionEntry[];
   onRedactionBox?: (box: RedactionBox) => void;
+  /** Index is into the viewer's full box list, not this page's slice. Used by the keyboard move/resize path. */
+  onUpdateRedactionBox?: (index: number, box: RedactionBox) => void;
   /** Index is into the viewer's full box list, not this page's slice. */
   onRemoveRedactionBox?: (index: number) => void;
   onRedactBlockedByRotation?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
-  const [rects, setRects] = useState<{ left: number; top: number; width: number; height: number; active: boolean }[]>([]);
-  const [draft, setDraft] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [rects, setRects] = useState<
+    { left: number; top: number; width: number; height: number; active: boolean }[]
+  >([]);
+  const [draft, setDraft] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const drawingRef = useRef(false);
   const draftRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  /** Set by "Add box" so the box it creates receives focus once it renders. */
+  const focusNewBoxRef = useRef(false);
+  const instructionsId = useId();
 
   const updateDraft = (next: { x: number; y: number; width: number; height: number } | null) => {
     draftRef.current = next;
@@ -153,6 +203,30 @@ export function PdfViewerPage({
     }
   }, [scrollToActive]);
 
+  // "Add box" appends to the viewer's list; once that box renders here,
+  // move focus onto it so the arrow keys act on it straight away.
+  useEffect(() => {
+    if (!focusNewBoxRef.current) return;
+    focusNewBoxRef.current = false;
+    const boxes = containerRef.current?.querySelectorAll<HTMLButtonElement>("[data-redaction-box]");
+    boxes?.[boxes.length - 1]?.focus();
+  }, [redactionBoxes.length]);
+
+  // Escape cancels a drag in progress. Registered only for the duration of
+  // the drag, so the pointer surface itself needs no keyboard handling and
+  // stays out of the tab order.
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape" || !drawingRef.current) return;
+      e.preventDefault();
+      drawingRef.current = false;
+      updateDraft(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [draft]);
+
   const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (!redactMode) return;
     if (rotation !== 0) {
@@ -188,12 +262,27 @@ export function PdfViewerPage({
     if (isUsableRedactionBox(box)) onRedactionBox(box);
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape" && drawingRef.current) {
-      e.preventDefault();
-      drawingRef.current = false;
-      updateDraft(null);
+  const handleAddBox = () => {
+    if (!onRedactionBox) return;
+    if (rotation !== 0) {
+      onRedactBlockedByRotation?.();
+      return;
     }
+    focusNewBoxRef.current = true;
+    onRedactionBox(clampRedactionBox({ pageNumber, ...DEFAULT_KEYBOARD_BOX }));
+  };
+
+  const handleBoxKeyDown = (e: KeyboardEvent<HTMLButtonElement>, entry: PageRedactionEntry) => {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      onRemoveRedactionBox?.(entry.index);
+      addButtonRef.current?.focus();
+      return;
+    }
+    const next = nudgeRedactionBox(entry.box, e);
+    if (!next) return;
+    e.preventDefault();
+    onUpdateRedactionBox?.(entry.index, next);
   };
 
   return (
@@ -208,7 +297,7 @@ export function PdfViewerPage({
       style={size ? { width: size.width, height: size.height } : { minHeight: 400, width: "100%" }}
     >
       {isVisible ? (
-        <canvas ref={canvasRef} className="block" />
+        <canvas ref={canvasRef} className="block" role="img" aria-label={`Page ${pageNumber}`} />
       ) : (
         <div className="flex h-full min-h-[400px] items-center justify-center text-xs text-muted-foreground">
           Page {pageNumber}
@@ -224,20 +313,31 @@ export function PdfViewerPage({
           style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
         />
       ))}
-      {redactionBoxes.map(({ box, index }) => {
-        const px = size
-          ? normalizedToPixelRect(box, size)
-          : { x: 0, y: 0, width: 0, height: 0 };
+      {redactionBoxes.map(({ box, index }, i) => {
+        const px = size ? normalizedToPixelRect(box, size) : { x: 0, y: 0, width: 0, height: 0 };
+        const style = { left: px.x, top: px.y, width: px.width, height: px.height };
+        if (!redactMode) {
+          return (
+            <div
+              key={`redact-${index}`}
+              className="pointer-events-none absolute bg-black"
+              style={style}
+            />
+          );
+        }
+        // While editing, each box is a focusable control for the keyboard
+        // path. It stays pointer-events-none so a drag started over it still
+        // draws a new box exactly as before; only focus and keys reach it.
         return (
-          <div
+          <button
             key={`redact-${index}`}
-            className={cn(
-              "pointer-events-none absolute bg-black",
-              // A hairline only while editing, so it reads as an object you
-              // can act on rather than part of the page.
-              redactMode && "outline outline-1 outline-offset-1 outline-white/70",
-            )}
-            style={{ left: px.x, top: px.y, width: px.width, height: px.height }}
+            type="button"
+            data-redaction-box
+            className="pointer-events-none absolute bg-black outline outline-1 outline-offset-1 outline-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            style={style}
+            aria-label={`Redaction box ${i + 1} of ${redactionBoxes.length} on page ${pageNumber}`}
+            aria-describedby={instructionsId}
+            onKeyDown={(e) => handleBoxKeyDown(e, { box, index })}
           />
         );
       })}
@@ -253,16 +353,44 @@ export function PdfViewerPage({
         />
       )}
       {redactMode ? (
+        // Pointer-only drawing surface. Hidden from assistive technology:
+        // the equivalent keyboard path is the "Add box" button and the
+        // focusable boxes above.
         <div
           className="absolute inset-0 cursor-crosshair"
-          role="application"
-          tabIndex={0}
-          aria-label={`Draw a redaction box on page ${pageNumber}`}
+          aria-hidden="true"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onKeyDown={handleKeyDown}
         />
+      ) : null}
+      {redactMode && onRedactionBox ? (
+        <>
+          <p id={instructionsId} className="sr-only">
+            Arrow keys move the box, Shift with arrow keys resizes it, hold Ctrl for larger steps,
+            Delete removes it.
+          </p>
+          <button
+            ref={addButtonRef}
+            type="button"
+            className="absolute left-2 top-2 z-10 rounded-sm border border-foreground/80 bg-foreground px-2 py-1 text-xs font-medium text-background shadow-sm transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            // The drawing surface below listens on pointerdown; without
+            // stopping here, pressing this button also starts a drag.
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddBox();
+            }}
+            aria-label={`Add a redaction box to page ${pageNumber}`}
+            aria-describedby={instructionsId}
+          >
+            Add box
+          </button>
+        </>
       ) : null}
       {/* Deliberately after the drawing surface: that surface covers the whole
           page, so anything meant to be clickable has to sit above it. Removal
@@ -301,7 +429,10 @@ export function PdfViewerPage({
             );
           })
         : null}
-      <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] text-background">
+      <div
+        className="pointer-events-none absolute bottom-1 right-2 rounded-md bg-foreground/80 px-1.5 py-0.5 text-[10px] text-background"
+        aria-hidden="true"
+      >
         {pageNumber}
       </div>
     </div>

@@ -13,9 +13,9 @@
  * `documents` preview-derivative row (see use-documents.ts) rather than
  * re-rendered on every open.
  */
-import { renderAsync } from "docx-preview"
-import DOMPurify from "dompurify"
-import { sanitizeDocxPageBody, sanitizeDocxPageStyle } from "@/lib/docx-page-preview-sanitize"
+import { renderAsync } from "docx-preview";
+import DOMPurify from "dompurify";
+import { sanitizeDocxPageBody, sanitizeDocxPageStyle } from "@/lib/docx-page-preview-sanitize";
 
 const DOCX_PREVIEW_OPTIONS = {
   inWrapper: true,
@@ -30,7 +30,7 @@ const DOCX_PREVIEW_OPTIONS = {
   renderFootnotes: true,
   renderEndnotes: true,
   className: "docx-page",
-} as const
+} as const;
 
 /**
  * Renders a .docx ArrayBuffer into a sanitized, self-contained HTML
@@ -49,12 +49,12 @@ const DOCX_PREVIEW_OPTIONS = {
  * as a known limitation rather than silently accepted as "faithful."
  */
 export async function renderDocxToPageSnapshot(buffer: ArrayBuffer): Promise<string> {
-  const bodyContainer = document.createElement("div")
-  const styleContainer = document.createElement("div")
-  await renderAsync(buffer, bodyContainer, styleContainer, DOCX_PREVIEW_OPTIONS)
+  const bodyContainer = document.createElement("div");
+  const styleContainer = document.createElement("div");
+  await renderAsync(buffer, bodyContainer, styleContainer, DOCX_PREVIEW_OPTIONS);
 
-  const safeStyle = sanitizeDocxPageStyle(styleContainer.innerHTML, DOMPurify)
-  const safeBody = sanitizeDocxPageBody(bodyContainer.innerHTML, DOMPurify)
+  const safeStyle = sanitizeDocxPageStyle(styleContainer.innerHTML, DOMPurify);
+  const safeBody = sanitizeDocxPageBody(bodyContainer.innerHTML, DOMPurify);
 
-  return `${safeStyle}<div class="docx-page-snapshot">${safeBody}</div>`
+  return `${safeStyle}<div class="docx-page-snapshot">${safeBody}</div>`;
 }

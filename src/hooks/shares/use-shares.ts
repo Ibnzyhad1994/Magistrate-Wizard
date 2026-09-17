@@ -5,6 +5,32 @@ import type { ShareItemType } from "@/lib/shares";
 
 const key = (itemType: ShareItemType, itemId: string) => ["shares", itemType, itemId] as const;
 
+interface ShareIdentityRow {
+  share_id: string;
+  recipient_id: string | null;
+  recipient_display_name: string | null;
+  granted_by: string | null;
+  grantor_display_name: string | null;
+}
+
+/**
+ * `resolve_docket_share_identities` (0155) resolves every share on an item
+ * in one round trip — the per-row `resolve_docket_share_identity` call made
+ * a matter with ten shares cost eleven requests. Same SECURITY DEFINER
+ * envelope and per-row authority predicate as the singular RPC.
+ *
+ * `src/types/database.types.ts` is generated from the live schema and does
+ * not yet carry 0155, so the call is typed here; collapse this back to a
+ * plain `supabase.rpc(...)` once `supabase gen types` is re-run.
+ */
+const resolveShareIdentities = (ids: string[]) =>
+  (
+    supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => PromiseLike<{ data: ShareIdentityRow[] | null; error: { message: string } | null }>
+  )("resolve_docket_share_identities", { p_share_ids: ids });
+
 export interface ResolvedShare {
   id: string;
   permission: string;
@@ -29,24 +55,21 @@ export function useShares(itemType: ShareItemType, itemId: string | undefined) {
       if (error) throw error;
       if (!shares || shares.length === 0) return [];
 
-      const resolved = await Promise.all(
-        shares.map(async (share) => {
-          const { data: identity, error: identityError } = await supabase.rpc(
-            "resolve_docket_share_identity",
-            { p_share_id: share.id },
-          );
-          if (identityError) throw identityError;
-          const row = identity?.[0];
-          return {
-            ...share,
-            recipient_id: row?.recipient_id ?? null,
-            recipient_display_name: row?.recipient_display_name ?? null,
-            granted_by: row?.granted_by ?? null,
-            grantor_display_name: row?.grantor_display_name ?? null,
-          };
-        }),
+      const { data: identities, error: identityError } = await resolveShareIdentities(
+        shares.map((share) => share.id),
       );
-      return resolved;
+      if (identityError) throw identityError;
+      const byShare = new Map((identities ?? []).map((row) => [row.share_id, row]));
+      return shares.map((share) => {
+        const row = byShare.get(share.id);
+        return {
+          ...share,
+          recipient_id: row?.recipient_id ?? null,
+          recipient_display_name: row?.recipient_display_name ?? null,
+          granted_by: row?.granted_by ?? null,
+          grantor_display_name: row?.grantor_display_name ?? null,
+        };
+      });
     },
     enabled: !!itemId,
   });

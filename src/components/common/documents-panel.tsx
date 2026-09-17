@@ -30,7 +30,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { INGEST_FILE_ACCEPT } from "@/lib/ingest-source";
-import type { Document } from "@/types/database.types";
+import type { Document } from "@/types";
 
 interface DocumentsPanelProps {
   /** One of the approved polymorphic parent types (`documents_entity_type_check`, 0040/0055). */
@@ -74,7 +74,12 @@ const PURPOSE_BADGE_LABEL: Partial<Record<DocumentPurpose, string>> = {
   judgment: "Judgment",
 };
 
-export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploaded }: DocumentsPanelProps) {
+export function DocumentsPanel({
+  entityType,
+  entityId,
+  canUpload = true,
+  onUploaded,
+}: DocumentsPanelProps) {
   const { user } = useAuth();
   const { data, isPending, isError, error, refetch } = useDocuments(entityType, entityId);
   const upload = useUploadDocument(entityType, entityId);
@@ -173,7 +178,7 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
           }
         />
       ) : (
-        <Table>
+        <Table aria-label="Attached documents">
           <TableHeader>
             <TableRow>
               <TableHead>File</TableHead>
@@ -210,40 +215,40 @@ export function DocumentsPanel({ entityType, entityId, canUpload = true, onUploa
                 </TableCell>
                 <TableCell className="text-right">
                   <HintTooltip label={`View ${doc.file_name}`}>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`View ${doc.file_name}`}
-                    onClick={() => setViewingDoc(doc)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  </HintTooltip>
-                  <HintTooltip label={`Download ${doc.file_name}`}>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Download ${doc.file_name}`}
-                    disabled={downloadingId === doc.id}
-                    onClick={() => void handleDownload(doc)}
-                  >
-                    {downloadingId === doc.id ? (
-                      <LoadingSpinner size={16} />
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                  </Button>
-                  </HintTooltip>
-                  {doc.uploaded_by === user?.id && (
-                    <HintTooltip label={`Delete ${doc.file_name}`}>
                     <Button
                       size="icon"
                       variant="ghost"
-                      aria-label={`Delete ${doc.file_name}`}
-                      onClick={() => setPendingDelete(doc)}
+                      aria-label={`View ${doc.file_name}`}
+                      onClick={() => setViewingDoc(doc)}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Eye className="h-4 w-4" />
                     </Button>
+                  </HintTooltip>
+                  <HintTooltip label={`Download ${doc.file_name}`}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Download ${doc.file_name}`}
+                      disabled={downloadingId === doc.id}
+                      onClick={() => void handleDownload(doc)}
+                    >
+                      {downloadingId === doc.id ? (
+                        <LoadingSpinner size={16} />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </HintTooltip>
+                  {doc.uploaded_by === user?.id && (
+                    <HintTooltip label={`Delete ${doc.file_name}`}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Delete ${doc.file_name}`}
+                        onClick={() => setPendingDelete(doc)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </HintTooltip>
                   )}
                 </TableCell>

@@ -6,11 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { TagInput } from "@/components/common/tag-input";
-import {
-  useAddDocketTag,
-  useDocketTags,
-  useRemoveDocketTag,
-} from "@/hooks/docket/use-docket-tags";
+import { useAddDocketTag, useDocketTags, useRemoveDocketTag } from "@/hooks/docket/use-docket-tags";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface TagsSectionProps {
@@ -36,7 +32,12 @@ export function TagsSection({ matterId, frozen = false }: TagsSectionProps) {
     <div className="mt-4 space-y-4">
       {canEdit && (
         <div className="flex max-w-sm gap-2">
-          <TagInput value={value} onChange={setValue} onSubmit={handleAdd} disabled={addTag.isPending} />
+          <TagInput
+            value={value}
+            onChange={setValue}
+            onSubmit={handleAdd}
+            disabled={addTag.isPending}
+          />
           <Button onClick={handleAdd} disabled={addTag.isPending || !value.trim()}>
             <Plus className="h-4 w-4" />
             Add

@@ -21,10 +21,10 @@ export type PdfjsPage = {
     width: number;
     height: number;
   };
-  render: (opts: {
-    canvasContext: CanvasRenderingContext2D;
-    viewport: unknown;
-  }) => { promise: Promise<unknown>; cancel: () => void };
+  render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: unknown }) => {
+    promise: Promise<unknown>;
+    cancel: () => void;
+  };
   getTextContent: () => Promise<{ items: unknown[] }>;
   cleanup: () => void;
 };

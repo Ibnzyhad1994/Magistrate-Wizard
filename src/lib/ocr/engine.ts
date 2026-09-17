@@ -12,41 +12,42 @@
  *   rebuild a clean engine instead of inheriting a poisoned WASM heap.
  */
 
-import * as TesseractNS from "tesseract.js"
-import { isAbortError, throwIfAborted, withTimeout } from "@/lib/async-timeout"
-import { DEFAULT_OCR_PSM, OCR_RECOGNIZE_TIMEOUT_MS } from "@/lib/ocr/constants"
+import * as TesseractNS from "tesseract.js";
+import { isAbortError, throwIfAborted, withTimeout } from "@/lib/async-timeout";
+import { DEFAULT_OCR_PSM, OCR_RECOGNIZE_TIMEOUT_MS } from "@/lib/ocr/constants";
 
 type OcrWorker = {
-  setParameters: (params: Record<string, string>) => Promise<unknown>
-  recognize: (image: unknown) => Promise<{ data: { text?: string; confidence?: number } }>
-  terminate: () => Promise<unknown>
-}
+  setParameters: (params: Record<string, string>) => Promise<unknown>;
+  recognize: (image: unknown) => Promise<{ data: { text?: string; confidence?: number } }>;
+  terminate: () => Promise<unknown>;
+};
 
 type TesseractApi = {
   createWorker: (
     langs?: string,
     oem?: number,
     options?: Record<string, unknown>,
-  ) => Promise<OcrWorker>
-  PSM: { SINGLE_COLUMN: string; AUTO?: string; SPARSE_TEXT?: string }
-}
+  ) => Promise<OcrWorker>;
+  PSM: { SINGLE_COLUMN: string; AUTO?: string; SPARSE_TEXT?: string };
+};
 
-const Tesseract = ((TesseractNS as { default?: TesseractApi }).default ?? TesseractNS) as TesseractApi
+const Tesseract = ((TesseractNS as { default?: TesseractApi }).default ??
+  TesseractNS) as TesseractApi;
 
-type RecognizeInput = Buffer | Blob | Uint8Array | string
+type RecognizeInput = Buffer | Blob | Uint8Array | string;
 
 interface OcrPageResult {
-  text: string
-  confidence: number
+  text: string;
+  confidence: number;
 }
 
-let workerPromise: Promise<OcrWorker> | null = null
-let activeWorker: OcrWorker | null = null
-let recognizeQueue: Promise<unknown> = Promise.resolve()
+let workerPromise: Promise<OcrWorker> | null = null;
+let activeWorker: OcrWorker | null = null;
+let recognizeQueue: Promise<unknown> = Promise.resolve();
 
 const workerOptions = (): Record<string, unknown> => {
   if (typeof window === "undefined") {
-    return { gzip: true }
+    return { gzip: true };
   }
   return {
     workerPath: "/tesseract/worker.min.js",
@@ -54,87 +55,90 @@ const workerOptions = (): Record<string, unknown> => {
     langPath: "/tesseract",
     gzip: true,
     workerBlobURL: false,
-  }
-}
+  };
+};
 
 const getWorker = async (): Promise<OcrWorker> => {
   if (!workerPromise) {
     workerPromise = (async () => {
-      const worker = await Tesseract.createWorker("eng", 1, workerOptions())
+      const worker = await Tesseract.createWorker("eng", 1, workerOptions());
       await worker.setParameters({
         tessedit_pageseg_mode: Tesseract.PSM.AUTO ?? DEFAULT_OCR_PSM,
         preserve_interword_spaces: "1",
         user_defined_dpi: "300",
         tessedit_do_invert: "0",
-      })
-      activeWorker = worker
-      return worker
+      });
+      activeWorker = worker;
+      return worker;
     })().catch((err: unknown) => {
-      workerPromise = null
-      activeWorker = null
-      throw err
-    })
+      workerPromise = null;
+      activeWorker = null;
+      throw err;
+    });
   }
-  return workerPromise
-}
+  return workerPromise;
+};
 
 /**
  * Tear down the shared worker. Corrupt JPEG/PNG decode can leave the WASM
  * heap unusable; dropping it lets the next recognize rebuild cleanly.
  */
 export const terminateOcrWorker = async (): Promise<void> => {
-  const worker = activeWorker
-  activeWorker = null
-  workerPromise = null
-  if (!worker) return
+  const worker = activeWorker;
+  activeWorker = null;
+  workerPromise = null;
+  if (!worker) return;
   try {
-    await worker.terminate()
+    await worker.terminate();
   } catch {
     // Best-effort — a poisoned worker may reject terminate.
   }
-}
+};
 
-export const recognizeImage = (image: RecognizeInput, signal?: AbortSignal): Promise<OcrPageResult> => {
+export const recognizeImage = (
+  image: RecognizeInput,
+  signal?: AbortSignal,
+): Promise<OcrPageResult> => {
   const run = async (): Promise<OcrPageResult> => {
-    throwIfAborted(signal)
-    const worker = await getWorker()
+    throwIfAborted(signal);
+    const worker = await getWorker();
     try {
       const { data } = await withTimeout(
         worker.recognize(image),
         OCR_RECOGNIZE_TIMEOUT_MS,
         "Timed out recognizing text on this page.",
-      )
-      throwIfAborted(signal)
-      return { text: data.text ?? "", confidence: data.confidence ?? 0 }
+      );
+      throwIfAborted(signal);
+      return { text: data.text ?? "", confidence: data.confidence ?? 0 };
     } catch (err) {
-      if (isAbortError(err)) throw err
-      await terminateOcrWorker()
-      throw err
+      if (isAbortError(err)) throw err;
+      await terminateOcrWorker();
+      throw err;
     }
-  }
-  const result = recognizeQueue.then(run, run)
+  };
+  const result = recognizeQueue.then(run, run);
   recognizeQueue = result.then(
     () => undefined,
     () => undefined,
-  )
-  return result
-}
+  );
+  return result;
+};
 
 /** Yield so the browser can paint / handle input between heavy OCR pages. */
 export const yieldForUi = (): Promise<void> =>
   new Promise((resolve) => {
     if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(() => setTimeout(resolve, 0))
-      return
+      window.requestAnimationFrame(() => setTimeout(resolve, 0));
+      return;
     }
-    setTimeout(resolve, 0)
-  })
+    setTimeout(resolve, 0);
+  });
 
 export const isOcrEngineAvailable = async (): Promise<boolean> => {
   try {
-    await getWorker()
-    return true
+    await getWorker();
+    return true;
   } catch {
-    return false
+    return false;
   }
-}
+};

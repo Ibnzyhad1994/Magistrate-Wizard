@@ -13,13 +13,7 @@ interface EmptyStateProps {
  * In-content (not full-page) empty state — used inside cards, tab panels,
  * and list views when there is genuinely nothing to show yet.
  */
-export function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-  className,
-}: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -29,9 +23,7 @@ export function EmptyState({
     >
       {Icon && <Icon className="h-8 w-8 text-muted-foreground" aria-hidden="true" />}
       <p className="text-sm font-medium text-foreground">{title}</p>
-      {description && (
-        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
-      )}
+      {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );

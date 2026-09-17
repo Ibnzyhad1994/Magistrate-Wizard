@@ -56,7 +56,9 @@ test.describe("document PDF redaction", () => {
     expect(path).toBeTruthy();
 
     await page.goto("/legislation");
-    await expect(page.getByRole("heading", { name: "Legislation" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "Legislation" })).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(page.getByRole("button", { name: "Redact", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Download redacted PDF" })).toHaveCount(0);
   });

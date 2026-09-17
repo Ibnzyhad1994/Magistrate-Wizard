@@ -64,6 +64,7 @@ export function NavSearch({
         aria-hidden="true"
       />
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- rendered only after the user opens search from the nav button; focus follows their action
         autoFocus
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
@@ -94,7 +95,7 @@ export function NavSearch({
         type="button"
         variant="ghost"
         size="icon"
-        className="absolute right-0.5 top-1/2 h-9 w-9 min-h-9 min-w-9 -translate-y-1/2 shrink-0 touch-manipulation text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+        className="absolute right-0.5 top-1/2 h-9 min-h-9 w-9 min-w-9 shrink-0 -translate-y-1/2 touch-manipulation text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
         onMouseDown={(event) => event.preventDefault()}
         onClick={handleClose}
         aria-label="Close search"

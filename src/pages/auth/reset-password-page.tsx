@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { AlertTriangle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/auth/password-input";
 import {
@@ -17,15 +17,12 @@ import {
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
-import {
-  resetPasswordSchema,
-  type ResetPasswordFormValues,
-} from "@/lib/validations/auth";
+import { resetPasswordSchema, type ResetPasswordFormValues } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
 import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-foreground/15 bg-secondary text-foreground placeholder:text-foreground/50 focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 const panelClassName = AUTH_PANEL_CLASS;
 const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";
@@ -86,9 +83,9 @@ export default function ResetPasswordPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive">
             <AlertTriangle className="h-5 w-5" aria-hidden="true" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">
             Link expired
-          </CardTitle>
+          </h1>
           <CardDescription className="text-foreground/70">
             This password reset link is invalid or has already been used. Request a new one to
             continue.
@@ -109,9 +106,9 @@ export default function ResetPasswordPage() {
   return (
     <Card className={panelClassName}>
       <CardHeader className={headerClassName}>
-        <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">
           Set a new password
-        </CardTitle>
+        </h1>
         <CardDescription className="text-foreground/70">
           Choose a new password for your account.
         </CardDescription>

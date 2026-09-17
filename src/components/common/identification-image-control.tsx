@@ -33,9 +33,7 @@ export function IdentificationImageControl({
       <SignedThumb path={path} alt={alt} className="h-24 w-20 shrink-0 rounded-sm" />
       <div className="min-w-0 space-y-2">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        {description && !readOnly && (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        )}
+        {description && !readOnly && <p className="text-xs text-muted-foreground">{description}</p>}
         {!readOnly && (
           <>
             <input
@@ -79,9 +77,7 @@ export function IdentificationImageControl({
             </div>
           </>
         )}
-        {readOnly && !path && (
-          <p className="text-xs text-muted-foreground">No photo attached.</p>
-        )}
+        {readOnly && !path && <p className="text-xs text-muted-foreground">No photo attached.</p>}
       </div>
     </div>
   );

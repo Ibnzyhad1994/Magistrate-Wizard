@@ -1,8 +1,8 @@
 export type NotificationFilter = {
-  unreadOnly?: boolean
+  unreadOnly?: boolean;
   /** Empty or omitted means every type. */
-  types?: string[]
-}
+  types?: string[];
+};
 
 /**
  * Normalized, order-insensitive representation of a filter, used as part of
@@ -21,8 +21,8 @@ export type NotificationFilter = {
 export const notificationFilterKey = (filter: NotificationFilter | undefined) => ({
   unreadOnly: filter?.unreadOnly ?? false,
   types: [...(filter?.types ?? [])].sort(),
-})
+});
 
 /** True when a filter would narrow the list at all. */
 export const isNotificationFilterActive = (filter: NotificationFilter | undefined): boolean =>
-  Boolean(filter?.unreadOnly) || (filter?.types?.length ?? 0) > 0
+  Boolean(filter?.unreadOnly) || (filter?.types?.length ?? 0) > 0;

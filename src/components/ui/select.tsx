@@ -28,11 +28,7 @@ function childText(node: React.ReactNode): string {
   return "";
 }
 
-function pushOption(
-  items: OptionItem[],
-  child: React.ReactElement,
-  group?: string,
-) {
+function pushOption(items: OptionItem[], child: React.ReactElement, group?: string) {
   if (child.type !== "option") return;
   const props = child.props as React.OptionHTMLAttributes<HTMLOptionElement>;
   items.push({
@@ -107,12 +103,12 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               id={id}
               disabled={disabled}
               aria-label={ariaLabel}
-              aria-invalid={ariaInvalid}
+              data-invalid={ariaInvalid ? "true" : undefined}
+              data-required={required ? "true" : undefined}
               aria-describedby={ariaDescribedBy}
-              aria-required={required}
               onBlur={onBlur as React.FocusEventHandler<HTMLButtonElement> | undefined}
               className={cn(
-                "relative flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-left text-sm shadow-sm transition-colors",
+                "relative flex min-h-11 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-left text-base shadow-sm transition-colors lg:min-h-9 lg:text-sm",
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 isPlaceholder ? "text-muted-foreground" : "text-foreground",
@@ -125,7 +121,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="pointer-events-auto z-[70] max-h-80 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-foreground/10 bg-card p-1 text-foreground"
+            className="pointer-events-auto z-popover max-h-80 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-y-auto border-border bg-card p-1 text-foreground"
           >
             {options.map((opt, index) => {
               const prevGroup = index > 0 ? options[index - 1]?.group : undefined;
@@ -143,7 +139,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                     className={cn(
                       "cursor-pointer",
                       opt.value === current && "bg-foreground/10",
-                      !opt.value && "text-foreground/55",
+                      !opt.value && "text-muted-foreground",
                     )}
                   >
                     {opt.label}

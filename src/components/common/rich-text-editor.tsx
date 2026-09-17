@@ -12,10 +12,11 @@ import {
   Heading2,
   Link as LinkIcon,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { isSafeHref } from "@/lib/html-sanitize";
 import { Button } from "@/components/ui/button";
+import { LinkDialog } from "@/components/common/link-dialog";
 
 interface RichTextEditorProps {
   content: JSONContent | null;
@@ -23,6 +24,10 @@ interface RichTextEditorProps {
   editable?: boolean;
   placeholder?: string;
   className?: string;
+  /** Accessible name for the editing area (WCAG 4.1.2), e.g. "Judgment text". Use `ariaLabelledBy` instead when a visible label exists. */
+  ariaLabel?: string;
+  /** Id of a visible label element naming the editing area. */
+  ariaLabelledBy?: string;
 }
 
 /**
@@ -32,6 +37,11 @@ interface RichTextEditorProps {
  * headings/bold/italic/underline/link toolbar, not a full document
  * editor — this is the simplest safe editor consistent with the
  * existing `content_text` schema, not an invented rich-content model.
+ *
+ * Accessibility: the ProseMirror surface is a named multiline textbox,
+ * the toolbar is a `role="toolbar"` with arrow-key movement between its
+ * buttons, and link insertion goes through an accessible dialog rather
+ * than `window.prompt`.
  */
 export function RichTextEditor({
   content,
@@ -39,7 +49,12 @@ export function RichTextEditor({
   editable = true,
   placeholder = "Start writing…",
   className,
+  ariaLabel,
+  ariaLabelledBy,
 }: RichTextEditorProps) {
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkInitial, setLinkInitial] = useState("");
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -59,9 +74,11 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: cn(
-          "richtext-content max-w-none focus:outline-none min-h-[200px] px-3 py-2",
-        ),
+        role: "textbox",
+        "aria-multiline": "true",
+        ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
+        ...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {}),
+        class: cn("richtext-content max-w-none focus:outline-none min-h-[200px] px-3 py-2"),
       },
     },
   });
@@ -72,10 +89,46 @@ export function RichTextEditor({
 
   if (!editor) return null;
 
+  // WAI-ARIA toolbar pattern: Left/Right (and Home/End) move between the
+  // buttons so the toolbar is one Tab stop rather than seven.
+  const handleToolbarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    const buttons = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not([disabled])"),
+    );
+    if (buttons.length === 0) return;
+    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    let next = current;
+    if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = buttons.length - 1;
+    else if (event.key === "ArrowRight") next = (current + 1) % buttons.length;
+    else next = (current - 1 + buttons.length) % buttons.length;
+    event.preventDefault();
+    buttons[next]?.focus();
+  };
+
+  const openLinkDialog = () => {
+    const existing = editor.getAttributes("link").href;
+    setLinkInitial(typeof existing === "string" ? existing : "");
+    setLinkOpen(true);
+  };
+
   return (
-    <div className={cn("rounded-md border border-input", className)}>
+    <div
+      className={cn(
+        "rounded-md border border-input focus-within:ring-1 focus-within:ring-ring",
+        className,
+      )}
+    >
       {editable && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-input p-1">
+        <div
+          role="toolbar"
+          aria-label="Text formatting"
+          aria-orientation="horizontal"
+          className="flex flex-wrap items-center gap-1 border-b border-input p-1"
+          onKeyDown={handleToolbarKeyDown}
+        >
           <ToolbarButton
             active={editor.isActive("bold")}
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -120,17 +173,32 @@ export function RichTextEditor({
           </ToolbarButton>
           <ToolbarButton
             active={editor.isActive("link")}
-            onClick={() => {
-              const url = window.prompt("Link URL");
-              if (url && isSafeHref(url)) editor.chain().focus().setLink({ href: url }).run();
-            }}
-            label="Link"
+            onClick={openLinkDialog}
+            label={editor.isActive("link") ? "Edit link" : "Insert link"}
+            hasPopup="dialog"
           >
             <LinkIcon className="h-4 w-4" />
           </ToolbarButton>
         </div>
       )}
       <EditorContent editor={editor} />
+      {editable && (
+        <LinkDialog
+          open={linkOpen}
+          onOpenChange={(open) => {
+            setLinkOpen(open);
+            if (!open) editor.commands.focus();
+          }}
+          initialHref={linkInitial}
+          onSubmit={(href) => {
+            // LinkDialog already validated; re-checking keeps the guard
+            // next to the command that writes the href into the document.
+            if (!isSafeHref(href)) return;
+            editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+          }}
+          onRemove={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()}
+        />
+      )}
     </div>
   );
 }
@@ -139,11 +207,13 @@ function ToolbarButton({
   active,
   onClick,
   label,
+  hasPopup,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
+  hasPopup?: "dialog";
   children: React.ReactNode;
 }) {
   return (
@@ -154,7 +224,8 @@ function ToolbarButton({
       className="h-7 w-7"
       onClick={onClick}
       aria-label={label}
-      aria-pressed={active}
+      aria-pressed={hasPopup ? undefined : active}
+      aria-haspopup={hasPopup}
     >
       {children}
     </Button>

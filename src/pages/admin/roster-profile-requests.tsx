@@ -5,13 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -182,7 +176,13 @@ export function RosterProfileRequests({
   const showCorrect = canCorrect && requestsKnown && !!nextRole;
 
   // Nothing actionable and nothing to report, once we actually know.
-  if (requestsKnown && !canSendBack && !canCorrect && pending.length === 0 && decided.length === 0) {
+  if (
+    requestsKnown &&
+    !canSendBack &&
+    !canCorrect &&
+    pending.length === 0 &&
+    decided.length === 0
+  ) {
     return null;
   }
 
@@ -207,8 +207,8 @@ export function RosterProfileRequests({
         <CardHeader>
           <CardTitle className="text-base">Court requests</CardTitle>
           <CardDescription>
-            Their court requests could not be loaded, so returning them or correcting their
-            account type is unavailable until this succeeds.
+            Their court requests could not be loaded, so returning them or correcting their account
+            type is unavailable until this succeeds.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -368,9 +368,7 @@ export function RosterProfileRequests({
         open={correctOpen}
         onOpenChange={(open) => !open && setCorrectOpen(false)}
         title={
-          nextRole
-            ? `Correct account type to ${ROLE_LABELS[nextRole]}?`
-            : "Correct account type?"
+          nextRole ? `Correct account type to ${ROLE_LABELS[nextRole]}?` : "Correct account type?"
         }
         description={`This changes them from ${
           role === "magistrate" || role === "clerk" ? ROLE_LABELS[role] : "their current type"

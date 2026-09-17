@@ -34,10 +34,10 @@ import {
 } from "@/lib/docket-protocols";
 
 const TONE_CLASS: Record<ReturnType<typeof procedureCellTone>, string> = {
-  muted: "text-foreground/40",
-  progress: "bg-[hsl(var(--stage-progress)/0.15)] text-[hsl(var(--stage-progress))]",
-  done: "bg-[hsl(var(--stage-done)/0.15)] text-[hsl(var(--stage-done))]",
-  remand: "bg-[hsl(var(--stage-remand)/0.20)] text-[hsl(var(--stage-remand))]",
+  muted: "text-muted-foreground",
+  progress: "bg-[hsl(var(--stage-progress)/0.15)] text-stage-progress",
+  done: "bg-[hsl(var(--stage-done)/0.15)] text-stage-done",
+  remand: "bg-[hsl(var(--stage-remand)/0.20)] text-stage-remand",
 };
 
 /** Ruling/Judgment-only: lets the cell attach the actual file, not just record a status (0074). */
@@ -99,10 +99,10 @@ export function DocketStageCell({
   const cellClassName = cn(
     "inline-flex max-w-full touch-manipulation items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
-    isCurrent && applicable && "ring-2 ring-[hsl(var(--match))]",
+    isCurrent && applicable && "ring-2 ring-match",
     compact ? "min-h-8" : "min-h-9 min-w-[5.5rem] sm:min-h-7",
     mode === "edit" && "cursor-pointer hover:brightness-110",
-    !applicable && "cursor-default text-foreground/25",
+    !applicable && "cursor-default text-muted-foreground",
     className,
   );
   const hint = !applicable
@@ -111,7 +111,7 @@ export function DocketStageCell({
       ? tone === "muted"
         ? "Click to record this stage"
         : "Click to update this stage"
-        : adjourned && adjournment?.reason
+      : adjourned && adjournment?.reason
         ? `Adjourned: ${adjournment.reason}`
         : label;
 
@@ -122,7 +122,10 @@ export function DocketStageCell({
   if (!applicable) {
     return (
       <HintTooltip label={hint}>
-        <span className={cellClassName} aria-label={`${column.replace(/_/g, " ")}: not on this board`}>
+        <span
+          className={cellClassName}
+          aria-label={`${column.replace(/_/g, " ")}: not on this board`}
+        >
           N/A
         </span>
       </HintTooltip>
@@ -331,4 +334,3 @@ export function DocketStageCell({
     </DropdownMenu>
   );
 }
-

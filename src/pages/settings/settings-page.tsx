@@ -5,19 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ThemeSelect } from "@/components/theme/theme-select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  BROWSE_VIEW_LABELS,
-  TILE_SIZE_LABELS,
-  isBrowseView,
-  isTileSize,
-} from "@/lib/browse-prefs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BROWSE_VIEW_LABELS, TILE_SIZE_LABELS, isBrowseView, isTileSize } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
@@ -94,7 +83,8 @@ export default function SettingsPage() {
               <option value="large">{TILE_SIZE_LABELS.large}</option>
             </Select>
             <p className="text-[11px] text-muted-foreground">
-              Compact is slightly smaller than the original posters. Applies to tile view and Home rows.
+              Compact is slightly smaller than the original posters. Applies to tile view and Home
+              rows.
             </p>
           </div>
 
@@ -107,7 +97,8 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Help</CardTitle>
             <CardDescription>
-              Magistrates see this once after they are assigned to a court. Start it again any time from here or the account menu.
+              Magistrates see this once after they are assigned to a court. Start it again any time
+              from here or the account menu.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -129,10 +120,9 @@ export default function SettingsPage() {
                 still described the old admin-only model, and named Court
                 Assignments without linking to it. */}
             <CardDescription>
-              Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>. Docket
-              access is separate from your platform role. It follows the
-              active court seatings below, which you request and relinquish
-              yourself under Court Assignments; an administrator approves
+              Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>. Docket access
+              is separate from your platform role. It follows the active court seatings below, which
+              you request and relinquish yourself under Court Assignments; an administrator approves
               each request.
             </CardDescription>
           </CardHeader>
@@ -155,9 +145,7 @@ export default function SettingsPage() {
             )}
             <Button variant="outline" size="sm" asChild>
               <Link to={ROUTES.courtAssignments}>
-                {myCourts && myCourts.length > 0
-                  ? "Manage court assignments"
-                  : "Request a court"}
+                {myCourts && myCourts.length > 0 ? "Manage court assignments" : "Request a court"}
               </Link>
             </Button>
           </CardContent>
@@ -188,24 +176,24 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-6 space-y-6">
-      <GoogleCalendarCard />
-      <SoundCuesCard />
-      <HearingRemindersCard />
-      <DownloadMyDataCard />
+        <GoogleCalendarCard />
+        <SoundCuesCard />
+        <HearingRemindersCard />
+        <DownloadMyDataCard />
 
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-base">About</CardTitle>
-          <CardDescription>
-            Native shells (Android, iOS, Windows) share this version.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p>
-            Version {APP_VERSION} (build {APP_BUILD})
-          </p>
-        </CardContent>
-      </Card>
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">About</CardTitle>
+            <CardDescription>
+              Native shells (Android, iOS, Windows) share this version.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>
+              Version {APP_VERSION} (build {APP_BUILD})
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </BrowsePage>
   );

@@ -24,8 +24,7 @@ export const TILE_WIDTH_CLASS: Record<TileSize, string> = {
     "w-[32vw] min-w-[7.25rem] max-w-[10.5rem] sm:w-[20vw] md:w-[13vw] lg:w-[10vw] xl:w-[8.75vw]",
   regular:
     "w-[42vw] min-w-[9.5rem] max-w-[13.5rem] sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]",
-  large:
-    "w-[48vw] min-w-[11rem] max-w-[16rem] sm:w-[32vw] md:w-[22vw] lg:w-[16vw] xl:w-[14vw]",
+  large: "w-[48vw] min-w-[11rem] max-w-[16rem] sm:w-[32vw] md:w-[22vw] lg:w-[16vw] xl:w-[14vw]",
 };
 
 export const LIST_THUMB_CLASS: Record<TileSize, string> = {

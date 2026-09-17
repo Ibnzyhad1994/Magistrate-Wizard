@@ -68,10 +68,10 @@ export function normalizeWhitespace(text: string): string {
 // ---------------------------------------------------------------------------
 
 export interface ProposedCaseLawFields {
-  case_name?: string
-  neutral_citation?: string
-  reported_citation?: string
-  decided_date_guess?: string
+  case_name?: string;
+  neutral_citation?: string;
+  reported_citation?: string;
+  decided_date_guess?: string;
 }
 
 /**
@@ -82,7 +82,7 @@ export interface ProposedCaseLawFields {
 export const shouldAutoFillCaseName = (
   confidence: "high" | "low" | "none" | null | undefined,
   ocrUsed: boolean,
-): boolean => confidence === "high" && !ocrUsed
+): boolean => confidence === "high" && !ocrUsed;
 
 /**
  * Drafts may carry a low-confidence running title (WIR heads, filename
@@ -91,7 +91,7 @@ export const shouldAutoFillCaseName = (
 export const shouldProposeCaseName = (
   confidence: "high" | "low" | "none" | null | undefined,
   ocrUsed: boolean,
-): boolean => (confidence === "high" || confidence === "low") && !ocrUsed
+): boolean => (confidence === "high" || confidence === "low") && !ocrUsed;
 
 /**
  * Medium-neutral citation, e.g. "[1969] SCR 525", "[2015] UKSC 20", or
@@ -133,8 +133,18 @@ const DATE_RE =
   /\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/i;
 
 const MONTHS: Record<string, string> = {
-  january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
-  july: "07", august: "08", september: "09", october: "10", november: "11", december: "12",
+  january: "01",
+  february: "02",
+  march: "03",
+  april: "04",
+  may: "05",
+  june: "06",
+  july: "07",
+  august: "08",
+  september: "09",
+  october: "10",
+  november: "11",
+  december: "12",
 };
 
 /**
@@ -217,7 +227,8 @@ const BODY_REFERENCE_MARKERS = [
  * v...", "The Attorney General v...") must never be disqualified by this
  * check.
  */
-const CONTINUATION_START_RE = /^(and|also|further|moreover|in addition|likewise|similarly|but|however|thus|hence|therefore)\b/i;
+const CONTINUATION_START_RE =
+  /^(and|also|further|moreover|in addition|likewise|similarly|but|however|thus|hence|therefore)\b/i;
 
 const COURT_RUNNING_HEADING_RE =
   /\b(FULL COURT(?: OF THE HIGH COURT(?: OF [A-Z. ]+)?)?|COURT OF APPEAL(?: OF THE EASTERN CARIBBEAN STATES| OF [A-Z. ]+)?|CARIBBEAN COURT OF JUSTICE)\b/i;
@@ -281,10 +292,16 @@ export function resolveRecordCitation(opts: {
   };
 
   if (fromFilename?.reported_citation) {
-    if (opts.reportedFromText && !citationsMatchIdentity(opts.reportedFromText, fromFilename.reported_citation)) {
+    if (
+      opts.reportedFromText &&
+      !citationsMatchIdentity(opts.reportedFromText, fromFilename.reported_citation)
+    ) {
       pushAuthority(opts.reportedFromText);
     }
-    if (opts.neutralFromText && !citationsMatchIdentity(opts.neutralFromText, fromFilename.reported_citation)) {
+    if (
+      opts.neutralFromText &&
+      !citationsMatchIdentity(opts.neutralFromText, fromFilename.reported_citation)
+    ) {
       pushAuthority(opts.neutralFromText);
     }
     return {
@@ -295,10 +312,16 @@ export function resolveRecordCitation(opts: {
     };
   }
   if (fromFilename?.neutral_citation) {
-    if (opts.reportedFromText && !citationsMatchIdentity(opts.reportedFromText, fromFilename.neutral_citation)) {
+    if (
+      opts.reportedFromText &&
+      !citationsMatchIdentity(opts.reportedFromText, fromFilename.neutral_citation)
+    ) {
       pushAuthority(opts.reportedFromText);
     }
-    if (opts.neutralFromText && !citationsMatchIdentity(opts.neutralFromText, fromFilename.neutral_citation)) {
+    if (
+      opts.neutralFromText &&
+      !citationsMatchIdentity(opts.neutralFromText, fromFilename.neutral_citation)
+    ) {
       pushAuthority(opts.neutralFromText);
     }
     return {
@@ -311,7 +334,11 @@ export function resolveRecordCitation(opts: {
 
   if (opts.head) {
     const headerSeries = opts.head.match(/\(\d{4}\)\s?\d+\s?[A-Z][A-Za-z.]*(?:\s?\d+)?/);
-    if (headerSeries && opts.reportedFromText && citationsMatchIdentity(opts.reportedFromText, headerSeries[0])) {
+    if (
+      headerSeries &&
+      opts.reportedFromText &&
+      citationsMatchIdentity(opts.reportedFromText, headerSeries[0])
+    ) {
       return {
         reported: opts.reportedFromText,
         neutral: opts.neutralFromText,
@@ -347,7 +374,8 @@ function cleanCaseNameCandidate(raw: string): string | undefined {
   // Defensive: also cut at any citation pattern that slipped into the
   // window (should be rare given how the window is chosen below, but
   // cheap to guard against).
-  const citationInside = REPORTED_CITATION_RE.exec(candidate) ?? NEUTRAL_CITATION_RE.exec(candidate);
+  const citationInside =
+    REPORTED_CITATION_RE.exec(candidate) ?? NEUTRAL_CITATION_RE.exec(candidate);
   if (citationInside && citationInside.index > 0) {
     candidate = candidate.slice(0, citationInside.index);
   }
@@ -365,12 +393,20 @@ function cleanCaseNameCandidate(raw: string): string | undefined {
   // caught at the very end of a candidate) previously left the dash
   // behind because the punctuation-strip regex anchors on the true end
   // of the string and a trailing space defeated it.
-  candidate = candidate.replace(/\s{2,}/g, " ").trim().replace(/[|:\-–—]+$/, "").trim();
+  candidate = candidate
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(/[|:\-–—]+$/, "")
+    .trim();
   // Strip a leading fragment up to the last sentence-ending punctuation —
   // a window that starts mid-sentence (bounded only by a fixed character
   // count, not a real boundary) commonly carries a trailing clause from
   // the previous sentence ahead of the true candidate start.
-  const lastBoundary = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("; "), candidate.lastIndexOf("\n"));
+  const lastBoundary = Math.max(
+    candidate.lastIndexOf(". "),
+    candidate.lastIndexOf("; "),
+    candidate.lastIndexOf("\n"),
+  );
   if (lastBoundary !== -1 && lastBoundary < candidate.length - 5) {
     candidate = candidate.slice(lastBoundary + 2).trim();
   }
@@ -391,7 +427,10 @@ function cleanCaseNameCandidate(raw: string): string | undefined {
  * (closer to the start of the document) is preferred, matching how real
  * judgment headers are laid out.
  */
-function scoreCaseNameCandidate(candidate: string, citationIndex: number): { disqualified: boolean; positionScore: number } {
+function scoreCaseNameCandidate(
+  candidate: string,
+  citationIndex: number,
+): { disqualified: boolean; positionScore: number } {
   const lower = candidate.toLowerCase();
   let disqualified = false;
 
@@ -452,7 +491,12 @@ function extractCaseNameCandidate(
   }
   matches.sort((a, b) => a.index - b.index);
 
-  const survivors: { candidate: string; positionScore: number; match: (typeof matches)[number]; identityBonus: number }[] = [];
+  const survivors: {
+    candidate: string;
+    positionScore: number;
+    match: (typeof matches)[number];
+    identityBonus: number;
+  }[] = [];
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
     const prevEnd = i > 0 ? matches[i - 1].end : 0;
@@ -467,7 +511,9 @@ function extractCaseNameCandidate(
   }
 
   if (survivors.length > 0) {
-    survivors.sort((a, b) => b.identityBonus - a.identityBonus || b.positionScore - a.positionScore);
+    survivors.sort(
+      (a, b) => b.identityBonus - a.identityBonus || b.positionScore - a.positionScore,
+    );
     const winner = survivors[0];
     return {
       name: winner.candidate,
@@ -496,7 +542,10 @@ function extractCaseNameCandidate(
   // check (a fallback must not be less careful than the primary path).
   // No citation anchor exists for this path, so it is always reported as
   // low confidence by the caller.
-  const firstLine = head.split("\n").map((l) => l.trim()).find((l) => l.length > 3 && / v[s]?\.? /i.test(l));
+  const firstLine = head
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 3 && / v[s]?\.? /i.test(l));
   if (!firstLine) return undefined;
   const cleaned = cleanCaseNameCandidate(firstLine);
   if (!cleaned || scoreCaseNameCandidate(cleaned, 0).disqualified) return undefined;
@@ -507,7 +556,11 @@ function extractRunningTitleBeforeCourt(head: string): string | undefined {
   const m = COURT_RUNNING_HEADING_RE.exec(head);
   if (!m || m.index < 8) return undefined;
   const before = head.slice(0, m.index);
-  const vMatches = [...before.matchAll(/\b([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,8}\s+v(?:s)?\.?\s+[A-Z][\w.'-]*(?:\s+[A-Z&][\w.'-]*){0,10})\b/g)];
+  const vMatches = [
+    ...before.matchAll(
+      /\b([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,8}\s+v(?:s)?\.?\s+[A-Z][\w.'-]*(?:\s+[A-Z&][\w.'-]*){0,10})\b/g,
+    ),
+  ];
   const last = vMatches[vMatches.length - 1];
   if (!last?.[1]) return undefined;
   const cleaned = cleanCaseNameCandidate(last[1]);
@@ -548,8 +601,10 @@ export function extractCaseNameFromFilename(filename: string): FilenameProposal 
   const candidate = extractCaseNameCandidate(cleaned);
   if (candidate) {
     const result: FilenameProposal = { case_name: candidate.name };
-    if (candidate.citationType === "reported" && candidate.citationText) result.reported_citation = candidate.citationText;
-    else if (candidate.citationType === "neutral" && candidate.citationText) result.neutral_citation = candidate.citationText;
+    if (candidate.citationType === "reported" && candidate.citationText)
+      result.reported_citation = candidate.citationText;
+    else if (candidate.citationType === "neutral" && candidate.citationText)
+      result.neutral_citation = candidate.citationText;
     return result;
   }
 
@@ -595,7 +650,10 @@ function extractDecidedDate(head: string): string | undefined {
   const global = new RegExp(DATE_RE.source, "gi");
   let m: RegExpExecArray | null;
   while ((m = global.exec(head))) {
-    const context = head.slice(Math.max(0, m.index - 60), Math.min(head.length, m.index + m[0].length + 40));
+    const context = head.slice(
+      Math.max(0, m.index - 60),
+      Math.min(head.length, m.index + m[0].length + 40),
+    );
     if (DECISION_CONTEXT_RE.test(context)) {
       const [, day, month, year] = m;
       const mm = MONTHS[month.toLowerCase()];
@@ -689,8 +747,11 @@ export function extractCaseLawMetadataWithConfidence(
   const head = normalizeMetadataHead(buildHeadWindow(text, pages));
   const result: ProposedCaseLawFields = {};
   let caseNameConfidence: MetadataConfidence = "none";
-  const filenameProposal = options?.filename ? extractCaseNameFromFilename(options.filename) : undefined;
-  const preferredCitation = filenameProposal?.reported_citation ?? filenameProposal?.neutral_citation;
+  const filenameProposal = options?.filename
+    ? extractCaseNameFromFilename(options.filename)
+    : undefined;
+  const preferredCitation =
+    filenameProposal?.reported_citation ?? filenameProposal?.neutral_citation;
 
   const nameResult = extractCaseNameCandidate(head, preferredCitation);
   if (nameResult) {
@@ -731,7 +792,9 @@ export function extractCaseLawMetadataWithConfidence(
   if (identity.neutral) result.neutral_citation = identity.neutral;
   if (
     result.neutral_citation &&
-    identity.authoritiesCited.some((a) => citationsMatchIdentity(a, result.neutral_citation as string))
+    identity.authoritiesCited.some((a) =>
+      citationsMatchIdentity(a, result.neutral_citation as string),
+    )
   ) {
     result.neutral_citation = undefined;
   }
@@ -784,7 +847,8 @@ const LEGISLATION_HEADER_EXCLUDE_RE = /official gazette|legal supplement|laws\s+
  * ("...may be cited as the X Act 1985 and shall come into operation..."),
  * and a greedy match-to-next-period would swallow the commencement text
  * too. */
-const CITED_AS_RE = /\bmay be cited as the\s+([^.\n]{3,120}?\b(?:Act|Ordinance|Regulations))\b(?:,?\s*((?:19|20)\d{2}))?/i;
+const CITED_AS_RE =
+  /\bmay be cited as the\s+([^.\n]{3,120}?\b(?:Act|Ordinance|Regulations))\b(?:,?\s*((?:19|20)\d{2}))?/i;
 
 /** A whole line that is essentially all caps/punctuation (a real title
  * line), tested per-line against RAW (non-whitespace-normalized) text —
@@ -831,7 +895,9 @@ export interface LegislationExtractionResult {
  * significant error in a way a wrong act number is not — leave it
  * curator-entered only.
  */
-export function extractLegislationMetadataWithConfidence(text: string): LegislationExtractionResult {
+export function extractLegislationMetadataWithConfidence(
+  text: string,
+): LegislationExtractionResult {
   const rawHeadSlice = text.slice(0, LEGISLATION_HEAD_WINDOW);
   // Used for CITED_AS_RE / ACT_NUMBER_RE / CHAPTER_CODE_RE, which benefit
   // from whitespace normalization (a citation clause can hard-wrap across
@@ -871,7 +937,10 @@ export function extractLegislationMetadataWithConfidence(text: string): Legislat
           if (next.length === 0 || !ALL_CAPS_LINE_RE.test(next)) break;
           candidate = `${candidate} ${next}`;
         }
-        if (LEGISLATION_KEYWORD_RE.test(candidate) && !LEGISLATION_HEADER_EXCLUDE_RE.test(candidate)) {
+        if (
+          LEGISLATION_KEYWORD_RE.test(candidate) &&
+          !LEGISLATION_HEADER_EXCLUDE_RE.test(candidate)
+        ) {
           fields.title = candidate;
           titleConfidence = lineStarts[i] <= LEGISLATION_HIGH_CONFIDENCE_WINDOW ? "high" : "low";
           break outer;
@@ -884,7 +953,9 @@ export function extractLegislationMetadataWithConfidence(text: string): Legislat
   if (actNumberMatch) {
     fields.act_number = `${actNumberMatch[1]} of ${actNumberMatch[2]}`;
     fields.enactment_year = Number(actNumberMatch[2]);
-    actNumberConfidence = /act\s*no\.?\s*$/i.test(head.slice(0, actNumberMatch.index ?? 0)) ? "high" : "low";
+    actNumberConfidence = /act\s*no\.?\s*$/i.test(head.slice(0, actNumberMatch.index ?? 0))
+      ? "high"
+      : "low";
   }
 
   if (fields.title) {
@@ -1033,8 +1104,7 @@ export const tagConfidenceFromScore = (score: number): TagConfidence => {
 };
 
 /** Local negation immediately before a matched phrase (not distant "not" in the sentence). */
-const NEGATION_BEFORE_RE =
-  /(?:^|[^a-z0-9])(?:not|no|without|rather\s+than|unlike|false)\s*$/i;
+const NEGATION_BEFORE_RE = /(?:^|[^a-z0-9])(?:not|no|without|rather\s+than|unlike|false)\s*$/i;
 
 const isLocallyNegated = (hay: string, phraseStart: number): boolean => {
   const from = Math.max(0, phraseStart - TAG_NEGATION_LOOKBEHIND);
@@ -1180,15 +1250,17 @@ export function proposeTagsScored(text: string, limit = 10): ProposedTagScore[] 
     if (!suppressed) kept.push(candidate);
   }
 
-  return kept.slice(0, limit).map(({ name, score, hitCount, matchedViaAlias, inHeader, inLegalSection }) => ({
-    name,
-    score,
-    hitCount,
-    confidence: tagConfidenceFromScore(score),
-    matchedViaAlias,
-    inHeader,
-    inLegalSection,
-  }));
+  return kept
+    .slice(0, limit)
+    .map(({ name, score, hitCount, matchedViaAlias, inHeader, inLegalSection }) => ({
+      name,
+      score,
+      hitCount,
+      confidence: tagConfidenceFromScore(score),
+      matchedViaAlias,
+      inHeader,
+      inLegalSection,
+    }));
 }
 
 export function proposeTags(text: string, limit = 10): string[] {
@@ -1219,7 +1291,10 @@ export interface DuplicateWarning {
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export async function findCaseLawDuplicates(params: {

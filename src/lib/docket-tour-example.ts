@@ -1,9 +1,9 @@
 export type DocketTourExampleInput = {
-  tourActive: boolean
-  matterCount: number
-  emptyBecauseFilters: boolean
-  emptyBecauseDate: boolean
-}
+  tourActive: boolean;
+  matterCount: number;
+  emptyBecauseFilters: boolean;
+  emptyBecauseDate: boolean;
+};
 
 /**
  * Show a labelled sample sheet only while the walkthrough is on
@@ -16,10 +16,5 @@ export function shouldShowDocketTourExample({
   emptyBecauseFilters,
   emptyBecauseDate,
 }: DocketTourExampleInput): boolean {
-  return (
-    tourActive &&
-    matterCount === 0 &&
-    !emptyBecauseFilters &&
-    !emptyBecauseDate
-  )
+  return tourActive && matterCount === 0 && !emptyBecauseFilters && !emptyBecauseDate;
 }

@@ -3,9 +3,7 @@ export const DOCKET_BIN_RETENTION_DAYS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function isDocketMatterBinned(matter: {
-  deleted_at?: string | null;
-}): boolean {
+export function isDocketMatterBinned(matter: { deleted_at?: string | null }): boolean {
   return matter.deleted_at != null && matter.deleted_at !== "";
 }
 

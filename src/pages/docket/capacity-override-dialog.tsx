@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ export function CapacityOverrideDialog({
   onDateSuggested?: (date: string) => void;
 }) {
   const [reason, setReason] = useState("");
+  const reasonId = useId();
   const nextAvailable = useNextAvailableDocketDate();
 
   return (
@@ -55,14 +56,18 @@ export function CapacityOverrideDialog({
         <DialogHeader>
           <DialogTitle>Capacity reached</DialogTitle>
           <DialogDescription>
-            {info.scheduled_count} of {info.configured_capacity} {info.category_name} matters already scheduled for{" "}
-            {formatDate(scheduledDate)}. Do you wish to add this matter anyway?
+            {info.scheduled_count} of {info.configured_capacity} {info.category_name} matters
+            already scheduled for {formatDate(scheduledDate)}. Do you wish to add this matter
+            anyway?
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-muted-foreground">Reason for override (optional)</label>
+          <label htmlFor={reasonId} className="block text-xs font-medium text-muted-foreground">
+            Reason for override (optional)
+          </label>
           <Textarea
+            id={reasonId}
             rows={2}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -92,7 +97,11 @@ export function CapacityOverrideDialog({
           <Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>
             Cancel / Choose Another Date
           </Button>
-          <Button type="button" disabled={isPending} onClick={() => onConfirm(reason.trim() || null)}>
+          <Button
+            type="button"
+            disabled={isPending}
+            onClick={() => onConfirm(reason.trim() || null)}
+          >
             {isPending && <LoadingSpinner className="text-current" size={16} />}
             Add Anyway
           </Button>

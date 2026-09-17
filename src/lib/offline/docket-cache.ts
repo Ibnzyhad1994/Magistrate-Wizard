@@ -1,60 +1,60 @@
-import type { DocketEvent, DocketMatter, Profile } from "@/types/database.types"
-import type { CalendarMergeRow, HearingFields } from "@/lib/offline/outbox"
+import type { DocketEvent, DocketMatter, Profile } from "@/types";
+import type { CalendarMergeRow, HearingFields } from "@/lib/offline/outbox";
 
 export type CachedMatterDetail = DocketMatter & {
-  courts: { id: string; name: string; jurisdiction: string } | null
-  magisterial_districts: { id: string; name: string } | null
-}
+  courts: { id: string; name: string; jurisdiction: string } | null;
+  magisterial_districts: { id: string; name: string } | null;
+};
 
 export type CachedHearing = HearingFields & {
-  id: string
-  docket_matter_id: string
-  case_number: string
-  matter_title: string
+  id: string;
+  docket_matter_id: string;
+  case_number: string;
+  matter_title: string;
   /** Combined-calendar court identifier (0097) — not set by
    * cachedHearingFromDocketEvent's single-matter caller, since a page
    * already scoped to one matter has no need to repeat its court. */
-  court_name?: string | null
-  created_at: string
-  created_by: string
-  updated_at: string
-  last_updated_by: string | null
-  presiding_magistrate_id: string | null
-  external_calendar_event_id: string | null
-  external_calendar_provider: string | null
-  external_calendar_synced_at: string | null
-}
+  court_name?: string | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  last_updated_by: string | null;
+  presiding_magistrate_id: string | null;
+  external_calendar_event_id: string | null;
+  external_calendar_provider: string | null;
+  external_calendar_synced_at: string | null;
+};
 
 export type CachedMatter = {
-  id: string
-  case_number: string
-  matter_title: string
-  canEdit: boolean | null
-  canManage: boolean | null
-  detail: CachedMatterDetail | null
-  opened: boolean
-}
+  id: string;
+  case_number: string;
+  matter_title: string;
+  canEdit: boolean | null;
+  canManage: boolean | null;
+  detail: CachedMatterDetail | null;
+  opened: boolean;
+};
 
 export type ProfileDocketCache = {
-  matters: Record<string, CachedMatter>
-  events: Record<string, CachedHearing>
-}
+  matters: Record<string, CachedMatter>;
+  events: Record<string, CachedHearing>;
+};
 
 export const emptyProfileCache = (): ProfileDocketCache => ({
   matters: {},
   events: {},
-})
+});
 
 export const hearingFieldsFromEvent = (event: {
-  scheduled_date: string
-  scheduled_time: string | null
-  event_type: string | null
-  location: string | null
-  stage_at_event: string | null
-  outcome_at_event: string | null
-  orders_made_at_event: string | null
-  notes: string | null
-  event_status: string
+  scheduled_date: string;
+  scheduled_time: string | null;
+  event_type: string | null;
+  location: string | null;
+  stage_at_event: string | null;
+  outcome_at_event: string | null;
+  orders_made_at_event: string | null;
+  notes: string | null;
+  event_status: string;
 }): HearingFields => ({
   scheduled_date: event.scheduled_date,
   scheduled_time: event.scheduled_time,
@@ -65,7 +65,7 @@ export const hearingFieldsFromEvent = (event: {
   orders_made_at_event: event.orders_made_at_event,
   notes: event.notes,
   event_status: event.event_status,
-})
+});
 
 export const cachedHearingFromDocketEvent = (
   event: DocketEvent,
@@ -85,7 +85,7 @@ export const cachedHearingFromDocketEvent = (
   external_calendar_event_id: event.external_calendar_event_id,
   external_calendar_provider: event.external_calendar_provider,
   external_calendar_synced_at: event.external_calendar_synced_at,
-})
+});
 
 export const cachedHearingFromCalendarRow = (row: CalendarMergeRow): CachedHearing => ({
   id: row.id,
@@ -110,7 +110,7 @@ export const cachedHearingFromCalendarRow = (row: CalendarMergeRow): CachedHeari
   external_calendar_event_id: null,
   external_calendar_provider: null,
   external_calendar_synced_at: null,
-})
+});
 
 export const docketEventFromCached = (row: CachedHearing): DocketEvent => ({
   id: row.id,
@@ -140,7 +140,7 @@ export const docketEventFromCached = (row: CachedHearing): DocketEvent => ({
   witnesses_completed: null,
   witnesses_partly_heard: null,
   witnesses_remaining: null,
-})
+});
 
 export const calendarRowFromCached = (row: CachedHearing): CalendarMergeRow => ({
   id: row.id,
@@ -153,19 +153,19 @@ export const calendarRowFromCached = (row: CachedHearing): CalendarMergeRow => (
   case_number: row.case_number,
   matter_title: row.matter_title,
   court_name: row.court_name ?? null,
-})
+});
 
 export const upsertMatterShell = (
   cache: ProfileDocketCache,
   input: {
-    id: string
-    case_number: string
-    matter_title: string
-    detail?: CachedMatterDetail | null
-    opened?: boolean
+    id: string;
+    case_number: string;
+    matter_title: string;
+    detail?: CachedMatterDetail | null;
+    opened?: boolean;
   },
 ): ProfileDocketCache => {
-  const prev = cache.matters[input.id]
+  const prev = cache.matters[input.id];
   return {
     ...cache,
     matters: {
@@ -180,15 +180,15 @@ export const upsertMatterShell = (
         opened: input.opened ?? prev?.opened ?? false,
       },
     },
-  }
-}
+  };
+};
 
 export const upsertMatterAccess = (
   cache: ProfileDocketCache,
   matterId: string,
   access: { canEdit: boolean; canManage: boolean },
 ): ProfileDocketCache => {
-  const prev = cache.matters[matterId]
+  const prev = cache.matters[matterId];
   if (!prev) {
     return {
       ...cache,
@@ -204,7 +204,7 @@ export const upsertMatterAccess = (
           opened: false,
         },
       },
-    }
+    };
   }
   return {
     ...cache,
@@ -212,27 +212,30 @@ export const upsertMatterAccess = (
       ...cache.matters,
       [matterId]: { ...prev, canEdit: access.canEdit, canManage: access.canManage },
     },
-  }
-}
+  };
+};
 
 export const replaceMatterEvents = (
   cache: ProfileDocketCache,
   matterId: string,
   events: CachedHearing[],
 ): ProfileDocketCache => {
-  const nextEvents = { ...cache.events }
+  const nextEvents = { ...cache.events };
   for (const [id, event] of Object.entries(nextEvents)) {
-    if (event.docket_matter_id === matterId) delete nextEvents[id]
+    if (event.docket_matter_id === matterId) delete nextEvents[id];
   }
-  for (const event of events) nextEvents[event.id] = event
-  return { ...cache, events: nextEvents }
-}
+  for (const event of events) nextEvents[event.id] = event;
+  return { ...cache, events: nextEvents };
+};
 
-export const upsertHearings = (cache: ProfileDocketCache, events: CachedHearing[]): ProfileDocketCache => {
-  const nextEvents = { ...cache.events }
-  for (const event of events) nextEvents[event.id] = { ...nextEvents[event.id], ...event }
-  return { ...cache, events: nextEvents }
-}
+export const upsertHearings = (
+  cache: ProfileDocketCache,
+  events: CachedHearing[],
+): ProfileDocketCache => {
+  const nextEvents = { ...cache.events };
+  for (const event of events) nextEvents[event.id] = { ...nextEvents[event.id], ...event };
+  return { ...cache, events: nextEvents };
+};
 
 export const listCachedHearingsInRange = (
   cache: ProfileDocketCache,
@@ -241,11 +244,14 @@ export const listCachedHearingsInRange = (
 ): CalendarMergeRow[] =>
   Object.values(cache.events)
     .filter((event) => event.scheduled_date >= from && event.scheduled_date <= to)
-    .map(calendarRowFromCached)
+    .map(calendarRowFromCached);
 
-export const listCachedMatterEvents = (cache: ProfileDocketCache, matterId: string): DocketEvent[] =>
+export const listCachedMatterEvents = (
+  cache: ProfileDocketCache,
+  matterId: string,
+): DocketEvent[] =>
   Object.values(cache.events)
     .filter((event) => event.docket_matter_id === matterId)
-    .map(docketEventFromCached)
+    .map(docketEventFromCached);
 
-export type CachedProfileMap = Record<string, Profile>
+export type CachedProfileMap = Record<string, Profile>;

@@ -24,7 +24,7 @@ const TabsList = React.forwardRef<
       ref={setRef}
       style={maskImage ? { WebkitMaskImage: maskImage, maskImage } : undefined}
       className={cn(
-        "flex h-auto min-h-10 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none rounded-sm border border-foreground/10 bg-card p-0.5 text-foreground/60",
+        "scrollbar-none flex h-auto min-h-10 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto overscroll-x-contain scroll-smooth rounded-sm border border-border bg-card p-0.5 text-muted-foreground",
         className,
       )}
       {...props}

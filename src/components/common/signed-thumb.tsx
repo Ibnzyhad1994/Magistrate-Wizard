@@ -27,5 +27,13 @@ export function SignedThumb({ path, alt, className }: SignedThumbProps) {
     );
   }
 
-  return <img src={url} alt={alt} className={cn("object-cover", className)} />;
+  return (
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      className={cn("object-cover", className)}
+    />
+  );
 }

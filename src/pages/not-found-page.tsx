@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/brand/app-logo";
 import { AppCanvas } from "@/components/theme/app-canvas";
 import { ROUTES } from "@/routes/paths";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function NotFoundPage() {
+  usePageTitle("Page not found");
   return (
     <AppCanvas>
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
@@ -22,8 +24,8 @@ export default function NotFoundPage() {
             Lost your way?
           </h1>
           <p className="max-w-md text-base text-foreground/70">
-            The page you&apos;re looking for doesn&apos;t exist or may have
-            been moved. You&apos;ll find plenty to explore on the home page.
+            The page you&apos;re looking for doesn&apos;t exist or may have been moved. You&apos;ll
+            find plenty to explore on the home page.
           </p>
         </div>
         <Button asChild className="h-12 px-8 text-base font-semibold">

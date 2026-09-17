@@ -23,13 +23,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
 import { ROUTES } from "@/routes/paths";
 
-const MobileNavLink = ({
-  item,
-  onNavigate,
-}: {
-  item: AppNavItem;
-  onNavigate: () => void;
-}) => {
+const MobileNavLink = ({ item, onNavigate }: { item: AppNavItem; onNavigate: () => void }) => {
   const Icon = item.icon;
   const label = navItemLabel(item);
 
@@ -59,7 +53,8 @@ export function MobileNav() {
   const setMobileNavOpen = useUiStore((state) => state.setMobileNavOpen);
   const { profile } = useAuth();
   const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
-  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
+  const isPendingMagistrate =
+    profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
   const handleNavigate = () => setMobileNavOpen(false);
   const { ungrouped, groups } = groupNavItems(
     visibleNavItems(NAV_ITEMS, profile?.role as UserRole | undefined, isPendingMagistrate),
@@ -69,7 +64,7 @@ export function MobileNav() {
     <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
       <SheetContent
         side="left"
-        className="flex w-[min(20rem,88vw)] flex-col border-foreground/10 bg-background p-0 pt-[env(safe-area-inset-top,0px)] text-foreground"
+        className="flex w-[min(20rem,88vw)] flex-col border-border bg-background p-0 pt-[env(safe-area-inset-top,0px)] text-foreground"
       >
         <SheetHeader className="px-4 pb-3 pt-4 text-left">
           <SheetTitle className="text-left font-normal">
@@ -87,11 +82,7 @@ export function MobileNav() {
           {ungrouped.length > 0 && (
             <div className="space-y-0.5">
               {ungrouped.map((item) => (
-                <MobileNavLink
-                  key={item.href}
-                  item={item}
-                  onNavigate={handleNavigate}
-                />
+                <MobileNavLink key={item.href} item={item} onNavigate={handleNavigate} />
               ))}
             </div>
           )}
@@ -110,18 +101,14 @@ export function MobileNav() {
               </h2>
               <div className="space-y-0.5">
                 {section.items.map((item) => (
-                  <MobileNavLink
-                    key={item.href}
-                    item={item}
-                    onNavigate={handleNavigate}
-                  />
+                  <MobileNavLink key={item.href} item={item} onNavigate={handleNavigate} />
                 ))}
               </div>
             </section>
           ))}
         </nav>
 
-        <div className="border-t border-foreground/10 p-3">
+        <div className="border-t border-border p-3">
           <UserMenu />
         </div>
       </SheetContent>

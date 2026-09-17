@@ -56,7 +56,7 @@ export default function DocketBinPage() {
           description="Matters you move to the bin appear here for 7 days."
         />
       ) : (
-        <Table>
+        <Table aria-label="Binned matters">
           <TableHeader>
             <TableRow>
               <TableHead>Case</TableHead>

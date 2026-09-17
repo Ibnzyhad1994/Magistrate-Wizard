@@ -4,10 +4,7 @@ import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
@@ -64,21 +61,30 @@ export default function ClerkAccessRequestsPage() {
 
           <TabsContent value="pending">
             {pending.length === 0 ? (
-              <EmptyState icon={Gavel} className="mt-4" title="No pending requests" description="New clerk access requests for your courts will appear here." />
+              <EmptyState
+                icon={Gavel}
+                className="mt-4"
+                title="No pending requests"
+                description="New clerk access requests for your courts will appear here."
+              />
             ) : (
               <div className="mt-4 space-y-3">
                 {pending.map((r) => (
-                  <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+                  <Card key={r.id} className="border-border bg-foreground/5">
                     <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                       <div>
-                        <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed clerk"}</p>
+                        <p className="font-medium text-foreground">
+                          {r.profiles?.full_name || "Unnamed clerk"}
+                        </p>
                         <p className="text-sm text-muted-foreground">{r.profiles?.email}</p>
                         <p className="mt-1 text-sm text-foreground">{r.courts?.name}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Requested {formatDate(r.requested_at)}
                           {r.staff_id ? ` · Staff ID ${r.staff_id}` : ""}
                         </p>
-                        {r.note && <p className="mt-1 text-xs italic text-muted-foreground">"{r.note}"</p>}
+                        {r.note && (
+                          <p className="mt-1 text-xs italic text-muted-foreground">"{r.note}"</p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -92,7 +98,10 @@ export default function ClerkAccessRequestsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => { setRejectTarget(r); setRejectReason(""); }}
+                          onClick={() => {
+                            setRejectTarget(r);
+                            setRejectReason("");
+                          }}
                           disabled={decide.isPending}
                         >
                           <X className="h-4 w-4" />
@@ -108,22 +117,36 @@ export default function ClerkAccessRequestsPage() {
 
           <TabsContent value="roster">
             {activeRoster.length === 0 ? (
-              <EmptyState icon={Gavel} className="mt-4" title="No approved clerks yet" description="Clerks you approve will appear here." />
+              <EmptyState
+                icon={Gavel}
+                className="mt-4"
+                title="No approved clerks yet"
+                description="Clerks you approve will appear here."
+              />
             ) : (
               <div className="mt-4 space-y-3">
                 {activeRoster.map((row) => (
-                  <Card key={row.id} className="border-foreground/10 bg-foreground/5">
+                  <Card key={row.id} className="border-border bg-foreground/5">
                     <CardContent className="flex items-center justify-between gap-4 py-4">
                       <div>
-                        <p className="font-medium text-foreground">{row.profiles?.full_name || "Unnamed clerk"}</p>
+                        <p className="font-medium text-foreground">
+                          {row.profiles?.full_name || "Unnamed clerk"}
+                        </p>
                         <p className="text-sm text-muted-foreground">{row.profiles?.email}</p>
                         <p className="mt-1 text-sm text-foreground">{row.courts?.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Approved {formatDate(row.started_at)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Approved {formatDate(row.started_at)}
+                        </p>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setRevokeTarget({ id: row.id, label: row.profiles?.full_name || "this clerk" })}
+                        onClick={() =>
+                          setRevokeTarget({
+                            id: row.id,
+                            label: row.profiles?.full_name || "this clerk",
+                          })
+                        }
                       >
                         <UserMinus className="h-4 w-4" />
                         Revoke access
@@ -138,33 +161,51 @@ export default function ClerkAccessRequestsPage() {
           <TabsContent value="history">
             <div className="mt-4 space-y-3">
               {decided.map((r) => (
-                <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+                <Card key={r.id} className="border-border bg-foreground/5">
                   <CardContent className="flex items-center justify-between gap-4 py-4">
                     <div>
-                      <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed clerk"}</p>
+                      <p className="font-medium text-foreground">
+                        {r.profiles?.full_name || "Unnamed clerk"}
+                      </p>
                       <p className="text-sm text-muted-foreground">{r.courts?.name}</p>
-                      {r.rejection_reason && <p className="mt-1 text-xs text-muted-foreground">{r.rejection_reason}</p>}
+                      {r.rejection_reason && (
+                        <p className="mt-1 text-xs text-muted-foreground">{r.rejection_reason}</p>
+                      )}
                     </div>
                     <Badge variant={r.status === "approved" ? "default" : "secondary"}>
-                      {r.status === "approved" ? "Approved" : r.status === "rejected" ? "Rejected" : r.status === "cancelled" ? "Cancelled" : "Expired"}
+                      {r.status === "approved"
+                        ? "Approved"
+                        : r.status === "rejected"
+                          ? "Rejected"
+                          : r.status === "cancelled"
+                            ? "Cancelled"
+                            : "Expired"}
                     </Badge>
                   </CardContent>
                 </Card>
               ))}
               {revokedRoster.map((row) => (
-                <Card key={row.id} className="border-foreground/10 bg-foreground/5">
+                <Card key={row.id} className="border-border bg-foreground/5">
                   <CardContent className="flex items-center justify-between gap-4 py-4">
                     <div>
-                      <p className="font-medium text-foreground">{row.profiles?.full_name || "Unnamed clerk"}</p>
+                      <p className="font-medium text-foreground">
+                        {row.profiles?.full_name || "Unnamed clerk"}
+                      </p>
                       <p className="text-sm text-muted-foreground">{row.courts?.name}</p>
-                      {row.end_reason && <p className="mt-1 text-xs text-muted-foreground">{row.end_reason}</p>}
+                      {row.end_reason && (
+                        <p className="mt-1 text-xs text-muted-foreground">{row.end_reason}</p>
+                      )}
                     </div>
                     <Badge variant="destructive">Revoked</Badge>
                   </CardContent>
                 </Card>
               ))}
               {decided.length === 0 && revokedRoster.length === 0 && (
-                <EmptyState icon={Gavel} title="No history yet" description="Decided requests and revoked assignments will appear here." />
+                <EmptyState
+                  icon={Gavel}
+                  title="No history yet"
+                  description="Decided requests and revoked assignments will appear here."
+                />
               )}
             </div>
           </TabsContent>
@@ -177,9 +218,13 @@ export default function ClerkAccessRequestsPage() {
         title="Reject this request?"
         description={
           <div className="space-y-2">
-            <p>{rejectTarget?.profiles?.full_name} will be notified that their request for {rejectTarget?.courts?.name} was not approved.</p>
+            <p>
+              {rejectTarget?.profiles?.full_name} will be notified that their request for{" "}
+              {rejectTarget?.courts?.name} was not approved.
+            </p>
             <Textarea
               placeholder="Optional reason (shown to the clerk)"
+              aria-label="Reason for rejecting (optional, shown to the clerk)"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />
@@ -190,7 +235,11 @@ export default function ClerkAccessRequestsPage() {
         onConfirm={() => {
           if (rejectTarget) {
             decide.mutate(
-              { requestId: rejectTarget.id, decision: "rejected", rejectionReason: rejectReason || undefined },
+              {
+                requestId: rejectTarget.id,
+                decision: "rejected",
+                rejectionReason: rejectReason || undefined,
+              },
               { onSuccess: () => setRejectTarget(null) },
             );
           }
@@ -205,7 +254,11 @@ export default function ClerkAccessRequestsPage() {
         confirmLabel="Revoke access"
         isConfirming={revoke.isPending}
         onConfirm={() => {
-          if (revokeTarget) revoke.mutate({ assignmentId: revokeTarget.id }, { onSuccess: () => setRevokeTarget(null) });
+          if (revokeTarget)
+            revoke.mutate(
+              { assignmentId: revokeTarget.id },
+              { onSuccess: () => setRevokeTarget(null) },
+            );
         }}
       />
     </BrowsePage>

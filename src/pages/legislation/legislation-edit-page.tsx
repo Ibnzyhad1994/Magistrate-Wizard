@@ -14,6 +14,7 @@ import { Field, JurisdictionField } from "@/components/legal-library/taxonomy-fi
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useAuth } from "@/hooks/use-auth";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { useLegalJurisdictions } from "@/hooks/legal-library/use-legal-taxonomy";
 import {
   useStatute,
@@ -42,6 +43,7 @@ export default function LegislationEditPage() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const { data: statute, isPending, isError, error, refetch } = useStatute(id);
+  usePageTitle(statute ? `Edit ${statute.title}` : null);
   const { data: jurisdictions } = useLegalJurisdictions();
   const updateStatute = useUpdateCanonicalStatute(id ?? "");
   const deleteStatute = useDeleteCanonicalStatute();
@@ -109,7 +111,9 @@ export default function LegislationEditPage() {
   }
   if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
   if (!statute) {
-    return <InlineError error={new Error("This item doesn't exist, or you don't have access to it.")} />;
+    return (
+      <InlineError error={new Error("This item doesn't exist, or you don't have access to it.")} />
+    );
   }
   if (!isAdmin) {
     return (
@@ -119,7 +123,8 @@ export default function LegislationEditPage() {
     );
   }
 
-  const jurisdictionName = (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? "";
+  const jurisdictionName =
+    (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? "";
   const canSave = fields.code.trim() && fields.title.trim() && fields.jurisdiction_id;
 
   function handleCancel() {
@@ -165,7 +170,10 @@ export default function LegislationEditPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Metadata</CardTitle>
-            <CardDescription>Title, identifying numbers, jurisdiction, and dates shown in the Legislation library and detail page.</CardDescription>
+            <CardDescription>
+              Title, identifying numbers, jurisdiction, and dates shown in the Legislation library
+              and detail page.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -176,7 +184,10 @@ export default function LegislationEditPage() {
                 <Input value={fields.title} onChange={(e) => setField("title", e.target.value)} />
               </Field>
               <Field label="Short title">
-                <Input value={fields.short_title} onChange={(e) => setField("short_title", e.target.value)} />
+                <Input
+                  value={fields.short_title}
+                  onChange={(e) => setField("short_title", e.target.value)}
+                />
               </Field>
               <JurisdictionField
                 value={fields.jurisdiction_id || null}
@@ -184,23 +195,43 @@ export default function LegislationEditPage() {
                 jurisdictions={jurisdictions ?? []}
               />
               <Field label="Document type" hint="e.g. Act, Regulations, Rules, Order">
-                <Input value={fields.instrument_type} onChange={(e) => setField("instrument_type", e.target.value)} />
+                <Input
+                  value={fields.instrument_type}
+                  onChange={(e) => setField("instrument_type", e.target.value)}
+                />
               </Field>
               <Field label="Act number">
-                <Input value={fields.act_number} onChange={(e) => setField("act_number", e.target.value)} />
+                <Input
+                  value={fields.act_number}
+                  onChange={(e) => setField("act_number", e.target.value)}
+                />
               </Field>
               <Field label="Chapter number">
-                <Input value={fields.chapter_number} onChange={(e) => setField("chapter_number", e.target.value)} />
+                <Input
+                  value={fields.chapter_number}
+                  onChange={(e) => setField("chapter_number", e.target.value)}
+                />
               </Field>
               <Field label="Enactment year">
-                <Input type="number" value={fields.enactment_year} onChange={(e) => setField("enactment_year", e.target.value)} />
+                <Input
+                  type="number"
+                  value={fields.enactment_year}
+                  onChange={(e) => setField("enactment_year", e.target.value)}
+                />
               </Field>
               <Field label="Effective date">
-                <DateOnlyInput value={fields.effective_date} onChange={(v) => setField("effective_date", v)} />
+                <DateOnlyInput
+                  value={fields.effective_date}
+                  onChange={(v) => setField("effective_date", v)}
+                />
               </Field>
             </div>
             <Field label="Description or administrative note (optional)">
-              <Textarea value={fields.summary} onChange={(e) => setField("summary", e.target.value)} rows={3} />
+              <Textarea
+                value={fields.summary}
+                onChange={(e) => setField("summary", e.target.value)}
+                rows={3}
+              />
             </Field>
 
             <div className="flex flex-wrap justify-end gap-2">
@@ -238,7 +269,8 @@ export default function LegislationEditPage() {
           {replaceOpen && (
             <CardContent className="border-t border-border pt-4">
               <p className="mb-3 text-xs text-muted-foreground">
-                Uploading here publishes a new version. The current version is preserved and remains reachable, never deleted or overwritten.
+                Uploading here publishes a new version. The current version is preserved and remains
+                reachable, never deleted or overwritten.
               </p>
               <LegislationPdfUploadPanel
                 supersede={{
@@ -263,10 +295,17 @@ export default function LegislationEditPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base text-destructive">Delete this record</CardTitle>
-            <CardDescription>Permanently removes it from the shared library for every magistrate, including its provisions and any attached documents. This cannot be undone.</CardDescription>
+            <CardDescription>
+              Permanently removes it from the shared library for every magistrate, including its
+              provisions and any attached documents. This cannot be undone.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setConfirmDelete(true)}
+            >
               <Trash2 className="h-4 w-4" />
               Delete Legislation record
             </Button>

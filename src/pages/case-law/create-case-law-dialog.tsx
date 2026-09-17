@@ -25,10 +25,7 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { useCreatePersonalCaseLaw } from "@/hooks/case-law/use-case-law";
 import { useLegalCaseCategories } from "@/hooks/legal-library/use-legal-taxonomy";
-import {
-  caseLawFieldsSchema,
-  type CaseLawFieldsFormValues,
-} from "@/lib/validations/case-law";
+import { caseLawFieldsSchema, type CaseLawFieldsFormValues } from "@/lib/validations/case-law";
 import { ROUTES } from "@/routes/paths";
 
 interface CreateCaseLawDialogProps {
@@ -80,16 +77,18 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New research entry</DialogTitle>
           <DialogDescription>
-            Personal research is private to you until you choose to make it
-            discoverable.
+            Personal research is private to you until you choose to make it discoverable.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
+          >
             <FormField
               control={form.control}
               name="case_name"
@@ -110,7 +109,10 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
                 <FormItem>
                   <FormLabel>Category (optional)</FormLabel>
                   <FormControl>
-                    <Select value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)}>
+                    <Select
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    >
                       <option value="">No category</option>
                       {(categories ?? []).map((c) => (
                         <option key={c.id} value={c.id}>
@@ -233,9 +235,7 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
                 Cancel
               </Button>
               <Button type="submit" disabled={createCaseLaw.isPending}>
-                {createCaseLaw.isPending && (
-                  <LoadingSpinner className="text-current" size={16} />
-                )}
+                {createCaseLaw.isPending && <LoadingSpinner className="text-current" size={16} />}
                 Create entry
               </Button>
             </DialogFooter>

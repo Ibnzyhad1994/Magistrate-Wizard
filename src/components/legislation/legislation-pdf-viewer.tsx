@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FileText,
   Maximize,
   Minimize,
   Printer,
@@ -24,6 +25,7 @@ import { usePdfDocument } from "@/hooks/legislation/use-pdf-document";
 import { usePdfSearch } from "@/hooks/legislation/use-pdf-search";
 import { downloadDocumentBlob, getDocumentViewUrl } from "@/hooks/use-documents";
 import { PdfViewerPage, type PageHighlight } from "@/components/legislation/pdf-viewer-page";
+import type { PdfjsTextItem } from "@/lib/legislation-pdf";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -37,6 +39,31 @@ import { burnRedactedPdf, redactedPdfFileName } from "@/lib/redaction-pdf";
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
 const ZOOM_STEP = 0.15;
+
+/**
+ * Groups a page's text runs into lines by their PDF-space baseline for the
+ * "Text view" alternative to the canvas (WCAG 1.1.1). Runs on the same
+ * baseline (within 2 units) are joined with a space; a new baseline starts
+ * a new line. Deliberately simple — it is a readable, searchable copy of
+ * the page, not a reflow of its layout.
+ */
+function pageTextLines(items: PdfjsTextItem[]): string[] {
+  const lines: string[] = [];
+  let current = "";
+  let lastY: number | null = null;
+  for (const item of items) {
+    const y = Math.round(item.transform[5] ?? 0);
+    if (lastY !== null && Math.abs(y - lastY) > 2) {
+      if (current.trim()) lines.push(current.trim());
+      current = "";
+    }
+    const needsSpace = current && !current.endsWith(" ") && !item.str.startsWith(" ");
+    current += (needsSpace ? " " : "") + item.str;
+    lastY = y;
+  }
+  if (current.trim()) lines.push(current.trim());
+  return lines;
+}
 
 /**
  * Core PDF viewer — presentation-agnostic (no Dialog/route assumptions of
@@ -82,6 +109,9 @@ export function LegislationPdfViewer({
   const [redactionBoxes, setRedactionBoxes] = useState<RedactionBox[]>([]);
   const [burning, setBurning] = useState(false);
   const [burnProgress, setBurnProgress] = useState<{ page: number; total: number } | null>(null);
+  /** "Text view": the extracted text layer instead of the canvas pages, for screen readers, reflow and zoom. */
+  const [textView, setTextView] = useState(false);
+  const textIdPrefix = useId();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +175,7 @@ export function LegislationPdfViewer({
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numPages, scale, rotation]);
+  }, [numPages, scale, rotation, textView]);
 
   useEffect(() => {
     const handler = () => setFullscreen(!!document.fullscreenElement);
@@ -204,7 +234,10 @@ export function LegislationPdfViewer({
     const next =
       mode === "width"
         ? availableWidth / naturalWidthRef.current
-        : Math.min(availableWidth / naturalWidthRef.current, availableHeight / naturalHeightRef.current);
+        : Math.min(
+            availableWidth / naturalWidthRef.current,
+            availableHeight / naturalHeightRef.current,
+          );
     setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)));
   }
 
@@ -328,15 +361,29 @@ export function LegislationPdfViewer({
 
   return (
     <div ref={containerRef} className={cn("flex min-h-0 flex-col bg-card", className)}>
-      <div className={cn("flex flex-wrap items-center gap-1.5 border-b border-foreground/10 bg-card py-2 pl-3 pr-3", toolbarClassName)}>
-        <p className="mr-2 min-w-0 flex-1 truncate text-sm font-medium text-foreground" title={title}>
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1.5 border-b border-foreground/10 bg-card py-2 pl-3 pr-3",
+          toolbarClassName,
+        )}
+      >
+        <p
+          className="mr-2 min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+          title={title}
+        >
           {title}
         </p>
 
         {numPages > 0 && (
           <div className="flex items-center gap-1">
             <HintTooltip label="Previous page">
-              <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage <= 1}
+                aria-label="Previous page"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </HintTooltip>
@@ -348,9 +395,15 @@ export function LegislationPdfViewer({
               className="h-8 w-12 text-center"
               aria-label="Page number"
             />
-            <span className="text-xs text-foreground/60">/ {numPages}</span>
+            <span className="text-xs text-muted-foreground">/ {numPages}</span>
             <HintTooltip label="Next page">
-              <Button size="icon" variant="ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages} aria-label="Next page">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage >= numPages}
+                aria-label="Next page"
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </HintTooltip>
@@ -359,13 +412,25 @@ export function LegislationPdfViewer({
 
         <div className="flex items-center gap-1">
           <HintTooltip label="Zoom out">
-            <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.max(MIN_SCALE, s - ZOOM_STEP))} aria-label="Zoom out">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setScale((s) => Math.max(MIN_SCALE, s - ZOOM_STEP))}
+              aria-label="Zoom out"
+            >
               <ZoomOut className="h-4 w-4" />
             </Button>
           </HintTooltip>
-          <span className="w-10 text-center text-xs text-foreground/60">{Math.round(scale * 100)}%</span>
+          <span className="w-10 text-center text-xs text-muted-foreground">
+            {Math.round(scale * 100)}%
+          </span>
           <HintTooltip label="Zoom in">
-            <Button size="icon" variant="ghost" onClick={() => setScale((s) => Math.min(MAX_SCALE, s + ZOOM_STEP))} aria-label="Zoom in">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setScale((s) => Math.min(MAX_SCALE, s + ZOOM_STEP))}
+              aria-label="Zoom in"
+            >
               <ZoomIn className="h-4 w-4" />
             </Button>
           </HintTooltip>
@@ -389,12 +454,37 @@ export function LegislationPdfViewer({
             </span>
           </HintTooltip>
           <HintTooltip label={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
-            <Button size="icon" variant="ghost" onClick={() => void toggleFullscreen()} aria-label="Toggle fullscreen">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => void toggleFullscreen()}
+              aria-label="Toggle fullscreen"
+            >
               {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             </Button>
           </HintTooltip>
         </div>
 
+        <HintTooltip
+          label={
+            search.hasTextLayer === false
+              ? "This PDF has no text layer"
+              : "Show the page text instead of the image"
+          }
+        >
+          <span className="inline-flex">
+            <Button
+              size="sm"
+              variant={textView ? "secondary" : "ghost"}
+              onClick={() => setTextView((v) => !v)}
+              disabled={!pdfDoc || search.hasTextLayer === false}
+              aria-pressed={textView}
+            >
+              <FileText className="h-4 w-4" />
+              Text view
+            </Button>
+          </span>
+        </HintTooltip>
         <HintTooltip label="Search in document">
           <Button
             size="icon"
@@ -411,14 +501,26 @@ export function LegislationPdfViewer({
         </HintTooltip>
         <HintTooltip label="Download original">
           <span className="inline-flex">
-            <Button size="icon" variant="ghost" onClick={() => void handleDownload()} disabled={!doc || downloading} aria-label="Download">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => void handleDownload()}
+              disabled={!doc || downloading}
+              aria-label="Download"
+            >
               <Download className="h-4 w-4" />
             </Button>
           </span>
         </HintTooltip>
         <HintTooltip label="Print">
           <span className="inline-flex">
-            <Button size="icon" variant="ghost" onClick={() => void handlePrint()} disabled={!doc} aria-label="Print">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => void handlePrint()}
+              disabled={!doc}
+              aria-label="Print"
+            >
               <Printer className="h-4 w-4" />
             </Button>
           </span>
@@ -466,7 +568,7 @@ export function LegislationPdfViewer({
                 double up on the live region below. */}
             {burning ? "Redacting…" : "Download redacted PDF"}
           </Button>
-          <p className="min-w-[12rem] flex-1 text-xs text-foreground/60" aria-live="polite">
+          <p className="min-w-[12rem] flex-1 text-xs text-muted-foreground" aria-live="polite">
             {/* Rasterizing is slow on a long Act — roughly 8.5s for 20 pages,
                 so a 100-page statute runs close to a minute. Naming the page
                 being worked on is what separates "busy" from "hung". */}
@@ -475,19 +577,19 @@ export function LegislationPdfViewer({
                 ? `Redacting page ${burnProgress.page} of ${burnProgress.total}. Large documents take a moment.`
                 : "Fetching the document…"
               : redactMode
-              ? redactionBoxes.length === 0
-                ? "Draw a box over text to hide it. The original file is not changed."
-                : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} on this document. Draw more or download a copy. The original is unchanged.`
-              : redactionBoxes.length === 0
-                ? "Turn on Redact, draw boxes, then download a copy."
-                : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} ready. Download a copy. The original is unchanged.`}
+                ? redactionBoxes.length === 0
+                  ? "Draw a box over text to hide it. The original file is not changed."
+                  : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} on this document. Draw more or download a copy. The original is unchanged.`
+                : redactionBoxes.length === 0
+                  ? "Turn on Redact, draw boxes, then download a copy."
+                  : `${redactionBoxes.length} box${redactionBoxes.length === 1 ? "" : "es"} ready. Download a copy. The original is unchanged.`}
           </p>
         </div>
       ) : null}
 
       {searchOpen && (
         <div className="flex flex-wrap items-center gap-2 border-b border-foreground/10 bg-card px-3 py-2">
-          <Search className="h-4 w-4 text-foreground/50" />
+          <Search className="h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
             value={search.query}
@@ -501,16 +603,28 @@ export function LegislationPdfViewer({
           />
           {search.loadingText && <LoadingSpinner size={14} />}
           {!search.loadingText && search.query.trim() && search.hasTextLayer !== false && (
-            <span className="text-xs text-foreground/60">
+            <span className="text-xs text-muted-foreground">
               {search.matches.length === 0
                 ? "No matches"
                 : `${search.currentIndex + 1} of ${search.matches.length}`}
             </span>
           )}
-          <Button size="icon" variant="ghost" disabled={!search.matches.length} onClick={search.prev} aria-label="Previous match">
+          <Button
+            size="icon"
+            variant="ghost"
+            disabled={!search.matches.length}
+            onClick={search.prev}
+            aria-label="Previous match"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" disabled={!search.matches.length} onClick={search.next} aria-label="Next match">
+          <Button
+            size="icon"
+            variant="ghost"
+            disabled={!search.matches.length}
+            onClick={search.next}
+            aria-label="Next match"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
@@ -528,8 +642,9 @@ export function LegislationPdfViewer({
       )}
 
       {searchOpen && showScannedNotice && (
-        <div className="border-b border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-[hsl(var(--notice-action))]">
-          This PDF does not contain searchable text. You may still view and scroll through the document.
+        <div className="border-b border-notice-action/35 bg-notice-action/10 px-3 py-2 text-xs text-notice-action">
+          This PDF does not contain searchable text. You may still view and scroll through the
+          document.
         </div>
       )}
 
@@ -541,7 +656,9 @@ export function LegislationPdfViewer({
         ) : errored ? (
           <div className="p-6">
             <InlineError
-              error={pdf.status === "error" ? pdf.error : new Error("Could not load this document.")}
+              error={
+                pdf.status === "error" ? pdf.error : new Error("Could not load this document.")
+              }
               onRetry={pdf.retry}
             />
           </div>
@@ -549,6 +666,43 @@ export function LegislationPdfViewer({
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-foreground/70">
             <p className="text-sm">This document could not be found.</p>
           </div>
+        ) : textView && pdfDoc && numPages > 0 ? (
+          search.loadingText || !search.pagesText ? (
+            <div className="flex h-full items-center justify-center" role="status">
+              <LoadingSpinner size={28} />
+              <span className="sr-only">Extracting document text…</span>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-3xl space-y-6">
+              {search.pagesText.map((items, i) => {
+                const n = i + 1;
+                const lines = pageTextLines(items);
+                const headingId = `${textIdPrefix}-page-${n}`;
+                return (
+                  <section
+                    key={n}
+                    data-page-number={n}
+                    aria-labelledby={headingId}
+                    className="rounded-sm border border-foreground/10 bg-card p-4"
+                  >
+                    <h3
+                      id={headingId}
+                      className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      Page {n}
+                    </h3>
+                    {lines.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No text on this page.</p>
+                    ) : (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                        {lines.join("\n")}
+                      </p>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )
         ) : pdfDoc && numPages > 0 ? (
           Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
             <PdfViewerPage
@@ -563,6 +717,9 @@ export function LegislationPdfViewer({
               redactMode={allowRedact && redactMode}
               redactionBoxes={pageBoxEntries(redactionBoxes, n)}
               onRedactionBox={(box) => setRedactionBoxes((prev) => [...prev, box])}
+              onUpdateRedactionBox={(index, box) =>
+                setRedactionBoxes((prev) => prev.map((item, i) => (i === index ? box : item)))
+              }
               onRemoveRedactionBox={(index) =>
                 setRedactionBoxes((prev) => removeRedactionBoxAt(prev, index))
               }

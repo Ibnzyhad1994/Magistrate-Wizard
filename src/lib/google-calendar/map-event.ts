@@ -99,7 +99,9 @@ export const toGoogleEvent = (row: DocketLogistics): GoogleEventPayload => {
 
   const startTime = normalizeTime(row.scheduled_time);
   const end = addOneHour(startTime);
-  const endDate = end.dateOffset ? addCalendarDays(row.scheduled_date, end.dateOffset) : row.scheduled_date;
+  const endDate = end.dateOffset
+    ? addCalendarDays(row.scheduled_date, end.dateOffset)
+    : row.scheduled_date;
   payload.start = {
     dateTime: `${row.scheduled_date}T${startTime}${COURT_UTC_OFFSET}`,
     timeZone: COURT_TIME_ZONE,

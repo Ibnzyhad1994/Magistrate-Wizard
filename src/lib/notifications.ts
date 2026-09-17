@@ -1,10 +1,11 @@
-import { ROUTES } from "@/routes/paths"
+import { ROUTES } from "@/routes/paths";
 
 export const NOTIFICATION_TYPES = [
   "share_granted",
   "share_revoked",
   "judgment_final",
   "court_assigned",
+  "court_ended",
   "clerk_request",
   "clerk_request_decided",
   "court_request",
@@ -12,26 +13,27 @@ export const NOTIFICATION_TYPES = [
   "account_type_corrected",
   "hearing_tomorrow",
   "stale_draft",
-] as const
+  "issue_report_decided",
+] as const;
 
-export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
 export const isNotificationType = (value: string): value is NotificationType =>
-  (NOTIFICATION_TYPES as readonly string[]).includes(value)
+  (NOTIFICATION_TYPES as readonly string[]).includes(value);
 
 export const shareItemPath = (itemType: string, itemId: string) => {
-  if (itemType === "docket_matter") return ROUTES.docketMatter(itemId)
-  if (itemType === "judgment") return ROUTES.judgmentDetail(itemId)
-  if (itemType === "case_law") return ROUTES.caseLawDetail(itemId)
-  return ROUTES.home
-}
+  if (itemType === "docket_matter") return ROUTES.docketMatter(itemId);
+  if (itemType === "judgment") return ROUTES.judgmentDetail(itemId);
+  if (itemType === "case_law") return ROUTES.caseLawDetail(itemId);
+  return ROUTES.home;
+};
 
 export const shareItemNoun = (itemType: string) => {
-  if (itemType === "docket_matter") return "docket matter"
-  if (itemType === "judgment") return "judgment"
-  if (itemType === "case_law") return "case law research"
-  return "item"
-}
+  if (itemType === "docket_matter") return "docket matter";
+  if (itemType === "judgment") return "judgment";
+  if (itemType === "case_law") return "case law research";
+  return "item";
+};
 
 /**
  * What a notice means for the reader, which is what its colour should
@@ -48,7 +50,7 @@ export const shareItemNoun = (itemType: string) => {
  * colouring it green or red would assert a result the type alone doesn't
  * carry.
  */
-export type NotificationTone = "action" | "granted" | "revoked" | "outcome"
+export type NotificationTone = "action" | "granted" | "revoked" | "outcome";
 
 export const notificationTone = (type: string): NotificationTone => {
   switch (type) {
@@ -56,43 +58,48 @@ export const notificationTone = (type: string): NotificationTone => {
     case "court_request":
     case "hearing_tomorrow":
     case "stale_draft":
-      return "action"
+      return "action";
     case "share_granted":
     case "court_assigned":
     case "judgment_final":
-      return "granted"
+      return "granted";
     case "share_revoked":
-      return "revoked"
+    case "court_ended":
+      return "revoked";
     default:
-      return "outcome"
+      return "outcome";
   }
-}
+};
 
 export const notificationTypeLabel = (type: string) => {
   switch (type) {
     case "share_granted":
-      return "Share granted"
+      return "Share granted";
     case "share_revoked":
-      return "Share revoked"
+      return "Share revoked";
     case "judgment_final":
-      return "Judgment finalized"
+      return "Judgment finalised";
     case "court_assigned":
-      return "Court assignment"
+      return "Court assignment";
+    case "court_ended":
+      return "Court assignment ended";
     case "clerk_request":
-      return "Clerk request"
+      return "Clerk request";
     case "clerk_request_decided":
-      return "Clerk request decided"
+      return "Clerk request decided";
     case "court_request":
-      return "Court request"
+      return "Court request";
     case "court_request_decided":
-      return "Court request decided"
+      return "Court request decided";
     case "account_type_corrected":
-      return "Account type corrected"
+      return "Account type corrected";
     case "hearing_tomorrow":
-      return "Hearing reminder"
+      return "Hearing reminder";
     case "stale_draft":
-      return "Stale draft"
+      return "Stale draft";
+    case "issue_report_decided":
+      return "Issue report update";
     default:
-      return "Notice"
+      return "Notice";
   }
-}
+};

@@ -5,10 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { PasswordInput } from "@/components/auth/password-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +50,13 @@ import { formatDate } from "@/lib/utils";
  */
 export function MagistrateCourtRequestReviewPanel() {
   const { profile } = useAuth();
-  const { data: requests, isPending, isError, error, refetch } = useMagistrateCourtRequestsToReview();
+  const {
+    data: requests,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useMagistrateCourtRequestsToReview();
   const { data: bootstrapAvailable } = useIsSoleAdminBootstrapAvailable();
   const { data: occupiedIds } = useOccupiedPrimaryCourtIds();
   const decide = useDecideMagistrateCourtRequest();
@@ -85,7 +88,10 @@ export function MagistrateCourtRequestReviewPanel() {
         throw new Error("Password incorrect. Could not confirm your identity.");
       }
       void recordAuthEvent("login_success", profile.email);
-      await bootstrapApprove.mutateAsync({ requestId: bootstrapTarget.id, reason: bootstrapReason });
+      await bootstrapApprove.mutateAsync({
+        requestId: bootstrapTarget.id,
+        reason: bootstrapReason,
+      });
       setBootstrapTarget(null);
       setBootstrapReason("");
       setBootstrapPassword("");
@@ -123,12 +129,14 @@ export function MagistrateCourtRequestReviewPanel() {
                 courtIsOccupied: Boolean(occupiedIds?.has(r.court_id)),
               });
               return (
-                <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+                <Card key={r.id} className="border-border bg-foreground/5">
                   <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">
                         {r.profiles?.full_name || "Unnamed"}
-                        {isOwnRequest && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                        {isOwnRequest && (
+                          <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                        )}
                       </p>
                       <p className="text-sm text-muted-foreground">{r.profiles?.email}</p>
                       {r.email_confirmed === false && (
@@ -146,9 +154,11 @@ export function MagistrateCourtRequestReviewPanel() {
                         Requested {formatDate(r.requested_at)}
                         {r.staff_id ? ` · Staff ID ${r.staff_id}` : ""}
                       </p>
-                      {r.note && <p className="mt-1 text-xs italic text-muted-foreground">"{r.note}"</p>}
+                      {r.note && (
+                        <p className="mt-1 text-xs italic text-muted-foreground">"{r.note}"</p>
+                      )}
                       {isOwnRequest && (
-                        <p className="mt-2 flex items-center gap-1 text-xs text-[hsl(var(--notice-action))]">
+                        <p className="mt-2 flex items-center gap-1 text-xs text-notice-action">
                           <ShieldAlert className="h-3.5 w-3.5" />
                           You cannot approve your own request through the ordinary review flow.
                         </p>
@@ -175,7 +185,10 @@ export function MagistrateCourtRequestReviewPanel() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => { setRejectTarget(r); setRejectReason(""); }}
+                            onClick={() => {
+                              setRejectTarget(r);
+                              setRejectReason("");
+                            }}
                             disabled={decide.isPending}
                           >
                             <Undo2 className="h-4 w-4" />
@@ -186,7 +199,7 @@ export function MagistrateCourtRequestReviewPanel() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-[hsl(var(--notice-action)/0.4)] text-[hsl(var(--notice-action))] hover:bg-[hsl(var(--notice-action)/0.1)]"
+                          className="border-[hsl(var(--notice-action)/0.4)] text-notice-action hover:bg-[hsl(var(--notice-action)/0.1)]"
                           onClick={() => {
                             setBootstrapTarget(r);
                             setBootstrapReason("");
@@ -215,10 +228,12 @@ export function MagistrateCourtRequestReviewPanel() {
           <h2 className="mb-3 text-sm font-semibold text-foreground">History</h2>
           <div className="space-y-3">
             {decided.map((r) => (
-              <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+              <Card key={r.id} className="border-border bg-foreground/5">
                 <CardContent className="flex items-center justify-between gap-4 py-4">
                   <div>
-                    <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed"}</p>
+                    <p className="font-medium text-foreground">
+                      {r.profiles?.full_name || "Unnamed"}
+                    </p>
                     <p className="text-sm text-muted-foreground">{r.courts?.name}</p>
                     {r.rejection_reason && (
                       <p className="mt-1 text-xs text-muted-foreground">{r.rejection_reason}</p>
@@ -229,7 +244,7 @@ export function MagistrateCourtRequestReviewPanel() {
                       </p>
                     )}
                     {r.approval_kind === "bootstrap_self_approval" && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-[hsl(var(--notice-action))]">
+                      <p className="mt-1 flex items-center gap-1 text-xs text-notice-action">
                         <ShieldAlert className="h-3.5 w-3.5" />
                         Sole-administrator self-approval exception
                       </p>
@@ -253,11 +268,13 @@ export function MagistrateCourtRequestReviewPanel() {
           <div className="space-y-2">
             <p>
               {rejectTarget?.profiles?.full_name} will be asked to request again.{" "}
-              {rejectTarget?.courts?.name} will not be assigned. This does not change
-              their account type.
+              {rejectTarget?.courts?.name} will not be assigned. This does not change their account
+              type.
             </p>
             <Textarea
               placeholder="Reason (required — shown to the requester)"
+              aria-label="Reason for returning (required, shown to the requester)"
+              aria-required="true"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />
@@ -285,9 +302,9 @@ export function MagistrateCourtRequestReviewPanel() {
             <DialogTitle>Special seating exception</DialogTitle>
             <DialogDescription>
               {approveTarget?.profiles?.full_name || "This magistrate"} requested{" "}
-              <strong>{approveTarget?.courts?.name}</strong>, which already has a signed-in
-              primary magistrate. The request does not fill the court. Choose whether to
-              replace the current primary or seat both magistrates.
+              <strong>{approveTarget?.courts?.name}</strong>, which already has a signed-in primary
+              magistrate. The request does not fill the court. Choose whether to replace the current
+              primary or seat both magistrates.
             </DialogDescription>
           </DialogHeader>
           <OccupiedCourtResolutionFields
@@ -329,8 +346,8 @@ export function MagistrateCourtRequestReviewPanel() {
               administrator available to review your own request for{" "}
               <strong>{bootstrapTarget?.courts?.name}</strong>. This exception is recorded in the
               audit trail as a bootstrap self-approval, permanently distinguished from an ordinary
-              decision. Once a second administrator exists, this exception is no longer available
-              to anyone.
+              decision. Once a second administrator exists, this exception is no longer available to
+              anyone.
             </DialogDescription>
           </DialogHeader>
 
@@ -379,7 +396,9 @@ export function MagistrateCourtRequestReviewPanel() {
                 bootstrapApprove.isPending
               }
             >
-              {bootstrapReauthenticating || bootstrapApprove.isPending ? "Confirming…" : "Approve my own request"}
+              {bootstrapReauthenticating || bootstrapApprove.isPending
+                ? "Confirming…"
+                : "Approve my own request"}
             </Button>
           </DialogFooter>
         </DialogContent>

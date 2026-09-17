@@ -1,6 +1,6 @@
-import type { ReactNode } from "react"
-import { DetailsHint } from "@/components/common/details-hint"
-import { cn } from "@/lib/utils"
+import type { ReactNode } from "react";
+import { DetailsHint } from "@/components/common/details-hint";
+import { cn } from "@/lib/utils";
 
 /**
  * Morning cause-list chrome: blotting-paper rules, a crimson margin
@@ -11,8 +11,8 @@ export function DashboardFolio({
   children,
   className,
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
     <div className={cn("relative", className)}>
@@ -30,7 +30,7 @@ export function DashboardFolio({
       />
       <div className="relative pl-6 sm:pl-10">{children}</div>
     </div>
-  )
+  );
 }
 
 export function DashboardKicker({ children }: { children: ReactNode }) {
@@ -38,7 +38,7 @@ export function DashboardKicker({ children }: { children: ReactNode }) {
     <p className="font-brand text-[11px] font-semibold uppercase tracking-[0.32em] text-[hsl(var(--brass))]">
       {children}
     </p>
-  )
+  );
 }
 
 export function DashboardHeading({
@@ -47,10 +47,10 @@ export function DashboardHeading({
   hint,
   children,
 }: {
-  id: string
-  hintLabel: string
-  hint: string
-  children: ReactNode
+  id: string;
+  hintLabel: string;
+  hint: string;
+  children: ReactNode;
 }) {
   return (
     <div className="mb-5 flex items-center gap-1.5 border-b border-foreground/20 pb-2">
@@ -59,5 +59,5 @@ export function DashboardHeading({
       </h2>
       <DetailsHint label={hintLabel} details={hint} />
     </div>
-  )
+  );
 }

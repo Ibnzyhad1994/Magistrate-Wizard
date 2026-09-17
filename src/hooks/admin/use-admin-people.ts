@@ -131,7 +131,9 @@ export function buildAdminPeopleRows(input: {
   const courtsByProfile = new Map<string, AdminPersonCourt[]>();
   const addCourt = (profileId: string, court: AdminPersonCourt) => {
     const list = courtsByProfile.get(profileId) ?? [];
-    if (!list.some((existing) => existing.courtId === court.courtId && existing.kind === court.kind)) {
+    if (
+      !list.some((existing) => existing.courtId === court.courtId && existing.kind === court.kind)
+    ) {
       list.push(court);
     }
     courtsByProfile.set(profileId, list);
@@ -172,7 +174,10 @@ export function buildAdminPeopleRows(input: {
   for (const event of input.activityEvents) {
     if (!event.actorId) continue;
     const existing = lastActivityById.get(event.actorId);
-    lastActivityById.set(event.actorId, laterEvent(existing, { at: event.createdAt, label: event.label })!);
+    lastActivityById.set(
+      event.actorId,
+      laterEvent(existing, { at: event.createdAt, label: event.label })!,
+    );
   }
 
   return [...input.profiles]
@@ -183,7 +188,9 @@ export function buildAdminPeopleRows(input: {
     })
     .map((profile) => {
       const lastLoginAt =
-        lastLoginById.get(profile.id) ?? lastLoginByEmail.get(profile.email.trim().toLowerCase()) ?? null;
+        lastLoginById.get(profile.id) ??
+        lastLoginByEmail.get(profile.email.trim().toLowerCase()) ??
+        null;
       const activity = lastActivityById.get(profile.id);
       return {
         id: profile.id,
@@ -216,7 +223,9 @@ export function useAdminPeople() {
             .order("full_name"),
           supabase
             .from("magistrate_courts")
-            .select("id, profile_id, court_id, assignment_type, occupies_primary_slot, courts(id, name)")
+            .select(
+              "id, profile_id, court_id, assignment_type, occupies_primary_slot, courts(id, name)",
+            )
             .is("ended_at", null),
           supabase
             .from("clerk_courts")

@@ -8,9 +8,7 @@ export function TitleGallery({ children }: { children: ReactNode }) {
   return (
     <div
       className={cn(
-        browseView === "list"
-          ? "flex flex-col gap-1.5 [&>*]:w-full"
-          : "flex flex-wrap gap-2",
+        browseView === "list" ? "flex flex-col gap-1.5 [&>*]:w-full" : "flex flex-wrap gap-2",
       )}
     >
       {children}

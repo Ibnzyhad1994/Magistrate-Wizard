@@ -4,8 +4,7 @@
  */
 
 export const APP_NAME = "Magistrate Wizard";
-export const APP_DESCRIPTION =
-  "A legal knowledge management platform for magistrates.";
+export const APP_DESCRIPTION = "A legal knowledge management platform for magistrates.";
 
 export const LOCAL_STORAGE_KEYS = {
   theme: "magistrate-wizard-theme",

@@ -5,13 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useCourts } from "@/hooks/docket/use-lookups";
@@ -64,10 +58,9 @@ export function AdminSelfCourtCard() {
         <CardHeader>
           <CardTitle className="text-base">Court Assignments</CardTitle>
           <CardDescription>
-            Platform role: <strong>{ROLE_LABELS[profile?.role as UserRole]}</strong>.
-            Seat yourself at a court here so you can create docket matters. This
-            uses an Acting assignment — it does not replace a sitting primary
-            magistrate. For someone else, use{" "}
+            Platform role: <strong>{ROLE_LABELS[profile?.role as UserRole]}</strong>. Seat yourself
+            at a court here so you can create docket matters. This uses an Acting assignment — it
+            does not replace a sitting primary magistrate. For someone else, use{" "}
             <Link to={ROUTES.adminCourtAssignments} className="underline underline-offset-2">
               Manage Court Assignments
             </Link>
@@ -80,7 +73,10 @@ export function AdminSelfCourtCard() {
           ) : (assignments ?? []).length > 0 ? (
             <ul className="divide-y divide-border">
               {(assignments ?? []).map((row) => (
-                <li key={row.id} className="flex items-center justify-between gap-2 py-2 first:pt-0">
+                <li
+                  key={row.id}
+                  className="flex items-center justify-between gap-2 py-2 first:pt-0"
+                >
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
                       <Landmark className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -142,8 +138,8 @@ export function AdminSelfCourtCard() {
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Acting seating unlocks New matter on the Docket for that court. It is
-            recorded on your profile like any other magistrate assignment.
+            Acting seating unlocks New matter on the Docket for that court. It is recorded on your
+            profile like any other magistrate assignment.
           </p>
 
           <div className="flex flex-wrap gap-2">

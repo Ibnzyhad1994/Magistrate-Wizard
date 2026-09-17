@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useHasApprovedMagistrateCourt } from "@/hooks/use-magistrate-court-requests";
@@ -30,7 +38,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
   const location = useLocation();
   const navigate = useNavigate();
-  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
+  const isPendingMagistrate =
+    profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
   const allSteps = useMemo(
     () => walkthroughStepsFor(profile?.role as UserRole | undefined, isPendingMagistrate),
     [profile?.role, isPendingMagistrate],
@@ -45,6 +54,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const isActiveRef = useRef(false);
   const hasMatterRef = useRef(false);
   const didAutoStartThisInstance = useRef(false);
+  /** Whatever had focus when the tour started (the "Take the tour" menu item), so focus can go back there when it ends. Null for an auto-start, where nothing was focused. */
+  const triggerRef = useRef<HTMLElement | null>(null);
   isActiveRef.current = isActive;
   hasMatterRef.current = hasMatter;
 
@@ -95,8 +106,21 @@ export function TourProvider({ children }: { children: ReactNode }) {
     [allSteps, location.pathname, matterPath, navigate],
   );
 
+  // Runs after the commit that unmounted the overlay, so the Radix focus
+  // trap is gone before focus is handed back (WCAG 2.4.3).
+  useEffect(() => {
+    if (isActive) return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    triggerRef.current = null;
+    if (trigger.isConnected) trigger.focus();
+    else document.getElementById("main-content")?.focus({ preventScroll: true });
+  }, [isActive]);
+
   const startWalkthrough = useCallback(() => {
     if (allSteps.length === 0) return;
+    const active = document.activeElement;
+    triggerRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
     setChapter("sitting");
     setHasMatter(false);
     setMatterPath(null);
@@ -141,7 +165,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setStepId(next.id);
     const dest = walkthroughStepRoute(next, path);
     if (dest && location.pathname !== dest) navigate(dest);
-  }, [allSteps, chapter, handleStop, hasMatter, location.pathname, matterPath, navigate, stepIndex, visible]);
+  }, [
+    allSteps,
+    chapter,
+    handleStop,
+    hasMatter,
+    location.pathname,
+    matterPath,
+    navigate,
+    stepIndex,
+    visible,
+  ]);
 
   const handleContinue = useCallback(() => {
     goToStep(0, "rest", hasMatter);

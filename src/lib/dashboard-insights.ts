@@ -12,13 +12,20 @@ export const BOARD_INSIGHT_CAP = 100;
 export const STALE_DRAFT_DAYS = 14;
 export const MAX_INSIGHTS = 12;
 
-export const DASHBOARD_FILE_FOCUSES = ["active", "no_date", "overdue", "retained", "no_parties"] as const;
+export const DASHBOARD_FILE_FOCUSES = [
+  "active",
+  "no_date",
+  "overdue",
+  "retained",
+  "no_parties",
+] as const;
 export type DashboardFileFocus = (typeof DASHBOARD_FILE_FOCUSES)[number];
 
 export const isDashboardFileFocus = (value: string | null): value is DashboardFileFocus =>
   value != null && (DASHBOARD_FILE_FOCUSES as readonly string[]).includes(value);
 
-export const dashboardFilesHref = (focus: DashboardFileFocus) => `${ROUTES.dashboard}?files=${focus}`;
+export const dashboardFilesHref = (focus: DashboardFileFocus) =>
+  `${ROUTES.dashboard}?files=${focus}`;
 
 export const DASHBOARD_FILE_FOCUS_COPY: Record<
   DashboardFileFocus,
@@ -154,11 +161,16 @@ export const stillAtFirstStage = (row: Pick<BoardInsightRow, "procedure_stage">)
 export const missingNextDate = (row: Pick<BoardInsightRow, "status" | "next_appearance">) =>
   isActiveMatter(row.status) && !row.next_appearance;
 
-export const isOverdueScheduled = (event: Pick<EventPulseRow, "event_status" | "scheduled_date">, today: string) =>
-  event.event_status === "scheduled" && event.scheduled_date < today;
+export const isOverdueScheduled = (
+  event: Pick<EventPulseRow, "event_status" | "scheduled_date">,
+  today: string,
+) => event.event_status === "scheduled" && event.scheduled_date < today;
 
 export const sittingMissingPaper = (
-  event: Pick<EventPulseRow, "event_status" | "scheduled_date" | "outcome_at_event" | "orders_made_at_event">,
+  event: Pick<
+    EventPulseRow,
+    "event_status" | "scheduled_date" | "outcome_at_event" | "orders_made_at_event"
+  >,
   today: string,
 ) =>
   event.event_status === "scheduled" &&
@@ -166,11 +178,13 @@ export const sittingMissingPaper = (
   !event.outcome_at_event &&
   !event.orders_made_at_event;
 
-export const rulingFileMissing = (row: Pick<BoardInsightRow, "ruling_status" | "has_ruling_document">) =>
-  row.ruling_status === "delivered" && !row.has_ruling_document;
+export const rulingFileMissing = (
+  row: Pick<BoardInsightRow, "ruling_status" | "has_ruling_document">,
+) => row.ruling_status === "delivered" && !row.has_ruling_document;
 
-export const judgmentFileMissing = (row: Pick<BoardInsightRow, "judgment_status" | "has_judgment_document">) =>
-  row.judgment_status === "delivered" && !row.has_judgment_document;
+export const judgmentFileMissing = (
+  row: Pick<BoardInsightRow, "judgment_status" | "has_judgment_document">,
+) => row.judgment_status === "delivered" && !row.has_judgment_document;
 
 export const daysBetween = (fromIso: string, toIso: string) => {
   const [fy, fm, fd] = fromIso.split("-").map(Number);
@@ -252,12 +266,17 @@ export const filesForFocus = ({
   if (focus === "active") {
     return board
       .filter((row) => isActiveMatter(row.status))
-      .map((row) => toMatterRow(row, row.next_appearance ? `Next ${row.next_appearance}` : "No next date"))
+      .map((row) =>
+        toMatterRow(row, row.next_appearance ? `Next ${row.next_appearance}` : "No next date"),
+      )
       .sort(byCaseNumber);
   }
 
   if (focus === "no_date") {
-    return board.filter((row) => missingNextDate(row)).map((row) => toMatterRow(row, "No next date")).sort(byCaseNumber);
+    return board
+      .filter((row) => missingNextDate(row))
+      .map((row) => toMatterRow(row, "No next date"))
+      .sort(byCaseNumber);
   }
 
   if (focus === "overdue") {
@@ -273,12 +292,17 @@ export const filesForFocus = ({
           detail: `Scheduled ${event.scheduled_date}`,
         };
       })
-      .sort((a, b) => a.detail.localeCompare(b.detail) || a.case_number.localeCompare(b.case_number));
+      .sort(
+        (a, b) => a.detail.localeCompare(b.detail) || a.case_number.localeCompare(b.case_number),
+      );
   }
 
   if (focus === "no_parties") {
     const without = new Set(mattersWithoutParties);
-    return board.filter((row) => without.has(row.id)).map((row) => toMatterRow(row, "No parties entered")).sort(byCaseNumber);
+    return board
+      .filter((row) => without.has(row.id))
+      .map((row) => toMatterRow(row, "No parties entered"))
+      .sort(byCaseNumber);
   }
 
   const extraById = new Map(extraRetained.map((row) => [row.id, row]));
@@ -370,7 +394,10 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
     push(insights, {
       id: "no-next-date",
       severity: "attention",
-      title: noNext.length === 1 ? `${fileLabel(noNext[0])} has no next date` : `${noNext.length} active files have no next date`,
+      title:
+        noNext.length === 1
+          ? `${fileLabel(noNext[0])} has no next date`
+          : `${noNext.length} active files have no next date`,
       why: "An active file without a next date drops off the week strip. Set the next hearing from the board.",
       href: noNext.length === 1 ? ROUTES.docketMatter(noNext[0].id) : dashboardFilesHref("no_date"),
       cta: "Set next date",
@@ -499,7 +526,10 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
     (day) =>
       day.date >= input.today &&
       day.date <= addDaysIso(input.today, 4) &&
-      (day.band === "amber" || day.band === "full" || day.band === "over_capacity" || day.band === "not_set"),
+      (day.band === "amber" ||
+        day.band === "full" ||
+        day.band === "over_capacity" ||
+        day.band === "not_set"),
   );
   if (hotCapacity.some((day) => day.band === "over_capacity" || day.band === "full")) {
     push(insights, {
@@ -531,12 +561,17 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
   }
 
   if (input.role !== "clerk") {
-    const stale = input.staleDraftJudgments.filter((row) => isStaleDraft(row.updatedAt, input.today));
+    const stale = input.staleDraftJudgments.filter((row) =>
+      isStaleDraft(row.updatedAt, input.today),
+    );
     if (stale.length > 0) {
       push(insights, {
         id: "stale-draft",
         severity: "nudge",
-        title: stale.length === 1 ? `"${stale[0].title}" has sat as a draft` : `${stale.length} draft judgments are older than ${STALE_DRAFT_DAYS} days`,
+        title:
+          stale.length === 1
+            ? `"${stale[0].title}" has sat as a draft`
+            : `${stale.length} draft judgments are older than ${STALE_DRAFT_DAYS} days`,
         why: "A draft that does not move is easy to forget. Continue it, or leave it until the sitting needs it.",
         href: ROUTES.judgmentDetail(stale[0].id),
         cta: "Continue draft",
@@ -577,7 +612,9 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
         id: "issue-reports",
         severity: "nudge",
         title:
-          input.openIssueReports === 1 ? "One issue report is still open" : `${input.openIssueReports} issue reports are still open`,
+          input.openIssueReports === 1
+            ? "One issue report is still open"
+            : `${input.openIssueReports} issue reports are still open`,
         why: "The ledger of what people could not do in the product. Close or note them from Operations.",
         href: ROUTES.adminIssueReports,
         cta: "Review reports",
@@ -586,6 +623,9 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
   }
 
   return insights
-    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.title.localeCompare(b.title))
+    .sort(
+      (a, b) =>
+        SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.title.localeCompare(b.title),
+    )
     .slice(0, MAX_INSIGHTS);
 };

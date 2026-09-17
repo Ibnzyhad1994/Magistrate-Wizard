@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useLinkedJudgments } from "@/hooks/docket/use-docket-links";
 import { useDeleteDocketJudgmentLink } from "@/hooks/docket/use-docket-judgment-links";
 import { LinkJudgmentDialog } from "@/pages/docket/link-judgment-dialog";
@@ -35,6 +36,11 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
   const canManage = (access?.canManage ?? false) && !frozen;
   const deleteLink = useDeleteDocketJudgmentLink(matterId);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [pendingUnlink, setPendingUnlink] = useState<{
+    linkId: string;
+    judgmentId: string;
+    title: string;
+  } | null>(null);
 
   const linkedJudgmentIds = (data ?? []).map((link) => link.judgment_id);
 
@@ -76,7 +82,8 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                 <div>
                   <p className="font-medium text-foreground">{judgment.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {[judgment.case_number, judgment.citation].filter(Boolean).join(" · ") || NOT_SET}
+                    {[judgment.case_number, judgment.citation].filter(Boolean).join(" · ") ||
+                      NOT_SET}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -85,18 +92,26 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                   </Badge>
                   {canManage && (
                     <HintTooltip label="Unlink">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      aria-label={`Unlink judgment ${judgment.title}`}
-                      disabled={deleteLink.isPending}
-                      onClick={() =>
-                        deleteLink.mutate({ linkId: link.id, judgmentId: judgment.id })
-                      }
-                    >
-                      {deleteLink.isPending ? <LoadingSpinner size={14} /> : <X className="h-4 w-4" />}
-                    </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        aria-label={`Unlink judgment ${judgment.title}`}
+                        disabled={deleteLink.isPending}
+                        onClick={() =>
+                          setPendingUnlink({
+                            linkId: link.id,
+                            judgmentId: judgment.id,
+                            title: judgment.title,
+                          })
+                        }
+                      >
+                        {deleteLink.isPending ? (
+                          <LoadingSpinner size={14} />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                      </Button>
                     </HintTooltip>
                   )}
                 </div>
@@ -111,6 +126,25 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
         linkedJudgmentIds={linkedJudgmentIds}
+      />
+      <AlertDialog
+        open={!!pendingUnlink}
+        onOpenChange={(open) => !open && setPendingUnlink(null)}
+        title="Unlink this judgment?"
+        description={
+          pendingUnlink
+            ? `"${pendingUnlink.title}" will no longer be listed as reference material for this matter. The judgment itself is not changed; you can link it again later.`
+            : undefined
+        }
+        confirmLabel="Unlink"
+        isConfirming={deleteLink.isPending}
+        onConfirm={() => {
+          if (!pendingUnlink) return;
+          deleteLink.mutate(
+            { linkId: pendingUnlink.linkId, judgmentId: pendingUnlink.judgmentId },
+            { onSuccess: () => setPendingUnlink(null) },
+          );
+        }}
       />
     </div>
   );

@@ -2,11 +2,9 @@ import { useMemo } from "react";
 import { Billboard, ContentRow, TitleCard } from "@/components/browse";
 import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { useDocketMatters } from "@/hooks/docket/use-docket-matters";
-import {
-  useMyRetainedMatters,
-  useUpcomingAppearances,
-} from "@/hooks/use-dashboard";
+import { useMyRetainedMatters, useUpcomingAppearances } from "@/hooks/use-dashboard";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useQuickCodes } from "@/hooks/quick-codes/use-quick-codes";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
@@ -33,6 +31,7 @@ import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
  */
 export default function HomePage() {
   const { user, profile } = useAuth();
+  usePageTitle("Home");
   const rolePending = !profile;
   const isClerk = profile?.role === "clerk";
   const {
@@ -45,9 +44,15 @@ export default function HomePage() {
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const { data: appearances, isPending: appearancesPending } = useUpcomingAppearances();
   const { data: retained } = useMyRetainedMatters();
-  const { data: judgments, isPending: judgmentsPending } = useJudgments({ enabled: Boolean(profile) && !isClerk });
-  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes({ enabled: Boolean(profile) && !isClerk });
-  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes({ enabled: Boolean(profile) && !isClerk });
+  const { data: judgments, isPending: judgmentsPending } = useJudgments({
+    enabled: Boolean(profile) && !isClerk,
+  });
+  const { data: quickCodes, isPending: quickCodesPending } = useQuickCodes({
+    enabled: Boolean(profile) && !isClerk,
+  });
+  const { data: benchNotes, isPending: benchNotesPending } = useBenchNotes({
+    enabled: Boolean(profile) && !isClerk,
+  });
   const { data: clerkRequests } = useMyClerkAccessRequests();
 
   const activeMatters = useMemo(
@@ -127,40 +132,40 @@ export default function HomePage() {
         description: "Loading your workspace.",
       }
     : !isClerk
-    ? {
-        tone: "judgment" as const,
-        eyebrow: APP_NAME,
-        title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
-        description: `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
-        primaryAction: { label: "New matter", href: `${ROUTES.docket}?new=1` },
-        secondaryAction: { label: "Browse docket", href: ROUTES.docket },
-        tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
-      }
-    : clerkState === "loading"
       ? {
           tone: "judgment" as const,
           eyebrow: APP_NAME,
-          title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
-          description: "Loading your court assignment.",
+          title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
+          description: `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
+          primaryAction: { label: "New matter", href: `${ROUTES.docket}?new=1` },
+          secondaryAction: { label: "Browse docket", href: ROUTES.docket },
+          tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
         }
-      : isPendingClerk
-      ? {
-          tone: "judgment" as const,
-          eyebrow: APP_NAME,
-          title: name ? `Welcome, ${name}` : "Welcome",
-          description: clerkPendingDescription({
-            pendingRequestCount: pendingClerkRequests.length,
-            pendingCourtName: pendingClerkRequests[0]?.courts?.name,
-          }),
-          primaryAction: { label: "View my requests", href: ROUTES.clerkAccess },
-        }
-      : {
-          tone: "judgment" as const,
-          eyebrow: APP_NAME,
-          title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
-          description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
-          primaryAction: { label: "Open docket", href: ROUTES.docket },
-        };
+      : clerkState === "loading"
+        ? {
+            tone: "judgment" as const,
+            eyebrow: APP_NAME,
+            title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
+            description: "Loading your court assignment.",
+          }
+        : isPendingClerk
+          ? {
+              tone: "judgment" as const,
+              eyebrow: APP_NAME,
+              title: name ? `Welcome, ${name}` : "Welcome",
+              description: clerkPendingDescription({
+                pendingRequestCount: pendingClerkRequests.length,
+                pendingCourtName: pendingClerkRequests[0]?.courts?.name,
+              }),
+              primaryAction: { label: "View my requests", href: ROUTES.clerkAccess },
+            }
+          : {
+              tone: "judgment" as const,
+              eyebrow: APP_NAME,
+              title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
+              description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
+              primaryAction: { label: "Open docket", href: ROUTES.docket },
+            };
 
   return (
     <div>
@@ -176,142 +181,166 @@ export default function HomePage() {
       <div className="relative z-10 -mt-8 space-y-9 pb-20 dark:-mt-16">
         {isPendingClerk || clerkState === "loading" ? null : (
           <>
-        {mattersError && (
-          <div className="browse-gutter">
-            <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
-          </div>
-        )}
+            {mattersError && (
+              <div className="browse-gutter">
+                <InlineError error={mattersErr} onRetry={() => void refetchMatters()} />
+              </div>
+            )}
 
-        {(mattersPending || continueWorking.length > 0) && (
-          <ContentRow title="Continue Working" href={ROUTES.docket} isLoading={mattersPending}>
-            {continueWorking.map((m) => (
-              <TitleCard
-                layout="tiles"
-                key={m.id}
-                tone="docket"
-                eyebrow={m.case_number}
-                title={m.matter_title}
-                subtitle={issueOf(m)}
-                badge={toTitleCase(m.status)}
-                meta={"courts" in m ? [rel(m.courts)?.name].filter((v): v is string => Boolean(v)) : undefined}
-                imageUrl={coverUrl("cover_image_path" in m ? m.cover_image_path : null)}
-                href={ROUTES.docketMatter(m.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
+            {(mattersPending || continueWorking.length > 0) && (
+              <ContentRow title="Continue Working" href={ROUTES.docket} isLoading={mattersPending}>
+                {continueWorking.map((m) => (
+                  <TitleCard
+                    layout="tiles"
+                    key={m.id}
+                    tone="docket"
+                    eyebrow={m.case_number}
+                    title={m.matter_title}
+                    subtitle={issueOf(m)}
+                    badge={toTitleCase(m.status)}
+                    meta={
+                      "courts" in m
+                        ? [rel(m.courts)?.name].filter((v): v is string => Boolean(v))
+                        : undefined
+                    }
+                    imageUrl={coverUrl("cover_image_path" in m ? m.cover_image_path : null)}
+                    href={ROUTES.docketMatter(m.id)}
+                  />
+                ))}
+              </ContentRow>
+            )}
 
-        {(appearancesPending || (appearances?.length ?? 0) > 0) && (
-          <ContentRow title="Upcoming Appearances" href={ROUTES.docket} isLoading={appearancesPending}>
-            {(appearances ?? []).map((event) => {
-              const matter = rel(event.docket_matters);
-              return (
-                <TitleCard
-                  layout="tiles"
-                  key={event.id}
-                  tone="docket"
-                  eyebrow={matter?.case_number}
-                  title={matter?.matter_title ?? eventLabel(event.event_type)}
-                  subtitle={matter?.charge_or_issue ?? undefined}
-                  badge={eventLabel(event.event_type)}
-                  meta={[
-                    formatDate(event.scheduled_date),
-                    event.scheduled_time ? formatTimeOnly(event.scheduled_time) : null,
-                  ].filter((v): v is string => Boolean(v))}
-                  imageUrl={coverUrl(matter?.cover_image_path)}
-                  href={ROUTES.docketMatter(event.docket_matter_id)}
-                />
-              );
-            })}
-          </ContentRow>
-        )}
+            {(appearancesPending || (appearances?.length ?? 0) > 0) && (
+              <ContentRow
+                title="Upcoming Appearances"
+                href={ROUTES.docket}
+                isLoading={appearancesPending}
+              >
+                {(appearances ?? []).map((event) => {
+                  const matter = rel(event.docket_matters);
+                  return (
+                    <TitleCard
+                      layout="tiles"
+                      key={event.id}
+                      tone="docket"
+                      eyebrow={matter?.case_number}
+                      title={matter?.matter_title ?? eventLabel(event.event_type)}
+                      subtitle={matter?.charge_or_issue ?? undefined}
+                      badge={eventLabel(event.event_type)}
+                      meta={[
+                        formatDate(event.scheduled_date),
+                        event.scheduled_time ? formatTimeOnly(event.scheduled_time) : null,
+                      ].filter((v): v is string => Boolean(v))}
+                      imageUrl={coverUrl(matter?.cover_image_path)}
+                      href={ROUTES.docketMatter(event.docket_matter_id)}
+                    />
+                  );
+                })}
+              </ContentRow>
+            )}
 
-        {!isClerk && (judgmentsPending || myDrafts.length > 0) && (
-          <ContentRow title="Draft Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
-            {myDrafts.map((j) => (
-              <TitleCard
-                layout="tiles"
-                key={j.id}
-                tone="judgment"
-                eyebrow={j.case_number ?? undefined}
-                title={j.title}
-                subtitle={j.court_name ?? j.citation ?? undefined}
-                badge="Draft"
-                href={ROUTES.judgmentDetail(j.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
+            {!isClerk && (judgmentsPending || myDrafts.length > 0) && (
+              <ContentRow
+                title="Draft Judgments"
+                href={ROUTES.judgments}
+                isLoading={judgmentsPending}
+              >
+                {myDrafts.map((j) => (
+                  <TitleCard
+                    layout="tiles"
+                    key={j.id}
+                    tone="judgment"
+                    eyebrow={j.case_number ?? undefined}
+                    title={j.title}
+                    subtitle={j.court_name ?? j.citation ?? undefined}
+                    badge="Draft"
+                    href={ROUTES.judgmentDetail(j.id)}
+                  />
+                ))}
+              </ContentRow>
+            )}
 
-        {!isClerk && (judgmentsPending || myFinal.length > 0) && (
-          <ContentRow title="Final Judgments" href={ROUTES.judgments} isLoading={judgmentsPending}>
-            {myFinal.map((j) => (
-              <TitleCard
-                layout="tiles"
-                key={j.id}
-                tone="judgment"
-                eyebrow={j.case_number ?? undefined}
-                title={j.title}
-                subtitle={j.court_name ?? j.citation ?? undefined}
-                badge="Final"
-                href={ROUTES.judgmentDetail(j.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
+            {!isClerk && (judgmentsPending || myFinal.length > 0) && (
+              <ContentRow
+                title="Final Judgments"
+                href={ROUTES.judgments}
+                isLoading={judgmentsPending}
+              >
+                {myFinal.map((j) => (
+                  <TitleCard
+                    layout="tiles"
+                    key={j.id}
+                    tone="judgment"
+                    eyebrow={j.case_number ?? undefined}
+                    title={j.title}
+                    subtitle={j.court_name ?? j.citation ?? undefined}
+                    badge="Final"
+                    href={ROUTES.judgmentDetail(j.id)}
+                  />
+                ))}
+              </ContentRow>
+            )}
 
-        {!isClerk && (retained?.length ?? 0) > 0 && (
-          <ContentRow title="Retained / Part-Heard" href={ROUTES.docket}>
-            {(retained ?? []).map((row) => {
-              const matter = rel(row.docket_matters);
-              return (
-                <TitleCard
-                  layout="tiles"
-                  key={row.id}
-                  tone="docket"
-                  eyebrow={matter?.case_number}
-                  title={matter?.matter_title ?? "Retained matter"}
-                  subtitle={matter?.charge_or_issue ?? undefined}
-                  badge={matter?.status ? toTitleCase(matter.status) : "Retained"}
-                  imageUrl={coverUrl(matter?.cover_image_path)}
-                  href={ROUTES.docketMatter(row.docket_matter_id)}
-                />
-              );
-            })}
-          </ContentRow>
-        )}
+            {!isClerk && (retained?.length ?? 0) > 0 && (
+              <ContentRow title="Retained / Part-Heard" href={ROUTES.docket}>
+                {(retained ?? []).map((row) => {
+                  const matter = rel(row.docket_matters);
+                  return (
+                    <TitleCard
+                      layout="tiles"
+                      key={row.id}
+                      tone="docket"
+                      eyebrow={matter?.case_number}
+                      title={matter?.matter_title ?? "Retained matter"}
+                      subtitle={matter?.charge_or_issue ?? undefined}
+                      badge={matter?.status ? toTitleCase(matter.status) : "Retained"}
+                      imageUrl={coverUrl(matter?.cover_image_path)}
+                      href={ROUTES.docketMatter(row.docket_matter_id)}
+                    />
+                  );
+                })}
+              </ContentRow>
+            )}
 
-        {!isClerk && (benchNotesPending || (benchNotes?.length ?? 0) > 0) && (
-          <ContentRow title="Bench Notes" href={ROUTES.benchNotes} isLoading={benchNotesPending}>
-            {(benchNotes ?? []).map((note) => (
-              <TitleCard
-                layout="tiles"
-                key={note.id}
-                tone="note"
-                eyebrow={entityLabel(note.entity_type)}
-                title={note.title}
-                badge={toTitleCase(note.status)}
-                href={ROUTES.benchNoteDetail(note.id)}
-              />
-            ))}
-          </ContentRow>
-        )}
+            {!isClerk && (benchNotesPending || (benchNotes?.length ?? 0) > 0) && (
+              <ContentRow
+                title="Bench Notes"
+                href={ROUTES.benchNotes}
+                isLoading={benchNotesPending}
+              >
+                {(benchNotes ?? []).map((note) => (
+                  <TitleCard
+                    layout="tiles"
+                    key={note.id}
+                    tone="note"
+                    eyebrow={entityLabel(note.entity_type)}
+                    title={note.title}
+                    badge={toTitleCase(note.status)}
+                    href={ROUTES.benchNoteDetail(note.id)}
+                  />
+                ))}
+              </ContentRow>
+            )}
 
-        {!isClerk && (quickCodesPending || (quickCodes?.length ?? 0) > 0) && (
-          <ContentRow title="Quick Codes" href={ROUTES.quickCodes} isLoading={quickCodesPending}>
-            {(quickCodes ?? []).map((code) => (
-              <TitleCard
-                layout="tiles"
-                key={code.id}
-                tone="code"
-                eyebrow={code.code_word}
-                title={code.title ?? code.code_word}
-                subtitle={code.category ?? undefined}
-                href={`${ROUTES.quickCodes}?qc=${code.id}`}
-              />
-            ))}
-          </ContentRow>
-        )}
+            {!isClerk && (quickCodesPending || (quickCodes?.length ?? 0) > 0) && (
+              <ContentRow
+                title="Quick Codes"
+                href={ROUTES.quickCodes}
+                isLoading={quickCodesPending}
+              >
+                {(quickCodes ?? []).map((code) => (
+                  <TitleCard
+                    layout="tiles"
+                    key={code.id}
+                    tone="code"
+                    eyebrow={code.code_word}
+                    title={code.title ?? code.code_word}
+                    subtitle={code.category ?? undefined}
+                    href={`${ROUTES.quickCodes}?qc=${code.id}`}
+                  />
+                ))}
+              </ContentRow>
+            )}
           </>
         )}
       </div>

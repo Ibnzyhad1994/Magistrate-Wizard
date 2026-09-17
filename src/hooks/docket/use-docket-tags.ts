@@ -43,6 +43,7 @@ export function useAddDocketTag(matterId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: key(matterId) });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -53,10 +54,7 @@ export function useRemoveDocketTag(matterId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("docket_matter_tags")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("docket_matter_tags").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

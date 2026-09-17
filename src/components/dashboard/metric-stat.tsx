@@ -1,7 +1,7 @@
-import type { ReactNode } from "react"
-import { Link } from "react-router-dom"
-import { DetailsHint } from "@/components/common/details-hint"
-import { cn } from "@/lib/utils"
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { DetailsHint } from "@/components/common/details-hint";
+import { cn } from "@/lib/utils";
 
 export function MetricStat({
   label,
@@ -11,19 +11,19 @@ export function MetricStat({
   selected = false,
   tone = "ink",
 }: {
-  label: string
-  value: string | number
-  hint: string
-  href?: string
-  selected?: boolean
-  tone?: "ink" | "warn" | "ok"
+  label: string;
+  value: string | number;
+  hint: string;
+  href?: string;
+  selected?: boolean;
+  tone?: "ink" | "warn" | "ok";
 }) {
   const numberClass = cn(
     "font-brand text-4xl font-semibold tabular-nums leading-none tracking-tight",
     tone === "warn" && "text-destructive",
     tone === "ok" && "text-foreground",
     tone === "ink" && "text-foreground",
-  )
+  );
 
   const body = (
     <>
@@ -32,7 +32,7 @@ export function MetricStat({
       </p>
       <span className={numberClass}>{value}</span>
     </>
-  )
+  );
 
   return (
     <div
@@ -57,7 +57,7 @@ export function MetricStat({
         <DetailsHint label={`How ${label} is counted`} details={hint} />
       </div>
     </div>
-  )
+  );
 }
 
 export function MetricLedger({ children }: { children: ReactNode }) {
@@ -66,9 +66,9 @@ export function MetricLedger({ children }: { children: ReactNode }) {
       data-tour="dashboard-metrics"
       className="overflow-hidden border-y-2 border-foreground/30 bg-background/70"
     >
-      <div className="grid grid-cols-2 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-foreground/10 max-xl:[&>*:nth-child(2n)]:border-r-0 xl:[&>*:nth-child(4n)]:border-r-0">
+      <div className="grid grid-cols-2 xl:grid-cols-4 max-xl:[&>*:nth-child(2n)]:border-r-0 xl:[&>*:nth-child(4n)]:border-r-0 [&>*]:border-b [&>*]:border-r [&>*]:border-border">
         {children}
       </div>
     </div>
-  )
+  );
 }

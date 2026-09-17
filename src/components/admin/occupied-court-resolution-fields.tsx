@@ -17,11 +17,10 @@ export function OccupiedCourtResolutionFields(props: {
   const name = props.name ?? autoName;
   const legend = props.legend ?? "This court already has a signed-in primary magistrate.";
   return (
-    <fieldset className="space-y-3 rounded-sm border border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)] p-3">
+    <fieldset className="space-y-3 rounded-sm border border-notice-action/35 bg-notice-action/10 p-3">
       <legend className="px-1 text-sm font-medium text-foreground">{legend}</legend>
       <p className="text-xs text-muted-foreground">
-        Only you can grant this exception. The request does not fill the court until you
-        decide.
+        Only you can grant this exception. The request does not fill the court until you decide.
       </p>
       {(["replace", "co_sit"] as const).map((option) => (
         <label key={option} className="flex cursor-pointer items-start gap-2 text-sm">

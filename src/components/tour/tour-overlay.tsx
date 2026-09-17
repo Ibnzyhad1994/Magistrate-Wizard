@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import type { WalkthroughStep } from "@/lib/walkthrough";
 import {
@@ -12,9 +13,34 @@ import {
   visibleTourBox,
   type TourBox,
 } from "@/lib/tour-geometry";
-import { pickTourFocus, resolveTourNav, resolveTourTarget, scrollTourTargetIntoView, tightTourBox } from "@/lib/tour-target";
+import {
+  pickTourFocus,
+  resolveTourNav,
+  resolveTourTarget,
+  scrollTourTargetIntoView,
+  tightTourBox,
+} from "@/lib/tour-target";
 
 const NAV_HOLE_PAD = 8;
+
+/**
+ * Marks the page content inert while the tour is up so keyboard and
+ * assistive-tech users cannot wander behind the dialog (WCAG 2.4.3).
+ * `inert` is feature-detected: older engines simply get the Radix focus
+ * trap and `aria-hidden` on siblings, which Dialog already provides.
+ */
+function useInertMainContent(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const main = document.getElementById("main-content");
+    if (!main || !("inert" in HTMLElement.prototype)) return;
+    const wasInert = main.inert;
+    main.inert = true;
+    return () => {
+      main.inert = wasInert;
+    };
+  }, [active]);
+}
 
 export function TourOverlay({
   step,
@@ -40,7 +66,10 @@ export function TourOverlay({
   const [headerBottom, setHeaderBottom] = useState(TOUR_NAV_OFFSET);
   const [cardBox, setCardBox] = useState({ width: 320, height: 176 });
   const cardRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const maskId = `tour-page-${useId().replace(/:/g, "")}`;
+
+  useInertMainContent(true);
 
   useLayoutEffect(() => {
     let cancelled = false;
@@ -155,28 +184,17 @@ export function TourOverlay({
     const node = cardRef.current;
     if (!node) return;
     const next = { width: node.offsetWidth, height: node.offsetHeight };
-    setCardBox((prev) =>
-      prev.width === next.width && prev.height === next.height ? prev : next,
-    );
+    setCardBox((prev) => (prev.width === next.width && prev.height === next.height ? prev : next));
   }, [step, stepIndex, stepCount, rect, navBox, headerBottom]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onSkip();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onSkip]);
 
   const isChoice = step.kind === "choice";
   const isPage = step.kind === "page";
-  const viewport = { width: typeof window === "undefined" ? 1280 : window.innerWidth, height: typeof window === "undefined" ? 800 : window.innerHeight };
-  const spot = !isChoice && !isPage && rect
-    ? tourSpotlightFromRect(visibleTourBox(rect, viewport))
-    : null;
+  const viewport = {
+    width: typeof window === "undefined" ? 1280 : window.innerWidth,
+    height: typeof window === "undefined" ? 800 : window.innerHeight,
+  };
+  const spot =
+    !isChoice && !isPage && rect ? tourSpotlightFromRect(visibleTourBox(rect, viewport)) : null;
   const contentBox = isPage ? tourPageContentBox(headerBottom, viewport) : null;
   const cardPos = isChoice
     ? {
@@ -190,109 +208,143 @@ export function TourOverlay({
         : { top: 96, left: Math.max(16, viewport.width / 2 - 160) };
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-hidden pointer-events-auto" role="dialog" aria-modal="true" aria-labelledby="walkthrough-title">
-      <div className="absolute inset-0" />
-      {spot ? (
-        // One element, both shapes: a circle is just a square box with a
-        // half-size radius, so nothing here branches on shape.
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            top: spot.top,
-            left: spot.left,
-            width: spot.width,
-            height: spot.height,
-            borderRadius: spot.radius,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
+    // Radix Dialog supplies the focus trap, `aria-modal`, Escape handling
+    // and `aria-hidden` on everything outside the portal. The overlay
+    // itself (mask, spotlight ring, card) is the dialog content so the
+    // spotlight geometry above is untouched. Each step remounts (keyed by
+    // the provider), so initial focus lands on the new step's heading and
+    // the change is announced; the provider restores focus to whatever
+    // started the tour once it ends.
+    <DialogPrimitive.Root open onOpenChange={(open) => !open && onSkip()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content
+          className="pointer-events-auto fixed inset-0 z-tour overflow-hidden focus:outline-none"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            headingRef.current?.focus({ preventScroll: true });
           }}
-        />
-      ) : isPage && contentBox ? (
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
-          <defs>
-            <mask id={maskId}>
-              <rect width="100%" height="100%" fill="white" />
-              <rect
-                x={contentBox.left}
-                y={contentBox.top}
-                width={contentBox.width}
-                height={contentBox.height}
-                fill="black"
-              />
-              {navBox ? (
-                <rect
-                  x={navBox.left}
-                  y={navBox.top}
-                  width={navBox.width}
-                  height={navBox.height}
-                  rx="6"
-                  fill="black"
-                />
-              ) : null}
-            </mask>
-          </defs>
-          <rect width="100%" height="100%" fill="rgba(0,0,0,0.62)" mask={`url(#${maskId})`} />
-        </svg>
-      ) : (
-        <div className="absolute inset-0 bg-black/60" />
-      )}
-      {spot && (
-        <div
-          className="pointer-events-none absolute z-[81]"
-          style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}
-          aria-hidden="true"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
         >
-          <span
-            className="tour-ring-pulse absolute inset-0 border-2 border-[hsl(var(--primary))]"
-            style={{ borderRadius: spot.radius }}
-          />
-          <span
-            className="absolute inset-[5px] border-[3px] border-[hsl(var(--primary))] shadow-[0_0_18px_rgba(229,9,20,0.55)]"
-            // The inner ring is inset 5px, so its radius has to shrink by
-            // the same amount or the two rings stop being concentric on a
-            // rounded rectangle.
-            style={{ borderRadius: Math.max(0, spot.radius - 5) }}
-          />
-        </div>
-      )}
-      <div
-        ref={cardRef}
-        className="absolute z-[82] w-[min(20rem,calc(100vw-2rem))] rounded-md border border-foreground/15 bg-card p-4 text-foreground shadow-xl"
-        style={{ top: cardPos.top, left: cardPos.left }}
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/45">
-          {stepIndex + 1} of {stepCount}
-        </p>
-        <h2 id="walkthrough-title" className="mt-1 text-base font-semibold">
-          {step.title}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-foreground/80">{step.body}</p>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onSkip} className="text-foreground/70 hover:text-foreground">
-            Skip
-          </Button>
-          <div className="flex gap-2">
-            {(stepIndex > 0 || step.chapter === "rest") && (
-              <Button type="button" variant="outline" size="sm" onClick={onBack}>
-                Back
+          <div className="absolute inset-0" />
+          {spot ? (
+            // One element, both shapes: a circle is just a square box with a
+            // half-size radius, so nothing here branches on shape.
+            <div
+              className="pointer-events-none absolute"
+              style={{
+                top: spot.top,
+                left: spot.left,
+                width: spot.width,
+                height: spot.height,
+                borderRadius: spot.radius,
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
+              }}
+            />
+          ) : isPage && contentBox ? (
+            <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+              <defs>
+                <mask id={maskId}>
+                  <rect width="100%" height="100%" fill="white" />
+                  <rect
+                    x={contentBox.left}
+                    y={contentBox.top}
+                    width={contentBox.width}
+                    height={contentBox.height}
+                    fill="black"
+                  />
+                  {navBox ? (
+                    <rect
+                      x={navBox.left}
+                      y={navBox.top}
+                      width={navBox.width}
+                      height={navBox.height}
+                      rx="6"
+                      fill="black"
+                    />
+                  ) : null}
+                </mask>
+              </defs>
+              <rect width="100%" height="100%" fill="rgba(0,0,0,0.62)" mask={`url(#${maskId})`} />
+            </svg>
+          ) : (
+            <div className="absolute inset-0 bg-black/60" />
+          )}
+          {spot && (
+            <div
+              className="pointer-events-none absolute z-[81]"
+              style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}
+              aria-hidden="true"
+            >
+              <span
+                className="tour-ring-pulse absolute inset-0 border-2 border-[hsl(var(--primary))]"
+                style={{ borderRadius: spot.radius }}
+              />
+              <span
+                className="absolute inset-[5px] border-[3px] border-[hsl(var(--primary))] shadow-[0_0_18px_rgba(229,9,20,0.55)]"
+                // The inner ring is inset 5px, so its radius has to shrink by
+                // the same amount or the two rings stop being concentric on a
+                // rounded rectangle.
+                style={{ borderRadius: Math.max(0, spot.radius - 5) }}
+              />
+            </div>
+          )}
+          <div
+            ref={cardRef}
+            className="absolute z-[82] w-[min(20rem,calc(100vw-2rem))] rounded-md border border-foreground/15 bg-card p-4 text-foreground shadow-xl"
+            style={{ top: cardPos.top, left: cardPos.left }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/45">
+              {stepIndex + 1} of {stepCount}
+            </p>
+            <DialogPrimitive.Title asChild>
+              <h2
+                id="walkthrough-title"
+                ref={headingRef}
+                tabIndex={-1}
+                className="mt-1 rounded-sm text-base font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              >
+                {step.title}
+              </h2>
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description asChild>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/80">{step.body}</p>
+            </DialogPrimitive.Description>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onSkip}
+                className="text-foreground/70 hover:text-foreground"
+              >
+                Skip
               </Button>
-            )}
-            {isChoice ? (
-              <>
-                <Button type="button" variant="outline" size="sm" onClick={onDone ?? onSkip}>
-                  Done
-                </Button>
-                <Button type="button" size="sm" onClick={onContinue ?? onNext}>
-                  Continue
-                </Button>
-              </>
-            ) : (
-              <Button type="button" size="sm" onClick={onNext}>
-                {stepIndex === stepCount - 1 ? "Done" : "Next"}
-              </Button>
-            )}
+              <div className="flex gap-2">
+                {(stepIndex > 0 || step.chapter === "rest") && (
+                  <Button type="button" variant="outline" size="sm" onClick={onBack}>
+                    Back
+                  </Button>
+                )}
+                {isChoice ? (
+                  <>
+                    <Button type="button" variant="outline" size="sm" onClick={onDone ?? onSkip}>
+                      Done
+                    </Button>
+                    <Button type="button" size="sm" onClick={onContinue ?? onNext}>
+                      Continue
+                    </Button>
+                  </>
+                ) : (
+                  <Button type="button" size="sm" onClick={onNext}>
+                    {stepIndex === stepCount - 1 ? "Done" : "Next"}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

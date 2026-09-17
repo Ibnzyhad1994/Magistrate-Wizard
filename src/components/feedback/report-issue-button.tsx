@@ -64,26 +64,25 @@ export function ReportIssueButton({ className }: { className?: string }) {
       }}
     >
       <HintTooltip label="Report a bug or suggestion">
-      <Button
-        variant="ghost"
-        size="icon"
-        className={cn(
-          "min-h-11 min-w-11 shrink-0 touch-manipulation text-current hover:bg-foreground/10 hover:text-current",
-          className,
-        )}
-        onClick={() => setOpen(true)}
-        aria-label="Report a bug or suggestion"
-      >
-        <Bug className="h-5 w-5" />
-      </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "min-h-11 min-w-11 shrink-0 touch-manipulation text-current hover:bg-foreground/10 hover:text-current",
+            className,
+          )}
+          onClick={() => setOpen(true)}
+          aria-label="Report a bug or suggestion"
+        >
+          <Bug className="h-5 w-5" />
+        </Button>
       </HintTooltip>
       <DialogContent>
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-1 flex-col gap-4">
           <DialogHeader>
             <DialogTitle>Report an issue</DialogTitle>
             <DialogDescription>
-              Found a bug, or have an idea? Tell us what happened. This goes straight to the
-              team.
+              Found a bug, or have an idea? Tell us what happened. This goes straight to the team.
             </DialogDescription>
           </DialogHeader>
 
@@ -121,7 +120,9 @@ export function ReportIssueButton({ className }: { className?: string }) {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
               placeholder={
-                type === "bug" ? "e.g. Calendar month view won't load" : "e.g. Add dark mode to PDF viewer"
+                type === "bug"
+                  ? "e.g. Calendar month view won't load"
+                  : "e.g. Add dark mode to PDF viewer"
               }
               required
             />

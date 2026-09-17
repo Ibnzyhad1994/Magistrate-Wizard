@@ -42,10 +42,7 @@ export function outcomeTone(
   return "muted";
 }
 
-export function outcomeLabel(
-  value: string | null | undefined,
-  outcomeAdjourned = false,
-): string {
+export function outcomeLabel(value: string | null | undefined, outcomeAdjourned = false): string {
   if (isOutcomeStatus(value)) return OUTCOME_VALUE_LABELS[value];
   if (outcomeAdjourned || value === CIVIL_OUTCOME_ADJOURNED) return "Adjourned";
   return "Not recorded";

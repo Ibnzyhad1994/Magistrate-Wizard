@@ -39,9 +39,14 @@ export const clerkAccessKeys = {
  * idempotent (skips if already notified), so this is safe to call
  * whenever a request/decision is created, even more than once.
  */
-export async function notifyClerkAccess(event: "request_created" | "decision_made", requestId: string) {
+export async function notifyClerkAccess(
+  event: "request_created" | "decision_made",
+  requestId: string,
+) {
   try {
-    await supabase.functions.invoke("clerk-access-notify", { body: { event, request_id: requestId } });
+    await supabase.functions.invoke("clerk-access-notify", {
+      body: { event, request_id: requestId },
+    });
   } catch (err) {
     console.error("clerk-access-notify invocation failed (non-blocking):", err);
   }
@@ -55,7 +60,9 @@ export function useMyClerkAccessRequests() {
     queryFn: async (): Promise<ClerkAccessRequestRow[]> => {
       const { data, error } = await supabase
         .from("clerk_access_requests")
-        .select("id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, notified_magistrate_at, courts(id, name, jurisdiction)")
+        .select(
+          "id, court_id, status, staff_id, note, requested_at, reviewed_at, rejection_reason, notified_magistrate_at, courts(id, name, jurisdiction)",
+        )
         .order("requested_at", { ascending: false });
       if (error) throw error;
       return data as unknown as ClerkAccessRequestRow[];
@@ -124,6 +131,7 @@ export function useSubmitClerkAccessRequest() {
       void queryClient.invalidateQueries({ queryKey: clerkAccessKeys.myRequests });
       void notifyClerkAccess("request_created", data.id);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -133,7 +141,9 @@ export function useCancelClerkAccessRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (requestId: string) => {
-      const { data, error } = await supabase.rpc("cancel_clerk_access_request", { p_request_id: requestId });
+      const { data, error } = await supabase.rpc("cancel_clerk_access_request", {
+        p_request_id: requestId,
+      });
       if (error) throw error;
       return data;
     },
@@ -141,6 +151,7 @@ export function useCancelClerkAccessRequest() {
       toast.success("Request cancelled.");
       void queryClient.invalidateQueries({ queryKey: clerkAccessKeys.myRequests });
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

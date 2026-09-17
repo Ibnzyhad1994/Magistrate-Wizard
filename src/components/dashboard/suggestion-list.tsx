@@ -1,20 +1,20 @@
-import { Link } from "react-router-dom"
-import { DashboardHeading } from "@/components/dashboard/dashboard-folio"
-import type { DashboardInsight, InsightSeverity } from "@/lib/dashboard-insights"
-import { cn } from "@/lib/utils"
+import { Link } from "react-router-dom";
+import { DashboardHeading } from "@/components/dashboard/dashboard-folio";
+import type { DashboardInsight, InsightSeverity } from "@/lib/dashboard-insights";
+import { cn } from "@/lib/utils";
 
 const MARK: Record<InsightSeverity, { label: string; className: string }> = {
   urgent: { label: "Now", className: "text-destructive" },
   attention: { label: "Soon", className: "text-[hsl(var(--brass))]" },
   nudge: { label: "Next", className: "text-muted-foreground" },
-}
+};
 
 export function SuggestionList({
   insights,
   isPending = false,
 }: {
-  insights: DashboardInsight[]
-  isPending?: boolean
+  insights: DashboardInsight[];
+  isPending?: boolean;
 }) {
   return (
     <section aria-labelledby="suggestions-heading">
@@ -26,7 +26,9 @@ export function SuggestionList({
         Next logs
       </DashboardHeading>
       {isPending ? (
-        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">Reading the files in view…</p>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+          Reading the files in view…
+        </p>
       ) : insights.length === 0 ? (
         <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
           No gaps on the files in view. Keep logging appearances and procedure as you sit.
@@ -34,15 +36,15 @@ export function SuggestionList({
       ) : (
         <ol className="divide-y divide-foreground/10">
           {insights.map((insight, index) => {
-            const mark = MARK[insight.severity]
-            const ordinal = String(index + 1).padStart(2, "0")
+            const mark = MARK[insight.severity];
+            const ordinal = String(index + 1).padStart(2, "0");
             return (
               <li key={insight.id}>
                 <Link
                   to={insight.href}
                   className="group grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[3rem_3.25rem_minmax(0,1fr)] sm:gap-4"
                 >
-                  <span className="font-brand text-lg tabular-nums tracking-wide text-foreground/55 group-hover:text-foreground">
+                  <span className="font-brand text-lg tabular-nums tracking-wide text-muted-foreground group-hover:text-foreground">
                     {ordinal}
                   </span>
                   <span
@@ -55,7 +57,12 @@ export function SuggestionList({
                   </span>
                   <span className="min-w-0">
                     <span className="flex items-baseline gap-2 sm:hidden">
-                      <span className={cn("font-brand text-[10px] font-semibold uppercase tracking-[0.22em]", mark.className)}>
+                      <span
+                        className={cn(
+                          "font-brand text-[10px] font-semibold uppercase tracking-[0.22em]",
+                          mark.className,
+                        )}
+                      >
                         {mark.label}
                       </span>
                     </span>
@@ -71,10 +78,10 @@ export function SuggestionList({
                   </span>
                 </Link>
               </li>
-            )
+            );
           })}
         </ol>
       )}
     </section>
-  )
+  );
 }

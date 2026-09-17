@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   googleCalendarConnected,
   useConnectGoogleCalendar,
@@ -29,10 +23,9 @@ export function GoogleCalendarCard() {
       <CardHeader>
         <CardTitle className="text-base">Google Calendar</CardTitle>
         <CardDescription>
-          Two-way sync of hearing date, time, and location with a dedicated
-          “Magistrate Wizard” calendar. Docket remains the legal source of
-          truth. Disconnect leaves existing Google events in place and stops
-          further updates.
+          Two-way sync of hearing date, time, and location with a dedicated “Magistrate Wizard”
+          calendar. Docket remains the legal source of truth. Disconnect leaves existing Google
+          events in place and stops further updates.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -46,11 +39,7 @@ export function GoogleCalendarCard() {
         <div className="flex flex-wrap gap-2">
           {connected ? (
             <>
-              <Button
-                type="button"
-                onClick={() => syncNow.mutate()}
-                disabled={syncNow.isPending}
-              >
+              <Button type="button" onClick={() => syncNow.mutate()} disabled={syncNow.isPending}>
                 {syncNow.isPending ? "Syncing…" : "Sync now"}
               </Button>
               <Button
@@ -63,11 +52,7 @@ export function GoogleCalendarCard() {
               </Button>
             </>
           ) : (
-            <Button
-              type="button"
-              onClick={() => connect.mutate()}
-              disabled={connect.isPending}
-            >
+            <Button type="button" onClick={() => connect.mutate()} disabled={connect.isPending}>
               {connect.isPending ? "Connecting…" : "Connect Google Calendar"}
             </Button>
           )}

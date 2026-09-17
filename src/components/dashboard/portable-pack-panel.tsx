@@ -1,29 +1,28 @@
-import { useEffect, useMemo, useState } from "react"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
-import { DetailsHint } from "@/components/common/details-hint"
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { DetailsHint } from "@/components/common/details-hint";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { matterIsExportable, type MatterPackManifest } from "@/lib/matter-pack";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { matterIsExportable, type MatterPackManifest } from "@/lib/matter-pack"
-import { buildMatterPack, downloadBlob, importMatterPack, readMatterPackFile } from "@/lib/matter-pack-io"
-import { getErrorMessage } from "@/lib/utils"
-import { useQueryClient } from "@tanstack/react-query"
-import { docketMattersKeys } from "@/hooks/docket/use-docket-matters"
+  buildMatterPack,
+  downloadBlob,
+  importMatterPack,
+  readMatterPackFile,
+} from "@/lib/matter-pack-io";
+import { getErrorMessage } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { docketMattersKeys } from "@/hooks/docket/use-docket-matters";
 
 type PackCandidate = {
-  id: string
-  court_id: string
-  case_number: string
-  matter_title: string
-}
+  id: string;
+  court_id: string;
+  case_number: string;
+  matter_title: string;
+};
 
 export function PortablePackPanel({
   candidates,
@@ -32,18 +31,18 @@ export function PortablePackPanel({
   existingCaseNumbers,
   isPending = false,
 }: {
-  candidates: PackCandidate[]
-  sittingCourts: Array<{ court_id: string; court_name: string; district_id: string | null }>
-  retainedMatterIds: string[]
-  existingCaseNumbers: Array<{ case_number: string; court_id: string }>
-  isPending?: boolean
+  candidates: PackCandidate[];
+  sittingCourts: Array<{ court_id: string; court_name: string; district_id: string | null }>;
+  retainedMatterIds: string[];
+  existingCaseNumbers: Array<{ case_number: string; court_id: string }>;
+  isPending?: boolean;
 }) {
-  const queryClient = useQueryClient()
-  const [selected, setSelected] = useState<string[]>([])
-  const [includeFiles, setIncludeFiles] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState<MatterPackManifest | null>(null)
-  const [courtId, setCourtId] = useState(sittingCourts[0]?.court_id ?? "")
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [includeFiles, setIncludeFiles] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<MatterPackManifest | null>(null);
+  const [courtId, setCourtId] = useState(sittingCourts[0]?.court_id ?? "");
 
   const exportable = useMemo(
     () =>
@@ -56,76 +55,76 @@ export function PortablePackPanel({
         }),
       ),
     [candidates, sittingCourts, retainedMatterIds],
-  )
+  );
 
-  const selectedCourt = sittingCourts.find((court) => court.court_id === courtId)
+  const selectedCourt = sittingCourts.find((court) => court.court_id === courtId);
 
   useEffect(() => {
-    if (!courtId && sittingCourts[0]) setCourtId(sittingCourts[0].court_id)
-  }, [courtId, sittingCourts])
+    if (!courtId && sittingCourts[0]) setCourtId(sittingCourts[0].court_id);
+  }, [courtId, sittingCourts]);
   const handleToggle = (id: string, checked: boolean) => {
-    setSelected((current) => (checked ? [...current, id] : current.filter((item) => item !== id)))
-  }
+    setSelected((current) => (checked ? [...current, id] : current.filter((item) => item !== id)));
+  };
 
   const handleExport = async () => {
-    setBusy(true)
+    setBusy(true);
     try {
       const blob = await buildMatterPack({
         matterIds: selected,
         sittingCourtIds: sittingCourts.map((court) => court.court_id),
         retainedMatterIds,
         includeFiles,
-      })
-      downloadBlob(blob, `matter-pack-${new Date().toISOString().slice(0, 10)}.zip`)
-      toast.success("Pack downloaded.")
+      });
+      downloadBlob(blob, `matter-pack-${new Date().toISOString().slice(0, 10)}.zip`);
+      toast.success("Pack downloaded.");
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error));
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const handlePickFile = async (file: File | undefined) => {
-    if (!file) return
-    setBusy(true)
+    if (!file) return;
+    setBusy(true);
     try {
-      const pack = await readMatterPackFile(file)
-      setPreview(pack)
+      const pack = await readMatterPackFile(file);
+      setPreview(pack);
     } catch (error) {
-      setPreview(null)
-      toast.error(getErrorMessage(error))
+      setPreview(null);
+      toast.error(getErrorMessage(error));
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const handleImport = async () => {
-    if (!preview) return
+    if (!preview) return;
     if (!selectedCourt?.district_id) {
-      toast.error("Choose a court you currently sit. That court must have a district.")
-      return
+      toast.error("Choose a court you currently sit. That court must have a district.");
+      return;
     }
-    setBusy(true)
+    setBusy(true);
     try {
       const result = await importMatterPack({
         pack: preview,
         courtId: selectedCourt.court_id,
         districtId: selectedCourt.district_id,
         existing: existingCaseNumbers,
-      })
-      void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all })
+      });
+      void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
       toast.success(
         result.skipped > 0
           ? `Brought on ${result.created} file${result.created === 1 ? "" : "s"}. Skipped ${result.skipped} already on that court.`
           : `Brought on ${result.created} file${result.created === 1 ? "" : "s"}.`,
-      )
-      setPreview(null)
+      );
+      setPreview(null);
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error));
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   return (
     <Card>
@@ -158,7 +157,7 @@ export function PortablePackPanel({
               ) : (
                 <ul className="max-h-56 space-y-2 overflow-y-auto border-y border-border py-3">
                   {exportable.map((row) => {
-                    const checked = selected.includes(row.id)
+                    const checked = selected.includes(row.id);
                     return (
                       <li key={row.id} className="flex items-start gap-2">
                         <Checkbox
@@ -167,12 +166,15 @@ export function PortablePackPanel({
                           onCheckedChange={(value) => handleToggle(row.id, value)}
                           aria-label={`Include ${row.case_number}`}
                         />
-                        <Label htmlFor={`pack-${row.id}`} className="text-sm font-normal leading-snug">
+                        <Label
+                          htmlFor={`pack-${row.id}`}
+                          className="text-sm font-normal leading-snug"
+                        >
                           <span className="font-medium">{row.case_number}</span>
                           <span className="block text-muted-foreground">{row.matter_title}</span>
                         </Label>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
               )}
@@ -189,7 +191,12 @@ export function PortablePackPanel({
                   </span>
                 </span>
               </label>
-              <Button type="button" size="sm" disabled={busy || selected.length === 0} onClick={() => void handleExport()}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy || selected.length === 0}
+                onClick={() => void handleExport()}
+              >
                 {busy ? "Preparing…" : "Download pack"}
               </Button>
             </div>
@@ -252,5 +259,5 @@ export function PortablePackPanel({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,17 +1,11 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Landmark, ShieldAlert, X } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
@@ -21,6 +15,7 @@ import { useMagisterialDistricts } from "@/hooks/docket/use-lookups";
 import {
   useCancelMagistrateCourtRequest,
   useCourtsForMagistrateRequest,
+  useMyEndedMagistrateCourtAssignments,
   useMyMagistrateCourtAssignments,
   useMyMagistrateCourtRequests,
   useRelinquishMagistrateCourt,
@@ -58,7 +53,14 @@ const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
  */
 export default function CourtAssignmentsPage() {
   const { profile } = useAuth();
-  const { data: assignments, isPending, isError, error, refetch } = useMyMagistrateCourtAssignments();
+  const {
+    data: assignments,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useMyMagistrateCourtAssignments();
+  const { data: endedAssignments } = useMyEndedMagistrateCourtAssignments();
   const { data: requests, isPending: requestsPending } = useMyMagistrateCourtRequests();
   const { data: districts } = useMagisterialDistricts();
   const { data: courts } = useCourtsForMagistrateRequest();
@@ -69,8 +71,12 @@ export default function CourtAssignmentsPage() {
   const [requestOpen, setRequestOpen] = useState<boolean | null>(null);
   const [districtId, setDistrictId] = useState("");
   const [courtId, setCourtId] = useState("");
+  const districtSelectId = useId();
+  const courtSelectId = useId();
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
-  const [relinquishTarget, setRelinquishTarget] = useState<MyMagistrateCourtAssignment | null>(null);
+  const [relinquishTarget, setRelinquishTarget] = useState<MyMagistrateCourtAssignment | null>(
+    null,
+  );
   const [relinquishReason, setRelinquishReason] = useState("");
 
   const pendingRequests = (requests ?? []).filter((r) => r.status === "pending");
@@ -81,9 +87,7 @@ export default function CourtAssignmentsPage() {
   const latestReturned = latestOutcome?.status === "rejected" ? latestOutcome : undefined;
   const latestCancelled = latestOutcome?.status === "cancelled" ? latestOutcome : undefined;
   const courtsInDistrict = (courts ?? []).filter(
-    (c) =>
-      c.district_id === districtId &&
-      (c.status === "available" || c.status === "assigned"),
+    (c) => c.district_id === districtId && (c.status === "available" || c.status === "assigned"),
   );
   const selectedCourt = courtsInDistrict.find((c) => c.id === courtId);
   const requestingOccupied = selectedCourt?.status === "assigned";
@@ -108,7 +112,10 @@ export default function CourtAssignmentsPage() {
       {profile?.role === "magistrate" && !isPending && (assignments ?? []).length === 0 && (
         <Card className="max-w-2xl border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]">
           <CardContent className="flex items-start gap-4 pt-6">
-            <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-[hsl(var(--notice-action))]" aria-hidden="true" />
+            <ShieldAlert
+              className="mt-0.5 h-6 w-6 shrink-0 text-notice-action"
+              aria-hidden="true"
+            />
             <div>
               <p className="font-medium text-foreground">
                 {pendingRequests.length > 0
@@ -151,13 +158,14 @@ export default function CourtAssignmentsPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(assignments ?? []).map((a) => (
-            <Card key={a.id} className="border-foreground/10 bg-foreground/5">
+            <Card key={a.id} className="border-border bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{a.courts?.name ?? "Unknown court"}</p>
                   <p className="text-xs text-muted-foreground">
                     {a.courts?.magisterial_districts?.name ?? a.courts?.jurisdiction} · Since{" "}
-                    {formatDate(a.started_at)} · {ASSIGNMENT_TYPE_LABEL[a.assignment_type] ?? a.assignment_type}
+                    {formatDate(a.started_at)} ·{" "}
+                    {ASSIGNMENT_TYPE_LABEL[a.assignment_type] ?? a.assignment_type}
                   </p>
                 </div>
                 {a.assignment_type === "regular" && (
@@ -178,19 +186,49 @@ export default function CourtAssignmentsPage() {
         </div>
       )}
 
+      {(endedAssignments ?? []).length > 0 && (
+        // Collapsed by default: this is history, but it is the ONLY place a
+        // magistrate whose sitting was ended without their involvement
+        // (first-sign-in occupancy, admin replace / transfer) can read why.
+        <details className="max-w-2xl rounded-md border border-border">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-foreground">
+            Ended assignments ({(endedAssignments ?? []).length})
+          </summary>
+          <div className="space-y-2 border-t border-border p-3">
+            {(endedAssignments ?? []).map((a) => (
+              <Card key={a.id} className="border-border bg-foreground/5">
+                <CardContent className="py-3">
+                  <p className="font-medium text-foreground">{a.courts?.name ?? "Unknown court"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.courts?.magisterial_districts?.name ?? a.courts?.jurisdiction} ·{" "}
+                    {ASSIGNMENT_TYPE_LABEL[a.assignment_type] ?? a.assignment_type} ·{" "}
+                    {formatDate(a.started_at)} to {formatDate(a.ended_at)}
+                  </p>
+                  <p className="mt-1 text-sm text-foreground">
+                    {a.end_reason ?? "No reason recorded."}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </details>
+      )}
+
       {pendingRequests.length > 0 && (
         <div className="max-w-2xl space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Pending requests</h2>
           {pendingRequests.map((r) => (
-            <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+            <Card key={r.id} className="border-border bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
-                  <p className="text-xs text-muted-foreground">Requested {formatDate(r.requested_at)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Requested {formatDate(r.requested_at)}
+                  </p>
                   {r.request_kind === "occupied_exception" && (
-                    <p className="mt-1 text-xs text-[hsl(var(--notice-action))]">
-                      {OCCUPIED_COURT_EXCEPTION_LABEL}: waiting for an administrator to replace
-                      the current magistrate or seat you alongside them.
+                    <p className="mt-1 text-xs text-notice-action">
+                      {OCCUPIED_COURT_EXCEPTION_LABEL}: waiting for an administrator to replace the
+                      current magistrate or seat you alongside them.
                     </p>
                   )}
                 </div>
@@ -215,7 +253,7 @@ export default function CourtAssignmentsPage() {
         <div className="max-w-2xl space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Request history</h2>
           {decidedRequests.map((r) => (
-            <Card key={r.id} className="border-foreground/10 bg-foreground/5">
+            <Card key={r.id} className="border-border bg-foreground/5">
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
@@ -239,19 +277,22 @@ export default function CourtAssignmentsPage() {
           </Button>
         )
       ) : (
-        <Card className="max-w-lg border-foreground/10 bg-foreground/5">
+        <Card className="max-w-lg border-border bg-foreground/5">
           <CardHeader>
             <CardTitle className="text-base">Request a court assignment</CardTitle>
             <CardDescription>
-              A Court Assignment Administrator reviews each request. Occupied courts are a
-              special exception: they decide whether to replace the current magistrate or
-              seat two. The request does not fill the court until you have signed in.
+              A Court Assignment Administrator reviews each request. Occupied courts are a special
+              exception: they decide whether to replace the current magistrate or seat two. The
+              request does not fill the court until you have signed in.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Magisterial District</label>
+              <label htmlFor={districtSelectId} className="text-sm font-medium text-foreground">
+                Magisterial District
+              </label>
               <Select
+                id={districtSelectId}
                 value={districtId}
                 onChange={(e) => {
                   setDistrictId(e.target.value);
@@ -260,13 +301,22 @@ export default function CourtAssignmentsPage() {
               >
                 <option value="">Select a district…</option>
                 {(districts ?? []).map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Court</label>
-              <Select value={courtId} onChange={(e) => setCourtId(e.target.value)} disabled={!districtId}>
+              <label htmlFor={courtSelectId} className="text-sm font-medium text-foreground">
+                Court
+              </label>
+              <Select
+                id={courtSelectId}
+                value={courtId}
+                onChange={(e) => setCourtId(e.target.value)}
+                disabled={!districtId}
+              >
                 <option value="">
                   {!districtId
                     ? "Select a district first"
@@ -283,14 +333,16 @@ export default function CourtAssignmentsPage() {
               </Select>
             </div>
             {requestingOccupied && (
-              <p className="text-xs text-[hsl(var(--notice-action))]">
+              <p className="text-xs text-notice-action">
                 This court already has a signed-in primary magistrate. Submitting asks an
-                administrator to replace them or seat you alongside them. Your request does
-                not occupy the court.
+                administrator to replace them or seat you alongside them. Your request does not
+                occupy the court.
               </p>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={resetRequestForm}>Cancel</Button>
+              <Button variant="ghost" onClick={resetRequestForm}>
+                Cancel
+              </Button>
               <Button
                 disabled={!courtId || submit.isPending}
                 onClick={() => submit.mutate({ courtId }, { onSuccess: resetRequestForm })}
@@ -310,7 +362,8 @@ export default function CourtAssignmentsPage() {
         confirmLabel="Cancel request"
         isConfirming={cancel.isPending}
         onConfirm={() => {
-          if (pendingCancelId) cancel.mutate(pendingCancelId, { onSuccess: () => setPendingCancelId(null) });
+          if (pendingCancelId)
+            cancel.mutate(pendingCancelId, { onSuccess: () => setPendingCancelId(null) });
         }}
       />
 
@@ -326,18 +379,21 @@ export default function CourtAssignmentsPage() {
               <div className="text-sm">
                 <p className="font-medium text-foreground">{relinquishTarget.courts?.name}</p>
                 <p className="text-muted-foreground">
-                  {relinquishTarget.courts?.magisterial_districts?.name ?? relinquishTarget.courts?.jurisdiction} ·
-                  Since {formatDate(relinquishTarget.started_at)} ·{" "}
-                  {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ?? relinquishTarget.assignment_type}
+                  {relinquishTarget.courts?.magisterial_districts?.name ??
+                    relinquishTarget.courts?.jurisdiction}{" "}
+                  · Since {formatDate(relinquishTarget.started_at)} ·{" "}
+                  {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ??
+                    relinquishTarget.assignment_type}
                 </p>
               </div>
-              <p className="rounded-sm border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-[hsl(var(--notice-action))]">
+              <p className="rounded-sm border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-notice-action">
                 Relinquishing this court will end your whole-court Docket access. The court's Docket
                 and history will remain with the court and will become available to the successor
                 magistrate.
               </p>
               <Textarea
                 placeholder="Reason (optional)"
+                aria-label="Reason for relinquishing (optional)"
                 value={relinquishReason}
                 onChange={(e) => setRelinquishReason(e.target.value)}
               />

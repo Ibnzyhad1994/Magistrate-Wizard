@@ -20,10 +20,10 @@ import {
 import type { WorkflowProtocol } from "@/lib/docket-procedure";
 
 const TONE_CLASS: Record<OutcomeTone, string> = {
-  muted: "text-foreground/40",
-  dismissed: "bg-[hsl(var(--stage-dismissed)/0.15)] text-[hsl(var(--stage-dismissed))]",
-  complete: "bg-[hsl(var(--stage-outcome-complete)/0.15)] text-[hsl(var(--stage-outcome-complete))]",
-  adjourned: "bg-[hsl(var(--stage-progress)/0.15)] text-[hsl(var(--stage-progress))]",
+  muted: "text-muted-foreground",
+  dismissed: "bg-[hsl(var(--stage-dismissed)/0.15)] text-stage-dismissed",
+  complete: "bg-[hsl(var(--stage-outcome-complete)/0.15)] text-stage-outcome-complete",
+  adjourned: "bg-[hsl(var(--stage-progress)/0.15)] text-stage-progress",
 };
 
 /**
@@ -72,7 +72,11 @@ export function DocketOutcomeCell({
       <HintTooltip label={hint}>
         <span className="inline-flex max-w-full">
           <DropdownMenuTrigger asChild>
-            <button type="button" className={cellClassName} aria-label={`Outcome: ${displayValue ? label : NOT_SET}`}>
+            <button
+              type="button"
+              className={cellClassName}
+              aria-label={`Outcome: ${displayValue ? label : NOT_SET}`}
+            >
               {displayValue ? label : NOT_SET}
             </button>
           </DropdownMenuTrigger>

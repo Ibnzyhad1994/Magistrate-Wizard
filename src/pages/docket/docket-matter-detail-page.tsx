@@ -29,6 +29,7 @@ import { SharingSection } from "@/pages/docket/sections/sharing-section";
 import { EditDocketMatterDetailsDialog } from "@/pages/docket/edit-docket-matter-details-dialog";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -58,6 +59,7 @@ export default function DocketMatterDetailPage() {
   const tab = (MATTER_TABS as readonly string[]).includes(tabParam) ? tabParam : "overview";
   const back = useBackNav(ROUTES.docket, "Back to Docket");
   const { data: matter, isPending, isError, error, refetch } = useDocketMatter(id);
+  usePageTitle(matter?.matter_title ?? null);
   const { data: access } = useDocketMatterAccess(id);
   const { data: coverUrls } = useSignedUrls([matter?.cover_image_path]);
   const [editOpen, setEditOpen] = useState(false);
@@ -112,19 +114,12 @@ export default function DocketMatterDetailPage() {
   if (!matter) {
     return (
       <InlineError
-        error={
-          new Error(
-            "This matter doesn't exist, or you don't currently have access to it.",
-          )
-        }
+        error={new Error("This matter doesn't exist, or you don't currently have access to it.")}
       />
     );
   }
 
-  const badges = [
-    toTitleCase(matter.status),
-    ...(isBinned ? ["In the bin"] : []),
-  ];
+  const badges = [toTitleCase(matter.status), ...(isBinned ? ["In the bin"] : [])];
 
   return (
     <>
@@ -138,9 +133,7 @@ export default function DocketMatterDetailPage() {
         }
         badges={badges}
         tone="docket"
-        imageUrl={
-          matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined
-        }
+        imageUrl={matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined}
         tourId="matter-header"
         primaryAction={{ label: back.label, onClick: () => navigate(back.to) }}
         // "Edit details" deliberately lives only in the action row below,
@@ -153,8 +146,10 @@ export default function DocketMatterDetailPage() {
           <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
             <p className="font-medium text-foreground">This file is in the bin</p>
             <p className="mt-1 text-muted-foreground">
-              Permanently deleted after {formatDateTime(docketBinPurgeAt(matter.deleted_at).toISOString())}{" "}
-              ({docketBinDaysLabel(matter.deleted_at)}). Restore it to work on it again, or empty it now.
+              Permanently deleted after{" "}
+              {formatDateTime(docketBinPurgeAt(matter.deleted_at).toISOString())} (
+              {docketBinDaysLabel(matter.deleted_at)}). Restore it to work on it again, or empty it
+              now.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {canEdit && (
@@ -209,62 +204,54 @@ export default function DocketMatterDetailPage() {
           )}
         </div>
 
-      <Tabs
-        value={tab}
-        onValueChange={(value) => {
-          const next = new URLSearchParams(searchParams);
-          if (value === "overview") next.delete("tab");
-          else next.set("tab", value);
-          setSearchParams(next, { replace: true });
-        }}
-        className="w-full"
-      >
-        <TabsList
-          className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-background p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]"
-          data-tour="matter-tabs"
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            const next = new URLSearchParams(searchParams);
+            if (value === "overview") next.delete("tab");
+            else next.set("tab", value);
+            setSearchParams(next, { replace: true });
+          }}
+          className="w-full"
         >
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="parties">Parties</TabsTrigger>
-          <TabsTrigger value="tags">Tags</TabsTrigger>
-          <TabsTrigger value="judgments">Judgments</TabsTrigger>
-          <TabsTrigger value="case-law">Case Law</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="sharing">Sharing</TabsTrigger>
-        </TabsList>
+          <TabsList
+            className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-background p-1 shadow-[0_8px_24px_rgba(0,0,0,0.55)]"
+            data-tour="matter-tabs"
+          >
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="parties">Parties</TabsTrigger>
+            <TabsTrigger value="tags">Tags</TabsTrigger>
+            <TabsTrigger value="judgments">Judgments</TabsTrigger>
+            <TabsTrigger value="case-law">Case Law</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="sharing">Sharing</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview">
-          <OverviewSection matter={matter} />
-        </TabsContent>
-        <TabsContent value="parties">
-          <PartiesSection matterId={matter.id} frozen={isBinned} />
-        </TabsContent>
-        <TabsContent value="tags">
-          <TagsSection matterId={matter.id} frozen={isBinned} />
-        </TabsContent>
-        <TabsContent value="judgments">
-          <JudgmentsSection matterId={matter.id} frozen={isBinned} />
-        </TabsContent>
-        <TabsContent value="case-law">
-          <CaseLawSection matterId={matter.id} />
-        </TabsContent>
-        <TabsContent value="documents">
-          <DocumentsPanel
-            entityType="docket_matter"
-            entityId={matter.id}
-            canUpload={liveEdit}
-          />
-        </TabsContent>
-        <TabsContent value="sharing">
-          <SharingSection matterId={matter.id} frozen={isBinned} />
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="overview">
+            <OverviewSection matter={matter} />
+          </TabsContent>
+          <TabsContent value="parties">
+            <PartiesSection matterId={matter.id} frozen={isBinned} />
+          </TabsContent>
+          <TabsContent value="tags">
+            <TagsSection matterId={matter.id} frozen={isBinned} />
+          </TabsContent>
+          <TabsContent value="judgments">
+            <JudgmentsSection matterId={matter.id} frozen={isBinned} />
+          </TabsContent>
+          <TabsContent value="case-law">
+            <CaseLawSection matterId={matter.id} />
+          </TabsContent>
+          <TabsContent value="documents">
+            <DocumentsPanel entityType="docket_matter" entityId={matter.id} canUpload={liveEdit} />
+          </TabsContent>
+          <TabsContent value="sharing">
+            <SharingSection matterId={matter.id} frozen={isBinned} />
+          </TabsContent>
+        </Tabs>
+      </div>
 
-      <EditDocketMatterDetailsDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        matter={matter}
-      />
+      <EditDocketMatterDetailsDialog open={editOpen} onOpenChange={setEditOpen} matter={matter} />
       <AlertDialog
         open={purgeOpen}
         onOpenChange={setPurgeOpen}

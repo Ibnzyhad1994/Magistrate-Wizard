@@ -94,7 +94,13 @@ export function useCaseLawCountsByCourt(params: {
 }) {
   const q = params.query.trim();
   return useQuery({
-    queryKey: ["legal-taxonomy", "case-law-counts-by-court", q, params.jurisdictionId, params.categoryId],
+    queryKey: [
+      "legal-taxonomy",
+      "case-law-counts-by-court",
+      q,
+      params.jurisdictionId,
+      params.categoryId,
+    ],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("case_law_counts_by_court", {
         p_query: q || undefined,
@@ -117,7 +123,11 @@ export function useCreateLegalJurisdiction() {
         name: input.name.trim(),
         regional_group_id: input.regional_group_id,
       };
-      const { data, error } = await supabase.from("legal_jurisdictions").insert(payload).select().single();
+      const { data, error } = await supabase
+        .from("legal_jurisdictions")
+        .insert(payload)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -143,7 +153,11 @@ export function useCreateLegalAuthorityCourt() {
         jurisdiction_id: input.jurisdiction_id || null,
         court_level: input.court_level || null,
       };
-      const { data, error } = await supabase.from("legal_authority_courts").insert(payload).select().single();
+      const { data, error } = await supabase
+        .from("legal_authority_courts")
+        .insert(payload)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -161,7 +175,13 @@ export function useCaseLawCountsByJurisdiction(params: {
 }) {
   const q = params.query.trim();
   return useQuery({
-    queryKey: ["legal-taxonomy", "case-law-counts-by-jurisdiction", q, params.courtId, params.categoryId],
+    queryKey: [
+      "legal-taxonomy",
+      "case-law-counts-by-jurisdiction",
+      q,
+      params.courtId,
+      params.categoryId,
+    ],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("case_law_counts_by_jurisdiction", {
         p_query: q || undefined,
@@ -203,7 +223,11 @@ export function useCreateLegalCaseCategory() {
   return useMutation({
     mutationFn: async (input: { name: string }) => {
       const payload: TablesInsert<"legal_case_categories"> = { name: input.name.trim() };
-      const { data, error } = await supabase.from("legal_case_categories").insert(payload).select().single();
+      const { data, error } = await supabase
+        .from("legal_case_categories")
+        .insert(payload)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -221,7 +245,13 @@ export function useCaseLawCountsByCategory(params: {
 }) {
   const q = params.query.trim();
   return useQuery({
-    queryKey: ["legal-taxonomy", "case-law-counts-by-category", q, params.courtId, params.jurisdictionId],
+    queryKey: [
+      "legal-taxonomy",
+      "case-law-counts-by-category",
+      q,
+      params.courtId,
+      params.jurisdictionId,
+    ],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("case_law_counts_by_category", {
         p_query: q || undefined,

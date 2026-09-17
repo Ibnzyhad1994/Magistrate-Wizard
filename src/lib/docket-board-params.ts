@@ -34,7 +34,15 @@ import {
 } from "@/lib/docket-procedure";
 
 /** Board-owned params. `court` is deliberately absent — see module header. */
-export const BOARD_PARAM_KEYS = ["q", "stage", "custody", "disclosure", "trial", "next", "date"] as const;
+export const BOARD_PARAM_KEYS = [
+  "q",
+  "stage",
+  "custody",
+  "disclosure",
+  "trial",
+  "next",
+  "date",
+] as const;
 
 export type DocketBoardParams = {
   query: string;
@@ -78,7 +86,12 @@ function isRealDate(value: string): boolean {
  */
 function parseList<T extends string>(raw: string | null, allowed: readonly T[]): T[] {
   if (!raw) return [];
-  const requested = new Set(raw.split(",").map((part) => part.trim()).filter(Boolean));
+  const requested = new Set(
+    raw
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean),
+  );
   return allowed.filter((value) => requested.has(value));
 }
 

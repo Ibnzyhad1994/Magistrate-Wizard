@@ -154,12 +154,7 @@ export const LEGAL_TAXONOMY_TOPICS: readonly string[] = Array.from(
 export const LEGAL_TAXONOMY_ALIASES: Readonly<Record<string, readonly string[]>> = {
   Hearsay: ["hearsay evidence", "hearsay rule", "hearsay objection"],
   Admissions: ["admission of guilt", "voluntary admission"],
-  Confessions: [
-    "confession evidence",
-    "confessional statement",
-    "judges' rules",
-    "judges rules",
-  ],
+  Confessions: ["confession evidence", "confessional statement", "judges' rules", "judges rules"],
   "Oral Admissions": ["oral admission"],
   Identification: [
     "identification evidence",
@@ -173,10 +168,18 @@ export const LEGAL_TAXONOMY_ALIASES: Readonly<Record<string, readonly string[]>>
   "Expert Evidence": ["expert testimony", "expert witness"],
   "Similar Fact Evidence": ["similar fact", "similar-fact evidence"],
   "Character Evidence": ["bad character", "good character evidence"],
-  "Burden and Standard of Proof": ["burden of proof", "standard of proof", "beyond reasonable doubt"],
+  "Burden and Standard of Proof": [
+    "burden of proof",
+    "standard of proof",
+    "beyond reasonable doubt",
+  ],
   Corroboration: ["corroborative evidence"],
   "Competence and Compellability": ["competence and compellability", "compellability"],
-  "Electronic and Digital Evidence": ["digital evidence", "electronic evidence", "computer evidence"],
+  "Electronic and Digital Evidence": [
+    "digital evidence",
+    "electronic evidence",
+    "computer evidence",
+  ],
   Bail: [
     "bail application",
     "bail conditions",
@@ -277,11 +280,7 @@ export const compileTaxonomyPhrasePattern = (phrase: string): RegExp => {
   return new RegExp(`(?:^|[^a-z0-9])(${escaped})(?=[^a-z0-9]|$)`, "gi");
 };
 
-const tokenCountOf = (phrase: string): number =>
-  phrase
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
+const tokenCountOf = (phrase: string): number => phrase.trim().split(/\s+/).filter(Boolean).length;
 
 /**
  * Precompiled matcher index: every canonical topic plus its aliases.

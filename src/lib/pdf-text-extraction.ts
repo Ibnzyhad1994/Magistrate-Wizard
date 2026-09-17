@@ -169,7 +169,8 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
   // do). A PDF that declares ANY composite font is treated conservatively
   // for ALL its hex-string operands, rather than trying to prove which
   // specific stream uses which specific font — see decodeHexOperand.
-  const hasCompositeFont = /\/Subtype\s*\/Type0\b/.test(raw) || /\/Encoding\s*\/Identity-H\b/.test(raw);
+  const hasCompositeFont =
+    /\/Subtype\s*\/Type0\b/.test(raw) || /\/Encoding\s*\/Identity-H\b/.test(raw);
 
   const streamRanges = findStreamByteRanges(raw);
   const pageMarkerOffsets = findPageMarkerOffsets(raw);
@@ -177,13 +178,15 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
   let hexOperandsSkipped = 0;
   // Bucketed by page index (0-based) rather than one flat array — see
   // PdfExtractionResult.pages for the attribution heuristic.
-  const pageChunks: string[][] = pageMarkerOffsets.length > 0 ? pageMarkerOffsets.map(() => []) : [[]];
+  const pageChunks: string[][] =
+    pageMarkerOffsets.length > 0 ? pageMarkerOffsets.map(() => []) : [[]];
 
   for (const range of streamRanges) {
     const precedingDict = raw.slice(Math.max(0, range.dictStart), range.start);
     // Skip streams that are declared as images regardless of filter — a
     // /Subtype /Image dictionary is never a text content stream.
-    if (precedingDict.includes("/Subtype/Image") || precedingDict.includes("/Subtype /Image")) continue;
+    if (precedingDict.includes("/Subtype/Image") || precedingDict.includes("/Subtype /Image"))
+      continue;
     // Skip streams declared with a known image-only compression filter
     // (no text content stream ever uses these).
     if (
@@ -221,13 +224,19 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
     // class of false-positive "extraction" before the text even reaches
     // the confidence gate below.
     if (
-      precedingDict.includes("/Type/ObjStm") || precedingDict.includes("/Type /ObjStm") ||
-      precedingDict.includes("/Type/XRef") || precedingDict.includes("/Type /XRef") ||
-      precedingDict.includes("/Type/Metadata") || precedingDict.includes("/Type /Metadata") ||
+      precedingDict.includes("/Type/ObjStm") ||
+      precedingDict.includes("/Type /ObjStm") ||
+      precedingDict.includes("/Type/XRef") ||
+      precedingDict.includes("/Type /XRef") ||
+      precedingDict.includes("/Type/Metadata") ||
+      precedingDict.includes("/Type /Metadata") ||
       precedingDict.includes("/Length1") ||
-      precedingDict.includes("/Subtype/Type1C") || precedingDict.includes("/Subtype /Type1C") ||
-      precedingDict.includes("/Subtype/CIDFontType0C") || precedingDict.includes("/Subtype /CIDFontType0C") ||
-      precedingDict.includes("/Subtype/OpenType") || precedingDict.includes("/Subtype /OpenType")
+      precedingDict.includes("/Subtype/Type1C") ||
+      precedingDict.includes("/Subtype /Type1C") ||
+      precedingDict.includes("/Subtype/CIDFontType0C") ||
+      precedingDict.includes("/Subtype /CIDFontType0C") ||
+      precedingDict.includes("/Subtype/OpenType") ||
+      precedingDict.includes("/Subtype /OpenType")
     ) {
       continue;
     }
@@ -312,7 +321,11 @@ export async function extractPdfTextLayer(file: File): Promise<PdfExtractionResu
   // then the honest default.
   let unreadableReason: PdfUnreadableReason | null = null;
   if (!confidence.confident) {
-    unreadableReason = isEncrypted ? "encrypted" : hexOperandsSkipped > 0 ? "unsupported_font_encoding" : "no_text_found";
+    unreadableReason = isEncrypted
+      ? "encrypted"
+      : hexOperandsSkipped > 0
+        ? "unsupported_font_encoding"
+        : "no_text_found";
   }
 
   return {
@@ -563,7 +576,11 @@ function extractTextFromContentStream(
       continue;
     }
 
-    if (matchesWordOp(content, i, "Td") || matchesWordOp(content, i, "TD") || matchesWordOp(content, i, "T*")) {
+    if (
+      matchesWordOp(content, i, "Td") ||
+      matchesWordOp(content, i, "TD") ||
+      matchesWordOp(content, i, "T*")
+    ) {
       out.push("\n");
       i += 2;
       continue;
@@ -581,7 +598,11 @@ function extractTextFromContentStream(
       const numMatch = /^-?\d+(\.\d+)?/.exec(content.slice(i));
       if (numMatch) {
         const val = parseFloat(numMatch[0]);
-        if (val <= TJ_WORD_GAP_THRESHOLD && arrayBuffer.length > 0 && !arrayBuffer[arrayBuffer.length - 1].endsWith(" ")) {
+        if (
+          val <= TJ_WORD_GAP_THRESHOLD &&
+          arrayBuffer.length > 0 &&
+          !arrayBuffer[arrayBuffer.length - 1].endsWith(" ")
+        ) {
           arrayBuffer.push(" ");
         }
         i += numMatch[0].length;
@@ -748,13 +769,40 @@ function unescapePdfLiteral(escaped: string): string {
       continue;
     }
     const next = escaped[i + 1];
-    if (next === "n") { result += "\n"; i += 1; continue; }
-    if (next === "r") { result += "\r"; i += 1; continue; }
-    if (next === "t") { result += "\t"; i += 1; continue; }
-    if (next === "b") { result += "\b"; i += 1; continue; }
-    if (next === "f") { result += "\f"; i += 1; continue; }
-    if (next === "(" || next === ")" || next === "\\") { result += next; i += 1; continue; }
-    if (next === "\n") { i += 1; continue; } // line continuation, no char emitted
+    if (next === "n") {
+      result += "\n";
+      i += 1;
+      continue;
+    }
+    if (next === "r") {
+      result += "\r";
+      i += 1;
+      continue;
+    }
+    if (next === "t") {
+      result += "\t";
+      i += 1;
+      continue;
+    }
+    if (next === "b") {
+      result += "\b";
+      i += 1;
+      continue;
+    }
+    if (next === "f") {
+      result += "\f";
+      i += 1;
+      continue;
+    }
+    if (next === "(" || next === ")" || next === "\\") {
+      result += next;
+      i += 1;
+      continue;
+    }
+    if (next === "\n") {
+      i += 1;
+      continue;
+    } // line continuation, no char emitted
     if (next >= "0" && next <= "7") {
       const octal = escaped.slice(i + 1, i + 4).match(/^[0-7]{1,3}/)?.[0] ?? "";
       result += String.fromCharCode(parseInt(octal, 8) & 0xff);

@@ -40,9 +40,7 @@ const CIVIL_CATEGORY_NAMES = new Set([
   PROTECTION_CATEGORY_NAME,
 ]);
 
-export function protocolFromCategoryName(
-  name: string | null | undefined,
-): WorkflowProtocol {
+export function protocolFromCategoryName(name: string | null | undefined): WorkflowProtocol {
   if (name === PAPER_COMMITTAL_CATEGORY_NAME) return "paper_committal";
   if (name && CIVIL_CATEGORY_NAMES.has(name)) return "civil_summons";
   return "criminal_trial";
@@ -140,11 +138,7 @@ export function snapshotFromMatter(matter: {
 }): ProtocolSnapshot {
   const amount = matter.decision_amount;
   const parsed =
-    amount == null || amount === ""
-      ? null
-      : typeof amount === "number"
-        ? amount
-        : Number(amount);
+    amount == null || amount === "" ? null : typeof amount === "number" ? amount : Number(amount);
   return {
     arraignment_status: (matter.arraignment_status ?? "not_started") as ArraignmentStatus,
     custody_status: (matter.custody_status ?? "unset") as CustodyStatus,
@@ -210,10 +204,7 @@ export function parseStageAdjournments(value: unknown): StageAdjournments {
   return next;
 }
 
-export function adjournmentForStage(
-  value: unknown,
-  stage: ProcedureStage,
-): StageAdjournment {
+export function adjournmentForStage(value: unknown, stage: ProcedureStage): StageAdjournment {
   const parsed = parseStageAdjournments(value);
   return parsed[stage] ?? { adjourned: false, reason: "" };
 }
@@ -297,4 +288,3 @@ export function outcomeBoardPatch(next: string | null): {
   }
   return { outcome_status: next, outcome_adjourned: false };
 }
-

@@ -1,14 +1,9 @@
-import type { UserRole } from "@/lib/constants"
+import type { UserRole } from "@/lib/constants";
 
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "locked"
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "locked";
 
 export type ProtectedRouteGate =
-  | "loading"
-  | "login"
-  | "unauthorized"
-  | "pending-clerk"
-  | "pending-magistrate"
-  | "ok"
+  "loading" | "login" | "unauthorized" | "pending-clerk" | "pending-magistrate" | "ok";
 
 /**
  * Pure gate for ProtectedRoute. Session can restore before the profile
@@ -34,28 +29,28 @@ export type ProtectedRouteGate =
  * approve their own or others' requests).
  */
 export function resolveProtectedRouteGate(args: {
-  status: AuthStatus
-  profile: { role: UserRole } | null
-  allowedRoles?: UserRole[]
-  requireApprovedClerkCourt?: boolean
-  hasApprovedClerkCourt?: boolean
-  requireApprovedMagistrateCourt?: boolean
-  hasApprovedMagistrateCourt?: boolean
+  status: AuthStatus;
+  profile: { role: UserRole } | null;
+  allowedRoles?: UserRole[];
+  requireApprovedClerkCourt?: boolean;
+  hasApprovedClerkCourt?: boolean;
+  requireApprovedMagistrateCourt?: boolean;
+  hasApprovedMagistrateCourt?: boolean;
 }): ProtectedRouteGate {
-  if (args.status === "loading") return "loading"
-  if (args.status === "unauthenticated") return "login"
+  if (args.status === "loading") return "loading";
+  if (args.status === "unauthenticated") return "login";
   // Idle/JWT lock keeps the current route mounted so drafts survive.
   if (args.allowedRoles && args.allowedRoles.length > 0) {
-    if (!args.profile) return "loading"
-    if (!args.allowedRoles.includes(args.profile.role)) return "unauthorized"
+    if (!args.profile) return "loading";
+    if (!args.allowedRoles.includes(args.profile.role)) return "unauthorized";
   }
   if (args.requireApprovedClerkCourt && args.profile?.role === "clerk") {
-    if (args.hasApprovedClerkCourt === undefined) return "loading"
-    if (!args.hasApprovedClerkCourt) return "pending-clerk"
+    if (args.hasApprovedClerkCourt === undefined) return "loading";
+    if (!args.hasApprovedClerkCourt) return "pending-clerk";
   }
   if (args.requireApprovedMagistrateCourt && args.profile?.role === "magistrate") {
-    if (args.hasApprovedMagistrateCourt === undefined) return "loading"
-    if (!args.hasApprovedMagistrateCourt) return "pending-magistrate"
+    if (args.hasApprovedMagistrateCourt === undefined) return "loading";
+    if (!args.hasApprovedMagistrateCourt) return "pending-magistrate";
   }
-  return "ok"
+  return "ok";
 }

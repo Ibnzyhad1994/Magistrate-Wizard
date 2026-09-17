@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MIN_DOCUMENT_TEXT_CHARS, normalizeTextItems, type PdfjsDocument, type PdfjsTextItem } from "@/lib/legislation-pdf";
+import {
+  MIN_DOCUMENT_TEXT_CHARS,
+  normalizeTextItems,
+  type PdfjsDocument,
+  type PdfjsTextItem,
+} from "@/lib/legislation-pdf";
 
 export interface PdfMatch {
   pageIndex: number; // 0-based

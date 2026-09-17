@@ -46,7 +46,11 @@ export function useCaseLawScopedSearch(params: {
   categoryId: string | null;
 }) {
   const active =
-    !!params.query.trim() || !!params.courtId || !!params.jurisdictionId || !!params.tagId || !!params.categoryId;
+    !!params.query.trim() ||
+    !!params.courtId ||
+    !!params.jurisdictionId ||
+    !!params.tagId ||
+    !!params.categoryId;
   return useQuery({
     queryKey: [
       "case-law-scoped-search",
@@ -315,14 +319,13 @@ export function useSetCaseLawReviewStatus() {
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
-      toast.success(
-        variables.review_status === "published" ? "Published." : "Status updated.",
-      );
+      toast.success(variables.review_status === "published" ? "Published." : "Status updated.");
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.detail(variables.id) });
       void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -378,6 +381,7 @@ export function useRejectCanonicalCaseLaw() {
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -412,10 +416,7 @@ export function useSetCaseLawDiscoverable(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (is_discoverable: boolean) => {
-      const { error } = await supabase
-        .from("case_law")
-        .update({ is_discoverable })
-        .eq("id", id);
+      const { error } = await supabase.from("case_law").update({ is_discoverable }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -485,6 +486,7 @@ export function useDeleteCanonicalCaseLaw() {
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },

@@ -16,7 +16,10 @@ export function generateBenchNotePdf(input: BenchNotePdfInput) {
   w.text(`Status: ${input.status}`, { size: 10, gap: 4 });
   w.ruleLine();
   w.text("Note", { size: 12, bold: true, gap: 4 });
-  w.text(input.contentText?.trim() ? input.contentText : "No body text recorded.", { size: 10, gap: 8 });
+  w.text(input.contentText?.trim() ? input.contentText : "No body text recorded.", {
+    size: 10,
+    gap: 8,
+  });
   w.ruleLine(4, 6);
   w.text(`Generated ${input.generatedAtLabel}`, { size: 8, color: 110 });
   w.footerPages();

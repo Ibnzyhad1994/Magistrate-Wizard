@@ -1,13 +1,8 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Pencil, Pin } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,17 +48,21 @@ import { outcomeLabel } from "@/lib/docket-outcome";
 import {
   matterProtocol,
   matterProtocolStage,
+  outcomeBoardPatch,
   protocolFromCategoryName,
   protocolLabel,
 } from "@/lib/docket-protocols";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import { isConcurrentEditError } from "@/lib/concurrency";
-import type { DocketMatter } from "@/types/database.types";
+import type { DocketMatter } from "@/types";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { DocketStageStrip, type OverviewLogAppearance } from "@/pages/docket/docket-stage-strip";
 import { HearingProgressSection } from "@/pages/docket/sections/hearing-progress-section";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 import { NextDateDialog } from "@/pages/docket/next-date-cell";
+
+type MatterStatus = (typeof DOCKET_MATTER_STATUSES)[number];
 
 interface OverviewSectionProps {
   matter: DocketMatter & {
@@ -77,6 +76,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const [editingClassification, setEditingClassification] = useState(false);
   const [retainOpen, setRetainOpen] = useState(false);
   const [retainNotes, setRetainNotes] = useState("");
+  const retainNotesId = useId();
   const [pendingEnd, setPendingEnd] = useState<string | null>(null);
   const [logAppearance, setLogAppearance] = useState<OverviewLogAppearance | null>(null);
   const [nextDateOpen, setNextDateOpen] = useState(false);
@@ -93,18 +93,46 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
   const endRetained = useEndRetainedAssignment(matter.id);
   const { data: assignments } = useDocketAssignments(matter.id);
 
-  const myActiveRetained = assignments?.find(
-    (a) => a.profile_id === user?.id && !a.ended_at,
-  );
+  const myActiveRetained = assignments?.find((a) => a.profile_id === user?.id && !a.ended_at);
   const anyActiveRetained = assignments?.find((a) => !a.ended_at);
+
+  // Completed / Archived end every retained assignment on the matter by
+  // trigger (0022 §7) and reopening does not restore them, so the change
+  // is confirmed first. Reopening from a closed state offers to clear the
+  // board outcome: outcome -> status is one-way (0131), so a matter left
+  // with outcome_status set but status Active reads as contradictory.
+  const [pendingStatus, setPendingStatus] = useState<MatterStatus | null>(null);
+  const [clearOutcomeOnReopen, setClearOutcomeOnReopen] = useState(true);
+  const clearOutcomeId = useId();
+  const isClosedStatus = (s: string) => s === "completed" || s === "archived";
+  const visibleActiveRetained = (assignments ?? []).filter((a) => !a.ended_at);
+
+  function applyStatus(next: MatterStatus, clearOutcome = false) {
+    updateMatter.mutate(
+      {
+        values: clearOutcome ? { status: next, outcome_status: null } : { status: next },
+        expectedUpdatedAt: matter.updated_at,
+      },
+      { onSuccess: () => setPendingStatus(null) },
+    );
+  }
+
+  function requestStatusChange(next: MatterStatus) {
+    if (next === matter.status) return;
+    const closing = isClosedStatus(next) && !isClosedStatus(matter.status);
+    const reopening = next === "active" && isClosedStatus(matter.status) && !!matter.outcome_status;
+    if (closing || reopening) {
+      setClearOutcomeOnReopen(true);
+      setPendingStatus(next);
+      return;
+    }
+    applyStatus(next);
+  }
 
   const { data: events } = useDocketEvents(matter.id);
   const { data: categories } = useDocketMatterCategories();
   const categoryName = categories?.find((c) => c.id === matter.category_id)?.name;
-  const classificationLabel = matterClassificationLabel(
-    categoryName,
-    matter.category_other,
-  );
+  const classificationLabel = matterClassificationLabel(categoryName, matter.category_other);
   const nextDate = useMemo(() => {
     const today = getLocalDateOnly();
     const upcoming = (events ?? [])
@@ -120,6 +148,14 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
     ...matter,
     category_name: categoryName,
   });
+  // The protocol walk (currentStageForProtocol) lands on its terminal
+  // stage -- appeal for the criminal boards, decision for civil -- only
+  // once every earlier stage is done. A matter sitting there with no board
+  // outcome stays Active forever unless someone notices.
+  const boardComplete =
+    (stage === "appeal" || stage === "decision") &&
+    !matter.outcome_status &&
+    !isClosedStatus(matter.status);
 
   const form = useForm<DocketMatterOutcomeFormValues>({
     resolver: zodResolver(docketMatterOutcomeSchema),
@@ -163,12 +199,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         {liveEdit ? (
           <Select
             value={matter.status}
-            onChange={(e) =>
-              updateMatter.mutate({
-                values: { status: e.target.value as (typeof DOCKET_MATTER_STATUSES)[number] },
-                expectedUpdatedAt: matter.updated_at,
-              })
-            }
+            onChange={(e) => requestStatusChange(e.target.value as MatterStatus)}
             disabled={updateMatter.isPending}
             aria-label="Matter status"
             className="h-8 w-auto py-0 text-xs"
@@ -193,9 +224,13 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             type="button"
             onClick={() => setNextDateOpen(true)}
             className="rounded-full"
-            aria-label={nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"}
+            aria-label={
+              nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"
+            }
           >
-            <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
+            <Badge variant="outline">
+              Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}
+            </Badge>
           </button>
         ) : (
           <Badge variant="outline">Next: {nextDate ? formatDate(nextDate) : "Not scheduled"}</Badge>
@@ -219,7 +254,10 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         {anyActiveRetained ? (
           <>
             <span className="text-muted-foreground">
-              Retained: <span className="font-medium text-foreground">Yes ({anyActiveRetained.display_name ?? "Unknown magistrate"})</span>
+              Retained:{" "}
+              <span className="font-medium text-foreground">
+                Yes ({anyActiveRetained.display_name ?? "Unknown magistrate"})
+              </span>
             </span>
             {myActiveRetained && liveManage && (
               <Button
@@ -256,6 +294,52 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         </CardContent>
       </Card>
 
+      {boardComplete && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)] px-3 py-2 text-sm"
+        >
+          <p className="text-foreground">
+            <span className="font-medium">Board complete.</span> Every stage is done but no outcome
+            is recorded, so this matter still counts as active.
+          </p>
+          {liveEdit && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7"
+                disabled={patchProcedure.isPending}
+                onClick={() =>
+                  void patchProcedure.mutateAsync({
+                    id: matter.id,
+                    values: outcomeBoardPatch("completed"),
+                    expectedUpdatedAt: matter.updated_at,
+                  })
+                }
+              >
+                Mark completed
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7"
+                disabled={patchProcedure.isPending}
+                onClick={() =>
+                  void patchProcedure.mutateAsync({
+                    id: matter.id,
+                    values: outcomeBoardPatch("dismissed"),
+                    expectedUpdatedAt: matter.updated_at,
+                  })
+                }
+              >
+                Mark dismissed
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       <DocketStageStrip
         matter={matter}
         canEdit={liveEdit}
@@ -272,11 +356,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         <CardHeader className="flex flex-row items-center justify-between py-3">
           <CardTitle className="text-sm text-muted-foreground">Orders & outcome</CardTitle>
           {liveEdit && !editingOutcome && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setEditingOutcome(true)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setEditingOutcome(true)}>
               <Pencil className="h-3.5 w-3.5" />
               Edit
             </Button>
@@ -285,10 +365,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         <CardContent className="pt-0">
           {editingOutcome ? (
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="orders_summary"
@@ -312,8 +389,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                         <Textarea rows={3} {...field} />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        Dismissed, Completed, or Adjourned is set on Procedure
-                        above. These notes are extra narrative for the file.
+                        Dismissed, Completed, or Adjourned is set on Procedure above. These notes
+                        are extra narrative for the file.
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -349,9 +426,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
               <div>
                 <p className="font-medium text-foreground">Orders summary</p>
                 <p className="text-muted-foreground">
-                  {matter.orders_summary || (
-                    <span className="italic">None recorded.</span>
-                  )}
+                  {matter.orders_summary || <span className="italic">None recorded.</span>}
                 </p>
               </div>
               <div>
@@ -366,20 +441,21 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       </Card>
 
       <Dialog open={retainOpen} onOpenChange={setRetainOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Retain this matter as part-heard</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This keeps this specific matter accessible to you even after your
-            ordinary Court assignment ends, since you already heard part of
-            it. You can end the retention yourself at any time.
+            This keeps this specific matter accessible to you even after your ordinary Court
+            assignment ends, since you already heard part of it. You can end the retention yourself
+            at any time.
           </p>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">
+            <label htmlFor={retainNotesId} className="text-sm font-medium text-foreground">
               Notes (optional)
             </label>
             <Input
+              id={retainNotesId}
               value={retainNotes}
               onChange={(e) => setRetainNotes(e.target.value)}
               placeholder="e.g. part-heard on evidence, adjourned for judgment"
@@ -406,9 +482,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
               }
               disabled={createRetained.isPending}
             >
-              {createRetained.isPending && (
-                <LoadingSpinner className="text-current" size={16} />
-              )}
+              {createRetained.isPending && <LoadingSpinner className="text-current" size={16} />}
               Retain matter
             </Button>
           </DialogFooter>
@@ -423,6 +497,74 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         />
       )}
 
+      <AlertDialog
+        open={!!pendingStatus}
+        onOpenChange={(open) => !open && setPendingStatus(null)}
+        title={
+          pendingStatus && isClosedStatus(pendingStatus)
+            ? `Mark this matter ${toTitleCase(pendingStatus)}?`
+            : "Reopen this matter?"
+        }
+        confirmLabel={
+          pendingStatus && isClosedStatus(pendingStatus)
+            ? `Mark ${toTitleCase(pendingStatus)}`
+            : "Reopen"
+        }
+        confirmVariant={pendingStatus && isClosedStatus(pendingStatus) ? "destructive" : "default"}
+        isConfirming={updateMatter.isPending}
+        description={
+          pendingStatus && isClosedStatus(pendingStatus) ? (
+            <div className="space-y-2">
+              <p>
+                Every retained (part-heard) assignment on this matter ends immediately. Reopening
+                the matter later does not restore them; each magistrate would have to retain it
+                again while they still have court access.
+              </p>
+              {visibleActiveRetained.length > 0 ? (
+                <ul className="list-disc pl-5 text-foreground">
+                  {visibleActiveRetained.map((a) => (
+                    <li key={a.id}>
+                      {a.display_name ?? "Unknown magistrate"}
+                      {a.profile_id === user?.id ? " (you)" : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>
+                  No retained assignment of yours is active. Other magistrates' retentions are not
+                  visible to you but end all the same.
+                </p>
+              )}
+            </div>
+          ) : pendingStatus ? (
+            <div className="space-y-2">
+              <p>
+                The board outcome is still{" "}
+                <span className="font-medium text-foreground">
+                  {outcomeLabel(matter.outcome_status, matter.outcome_adjourned)}
+                </span>
+                . Setting an outcome closes a matter, so an active matter with an outcome reads as
+                contradictory.
+              </p>
+              <label
+                htmlFor={clearOutcomeId}
+                className="flex cursor-pointer items-center gap-2 text-foreground"
+              >
+                <Checkbox
+                  id={clearOutcomeId}
+                  checked={clearOutcomeOnReopen}
+                  onCheckedChange={(checked) => setClearOutcomeOnReopen(checked === true)}
+                />
+                Also clear the board outcome
+              </label>
+            </div>
+          ) : undefined
+        }
+        onConfirm={() => {
+          if (!pendingStatus) return;
+          applyStatus(pendingStatus, pendingStatus === "active" && clearOutcomeOnReopen);
+        }}
+      />
       <AlertDialog
         open={!!pendingEnd}
         onOpenChange={(open) => !open && setPendingEnd(null)}
@@ -463,26 +605,26 @@ function ClassificationDialog({
   canEdit,
   onClose,
 }: {
-  matter: DocketMatter
-  canEdit: boolean
-  onClose: () => void
+  matter: DocketMatter;
+  canEdit: boolean;
+  onClose: () => void;
 }) {
-  const { data: categories } = useDocketMatterCategories()
-  const updateMatter = useUpdateDocketMatter(matter.id)
-  const otherCategoryId = categories?.find((c) => c.name === OTHER_MATTER_CATEGORY_NAME)?.id
+  const { data: categories } = useDocketMatterCategories();
+  const updateMatter = useUpdateDocketMatter(matter.id);
+  const otherCategoryId = categories?.find((c) => c.name === OTHER_MATTER_CATEGORY_NAME)?.id;
   const schema = useMemo(
     () => docketMatterClassificationSchemaForCategories(otherCategoryId),
     [otherCategoryId],
-  )
+  );
   const form = useForm<DocketMatterClassificationFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       category_id: matter.category_id ?? "",
       category_other: matter.category_other ?? "",
     },
-  })
-  const watchedCategoryId = form.watch("category_id")
-  const isOther = !!otherCategoryId && watchedCategoryId === otherCategoryId
+  });
+  const watchedCategoryId = form.watch("category_id");
+  const isOther = !!otherCategoryId && watchedCategoryId === otherCategoryId;
 
   // Classification silently selects which of the three boards this matter
   // uses: a trigger (0140) recomputes workflow_protocol and procedure_stage
@@ -494,16 +636,20 @@ function ClassificationDialog({
   // switch back), but nothing said so. Warn at the point of decision, and
   // only when the board would genuinely change -- correcting "Liability" to
   // "Maintenance" stays on the civil board and needs no warning.
-  const currentProtocol = matterProtocol(matter)
+  const currentProtocol = matterProtocol(matter);
   const nextProtocol = protocolFromCategoryName(
     (categories ?? []).find((c) => c.id === watchedCategoryId)?.name,
-  )
-  const protocolWillChange = Boolean(watchedCategoryId) && nextProtocol !== currentProtocol
+  );
+  const protocolWillChange = Boolean(watchedCategoryId) && nextProtocol !== currentProtocol;
 
   async function handleSubmit(values: DocketMatterClassificationFormValues) {
-    if (otherCategoryId && values.category_id === otherCategoryId && !values.category_other?.trim()) {
-      form.setError("category_other", { type: "manual", message: "Describe the matter type" })
-      return
+    if (
+      otherCategoryId &&
+      values.category_id === otherCategoryId &&
+      !values.category_other?.trim()
+    ) {
+      form.setError("category_other", { type: "manual", message: "Describe the matter type" });
+      return;
     }
     try {
       await updateMatter.mutateAsync({
@@ -515,16 +661,16 @@ function ClassificationDialog({
               : null,
         },
         expectedUpdatedAt: matter.updated_at,
-      })
-      onClose()
+      });
+      onClose();
     } catch (err) {
-      if (isConcurrentEditError(err)) onClose()
+      if (isConcurrentEditError(err)) onClose();
     }
   }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Matter classification</DialogTitle>
         </DialogHeader>
@@ -541,9 +687,9 @@ function ClassificationDialog({
                       {...field}
                       disabled={!canEdit}
                       onChange={(e) => {
-                        field.onChange(e)
+                        field.onChange(e);
                         if (e.target.value !== otherCategoryId) {
-                          form.setValue("category_other", "")
+                          form.setValue("category_other", "");
                         }
                       }}
                       aria-label="Matter classification"
@@ -583,27 +729,30 @@ function ClassificationDialog({
             {protocolWillChange && (
               <div
                 role="status"
-                className="rounded-sm border border-[hsl(var(--stage-progress))]/40 bg-[hsl(var(--stage-progress))]/10 px-3 py-2 text-xs leading-relaxed text-foreground"
+                className="rounded-sm border border-stage-progress/40 bg-stage-progress/10 px-3 py-2 text-xs leading-relaxed text-foreground"
               >
                 <p className="font-semibold">
                   This moves the matter from the {protocolLabel(currentProtocol)} board to the{" "}
                   {protocolLabel(nextProtocol)} board.
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  Its stage is recalculated for the new board, so it may appear to move
-                  backwards. Stages already recorded are kept, not deleted — switch the
-                  classification back and they reappear.
+                  Its stage is recalculated for the new board, so it may appear to move backwards.
+                  Stages already recorded are kept, not deleted — switch the classification back and
+                  they reappear.
                 </p>
               </div>
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose} disabled={updateMatter.isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={updateMatter.isPending}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={updateMatter.isPending || !canEdit}>
-                {updateMatter.isPending && (
-                  <LoadingSpinner className="text-current" size={16} />
-                )}
+                {updateMatter.isPending && <LoadingSpinner className="text-current" size={16} />}
                 Save
               </Button>
             </DialogFooter>
@@ -611,5 +760,5 @@ function ClassificationDialog({
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

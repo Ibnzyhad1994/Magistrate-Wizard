@@ -52,7 +52,9 @@ export type CalendarSyncDeps = {
   links: {
     get: (profileId: string, eventId: string) => Promise<CalendarLinkRow | null>;
     getByExternal: (externalEventId: string) => Promise<CalendarLinkRow | null>;
-    upsert: (row: Omit<CalendarLinkRow, "synced_at"> & { synced_at?: string | null }) => Promise<void>;
+    upsert: (
+      row: Omit<CalendarLinkRow, "synced_at"> & { synced_at?: string | null },
+    ) => Promise<void>;
   };
   docket: {
     loadLogistics: (eventId: string, origin: string) => Promise<DocketLogistics | null>;
@@ -68,7 +70,9 @@ export type CalendarSyncDeps = {
 export const uniqueLinkKey = (profileId: string, eventId: string, provider: string) =>
   `${profileId}::${eventId}::${provider}`;
 
-export const assertUniqueLinkRows = (rows: Array<{ profile_id: string; docket_event_id: string; provider: string }>) => {
+export const assertUniqueLinkRows = (
+  rows: Array<{ profile_id: string; docket_event_id: string; provider: string }>,
+) => {
   const seen = new Set<string>();
   for (const row of rows) {
     const key = uniqueLinkKey(row.profile_id, row.docket_event_id, row.provider);
@@ -110,10 +114,7 @@ export const pushOneEvent = async (
   return { updated: true as const, externalEventId: existing.external_event_id };
 };
 
-export const applyGooglePullItem = async (
-  deps: CalendarSyncDeps,
-  item: GoogleEventLike,
-) => {
+export const applyGooglePullItem = async (deps: CalendarSyncDeps, item: GoogleEventLike) => {
   if (!item.id) return { ignored: true as const, reason: "no-id" };
   const link = await deps.links.getByExternal(item.id);
   if (shouldIgnoreUnlinkedGoogleEvent(Boolean(link)) || !link) {
@@ -128,7 +129,11 @@ export const applyGooglePullItem = async (
   return { updated: true as const, eventId: link.docket_event_id };
 };
 
-export const pullChanges = async (deps: CalendarSyncDeps, calendarId: string, syncToken: string | null) => {
+export const pullChanges = async (
+  deps: CalendarSyncDeps,
+  calendarId: string,
+  syncToken: string | null,
+) => {
   const page = await deps.google.listChanges(calendarId, syncToken);
   const results = [];
   for (const item of page.items ?? []) {

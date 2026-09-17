@@ -1,4 +1,4 @@
-import { Inbox, LogOut, Map, Settings } from "lucide-react";
+import { BookOpen, CircleHelp, FileText, Inbox, LogOut, Map, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   DropdownMenu,
@@ -6,6 +6,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,7 +28,8 @@ interface UserMenuProps {
 export function UserMenu({ compact = false }: UserMenuProps) {
   const { user, profile, signOut, isSigningOut } = useAuth();
   const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
-  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
+  const isPendingMagistrate =
+    profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
   const { canWalkthrough, startWalkthrough } = useTour();
 
   const displayName = profile?.full_name ?? user?.email ?? "Account";
@@ -51,9 +55,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
             </AvatarFallback>
           </Avatar>
           {!compact && (
-            <span className="flex-1 truncate text-left text-sm font-medium">
-              {displayName}
-            </span>
+            <span className="flex-1 truncate text-left text-sm font-medium">{displayName}</span>
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -61,13 +63,9 @@ export function UserMenu({ compact = false }: UserMenuProps) {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="truncate text-xs leading-none text-muted-foreground">
-              {email}
-            </p>
+            <p className="truncate text-xs leading-none text-muted-foreground">{email}</p>
             {role && (
-              <p className="text-xs leading-none text-muted-foreground">
-                {ROLE_LABELS[role]}
-              </p>
+              <p className="text-xs leading-none text-muted-foreground">{ROLE_LABELS[role]}</p>
             )}
           </div>
         </DropdownMenuLabel>
@@ -89,6 +87,33 @@ export function UserMenu({ compact = false }: UserMenuProps) {
             </Link>
           </DropdownMenuItem>
         )}
+        {/* Static copies under public/help (training manual + the
+            plain-language workflow guides), so help works offline and for
+            a pending magistrate who cannot reach the rest of the app. */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="gap-2 [&_svg]:size-4 [&_svg]:shrink-0">
+            <CircleHelp />
+            Help
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem asChild>
+              <a href="/help/training-manual.pdf" target="_blank" rel="noopener noreferrer">
+                <BookOpen />
+                Training manual (PDF)
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href="/help/guides/Magistrate-Wizard-Workflows-Plain-Language.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText />
+                Plain-language guides (PDF)
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         {canWalkthrough && (
           <DropdownMenuItem
             onSelect={() => {

@@ -100,6 +100,7 @@ export function useCreateCallover() {
       toast.success("Callover created.");
       invalidateCallover(queryClient);
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -118,6 +119,7 @@ export function useUpdateCallover(id: string | undefined) {
       return data;
     },
     onSuccess: () => invalidateCallover(queryClient, id),
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -133,6 +135,7 @@ export function useDeleteCallover() {
       toast.success("Draft callover deleted.");
       invalidateCallover(queryClient);
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -161,6 +164,7 @@ export function usePopulateCallover(calloverId: string | undefined) {
       );
       invalidateCallover(queryClient, calloverId);
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -182,6 +186,7 @@ export function useAddCalloverItem(calloverId: string | undefined) {
       return data;
     },
     onSuccess: () => invalidateCallover(queryClient, calloverId),
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
@@ -194,7 +199,13 @@ export function useAddCalloverItem(calloverId: string | undefined) {
 export function useUpdateCalloverItem(calloverId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: TablesUpdate<"docket_callover_items"> }) => {
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: TablesUpdate<"docket_callover_items">;
+    }) => {
       const { data, error } = await supabase
         .from("docket_callover_items")
         .update(values)
@@ -219,6 +230,7 @@ export function useRemoveCalloverItem(calloverId: string | undefined) {
       toast.success("Removed from the callover.");
       invalidateCallover(queryClient, calloverId);
     },
+    meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }

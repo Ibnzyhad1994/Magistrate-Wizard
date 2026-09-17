@@ -39,7 +39,9 @@ let context: AudioContext | null = null;
 
 function getContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
-  const Ctor = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const Ctor =
+    window.AudioContext ??
+    (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
   // Created lazily on first play: browsers refuse an AudioContext until
   // the page has been interacted with, and by the time a save or an

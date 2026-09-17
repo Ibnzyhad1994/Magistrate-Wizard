@@ -4,8 +4,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { resolveStoredMimeType } from "@/lib/ingest-source";
 
-const key = (entityType: string, entityId: string) =>
-  ["documents", entityType, entityId] as const;
+const key = (entityType: string, entityId: string) => ["documents", entityType, entityId] as const;
 
 const DOCUMENTS_BUCKET = "documents";
 
@@ -55,7 +54,8 @@ export function useDocuments(entityType: string, entityId: string | undefined) {
  * already known at render time. Same upload-then-insert-then-cleanup-on-
  * failure behavior in both cases -- no divergence between the two paths.
  */
-export type DocumentPurpose = "attachment" | "cover" | "identification_photo" | "ruling" | "judgment";
+export type DocumentPurpose =
+  "attachment" | "cover" | "identification_photo" | "ruling" | "judgment";
 
 export async function uploadDocumentToEntity(
   entityType: string,
@@ -71,7 +71,7 @@ export async function uploadDocumentToEntity(
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${user.id}/${entityType}/${entityId}/${Date.now()}-${safeName}`;
 
-  const mimeType = await resolveStoredMimeType(file)
+  const mimeType = await resolveStoredMimeType(file);
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .upload(path, file, { upsert: false, contentType: mimeType });
@@ -121,6 +121,7 @@ export function useUploadDocument(entityType: string, entityId: string) {
         void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
       }
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -134,9 +135,7 @@ export function useUploadDocument(entityType: string, entityId: string) {
  * revoked, which this path avoids.
  */
 export async function downloadDocumentBlob(filePath: string): Promise<Blob> {
-  const { data, error } = await supabase.storage
-    .from(DOCUMENTS_BUCKET)
-    .download(filePath);
+  const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).download(filePath);
   if (error || !data) throw error ?? new Error("Could not download this file.");
   return data;
 }
@@ -159,7 +158,8 @@ export async function downloadDocumentAsFile(documentId: string): Promise<File> 
   const { data: blob, error: downloadError } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .download(doc.file_path);
-  if (downloadError || !blob) throw downloadError ?? new Error("Could not download the original file.");
+  if (downloadError || !blob)
+    throw downloadError ?? new Error("Could not download the original file.");
   return new File([blob], doc.file_name || "original.pdf", {
     type: doc.mime_type || blob.type || "application/pdf",
   });
@@ -305,10 +305,7 @@ export function useDeleteDocument(entityType: string, entityId: string) {
           "Could not remove the file from storage. The document record was left in place. Please retry.",
         );
       }
-      const { error } = await supabase
-        .from("documents")
-        .delete()
-        .eq("id", doc.id);
+      const { error } = await supabase.from("documents").delete().eq("id", doc.id);
       if (error) {
         // The blob is already gone from Storage at this point — don't let
         // the UI imply nothing happened. This is a genuine partial
@@ -327,6 +324,7 @@ export function useDeleteDocument(entityType: string, entityId: string) {
         void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
       }
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },

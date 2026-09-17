@@ -1,12 +1,12 @@
-import { Link } from "react-router-dom"
-import { DashboardHeading } from "@/components/dashboard/dashboard-folio"
-import { Button } from "@/components/ui/button"
+import { Link } from "react-router-dom";
+import { DashboardHeading } from "@/components/dashboard/dashboard-folio";
+import { Button } from "@/components/ui/button";
 import {
   DASHBOARD_FILE_FOCUS_COPY,
   type DashboardFileFocus,
   type DashboardFileRow,
-} from "@/lib/dashboard-insights"
-import { ROUTES } from "@/routes/paths"
+} from "@/lib/dashboard-insights";
+import { ROUTES } from "@/routes/paths";
 
 export function DashboardFileList({
   focus,
@@ -14,12 +14,12 @@ export function DashboardFileList({
   isPending = false,
   boardCapped = false,
 }: {
-  focus: DashboardFileFocus
-  rows: DashboardFileRow[]
-  isPending?: boolean
-  boardCapped?: boolean
+  focus: DashboardFileFocus;
+  rows: DashboardFileRow[];
+  isPending?: boolean;
+  boardCapped?: boolean;
 }) {
-  const copy = DASHBOARD_FILE_FOCUS_COPY[focus]
+  const copy = DASHBOARD_FILE_FOCUS_COPY[focus];
 
   return (
     <section aria-labelledby="dashboard-file-list-heading">
@@ -31,23 +31,29 @@ export function DashboardFileList({
         {copy.title}
       </DashboardHeading>
       {boardCapped && (
-        <p className="mb-4 max-w-xl text-sm leading-relaxed text-muted-foreground">{copy.cappedNote}</p>
+        <p className="mb-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          {copy.cappedNote}
+        </p>
       )}
       {isPending ? (
-        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">Reading the files in view…</p>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+          Reading the files in view…
+        </p>
       ) : rows.length === 0 ? (
-        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">None on the files in view.</p>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+          None on the files in view.
+        </p>
       ) : (
-        <ol className="divide-y divide-foreground/10 border-y border-foreground/15">
+        <ol className="divide-y divide-foreground/10 border-y border-border">
           {rows.map((row, index) => {
-            const ordinal = String(index + 1).padStart(2, "0")
+            const ordinal = String(index + 1).padStart(2, "0");
             return (
               <li key={row.id}>
                 <Link
                   to={row.href}
                   className="group grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[3rem_minmax(0,8rem)_minmax(0,1fr)] sm:gap-4"
                 >
-                  <span className="font-brand text-lg tabular-nums tracking-wide text-foreground/55 group-hover:text-foreground">
+                  <span className="font-brand text-lg tabular-nums tracking-wide text-muted-foreground group-hover:text-foreground">
                     {ordinal}
                   </span>
                   <span className="hidden truncate font-brand text-sm tabular-nums tracking-wide text-muted-foreground sm:block">
@@ -60,11 +66,13 @@ export function DashboardFileList({
                     <span className="block text-base font-medium leading-snug text-foreground group-hover:text-primary">
                       {row.title}
                     </span>
-                    <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{row.detail}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
+                      {row.detail}
+                    </span>
                   </span>
                 </Link>
               </li>
-            )
+            );
           })}
         </ol>
       )}
@@ -74,5 +82,5 @@ export function DashboardFileList({
         </Button>
       </div>
     </section>
-  )
+  );
 }

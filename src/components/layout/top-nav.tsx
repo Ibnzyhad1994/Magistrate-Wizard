@@ -3,7 +3,13 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
-import { NAV_ITEMS, groupNavItems, navItemLabel, navTourIdForHref, visibleNavItems } from "@/components/layout/nav-config";
+import {
+  NAV_ITEMS,
+  groupNavItems,
+  navItemLabel,
+  navTourIdForHref,
+  visibleNavItems,
+} from "@/components/layout/nav-config";
 import { AppLogo } from "@/components/brand/app-logo";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ReportIssueButton } from "@/components/feedback/report-issue-button";
@@ -57,14 +63,12 @@ export function TopNav() {
   // magistrate_courts assignments. Mirrors requireApprovedMagistrateCourt
   // (router.tsx) -- the nav must never dangle a link to a page the route
   // gate will just bounce them right back out of.
-  const isPendingMagistrate = profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
+  const isPendingMagistrate =
+    profile?.role === "magistrate" && hasApprovedMagistrateCourt === false;
 
   useEffect(() => {
     function onScroll() {
-      const top =
-        window.scrollY ||
-        document.querySelector("main")?.scrollTop ||
-        0;
+      const top = window.scrollY || document.querySelector("main")?.scrollTop || 0;
       setScrolled(top > 50);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -134,6 +138,7 @@ export function TopNav() {
       </Link>
 
       <nav
+        aria-label="Primary"
         className={cn(
           "hidden items-center gap-5 text-sm font-medium lg:flex",
           overlay ? "text-primary-foreground/80" : "text-foreground/80",
@@ -147,7 +152,10 @@ export function TopNav() {
               cn(
                 "transition-colors",
                 overlay ? "hover:text-primary-foreground" : "hover:text-foreground",
-                isActive && (overlay ? "font-semibold text-primary-foreground" : "font-semibold text-foreground"),
+                isActive &&
+                  (overlay
+                    ? "font-semibold text-primary-foreground"
+                    : "font-semibold text-foreground"),
               )
             }
             end={item.href === ROUTES.home}
@@ -160,7 +168,7 @@ export function TopNav() {
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                "text-sm font-medium outline-none",
+                "rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 overlay
                   ? "text-primary-foreground/80 hover:text-primary-foreground"
                   : "text-foreground/80 hover:text-foreground",
@@ -169,7 +177,10 @@ export function TopNav() {
             >
               More
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[12rem] border-foreground/10 bg-card">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-[12rem] border-foreground/10 bg-card"
+            >
               {moreGroups.map((section, index) => (
                 <DropdownMenuGroup key={section.id}>
                   {index > 0 ? <DropdownMenuSeparator className="bg-foreground/10" /> : null}

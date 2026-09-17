@@ -145,10 +145,7 @@ export function useSetJudgmentDiscoverable(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (is_discoverable: boolean) => {
-      const { error } = await supabase
-        .from("judgments")
-        .update({ is_discoverable })
-        .eq("id", id);
+      const { error } = await supabase.from("judgments").update({ is_discoverable }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -169,14 +166,11 @@ export function useFinalizeJudgment(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("judgments")
-        .update({ status: "final" })
-        .eq("id", id);
+      const { error } = await supabase.from("judgments").update({ status: "final" }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Judgment finalized.");
+      toast.success("Judgment finalised.");
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.all });
     },
@@ -187,10 +181,7 @@ export function useUnlockJudgment(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("judgments")
-        .update({ status: "draft" })
-        .eq("id", id);
+      const { error } = await supabase.from("judgments").update({ status: "draft" }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: async () => {

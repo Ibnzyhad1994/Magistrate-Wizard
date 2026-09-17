@@ -1,106 +1,133 @@
-export const LOCAL_EVENT_PREFIX = "local:"
+export const LOCAL_EVENT_PREFIX = "local:";
 
-export const isLocalEventId = (id: string) => id.startsWith(LOCAL_EVENT_PREFIX)
+export const isLocalEventId = (id: string) => id.startsWith(LOCAL_EVENT_PREFIX);
 
 export const makeLocalEventId = (randomUuid = () => crypto.randomUUID()) =>
-  `${LOCAL_EVENT_PREFIX}${randomUuid()}`
+  `${LOCAL_EVENT_PREFIX}${randomUuid()}`;
 
 export type HearingFields = {
-  scheduled_date: string
-  scheduled_time: string | null
-  event_type: string | null
-  location: string | null
-  stage_at_event: string | null
-  outcome_at_event: string | null
-  orders_made_at_event: string | null
-  notes: string | null
-  event_status: string
-}
+  scheduled_date: string;
+  scheduled_time: string | null;
+  event_type: string | null;
+  location: string | null;
+  stage_at_event: string | null;
+  outcome_at_event: string | null;
+  orders_made_at_event: string | null;
+  notes: string | null;
+  event_status: string;
+};
 
 export type CreateOutboxJob = {
-  kind: "create"
-  id: string
-  matterId: string
-  payload: HearingFields
-  caseNumber: string
-  matterTitle: string
-}
+  kind: "create";
+  id: string;
+  matterId: string;
+  payload: HearingFields;
+  caseNumber: string;
+  matterTitle: string;
+};
 
 export type UpdateOutboxJob = {
-  kind: "update"
-  id: string
-  matterId: string
-  payload: HearingFields
-  caseNumber: string
-  matterTitle: string
-}
+  kind: "update";
+  id: string;
+  matterId: string;
+  payload: HearingFields;
+  caseNumber: string;
+  matterTitle: string;
+  /**
+   * The row's `updated_at` as last seen on this device when the first
+   * offline edit was queued. Replay guards the UPDATE with it so a change
+   * made elsewhere in the meantime is reported as a conflict rather than
+   * overwritten (last-write-wins was the previous behaviour). Absent for
+   * jobs queued before this field existed, or when nothing was cached.
+   */
+  baseUpdatedAt?: string | null;
+};
 
 export type GooglePendingJob = {
-  kind: "googlePending"
-  id: string
-  matterId: string
-}
+  kind: "googlePending";
+  id: string;
+  matterId: string;
+};
 
-export type OutboxJob = CreateOutboxJob | UpdateOutboxJob | GooglePendingJob
+export type OutboxJob = CreateOutboxJob | UpdateOutboxJob | GooglePendingJob;
+
+/**
+ * A queued write the flush gave up on. `dropped` = the server refused it
+ * (permission or validation), `conflict` = the hearing changed elsewhere
+ * after it was edited offline. Kept until the user discards it.
+ */
+export type FailedOutboxJob = {
+  job: CreateOutboxJob | UpdateOutboxJob;
+  reason: "dropped" | "conflict";
+  message: string;
+  failedAt: string;
+};
 
 export type CalendarMergeRow = {
-  id: string
-  docket_matter_id: string
-  scheduled_date: string
-  scheduled_time: string | null
-  location: string | null
-  event_type: string | null
-  event_status: string
-  case_number: string
-  matter_title: string
+  id: string;
+  docket_matter_id: string;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  location: string | null;
+  event_type: string | null;
+  event_status: string;
+  case_number: string;
+  matter_title: string;
   /** Combined-scope court identifier (0097) — undefined/null for locally
    * queued hearings not yet synced (the outbox job payload doesn't carry
    * it); "Pending" already marks those visually as distinct. */
-  court_name?: string | null
-  pending?: boolean
-}
+  court_name?: string | null;
+  pending?: boolean;
+};
 
 export const rewriteJobIds = (jobs: OutboxJob[], fromId: string, toId: string): OutboxJob[] =>
-  jobs.map((job) => (job.id === fromId ? { ...job, id: toId } : job))
+  jobs.map((job) => (job.id === fromId ? { ...job, id: toId } : job));
 
 export const hasPendingDocketWrites = (jobs: OutboxJob[]) =>
-  jobs.some((job) => job.kind === "create" || job.kind === "update")
+  jobs.some((job) => job.kind === "create" || job.kind === "update");
 
-export const pendingJobCount = (jobs: OutboxJob[]) => jobs.length
+export const pendingJobCount = (jobs: OutboxJob[]) => jobs.length;
 
 export const pendingEventIds = (jobs: OutboxJob[]) =>
-  new Set(jobs.filter((job) => job.kind === "create" || job.kind === "update").map((job) => job.id))
+  new Set(
+    jobs.filter((job) => job.kind === "create" || job.kind === "update").map((job) => job.id),
+  );
 
-export const enqueueCreate = (
-  jobs: OutboxJob[],
-  job: CreateOutboxJob,
-): OutboxJob[] => [...jobs, job]
+export const enqueueCreate = (jobs: OutboxJob[], job: CreateOutboxJob): OutboxJob[] => [
+  ...jobs,
+  job,
+];
 
 export const enqueueUpdate = (
   jobs: OutboxJob[],
   input: {
-    id: string
-    matterId: string
-    patch: Partial<HearingFields>
-    base: HearingFields
-    caseNumber: string
-    matterTitle: string
+    id: string;
+    matterId: string;
+    patch: Partial<HearingFields>;
+    base: HearingFields;
+    caseNumber: string;
+    matterTitle: string;
+    baseUpdatedAt?: string | null;
   },
 ): OutboxJob[] => {
-  const next = jobs.map((job) => ({ ...job }))
-  const create = next.find((job): job is CreateOutboxJob => job.kind === "create" && job.id === input.id)
+  const next = jobs.map((job) => ({ ...job }));
+  const create = next.find(
+    (job): job is CreateOutboxJob => job.kind === "create" && job.id === input.id,
+  );
   if (create) {
-    create.payload = { ...create.payload, ...input.patch }
-    if (input.caseNumber) create.caseNumber = input.caseNumber
-    if (input.matterTitle) create.matterTitle = input.matterTitle
-    return next
+    create.payload = { ...create.payload, ...input.patch };
+    if (input.caseNumber) create.caseNumber = input.caseNumber;
+    if (input.matterTitle) create.matterTitle = input.matterTitle;
+    return next;
   }
-  const update = next.find((job): job is UpdateOutboxJob => job.kind === "update" && job.id === input.id)
+  const update = next.find(
+    (job): job is UpdateOutboxJob => job.kind === "update" && job.id === input.id,
+  );
   if (update) {
-    update.payload = { ...update.payload, ...input.patch }
-    if (input.caseNumber) update.caseNumber = input.caseNumber
-    if (input.matterTitle) update.matterTitle = input.matterTitle
-    return next
+    update.payload = { ...update.payload, ...input.patch };
+    if (input.caseNumber) update.caseNumber = input.caseNumber;
+    if (input.matterTitle) update.matterTitle = input.matterTitle;
+    return next;
   }
   next.push({
     kind: "update",
@@ -109,22 +136,27 @@ export const enqueueUpdate = (
     payload: { ...input.base, ...input.patch },
     caseNumber: input.caseNumber,
     matterTitle: input.matterTitle,
-  })
-  return next
-}
+    // A later edit to the same queued job keeps the FIRST snapshot above:
+    // that is the version the person actually saw before editing.
+    baseUpdatedAt: input.baseUpdatedAt ?? null,
+  });
+  return next;
+};
 
 export const enqueueGooglePending = (jobs: OutboxJob[], job: GooglePendingJob): OutboxJob[] => {
-  if (jobs.some((item) => item.kind === "googlePending" && item.id === job.id)) return jobs
-  if (jobs.some((item) => (item.kind === "create" || item.kind === "update") && item.id === job.id)) {
-    return jobs
+  if (jobs.some((item) => item.kind === "googlePending" && item.id === job.id)) return jobs;
+  if (
+    jobs.some((item) => (item.kind === "create" || item.kind === "update") && item.id === job.id)
+  ) {
+    return jobs;
   }
-  return [...jobs, job]
-}
+  return [...jobs, job];
+};
 
 export const dropJobById = (jobs: OutboxJob[], id: string, kind?: OutboxJob["kind"]): OutboxJob[] =>
-  jobs.filter((job) => !(job.id === id && (kind ? job.kind === kind : true)))
+  jobs.filter((job) => !(job.id === id && (kind ? job.kind === kind : true)));
 
-const inRange = (date: string, from: string, to: string) => date >= from && date <= to
+const inRange = (date: string, from: string, to: string) => date >= from && date <= to;
 
 export const mergeCalendarRows = (
   rows: CalendarMergeRow[],
@@ -132,10 +164,10 @@ export const mergeCalendarRows = (
   from: string,
   to: string,
 ): CalendarMergeRow[] => {
-  const byId = new Map<string, CalendarMergeRow>()
-  for (const row of rows) byId.set(row.id, { ...row, pending: false })
+  const byId = new Map<string, CalendarMergeRow>();
+  for (const row of rows) byId.set(row.id, { ...row, pending: false });
   for (const job of jobs) {
-    if (job.kind === "googlePending") continue
+    if (job.kind === "googlePending") continue;
     if (job.kind === "create") {
       byId.set(job.id, {
         id: job.id,
@@ -149,10 +181,10 @@ export const mergeCalendarRows = (
         matter_title: job.matterTitle,
         court_name: null,
         pending: true,
-      })
-      continue
+      });
+      continue;
     }
-    const existing = byId.get(job.id)
+    const existing = byId.get(job.id);
     byId.set(job.id, {
       id: job.id,
       docket_matter_id: job.matterId,
@@ -165,42 +197,44 @@ export const mergeCalendarRows = (
       matter_title: job.matterTitle || existing?.matter_title || "Hearing",
       court_name: existing?.court_name ?? null,
       pending: true,
-    })
+    });
   }
   return [...byId.values()]
     .filter((row) => inRange(row.scheduled_date, from, to))
     .sort((a, b) => {
-      if (a.scheduled_date !== b.scheduled_date) return a.scheduled_date.localeCompare(b.scheduled_date)
-      return (a.scheduled_time ?? "").localeCompare(b.scheduled_time ?? "")
-    })
-}
+      if (a.scheduled_date !== b.scheduled_date)
+        return a.scheduled_date.localeCompare(b.scheduled_date);
+      return (a.scheduled_time ?? "").localeCompare(b.scheduled_time ?? "");
+    });
+};
 
 export type MatterEventMergeRow = HearingFields & {
-  id: string
-  docket_matter_id: string
-  pending?: boolean
-}
+  id: string;
+  docket_matter_id: string;
+  pending?: boolean;
+};
 
 export const mergeMatterEvents = (
   events: MatterEventMergeRow[],
   jobs: OutboxJob[],
   matterId: string,
 ): MatterEventMergeRow[] => {
-  const byId = new Map<string, MatterEventMergeRow>()
-  for (const event of events) byId.set(event.id, { ...event, pending: false })
+  const byId = new Map<string, MatterEventMergeRow>();
+  for (const event of events) byId.set(event.id, { ...event, pending: false });
   for (const job of jobs) {
-    if (job.matterId !== matterId) continue
-    if (job.kind === "googlePending") continue
-    const payload = job.payload
+    if (job.matterId !== matterId) continue;
+    if (job.kind === "googlePending") continue;
+    const payload = job.payload;
     byId.set(job.id, {
       id: job.id,
       docket_matter_id: matterId,
       ...payload,
       pending: true,
-    })
+    });
   }
   return [...byId.values()].sort((a, b) => {
-    if (a.scheduled_date !== b.scheduled_date) return b.scheduled_date.localeCompare(a.scheduled_date)
-    return (b.scheduled_time ?? "").localeCompare(a.scheduled_time ?? "")
-  })
-}
+    if (a.scheduled_date !== b.scheduled_date)
+      return b.scheduled_date.localeCompare(a.scheduled_date);
+    return (b.scheduled_time ?? "").localeCompare(a.scheduled_time ?? "");
+  });
+};

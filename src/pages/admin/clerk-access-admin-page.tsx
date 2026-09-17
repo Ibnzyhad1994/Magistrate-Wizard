@@ -48,13 +48,20 @@ export default function ClerkAccessAdminPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(requests ?? []).map((r) => (
-            <Card key={r.id} className="border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]">
+            <Card
+              key={r.id}
+              className="border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]"
+            >
               <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                 <div>
-                  <p className="font-medium text-foreground">{r.profiles?.full_name || "Unnamed clerk"}</p>
+                  <p className="font-medium text-foreground">
+                    {r.profiles?.full_name || "Unnamed clerk"}
+                  </p>
                   <p className="text-sm text-muted-foreground">{r.profiles?.email}</p>
                   <p className="mt-1 text-sm text-foreground">{r.courts?.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Requested {formatDate(r.requested_at)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Requested {formatDate(r.requested_at)}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -97,10 +104,12 @@ export default function ClerkAccessAdminPage() {
         description={
           <div className="space-y-2">
             <p>
-              {rejectTarget?.profiles?.full_name} will not be seated at {rejectTarget?.courts?.name}.
+              {rejectTarget?.profiles?.full_name} will not be seated at {rejectTarget?.courts?.name}
+              .
             </p>
             <Textarea
               placeholder="Reason (optional — shown to the clerk)"
+              aria-label="Reason for rejecting (optional, shown to the clerk)"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />

@@ -101,8 +101,8 @@ export function generateCalloverReportPdf(
     // Wrap every cell first so the row's own height accounts for the
     // longest one, then decide whether it fits on this page. Splitting a
     // matter's line across a page break would make the roll unreadable.
-    const wrapped = cells.map((text, i) =>
-      w.doc.splitTextToSize(text, cols[i].width - 6) as string[],
+    const wrapped = cells.map(
+      (text, i) => w.doc.splitTextToSize(text, cols[i].width - 6) as string[],
     );
     const rowLines = Math.max(...wrapped.map((lines) => lines.length));
     const rowHeight = rowLines * LINE;
@@ -122,7 +122,8 @@ export function generateCalloverReportPdf(
     w.y += rowHeight;
 
     const extras: string[] = [];
-    if (matter?.brought_forward_from) extras.push(`Brought forward from ${matter.brought_forward_from}`);
+    if (matter?.brought_forward_from)
+      extras.push(`Brought forward from ${matter.brought_forward_from}`);
     if (row.notes) extras.push(row.notes);
     if (extras.length > 0) {
       w.doc.setFontSize(8);

@@ -1,5 +1,9 @@
 import { cn } from "@/lib/utils";
-import { DocketStageCell, type StageCellAttachments, type StageCellAdjournment } from "@/pages/docket/docket-stage-cell";
+import {
+  DocketStageCell,
+  type StageCellAttachments,
+  type StageCellAdjournment,
+} from "@/pages/docket/docket-stage-cell";
 import {
   PROCEDURE_COLUMNS,
   columnApplies,

@@ -3,7 +3,13 @@ import { Bookmark as BookmarkIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
+import {
+  BrowseHeader,
+  BrowsePage,
+  TitleCard,
+  TitleCardSkeletonGallery,
+  TitleGallery,
+} from "@/components/browse";
 import { useBookmarks, useRemoveBookmark } from "@/hooks/bookmarks/use-bookmarks";
 import { useBookmarkLabels } from "@/hooks/bookmarks/use-bookmark-labels";
 import { ROUTES } from "@/routes/paths";

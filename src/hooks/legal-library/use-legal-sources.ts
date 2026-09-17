@@ -36,11 +36,7 @@ export function useCreateLegalSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (values: TablesInsert<"legal_sources">) => {
-      const { data, error } = await supabase
-        .from("legal_sources")
-        .insert(values)
-        .select()
-        .single();
+      const { data, error } = await supabase.from("legal_sources").insert(values).select().single();
       if (error) throw error;
       return data;
     },

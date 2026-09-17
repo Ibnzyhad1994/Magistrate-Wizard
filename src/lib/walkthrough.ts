@@ -452,9 +452,7 @@ export function shouldAutoStartWalkthrough(args: {
   return Boolean(args.sessionAutoPlay && args.record?.autoStartedAt);
 }
 
-export function walkthroughRecordForPending(
-  existing: WalkthroughRecord | null,
-): WalkthroughRecord {
+export function walkthroughRecordForPending(existing: WalkthroughRecord | null): WalkthroughRecord {
   if (existing?.completedAt || existing?.autoStartedAt) {
     return existing;
   }

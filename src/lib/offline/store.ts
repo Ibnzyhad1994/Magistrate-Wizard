@@ -1,110 +1,167 @@
-import { loadDeviceJson, saveDeviceJson } from "@/lib/device-storage"
-import type { Profile } from "@/types/database.types"
-import {
-  emptyProfileCache,
-  type ProfileDocketCache,
-} from "@/lib/offline/docket-cache"
-import type { OutboxJob } from "@/lib/offline/outbox"
+import { loadDeviceJson, saveDeviceJson } from "@/lib/device-storage";
+import type { Profile } from "@/types";
+import { emptyProfileCache, type ProfileDocketCache } from "@/lib/offline/docket-cache";
+import type { FailedOutboxJob, OutboxJob } from "@/lib/offline/outbox";
 
-const EMPTY_JOBS: OutboxJob[] = []
+const EMPTY_JOBS: OutboxJob[] = [];
+const EMPTY_FAILED: FailedOutboxJob[] = [];
 
-const OUTBOX_KEY = "mw.offline-outbox.v1"
-const CACHE_KEY = "mw.offline-docket-cache.v1"
-const PROFILE_KEY = "mw.offline-profile.v1"
+const OUTBOX_KEY = "mw.offline-outbox.v1";
+const FAILED_KEY = "mw.offline-failed.v1";
+const CACHE_KEY = "mw.offline-docket-cache.v1";
+const PROFILE_KEY = "mw.offline-profile.v1";
 
-type OutboxFile = Record<string, OutboxJob[]>
-type CacheFile = Record<string, ProfileDocketCache>
-type ProfileFile = Record<string, Profile>
+type OutboxFile = Record<string, OutboxJob[]>;
+type FailedFile = Record<string, FailedOutboxJob[]>;
+type CacheFile = Record<string, ProfileDocketCache>;
+type ProfileFile = Record<string, Profile>;
 
 const memory = {
   outbox: {} as OutboxFile,
+  failed: {} as FailedFile,
   cache: {} as CacheFile,
   profiles: {} as ProfileFile,
   hydrated: false,
-}
+};
 
-const listeners = new Set<() => void>()
+const listeners = new Set<() => void>();
 
 const emit = () => {
-  for (const listener of listeners) listener()
-}
+  for (const listener of listeners) listener();
+};
 
 export const subscribeOfflineStore = (listener: () => void) => {
-  listeners.add(listener)
+  listeners.add(listener);
   return () => {
-    listeners.delete(listener)
-  }
-}
+    listeners.delete(listener);
+  };
+};
 
 export const hydrateOfflineStore = async () => {
-  const [outbox, cache, profiles] = await Promise.all([
+  const [outbox, failed, cache, profiles] = await Promise.all([
     loadDeviceJson<OutboxFile>(OUTBOX_KEY),
+    loadDeviceJson<FailedFile>(FAILED_KEY),
     loadDeviceJson<CacheFile>(CACHE_KEY),
     loadDeviceJson<ProfileFile>(PROFILE_KEY),
-  ])
-  memory.outbox = outbox ?? {}
-  memory.cache = cache ?? {}
-  memory.profiles = profiles ?? {}
-  memory.hydrated = true
-  emit()
-}
+  ]);
+  memory.outbox = outbox ?? {};
+  memory.failed = failed ?? {};
+  memory.cache = cache ?? {};
+  memory.profiles = profiles ?? {};
+  memory.hydrated = true;
+  emit();
+};
 
 const persistOutbox = async () => {
-  await saveDeviceJson(OUTBOX_KEY, memory.outbox)
-}
+  await saveDeviceJson(OUTBOX_KEY, memory.outbox);
+};
+
+const persistFailed = async () => {
+  await saveDeviceJson(FAILED_KEY, memory.failed);
+};
 
 const persistCache = async () => {
-  await saveDeviceJson(CACHE_KEY, memory.cache)
-}
+  await saveDeviceJson(CACHE_KEY, memory.cache);
+};
 
 const persistProfiles = async () => {
-  await saveDeviceJson(PROFILE_KEY, memory.profiles)
-}
+  await saveDeviceJson(PROFILE_KEY, memory.profiles);
+};
 
 export const getOutboxJobs = (profileId: string | undefined): OutboxJob[] => {
-  if (!profileId) return EMPTY_JOBS
-  return memory.outbox[profileId] ?? EMPTY_JOBS
-}
+  if (!profileId) return EMPTY_JOBS;
+  return memory.outbox[profileId] ?? EMPTY_JOBS;
+};
 
 export const setOutboxJobs = async (profileId: string, jobs: OutboxJob[]) => {
-  memory.outbox = { ...memory.outbox, [profileId]: jobs }
-  emit()
-  await persistOutbox()
-}
+  memory.outbox = { ...memory.outbox, [profileId]: jobs };
+  emit();
+  await persistOutbox();
+};
+
+/**
+ * Dead-letter list: queued hearings the flush could not replay and will
+ * not retry (permission/validation refusal, or an updated_at conflict).
+ * Persisted like the outbox so the user can see and discard them after a
+ * reload; never silently dropped.
+ */
+export const getFailedJobs = (profileId: string | undefined): FailedOutboxJob[] => {
+  if (!profileId) return EMPTY_FAILED;
+  return memory.failed[profileId] ?? EMPTY_FAILED;
+};
+
+export const setFailedJobs = async (profileId: string, jobs: FailedOutboxJob[]) => {
+  memory.failed = { ...memory.failed, [profileId]: jobs };
+  emit();
+  await persistFailed();
+};
+
+export const appendFailedJobs = async (profileId: string, jobs: FailedOutboxJob[]) => {
+  if (jobs.length === 0) return;
+  await setFailedJobs(profileId, [...getFailedJobs(profileId), ...jobs]);
+};
+
+export const discardFailedJob = async (profileId: string, jobId: string) => {
+  await setFailedJobs(
+    profileId,
+    getFailedJobs(profileId).filter((item) => item.job.id !== jobId),
+  );
+};
 
 export const getProfileCache = (profileId: string | undefined): ProfileDocketCache => {
-  if (!profileId) return emptyProfileCache()
-  return memory.cache[profileId] ?? emptyProfileCache()
-}
+  if (!profileId) return emptyProfileCache();
+  return memory.cache[profileId] ?? emptyProfileCache();
+};
 
 export const setProfileCache = async (profileId: string, cache: ProfileDocketCache) => {
-  memory.cache = { ...memory.cache, [profileId]: cache }
-  emit()
-  await persistCache()
-}
+  memory.cache = { ...memory.cache, [profileId]: cache };
+  emit();
+  await persistCache();
+};
 
 export const getCachedProfile = (userId: string | undefined): Profile | null => {
-  if (!userId) return null
-  return memory.profiles[userId] ?? null
-}
+  if (!userId) return null;
+  return memory.profiles[userId] ?? null;
+};
 
 export const setCachedProfile = async (userId: string, profile: Profile) => {
-  memory.profiles = { ...memory.profiles, [userId]: profile }
-  await persistProfiles()
-}
+  memory.profiles = { ...memory.profiles, [userId]: profile };
+  await persistProfiles();
+};
 
-export const clearOfflineForProfile = async (profileId: string) => {
-  const nextOutbox = { ...memory.outbox }
-  const nextCache = { ...memory.cache }
-  const nextProfiles = { ...memory.profiles }
-  delete nextOutbox[profileId]
-  delete nextCache[profileId]
-  delete nextProfiles[profileId]
-  memory.outbox = nextOutbox
-  memory.cache = nextCache
-  memory.profiles = nextProfiles
-  emit()
-  await Promise.all([persistOutbox(), persistCache(), persistProfiles()])
-}
+/**
+ * Full wipe for an explicit sign-out: cache, profile, outbox and the
+ * failed list. Pass `keepOutbox` (or use clearOfflineCacheForProfile) for
+ * an idle/auth-expiry lock, where the person is expected back: cached
+ * case data must not stay readable on a shared terminal, but the hearings
+ * they saved offline are their work and must survive until they unlock.
+ */
+export const clearOfflineForProfile = async (
+  profileId: string,
+  opts: { keepOutbox?: boolean } = {},
+) => {
+  const nextCache = { ...memory.cache };
+  const nextProfiles = { ...memory.profiles };
+  delete nextCache[profileId];
+  delete nextProfiles[profileId];
+  memory.cache = nextCache;
+  memory.profiles = nextProfiles;
+  const writes = [persistCache(), persistProfiles()];
+  if (!opts.keepOutbox) {
+    const nextOutbox = { ...memory.outbox };
+    const nextFailed = { ...memory.failed };
+    delete nextOutbox[profileId];
+    delete nextFailed[profileId];
+    memory.outbox = nextOutbox;
+    memory.failed = nextFailed;
+    writes.push(persistOutbox(), persistFailed());
+  }
+  emit();
+  await Promise.all(writes);
+};
 
-export const isOfflineStoreHydrated = () => memory.hydrated
+/** Lock-time wipe: cache and profile only; the outbox and failed list stay. */
+export const clearOfflineCacheForProfile = async (profileId: string) =>
+  clearOfflineForProfile(profileId, { keepOutbox: true });
+
+export const isOfflineStoreHydrated = () => memory.hydrated;

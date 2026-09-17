@@ -1,31 +1,20 @@
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useFeatureFlag } from "@/hooks/use-feature-flags"
-import { useDownloadMyData } from "@/hooks/admin/use-operations"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { useDownloadMyData } from "@/hooks/admin/use-operations";
 import {
   HEARING_REMINDER_LEAD_HOURS,
   isHearingReminderLeadHours,
   loadHearingReminderPrefs,
   saveHearingReminderPrefs,
   type HearingReminderPrefs,
-} from "@/lib/hearing-reminders"
-import {
-  playCue,
-  previewCue,
-  setSoundCuesEnabled,
-  soundCuesEnabled,
-} from "@/lib/sound-cues"
-import { toast } from "sonner"
+} from "@/lib/hearing-reminders";
+import { playCue, previewCue, setSoundCuesEnabled, soundCuesEnabled } from "@/lib/sound-cues";
+import { toast } from "sonner";
 
 /**
  * On by default, and per device rather than per account: the same
@@ -34,24 +23,23 @@ import { toast } from "sonner"
  * whichever of those rooms doesn't tolerate sound.
  */
 export function SoundCuesCard() {
-  const [enabled, setEnabled] = useState(soundCuesEnabled)
+  const [enabled, setEnabled] = useState(soundCuesEnabled);
 
   const handleToggle = (checked: boolean) => {
-    setEnabled(checked)
-    setSoundCuesEnabled(checked)
+    setEnabled(checked);
+    setSoundCuesEnabled(checked);
     // Play the cue on switching on, so the volume is known before it
     // first fires unprompted in a room full of people.
-    if (checked) playCue("success")
-  }
+    if (checked) playCue("success");
+  };
 
   return (
     <Card className="mt-6 max-w-xl">
       <CardHeader>
         <CardTitle className="text-base">Sound cues</CardTitle>
         <CardDescription>
-          A short tone when something saves or fails, for when your attention is on
-          the bench rather than the screen. On by default. This setting applies to
-          this device only.
+          A short tone when something saves or fails, for when your attention is on the bench rather
+          than the screen. On by default. This setting applies to this device only.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -74,46 +62,47 @@ export function SoundCuesCard() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function HearingRemindersCard() {
-  const { enabled: flagOn } = useFeatureFlag("hearing_reminders")
-  const [prefs, setPrefs] = useState<HearingReminderPrefs | null>(null)
+  const { enabled: flagOn } = useFeatureFlag("hearing_reminders");
+  const [prefs, setPrefs] = useState<HearingReminderPrefs | null>(null);
 
   useEffect(() => {
-    void loadHearingReminderPrefs().then(setPrefs)
-  }, [])
+    void loadHearingReminderPrefs().then(setPrefs);
+  }, []);
 
-  if (!flagOn || !prefs) return null
+  if (!flagOn || !prefs) return null;
 
   const handleEnabled = async (checked: boolean) => {
     if (checked && typeof Notification !== "undefined" && Notification.permission !== "granted") {
-      const permission = await Notification.requestPermission()
+      const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        toast.error("This browser did not allow sitting-day reminders")
-        return
+        toast.error("This browser did not allow sitting-day reminders");
+        return;
       }
     }
-    const next = { ...prefs, enabled: checked }
-    setPrefs(next)
-    await saveHearingReminderPrefs(next)
-  }
+    const next = { ...prefs, enabled: checked };
+    setPrefs(next);
+    await saveHearingReminderPrefs(next);
+  };
 
   const handleLead = async (value: string) => {
-    const leadHours = Number(value)
-    if (!isHearingReminderLeadHours(leadHours)) return
-    const next = { ...prefs, leadHours }
-    setPrefs(next)
-    await saveHearingReminderPrefs(next)
-  }
+    const leadHours = Number(value);
+    if (!isHearingReminderLeadHours(leadHours)) return;
+    const next = { ...prefs, leadHours };
+    setPrefs(next);
+    await saveHearingReminderPrefs(next);
+  };
 
   return (
     <Card className="mt-6 max-w-xl">
       <CardHeader>
         <CardTitle className="text-base">Sitting-day reminders</CardTitle>
         <CardDescription>
-          This device can show a browser notification before listed hearings. This is not an in-app bell and it does not send email.
+          This device can show a browser notification before listed hearings. This is not an in-app
+          bell and it does not send email.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -144,33 +133,34 @@ export function HearingRemindersCard() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function DownloadMyDataCard() {
-  const { enabled: flagOn } = useFeatureFlag("download_my_data")
-  const download = useDownloadMyData()
+  const { enabled: flagOn } = useFeatureFlag("download_my_data");
+  const download = useDownloadMyData();
 
-  if (!flagOn) return null
+  if (!flagOn) return null;
 
   const handleDownload = async () => {
-    const payload = await download.mutateAsync()
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `magistrate-wizard-data-${new Date().toISOString().slice(0, 10)}.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
-    toast.success("Download started")
-  }
+    const payload = await download.mutateAsync();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `magistrate-wizard-data-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    toast.success("Download started");
+  };
 
   return (
     <Card className="mt-6 max-w-xl">
       <CardHeader>
         <CardTitle className="text-base">Download my data</CardTitle>
         <CardDescription>
-          A JSON file of records you own (profile, judgments, notes, shares, notices). It does not include other people&apos;s files.
+          A JSON file of records you own (profile, judgments, notes, shares, notices). It does not
+          include other people&apos;s files.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -185,5 +175,5 @@ export function DownloadMyDataCard() {
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }

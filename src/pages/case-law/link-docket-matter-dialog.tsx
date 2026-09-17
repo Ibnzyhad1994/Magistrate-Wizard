@@ -65,8 +65,8 @@ export function LinkDocketMatterDialog({
         <DialogHeader>
           <DialogTitle>Link to Docket Matter</DialogTitle>
           <DialogDescription>
-            Select a Docket Matter you have access to. This authority will
-            appear in its Case Law tab.
+            Select a Docket Matter you have access to. This authority will appear in its Case Law
+            tab.
           </DialogDescription>
         </DialogHeader>
 
@@ -78,7 +78,6 @@ export function LinkDocketMatterDialog({
             placeholder="Search case number, title, or issue…"
             className="pl-8"
             aria-label="Search docket matters"
-            autoFocus
           />
         </div>
 

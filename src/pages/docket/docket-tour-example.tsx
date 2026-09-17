@@ -16,17 +16,11 @@ const EXAMPLE_TITLE = "Police v. Example";
 const caseColBase =
   "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
 
-function ExampleStageChip({
-  label,
-  isCurrent,
-}: {
-  label: string;
-  isCurrent?: boolean;
-}) {
+function ExampleStageChip({ label, isCurrent }: { label: string; isCurrent?: boolean }) {
   return (
     <span
-      className={`inline-flex max-w-full items-center rounded px-2 py-1 text-left text-xs font-medium text-foreground/40 ${
-        isCurrent ? "ring-2 ring-[hsl(var(--match))]" : ""
+      className={`inline-flex max-w-full items-center rounded-md px-2 py-1 text-left text-xs font-medium text-muted-foreground ${
+        isCurrent ? "ring-2 ring-match" : ""
       } min-h-9 min-w-[5.5rem] sm:min-h-7`}
     >
       {label}
@@ -37,7 +31,7 @@ function ExampleStageChip({
 function ExampleCaseLabel() {
   return (
     <div data-tour="docket-first-matter">
-      <p className="truncate text-xs font-semibold text-foreground/55">{EXAMPLE_CASE_NUMBER}</p>
+      <p className="truncate text-xs font-semibold text-muted-foreground">{EXAMPLE_CASE_NUMBER}</p>
       <p className="truncate text-sm text-foreground">{EXAMPLE_TITLE}</p>
     </div>
   );
@@ -46,8 +40,11 @@ function ExampleCaseLabel() {
 function DesktopExampleSheet() {
   return (
     <div className="relative" data-tour="docket-board">
-      <div className="relative rounded-sm border border-foreground/10">
-        <Table className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]">
+      <div className="relative rounded-sm border border-border">
+        <Table
+          className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]"
+          aria-label="Example docket board"
+        >
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={`${caseColBase} z-30`}>Case</TableHead>
@@ -91,7 +88,7 @@ function DesktopExampleSheet() {
                 <ExampleStageChip label="+ Set outcome" />
               </TableCell>
               <TableCell className="whitespace-nowrap">
-                <span className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2">
+                <span className="whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2">
                   + Set date
                 </span>
               </TableCell>
@@ -105,17 +102,14 @@ function DesktopExampleSheet() {
 
 function MobileExampleCard() {
   return (
-    <article
-      className="rounded-sm border border-foreground/10 bg-card p-3"
-      data-tour="docket-board"
-    >
+    <article className="rounded-sm border border-border bg-card p-3" data-tour="docket-board">
       <div className="mb-3 flex items-start justify-between gap-3">
         <ExampleCaseLabel />
         <div className="shrink-0" data-tour="docket-next-date">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Next date
           </p>
-          <span className="whitespace-nowrap rounded px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2">
+          <span className="whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2">
             + Set date
           </span>
         </div>
@@ -138,10 +132,10 @@ function MobileExampleCard() {
         ))}
       </div>
       <div
-        className="mt-3 flex items-center justify-between gap-2 border-t border-foreground/10 pt-2"
+        className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2"
         data-tour="docket-outcome"
       >
-        <span className="text-[11px] font-medium text-foreground/45">Outcome</span>
+        <span className="text-[11px] font-medium text-muted-foreground">Outcome</span>
         <ExampleStageChip label="+ Set outcome" />
       </div>
     </article>

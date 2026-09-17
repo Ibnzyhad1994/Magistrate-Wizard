@@ -2,12 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { DetailsHint } from "@/components/common/details-hint";
 import { cn } from "@/lib/utils";
-import {
-  ACCESSIBLE_THEMES,
-  APPEARANCE_THEMES,
-  THEME_LABELS,
-  isTheme,
-} from "@/lib/theme";
+import { ACCESSIBLE_THEMES, APPEARANCE_THEMES, THEME_LABELS, isTheme } from "@/lib/theme";
 import { useTheme } from "@/providers/use-theme";
 
 const THEME_SUMMARY = "Dark is the default.";

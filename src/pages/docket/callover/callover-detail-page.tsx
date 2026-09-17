@@ -1,17 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { CheckCircle2, Gavel, ListPlus, Plus, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog } from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
@@ -50,6 +45,7 @@ export default function CalloverDetailPage() {
   const navigate = useNavigate();
 
   const { data: callover, isPending, isError, error, refetch } = useCallover(id);
+  usePageTitle(callover ? callover.title || defaultCalloverTitle(callover.callover_date) : null);
   const { data: items, isPending: itemsPending } = useCalloverItems(id);
 
   const updateCallover = useUpdateCallover(id);
@@ -118,7 +114,11 @@ export default function CalloverDetailPage() {
                 onClick={() => populate.mutate(null)}
                 disabled={populate.isPending}
               >
-                {populate.isPending ? <LoadingSpinner size={14} /> : <ListPlus className="h-4 w-4" />}
+                {populate.isPending ? (
+                  <LoadingSpinner size={14} />
+                ) : (
+                  <ListPlus className="h-4 w-4" />
+                )}
                 Fill from this date&apos;s list
               </Button>
 
@@ -130,11 +130,7 @@ export default function CalloverDetailPage() {
           )}
 
           {rows.length > 0 && (
-            <CalloverReportButton
-              callover={callover}
-              rows={rows}
-              title={title}
-            />
+            <CalloverReportButton callover={callover} rows={rows} title={title} />
           )}
 
           {editable ? (
@@ -161,9 +157,9 @@ export default function CalloverDetailPage() {
         </div>
 
         {!editable && (
-          <p className="rounded-md border border-foreground/10 bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
-            This callover is completed and is now a record of the sitting. Reopen it
-            to make further changes.
+          <p className="rounded-md border border-border bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
+            This callover is completed and is now a record of the sitting. Reopen it to make further
+            changes.
           </p>
         )}
 
@@ -189,8 +185,11 @@ export default function CalloverDetailPage() {
             }
           />
         ) : (
-          <div className="relative rounded-sm border border-foreground/10">
-            <Table className="min-w-[52rem] border-separate border-spacing-0">
+          <div className="relative rounded-sm border border-border">
+            <Table
+              className="min-w-[52rem] border-separate border-spacing-0"
+              aria-label="Callover running sheet"
+            >
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="sticky left-0 z-30 w-[9rem] max-w-[9rem] bg-card sm:w-56 sm:max-w-56">

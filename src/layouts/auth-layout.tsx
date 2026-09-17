@@ -4,6 +4,7 @@ import { AppLogo } from "@/components/brand/app-logo";
 import { AuthSplash } from "@/components/brand/auth-splash";
 import { shouldPlayAuthSplash } from "@/lib/auth-splash";
 import { AppCanvas } from "@/components/theme/app-canvas";
+import { RouteAnnouncer } from "@/components/common/route-announcer";
 import { ROUTES } from "@/routes/paths";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +20,7 @@ const SPLASH_ROUTES = new Set<string>([ROUTES.login, ROUTES.register]);
 export function AuthLayout() {
   const { pathname } = useLocation();
   const wantsSplash = SPLASH_ROUTES.has(pathname);
-  const [showSplash, setShowSplash] = useState(
-    () => wantsSplash && shouldPlayAuthSplash(),
-  );
+  const [showSplash, setShowSplash] = useState(() => wantsSplash && shouldPlayAuthSplash());
 
   useEffect(() => {
     setShowSplash(wantsSplash && shouldPlayAuthSplash());
@@ -38,18 +37,23 @@ export function AuthLayout() {
 
       <header
         className={cn(
-          "relative z-10 px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-5 sm:px-12 sm:pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sm:pb-6",
+          "relative z-10 px-6 pb-5 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] sm:px-12 sm:pb-6 sm:pt-[calc(1.5rem+env(safe-area-inset-top,0px))]",
           showSplash && "invisible",
         )}
       >
         <AppLogo size="lg" />
       </header>
 
-      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-8">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="relative z-10 flex flex-1 items-center justify-center px-4 py-8"
+      >
         <div className="w-full max-w-[450px]">
           <Outlet />
         </div>
       </main>
+      <RouteAnnouncer />
     </AppCanvas>
   );
 }

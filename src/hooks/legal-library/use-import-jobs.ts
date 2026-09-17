@@ -20,7 +20,11 @@ import {
 } from "@/lib/legal-extraction";
 import { sanitizeExtractedText } from "@/lib/text-sanitize";
 import { emptyExtractionEnvelope, type ExtractionEnvelope } from "@/lib/extraction-pipeline";
-import { assessExtractionQuality, CLEAN_SCORE_THRESHOLD, deriveContentQualityStatus } from "@/lib/extraction-quality";
+import {
+  assessExtractionQuality,
+  CLEAN_SCORE_THRESHOLD,
+  deriveContentQualityStatus,
+} from "@/lib/extraction-quality";
 import { ingestDocument } from "@/lib/ingest-document";
 import { matchCanonicalCourtScored, type CourtLike } from "@/lib/legal-taxonomy-match";
 import {
@@ -100,7 +104,11 @@ export const importJobKeys = {
  */
 export function useCreateImportBatch() {
   return useMutation({
-    mutationFn: async (input: { label: string; content_type: "case_law" | "legislation"; expected_file_count: number }) => {
+    mutationFn: async (input: {
+      label: string;
+      content_type: "case_law" | "legislation";
+      expected_file_count: number;
+    }) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -139,13 +147,21 @@ export async function checkExactDuplicateByHash(
   hash: string,
 ): Promise<{ id: string; label: string } | null> {
   if (contentType === "case_law") {
-    const { data, error } = await supabase.from("case_law").select("id, case_name, citation").eq("document_hash", hash).limit(1);
+    const { data, error } = await supabase
+      .from("case_law")
+      .select("id, case_name, citation")
+      .eq("document_hash", hash)
+      .limit(1);
     return interpretDuplicateQuery({ data, error }, (row) => ({
       id: row.id,
       label: `${row.case_name} (${row.citation})`,
     }));
   }
-  const { data, error } = await supabase.from("statutes").select("id, title, code").eq("document_hash", hash).limit(1);
+  const { data, error } = await supabase
+    .from("statutes")
+    .select("id, title, code")
+    .eq("document_hash", hash)
+    .limit(1);
   return interpretDuplicateQuery({ data, error }, (row) => ({
     id: row.id,
     label: `${row.title} (${row.code})`,
@@ -290,9 +306,15 @@ export async function insertQueuedBulkJobs(input: {
     created_by: user.id,
     started_at: null,
     completed_at: null,
-    extracted_metadata: { _originalFilename: item.originalFilename, _queueId: item.queueId } as unknown as Json,
+    extracted_metadata: {
+      _originalFilename: item.originalFilename,
+      _queueId: item.queueId,
+    } as unknown as Json,
   }));
-  const { data, error } = await supabase.from("import_jobs").insert(rows).select("id, extracted_metadata");
+  const { data, error } = await supabase
+    .from("import_jobs")
+    .insert(rows)
+    .select("id, extracted_metadata");
   if (error) throw error;
   const map: Record<string, string> = {};
   for (const row of data ?? []) {
@@ -333,9 +355,17 @@ export async function markBulkJobsCancelled(jobIds: string[]): Promise<void> {
 /** Copy the RPC-created draft job onto the existing queued row, then delete the extra RPC row so batch counts stay honest. */
 export async function adoptRpcImportJob(queuedJobId: string, rpcJobId: string): Promise<void> {
   if (queuedJobId === rpcJobId) return;
-  const { data: rpc, error: readError } = await supabase.from("import_jobs").select("*").eq("id", rpcJobId).single();
+  const { data: rpc, error: readError } = await supabase
+    .from("import_jobs")
+    .select("*")
+    .eq("id", rpcJobId)
+    .single();
   if (readError) throw readError;
-  const { data: queued } = await supabase.from("import_jobs").select("extracted_metadata, retry_count").eq("id", queuedJobId).single();
+  const { data: queued } = await supabase
+    .from("import_jobs")
+    .select("extracted_metadata, retry_count")
+    .eq("id", queuedJobId)
+    .single();
   const queuedMeta =
     queued?.extracted_metadata && typeof queued.extracted_metadata === "object"
       ? (queued.extracted_metadata as Record<string, unknown>)
@@ -373,7 +403,12 @@ export async function adoptRpcImportJob(queuedJobId: string, rpcJobId: string): 
   if (deleteError) throw deleteError;
 }
 export async function recordBulkRejectedJobs(
-  items: { batch_id: string | null; content_type: "case_law" | "legislation"; reason: string; originalFilename: string }[],
+  items: {
+    batch_id: string | null;
+    content_type: "case_law" | "legislation";
+    reason: string;
+    originalFilename: string;
+  }[],
 ): Promise<void> {
   if (items.length === 0) return;
   const {
@@ -391,7 +426,10 @@ export async function recordBulkRejectedJobs(
     created_by: user.id,
     started_at: new Date().toISOString(),
     completed_at: new Date().toISOString(),
-    extracted_metadata: { _originalFilename: item.originalFilename, _rejectedBeforeProcessing: true } as unknown as Json,
+    extracted_metadata: {
+      _originalFilename: item.originalFilename,
+      _rejectedBeforeProcessing: true,
+    } as unknown as Json,
   }));
   const { error } = await supabase.from("import_jobs").insert(rows);
   if (error) throw error;
@@ -421,7 +459,12 @@ export function readCancelledJob(extractedMetadata: unknown): boolean {
   return (extractedMetadata as Record<string, unknown>)._cancelled === true;
 }
 
-export const IN_FLIGHT_IMPORT_JOB_STATUSES = new Set(["queued", "fetching", "extracting", "structuring"]);
+export const IN_FLIGHT_IMPORT_JOB_STATUSES = new Set([
+  "queued",
+  "fetching",
+  "extracting",
+  "structuring",
+]);
 
 export function isInFlightImportJobStatus(status: string): boolean {
   return IN_FLIGHT_IMPORT_JOB_STATUSES.has(status);
@@ -541,14 +584,20 @@ export function useImportBatchDetail(batchId: string | null) {
         .order("created_at", { ascending: true });
       if (jobsError) throw jobsError;
 
-      const caseLawIds = (jobs ?? []).map((j) => j.target_case_law_id).filter((id): id is string => !!id);
-      const statuteIds = (jobs ?? []).map((j) => j.target_statute_id).filter((id): id is string => !!id);
+      const caseLawIds = (jobs ?? [])
+        .map((j) => j.target_case_law_id)
+        .filter((id): id is string => !!id);
+      const statuteIds = (jobs ?? [])
+        .map((j) => j.target_statute_id)
+        .filter((id): id is string => !!id);
 
       const [caseLawRows, statuteRows] = await Promise.all([
         caseLawIds.length > 0
           ? supabase
               .from("case_law")
-              .select("id, case_name, citation, original_filename, review_status, content_quality_status")
+              .select(
+                "id, case_name, citation, original_filename, review_status, content_quality_status",
+              )
               .in("id", caseLawIds)
           : Promise.resolve({
               data: [] as {
@@ -768,7 +817,8 @@ export function useIngestCaseLaw() {
       // "requires_ocr"/"failed"/"pending") or was manually supplied
       // (method "manual_paste"/"txt_file", or no envelope at all --
       // treated as trusted curator input, same as before this pass).
-      const usableForMetadata = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
+      const usableForMetadata =
+        envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
       // Phase 3 (Task 4): text quality and metadata confidence are
       // separate gates. `usableForMetadata` answers "was there clean
       // enough TEXT to even attempt metadata extraction" — but a
@@ -783,28 +833,41 @@ export function useIngestCaseLaw() {
       // Page-aware prioritization (Section 34): normalize each page's text
       // the same way the flat `text` above was normalized, so the head
       // window built from pages is consistent with the rest of this flow.
-      const normalizedPages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
+      const normalizedPages = envelope.pages.map((p) => ({
+        pageNumber: p.pageNumber,
+        text: normalizeWhitespace(p.text),
+      }));
       const extraction = usableForMetadata
-        ? extractCaseLawMetadataWithConfidence(text, normalizedPages, { filename: input.original_filename })
-        : { fields: {}, caseNameConfidence: "none" as const, authoritiesCited: [] as string[], citationSource: "none" as const };
+        ? extractCaseLawMetadataWithConfidence(text, normalizedPages, {
+            filename: input.original_filename,
+          })
+        : {
+            fields: {},
+            caseNameConfidence: "none" as const,
+            authoritiesCited: [] as string[],
+            citationSource: "none" as const,
+          };
       const proposed = extraction.fields;
       const scoredTags = usableForMetadata ? proposeTagsScored(text) : [];
       const tags = scoredTags.map((t) => t.name);
       const tagProposals = toTagProposalDetails(scoredTags);
       const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
-      const duplicates = hash || text
-        ? await findCaseLawDuplicates({
-            documentHash: hash ?? undefined,
-            neutralCitation: proposed.neutral_citation,
-            caseName: input.known.case_name ?? proposed.case_name,
-            court: input.known.court,
-          })
-        : [];
+      const duplicates =
+        hash || text
+          ? await findCaseLawDuplicates({
+              documentHash: hash ?? undefined,
+              neutralCitation: proposed.neutral_citation,
+              caseName: input.known.case_name ?? proposed.case_name,
+              court: input.known.court,
+            })
+          : [];
 
       const writtenCaseName =
         input.known.case_name ??
-        (shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? proposed.case_name : undefined) ??
+        (shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed)
+          ? proposed.case_name
+          : undefined) ??
         "Untitled (pending review)";
       const writtenCitation = input.known.citation;
       const writtenDate = input.known.decided_date ?? proposed.decided_date_guess ?? null;
@@ -836,7 +899,11 @@ export function useIngestCaseLaw() {
             caseName: extraction.caseNameConfidence,
             caseNameSource:
               input.known.case_name_source ??
-              (input.known.case_name ? "curator" : shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) ? "document" : undefined),
+              (input.known.case_name
+                ? "curator"
+                : shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed)
+                  ? "document"
+                  : undefined),
           },
           _lastMachineProposal: {
             case_name: writtenCaseName,
@@ -902,6 +969,7 @@ export function useIngestCaseLaw() {
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -937,20 +1005,22 @@ export function useIngestLegislation() {
 
       const text = normalizeWhitespace(sanitizeExtractedText(input.text).text);
       const envelope = input.extractionEnvelope ?? emptyExtractionEnvelope();
-      const usableForMetadata = envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
+      const usableForMetadata =
+        envelope.status !== "requires_ocr" && envelope.status !== "failed" && !!text;
       const provisions = usableForMetadata ? extractLegislationHierarchy(text) : [];
       const scoredTags = usableForMetadata ? proposeTagsScored(text) : [];
       const tags = scoredTags.map((t) => t.name);
       const tagProposals = toTagProposalDetails(scoredTags);
       const hash = input.file ? await sha256File(input.file) : text ? await sha256Text(text) : null;
 
-      const duplicates = hash || text
-        ? await findStatuteDuplicates({
-            documentHash: hash ?? undefined,
-            title: input.known.title,
-            jurisdiction: input.known.jurisdiction,
-          })
-        : [];
+      const duplicates =
+        hash || text
+          ? await findStatuteDuplicates({
+              documentHash: hash ?? undefined,
+              title: input.known.title,
+              jurisdiction: input.known.jurisdiction,
+            })
+          : [];
 
       const { data, error } = await supabase.rpc("create_legislation_import", {
         p_code: input.known.code,
@@ -1018,11 +1088,14 @@ export function useIngestLegislation() {
           `Draft created (${result.provisionCount} provisions) with ${result.duplicates.length} possible duplicate warning(s). Review before publishing.`,
         );
       } else {
-        toast.success(`Draft created with ${result.provisionCount} provisions and sent to Review Queue.`);
+        toast.success(
+          `Draft created with ${result.provisionCount} provisions and sent to Review Queue.`,
+        );
       }
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -1082,7 +1155,10 @@ export function useReprocessCaseLawExtraction() {
         proposed.neutral_citation ??
         "";
       let nextName = "";
-      if (shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) && proposed.case_name) {
+      if (
+        shouldProposeCaseName(extraction.caseNameConfidence, envelope.ocrUsed) &&
+        proposed.case_name
+      ) {
         nextName = proposed.case_name;
       } else if (fromFilename?.case_name && !envelope.ocrUsed) {
         nextName = fromFilename.case_name;
@@ -1106,7 +1182,8 @@ export function useReprocessCaseLawExtraction() {
       };
       const last = readLastMachineProposal(input.extractedMetadata);
       const merged = mergeReprocessFields(input.current, next, last);
-      const courtName = input.courts.find((c) => c.id === merged.court_id)?.canonical_name ?? "Court";
+      const courtName =
+        input.courts.find((c) => c.id === merged.court_id)?.canonical_name ?? "Court";
       const jurisdictionName =
         input.jurisdictions.find((j) => j.id === merged.jurisdiction_id)?.name ?? "Jurisdiction";
 
@@ -1167,6 +1244,7 @@ export function useReprocessCaseLawExtraction() {
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.detail(variables.caseLawId) });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },
@@ -1249,7 +1327,10 @@ export function useReassessStatuteExtraction() {
         statuteUpdate.chapter_number = extracted.fields.chapter_number;
       }
 
-      const { error: statuteError } = await supabase.from("statutes").update(statuteUpdate).eq("id", input.statuteId);
+      const { error: statuteError } = await supabase
+        .from("statutes")
+        .update(statuteUpdate)
+        .eq("id", input.statuteId);
       if (statuteError) throw statuteError;
 
       if (input.importJobId) {
@@ -1264,7 +1345,11 @@ export function useReassessStatuteExtraction() {
         } as unknown as Json;
         const { error: jobError } = await supabase
           .from("import_jobs")
-          .update({ extracted_metadata: nextMeta, extracted_text: text || null, status: "needs_review" })
+          .update({
+            extracted_metadata: nextMeta,
+            extracted_text: text || null,
+            status: "needs_review",
+          })
           .eq("id", input.importJobId);
         if (jobError) throw jobError;
       }
@@ -1277,6 +1362,7 @@ export function useReassessStatuteExtraction() {
       void queryClient.invalidateQueries({ queryKey: legislationKeys.detail(variables.statuteId) });
       void queryClient.invalidateQueries({ queryKey: importJobKeys.all });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },

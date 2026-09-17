@@ -1,4 +1,13 @@
-import { useEffect, useState } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useState,
+  type ReactElement,
+} from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +28,7 @@ import {
   useCreateLegalCaseCategory,
 } from "@/hooks/legal-library/use-legal-taxonomy";
 import { getErrorMessage } from "@/lib/utils";
-import type { LegalJurisdiction, LegalAuthorityCourt, LegalCaseCategory } from "@/types/database.types";
+import type { LegalJurisdiction, LegalAuthorityCourt, LegalCaseCategory } from "@/types";
 
 /**
  * Shared Jurisdiction/Court/Category `<Field>`+`<Select>` controls with an
@@ -31,7 +40,15 @@ import type { LegalJurisdiction, LegalAuthorityCourt, LegalCaseCategory } from "
  * get entered under several different spellings across records).
  */
 
-/** Small labeled-field wrapper — every field using these controls renders through this so no field is ever identifiable only by placeholder text. */
+/**
+ * Small labeled-field wrapper — every field using these controls renders
+ * through this so no field is ever identifiable only by placeholder text.
+ *
+ * The `<label>` is wired to the control with `htmlFor`/`id` (WCAG 1.3.1 /
+ * 4.1.2): the first element child gets a generated id (or keeps its own),
+ * and the hint, when present, is attached via `aria-describedby`. Later
+ * siblings (the "+ Add new…" dialogs below) are left untouched.
+ */
 export function Field({
   label,
   hint,
@@ -43,14 +60,38 @@ export function Field({
   required?: boolean;
   children: React.ReactNode;
 }) {
+  const generatedId = useId();
+  const hintId = `${generatedId}-hint`;
+  let controlId: string | undefined;
+  const wired = Children.map(children, (child) => {
+    if (controlId || !isValidElement(child) || child.type === Fragment) return child;
+    const element = child as ReactElement<{ id?: string; "aria-describedby"?: string }>;
+    controlId = element.props.id ?? generatedId;
+    const describedBy = [element.props["aria-describedby"], hint ? hintId : null]
+      .filter(Boolean)
+      .join(" ");
+    return cloneElement(element, {
+      id: controlId,
+      ...(describedBy ? { "aria-describedby": describedBy } : {}),
+    });
+  });
   return (
     <div className="space-y-1">
-      <label className="block text-xs font-medium text-muted-foreground">
+      <label htmlFor={controlId} className="block text-xs font-medium text-muted-foreground">
         {label}
-        {required && <span className="ml-0.5 text-destructive">*</span>}
+        {required && (
+          <span className="ml-0.5 text-destructive" aria-hidden="true">
+            *
+          </span>
+        )}
+        {required && <span className="sr-only"> (required)</span>}
       </label>
-      {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {wired}
+      {hint && (
+        <p id={hintId} className="text-[11px] text-muted-foreground">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -102,8 +143,8 @@ function AddJurisdictionDialog({
         <DialogHeader>
           <DialogTitle>Add a new Jurisdiction</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue, so every future Case Law/Legislation record can select
-            it too, not only this one.
+            Added to the shared canonical catalogue, so every future Case Law/Legislation record can
+            select it too, not only this one.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -112,10 +153,13 @@ function AddJurisdictionDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Saint Lucia"
-              autoFocus
             />
           </Field>
-          <Field label="Regional group" required hint="Where this jurisdiction belongs in the Browse taxonomy.">
+          <Field
+            label="Regional group"
+            required
+            hint="Where this jurisdiction belongs in the Browse taxonomy."
+          >
             <Select value={regionalGroupId} onChange={(e) => setRegionalGroupId(e.target.value)}>
               <option value="">Select a regional group</option>
               {(regionalGroups ?? []).map((g) => (
@@ -127,10 +171,19 @@ function AddJurisdictionDialog({
           </Field>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={create.isPending}
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={handleCreate} disabled={!name.trim() || !regionalGroupId || create.isPending}>
+          <Button
+            type="button"
+            onClick={handleCreate}
+            disabled={!name.trim() || !regionalGroupId || create.isPending}
+          >
             Add Jurisdiction
           </Button>
         </DialogFooter>
@@ -190,8 +243,9 @@ function AddCourtDialog({
         <DialogHeader>
           <DialogTitle>Add a new Court</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue, so every future Case Law record can select it too, not
-            only this one. Leave Jurisdiction unset for a regional/supranational court (e.g. CCJ, Privy Council).
+            Added to the shared canonical catalogue, so every future Case Law record can select it
+            too, not only this one. Leave Jurisdiction unset for a regional/supranational court
+            (e.g. CCJ, Privy Council).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -200,11 +254,14 @@ function AddCourtDialog({
               value={canonicalName}
               onChange={(e) => setCanonicalName(e.target.value)}
               placeholder="e.g. Court of Appeal of Saint Lucia"
-              autoFocus
             />
           </Field>
           <Field label="Short name">
-            <Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="Optional" />
+            <Input
+              value={shortName}
+              onChange={(e) => setShortName(e.target.value)}
+              placeholder="Optional"
+            />
           </Field>
           <Field label="Jurisdiction" hint="Leave unset for a regional/supranational court.">
             <Select value={jurisdictionId} onChange={(e) => setJurisdictionId(e.target.value)}>
@@ -226,10 +283,19 @@ function AddCourtDialog({
           </Field>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={create.isPending}
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={handleCreate} disabled={!canonicalName.trim() || create.isPending}>
+          <Button
+            type="button"
+            onClick={handleCreate}
+            disabled={!canonicalName.trim() || create.isPending}
+          >
             Add Court
           </Button>
         </DialogFooter>
@@ -275,8 +341,8 @@ function AddCategoryDialog({
         <DialogHeader>
           <DialogTitle>Add a new Category</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue, so every future Case Law record can select it too, not
-            only this one.
+            Added to the shared canonical catalogue, so every future Case Law record can select it
+            too, not only this one.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -285,12 +351,16 @@ function AddCategoryDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Narcotics"
-              autoFocus
             />
           </Field>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={create.isPending}
+          >
             Cancel
           </Button>
           <Button type="button" onClick={handleCreate} disabled={!name.trim() || create.isPending}>
@@ -337,7 +407,11 @@ export function JurisdictionField({
         ))}
         <option value={ADD_NEW_SENTINEL}>+ Add new Jurisdiction…</option>
       </Select>
-      <AddJurisdictionDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(j) => onChange(j.id)} />
+      <AddJurisdictionDialog
+        open={showAdd}
+        onOpenChange={setShowAdd}
+        onCreated={(j) => onChange(j.id)}
+      />
     </Field>
   );
 }
@@ -418,7 +492,11 @@ export function CategoryField({
         ))}
         <option value={ADD_NEW_SENTINEL}>+ Add new Category…</option>
       </Select>
-      <AddCategoryDialog open={showAdd} onOpenChange={setShowAdd} onCreated={(c) => onChange(c.id)} />
+      <AddCategoryDialog
+        open={showAdd}
+        onOpenChange={setShowAdd}
+        onCreated={(c) => onChange(c.id)}
+      />
     </Field>
   );
 }

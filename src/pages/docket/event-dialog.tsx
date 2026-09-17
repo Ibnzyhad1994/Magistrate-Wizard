@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -39,7 +40,7 @@ import {
   type DocketEventFormValues,
 } from "@/lib/validations/docket";
 import { getLocalDateOnly, toTitleCase } from "@/lib/utils";
-import type { DocketEvent } from "@/types/database.types";
+import type { DocketEvent } from "@/types";
 import { useDocketMatter } from "@/hooks/docket/use-docket-matters";
 
 export function DocketEventDialog({
@@ -98,7 +99,11 @@ export function DocketEventDialog({
   const { data: snapshot } = useDocketCapacitySnapshot(watchedDate || undefined);
   const activeSnapshot = (snapshot ?? []).find((s) => s.category_id === watchedCategoryId);
 
-  async function submit(values: DocketEventFormValues, acknowledgeOverride: boolean, overrideReason: string | null) {
+  async function submit(
+    values: DocketEventFormValues,
+    acknowledgeOverride: boolean,
+    overrideReason: string | null,
+  ) {
     const result = await schedule.mutateAsync({
       eventId: event?.id ?? null,
       docketMatterId: matterId,
@@ -142,9 +147,15 @@ export function DocketEventDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent
+        preventDismissWhenDirty={form.formState.isDirty}
+        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
+      >
         <DialogHeader>
           <DialogTitle>{event ? "Edit event" : "Add event"}</DialogTitle>
+          <DialogDescription>
+            A dated entry in this matter's history: hearing, adjournment, order or note.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

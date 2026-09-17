@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Bookmark } from "@/types/database.types";
+import type { Bookmark } from "@/types";
 
 export interface BookmarkLabel {
   label: string;
@@ -22,7 +22,13 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
     (bookmarks ?? []).filter((b) => b.entity_type === type).map((b) => b.entity_id);
 
   return useQuery({
-    queryKey: ["bookmark-labels", (bookmarks ?? []).map((b) => b.id).sort().join(",")],
+    queryKey: [
+      "bookmark-labels",
+      (bookmarks ?? [])
+        .map((b) => b.id)
+        .sort()
+        .join(","),
+    ],
     queryFn: async () => {
       const map = new Map<string, BookmarkLabel>();
 
@@ -37,7 +43,10 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
 
       const [dm, j, cl, qc, bn, c, s, sp] = await Promise.all([
         docketMatterIds.length
-          ? supabase.from("docket_matters").select("id, matter_title, case_number").in("id", docketMatterIds)
+          ? supabase
+              .from("docket_matters")
+              .select("id, matter_title, case_number")
+              .in("id", docketMatterIds)
           : Promise.resolve({ data: [], error: null }),
         judgmentIds.length
           ? supabase.from("judgments").select("id, title, case_number").in("id", judgmentIds)
@@ -65,21 +74,31 @@ export function useBookmarkLabels(bookmarks: Bookmark[] | undefined) {
           : Promise.resolve({ data: [], error: null }),
       ]);
 
-      dm.data?.forEach((r) => map.set(`docket_matter:${r.id}`, { label: r.matter_title, subtitle: r.case_number }));
-      j.data?.forEach((r) => map.set(`judgment:${r.id}`, { label: r.title, subtitle: r.case_number }));
-      cl.data?.forEach((r) => map.set(`case_law:${r.id}`, { label: r.case_name, subtitle: r.citation }));
-      qc.data?.forEach((r) => map.set(`quick_code:${r.id}`, { label: r.title || r.code_word, subtitle: r.code_word }));
+      dm.data?.forEach((r) =>
+        map.set(`docket_matter:${r.id}`, { label: r.matter_title, subtitle: r.case_number }),
+      );
+      j.data?.forEach((r) =>
+        map.set(`judgment:${r.id}`, { label: r.title, subtitle: r.case_number }),
+      );
+      cl.data?.forEach((r) =>
+        map.set(`case_law:${r.id}`, { label: r.case_name, subtitle: r.citation }),
+      );
+      qc.data?.forEach((r) =>
+        map.set(`quick_code:${r.id}`, { label: r.title || r.code_word, subtitle: r.code_word }),
+      );
       bn.data?.forEach((r) => map.set(`bench_note:${r.id}`, { label: r.title, subtitle: null }));
       c.data?.forEach((r) => map.set(`case:${r.id}`, { label: r.title, subtitle: r.case_number }));
       s.data?.forEach((r) => map.set(`statute:${r.id}`, { label: r.title, subtitle: r.code }));
-      (sp.data as unknown as Array<{
-        id: string;
-        number: string | null;
-        heading: string | null;
-        level: string;
-        statute_id: string;
-        statutes: { title: string } | null;
-      }> | null)?.forEach((r) => {
+      (
+        sp.data as unknown as Array<{
+          id: string;
+          number: string | null;
+          heading: string | null;
+          level: string;
+          statute_id: string;
+          statutes: { title: string } | null;
+        }> | null
+      )?.forEach((r) => {
         const provisionLabel = r.heading || `${r.level} ${r.number ?? ""}`.trim();
         map.set(`statute_provision:${r.id}`, {
           label: r.statutes ? `${r.statutes.title} · ${provisionLabel}` : provisionLabel,

@@ -1,36 +1,42 @@
-import { supabase } from "@/lib/supabase"
-import { queryClient } from "@/lib/query-client"
-import { useAuthStore } from "@/store/auth-store"
-import { toast } from "sonner"
-import { syncDocketEventToGoogle } from "@/lib/google-calendar/sync"
-import { isGoogleConnected, loadGoogleCalendarState } from "@/lib/google-calendar/storage"
-import { flushOutbox } from "@/lib/offline/flush"
+import { supabase } from "@/lib/supabase";
+import { queryClient } from "@/lib/query-client";
+import { useAuthStore } from "@/store/auth-store";
+import { toast } from "sonner";
+import { syncDocketEventToGoogle } from "@/lib/google-calendar/sync";
+import { isGoogleConnected, loadGoogleCalendarState } from "@/lib/google-calendar/storage";
+import { flushOutbox } from "@/lib/offline/flush";
 import {
   enqueueCreate,
   enqueueGooglePending,
   enqueueUpdate,
   makeLocalEventId,
   type HearingFields,
-} from "@/lib/offline/outbox"
-import { getOutboxJobs, getProfileCache, setOutboxJobs } from "@/lib/offline/store"
-import { hearingFieldsFromEvent } from "@/lib/offline/docket-cache"
-import { lockCurrentSession, notifyAuthExpiredSave } from "@/lib/auth/session-lock"
+} from "@/lib/offline/outbox";
+import {
+  appendFailedJobs,
+  discardFailedJob,
+  getOutboxJobs,
+  getProfileCache,
+  setOutboxJobs,
+} from "@/lib/offline/store";
+import { hearingFieldsFromEvent } from "@/lib/offline/docket-cache";
+import { lockCurrentSession, notifyAuthExpiredSave } from "@/lib/auth/session-lock";
 
-let flushing = false
-let sessionToastAt = 0
+let flushing = false;
+let sessionToastAt = 0;
 
 export const currentProfileId = async (): Promise<string | null> => {
-  const fromStore = useAuthStore.getState().user?.id
-  if (fromStore) return fromStore
-  const { data } = await supabase.auth.getSession()
-  return data.session?.user.id ?? null
-}
+  const fromStore = useAuthStore.getState().user?.id;
+  if (fromStore) return fromStore;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+};
 
 const invalidateHearingQueries = () => {
-  void queryClient.invalidateQueries({ queryKey: ["docket-events"] })
-  void queryClient.invalidateQueries({ queryKey: ["calendar-events"] })
-  void queryClient.invalidateQueries({ queryKey: ["dashboard", "upcoming-appearances"] })
-}
+  void queryClient.invalidateQueries({ queryKey: ["docket-events"] });
+  void queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+  void queryClient.invalidateQueries({ queryKey: ["dashboard", "upcoming-appearances"] });
+};
 
 const liveFlushDeps = () => ({
   insertEvent: async (matterId: string, payload: HearingFields) => {
@@ -38,34 +44,42 @@ const liveFlushDeps = () => ({
       .from("docket_events")
       .insert({ ...payload, docket_matter_id: matterId })
       .select("id")
-      .single()
-    if (error) throw error
-    return { id: data.id }
+      .single();
+    if (error) throw error;
+    return { id: data.id };
   },
-  updateEvent: async (id: string, payload: HearingFields) => {
-    const { error } = await supabase.from("docket_events").update(payload).eq("id", id)
-    if (error) throw error
+  updateEvent: async (id: string, payload: HearingFields, baseUpdatedAt?: string | null) => {
+    // Same optimistic guard docket matters already use: the UPDATE only
+    // matches while the row still carries the updated_at this device saw.
+    // Zero rows = changed elsewhere (or no longer visible) = conflict, not
+    // a silent overwrite.
+    let query = supabase.from("docket_events").update(payload).eq("id", id);
+    if (baseUpdatedAt) query = query.eq("updated_at", baseUpdatedAt);
+    const { data, error } = await query.select("id");
+    if (error) throw error;
+    if ((data ?? []).length === 0) return { conflict: true };
   },
   pushGoogle: async (eventId: string) => {
     try {
-      const result = await syncDocketEventToGoogle(eventId)
-      if ("skipped" in result && result.skipped) return { synced: true as const, skipped: true as const }
-      return { synced: true as const }
+      const result = await syncDocketEventToGoogle(eventId);
+      if ("skipped" in result && result.skipped)
+        return { synced: true as const, skipped: true as const };
+      return { synced: true as const };
     } catch {
-      return { synced: false as const }
+      return { synced: false as const };
     }
   },
-})
+});
 
 export const enqueueQueuedCreate = async (input: {
-  matterId: string
-  payload: HearingFields
-  caseNumber: string
-  matterTitle: string
+  matterId: string;
+  payload: HearingFields;
+  caseNumber: string;
+  matterTitle: string;
 }) => {
-  const profileId = await currentProfileId()
-  if (!profileId) throw new Error("You need to be signed in to save a hearing.")
-  const id = makeLocalEventId()
+  const profileId = await currentProfileId();
+  if (!profileId) throw new Error("You need to be signed in to save a hearing.");
+  const id = makeLocalEventId();
   const jobs = enqueueCreate(getOutboxJobs(profileId), {
     kind: "create",
     id,
@@ -73,37 +87,40 @@ export const enqueueQueuedCreate = async (input: {
     payload: input.payload,
     caseNumber: input.caseNumber,
     matterTitle: input.matterTitle,
-  })
-  await setOutboxJobs(profileId, jobs)
-  return id
-}
+  });
+  await setOutboxJobs(profileId, jobs);
+  return id;
+};
 
 export const enqueueQueuedUpdate = async (input: {
-  id: string
-  matterId: string
-  patch: Partial<HearingFields>
+  id: string;
+  matterId: string;
+  patch: Partial<HearingFields>;
 }) => {
-  const profileId = await currentProfileId()
-  if (!profileId) throw new Error("You need to be signed in to save a hearing.")
-  const cache = getProfileCache(profileId)
-  const cached = cache.events[input.id]
-  const createJob = getOutboxJobs(profileId).find((job) => job.kind === "create" && job.id === input.id)
-  const base = createJob && createJob.kind === "create"
-    ? createJob.payload
-    : cached
-      ? hearingFieldsFromEvent(cached)
-      : {
-          scheduled_date: input.patch.scheduled_date ?? "",
-          scheduled_time: input.patch.scheduled_time ?? null,
-          event_type: input.patch.event_type ?? null,
-          location: input.patch.location ?? null,
-          stage_at_event: input.patch.stage_at_event ?? null,
-          outcome_at_event: input.patch.outcome_at_event ?? null,
-          orders_made_at_event: input.patch.orders_made_at_event ?? null,
-          notes: input.patch.notes ?? null,
-          event_status: input.patch.event_status ?? "scheduled",
-        }
-  const matter = cache.matters[input.matterId]
+  const profileId = await currentProfileId();
+  if (!profileId) throw new Error("You need to be signed in to save a hearing.");
+  const cache = getProfileCache(profileId);
+  const cached = cache.events[input.id];
+  const createJob = getOutboxJobs(profileId).find(
+    (job) => job.kind === "create" && job.id === input.id,
+  );
+  const base =
+    createJob && createJob.kind === "create"
+      ? createJob.payload
+      : cached
+        ? hearingFieldsFromEvent(cached)
+        : {
+            scheduled_date: input.patch.scheduled_date ?? "",
+            scheduled_time: input.patch.scheduled_time ?? null,
+            event_type: input.patch.event_type ?? null,
+            location: input.patch.location ?? null,
+            stage_at_event: input.patch.stage_at_event ?? null,
+            outcome_at_event: input.patch.outcome_at_event ?? null,
+            orders_made_at_event: input.patch.orders_made_at_event ?? null,
+            notes: input.patch.notes ?? null,
+            event_status: input.patch.event_status ?? "scheduled",
+          };
+  const matter = cache.matters[input.matterId];
   const jobs = enqueueUpdate(getOutboxJobs(profileId), {
     id: input.id,
     matterId: input.matterId,
@@ -111,87 +128,109 @@ export const enqueueQueuedUpdate = async (input: {
     base,
     caseNumber: matter?.case_number || cached?.case_number || "Matter",
     matterTitle: matter?.matter_title || cached?.matter_title || "Hearing",
-  })
-  await setOutboxJobs(profileId, jobs)
-}
+    baseUpdatedAt: createJob ? null : cached?.updated_at || null,
+  });
+  await setOutboxJobs(profileId, jobs);
+};
+
+/** Drop one entry from the persisted failed list (the user chose to discard it). */
+export const discardFailedHearing = async (jobId: string) => {
+  const profileId = await currentProfileId();
+  if (!profileId) return;
+  await discardFailedJob(profileId, jobId);
+};
 
 export const enqueueGooglePendingIfNeeded = async (eventId: string, matterId: string) => {
-  const state = await loadGoogleCalendarState()
-  if (!isGoogleConnected(state)) return
-  const profileId = await currentProfileId()
-  if (!profileId) return
+  const state = await loadGoogleCalendarState();
+  if (!isGoogleConnected(state)) return;
+  const profileId = await currentProfileId();
+  if (!profileId) return;
   const jobs = enqueueGooglePending(getOutboxJobs(profileId), {
     kind: "googlePending",
     id: eventId,
     matterId,
-  })
-  await setOutboxJobs(profileId, jobs)
-}
+  });
+  await setOutboxJobs(profileId, jobs);
+};
 
 export const flushPendingHearings = async () => {
-  if (flushing) return { skipped: true as const }
-  if (useAuthStore.getState().status === "locked") return { skipped: true as const }
-  const profileId = await currentProfileId()
-  if (!profileId) return { skipped: true as const }
-  const jobs = getOutboxJobs(profileId)
-  if (jobs.length === 0) return { skipped: true as const }
-  flushing = true
+  if (flushing) return { skipped: true as const };
+  if (useAuthStore.getState().status === "locked") return { skipped: true as const };
+  const profileId = await currentProfileId();
+  if (!profileId) return { skipped: true as const };
+  const jobs = getOutboxJobs(profileId);
+  if (jobs.length === 0) return { skipped: true as const };
+  flushing = true;
   try {
-    const result = await flushOutbox(jobs, liveFlushDeps())
-    await setOutboxJobs(profileId, result.jobs)
+    const result = await flushOutbox(jobs, liveFlushDeps());
+    await setOutboxJobs(profileId, result.jobs);
+    if (result.failed.length > 0) {
+      // Dead-letter, not silence: persisted so the sync banner can show
+      // each one with its reason and a Discard control.
+      await appendFailedJobs(profileId, result.failed);
+      toast.error(
+        result.failed.length === 1
+          ? "One hearing saved on this device could not be applied. See the sync banner."
+          : `${result.failed.length} hearings saved on this device could not be applied. See the sync banner.`,
+      );
+    }
     if (result.insertedIds.length > 0 || result.updatedIds.length > 0) {
-      invalidateHearingQueries()
+      invalidateHearingQueries();
     }
     if (result.authExpired) {
-      void lockCurrentSession()
-      notifyAuthExpiredSave()
-      return result
+      // lockCurrentSession keeps the outbox (cache and profile only are
+      // wiped), so these jobs are still here for the post-unlock flush.
+      void lockCurrentSession();
+      notifyAuthExpiredSave();
+      return result;
     }
     if (result.stopped) {
-      const expired = Date.now() - sessionToastAt > 30_000
+      const expired = Date.now() - sessionToastAt > 30_000;
       if (expired) {
-        sessionToastAt = Date.now()
-        toast.error("Some hearings are still on this device. They will retry when you are back online.")
+        sessionToastAt = Date.now();
+        toast.error(
+          "Some hearings are still on this device. They will retry when you are back online.",
+        );
       }
     }
-    return result
+    return result;
   } finally {
-    flushing = false
+    flushing = false;
   }
-}
+};
 
 export const peekHasDocketWrites = (profileId: string | undefined) => {
-  const jobs = getOutboxJobs(profileId)
-  return jobs.some((job) => job.kind === "create" || job.kind === "update")
-}
+  const jobs = getOutboxJobs(profileId);
+  return jobs.some((job) => job.kind === "create" || job.kind === "update");
+};
 
-let listenersStarted = false
+let listenersStarted = false;
 
 const attachNativeNetworkFlush = async (kick: () => void) => {
   try {
-    const native = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
-    if (!native?.isNativePlatform?.()) return
-    const { Network } = await import("@capacitor/network")
+    const native = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    if (!native?.isNativePlatform?.()) return;
+    const { Network } = await import("@capacitor/network");
     Network.addListener("networkStatusChange", (status) => {
-      if (status.connected) kick()
-    })
+      if (status.connected) kick();
+    });
   } catch {
     /* plugin missing until `npx cap sync` */
   }
-}
+};
 
 export const startOfflineFlushListeners = () => {
-  if (listenersStarted || typeof window === "undefined") return
-  listenersStarted = true
+  if (listenersStarted || typeof window === "undefined") return;
+  listenersStarted = true;
   const kick = () => {
-    void flushPendingHearings()
-  }
-  window.addEventListener("online", kick)
+    void flushPendingHearings();
+  };
+  window.addEventListener("online", kick);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") kick()
-  })
-  void attachNativeNetworkFlush(kick)
-}
+    if (document.visibilityState === "visible") kick();
+  });
+  void attachNativeNetworkFlush(kick);
+};
 
 export const syntheticDocketEvent = (
   id: string,
@@ -199,7 +238,7 @@ export const syntheticDocketEvent = (
   profileId: string,
   payload: HearingFields,
 ) => {
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
   return {
     id,
     docket_matter_id: matterId,
@@ -219,5 +258,5 @@ export const syntheticDocketEvent = (
     witnesses_completed: null,
     witnesses_partly_heard: null,
     witnesses_remaining: null,
-  }
-}
+  };
+};

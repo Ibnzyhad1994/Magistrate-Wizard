@@ -62,7 +62,11 @@ function DocketStageRow({
   isTourNextDate?: boolean;
   isTourOutcome?: boolean;
   isTourFirstMatter?: boolean;
-  onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
+  onPatch: (
+    id: string,
+    values: TablesUpdate<"docket_matters">,
+    expectedUpdatedAt: string | null,
+  ) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
   const uploadRuling = useUploadDocument("docket_matter", row.id);
@@ -117,10 +121,12 @@ function DocketStageRow({
           className="block min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-foreground/55">{row.case_number}</p>
+          <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
           <p className="truncate text-sm text-foreground">{row.matter_title}</p>
           {row.charge_or_issue && (
-            <p className="hidden truncate text-xs text-foreground/45 sm:block">{row.charge_or_issue}</p>
+            <p className="hidden truncate text-xs text-muted-foreground sm:block">
+              {row.charge_or_issue}
+            </p>
           )}
           {classification && (
             <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
@@ -138,8 +144,8 @@ function DocketStageRow({
                 row.appearance_status === "scheduled"
                   ? "bg-primary/20 text-primary"
                   : row.appearance_status === "completed"
-                    ? "bg-foreground/10 text-foreground/60"
-                    : "bg-foreground/5 text-foreground/40"
+                    ? "bg-foreground/10 text-muted-foreground"
+                    : "bg-foreground/5 text-muted-foreground"
               }`}
             >
               {row.appearance_status === "scheduled"
@@ -154,7 +160,8 @@ function DocketStageRow({
       {columns.map((column) => {
         const applicable = columnApplies(column, protocol);
         const purpose = ATTACHMENT_PURPOSE[column.key];
-        const uploadMutation = purpose === "ruling" ? uploadRuling : purpose === "judgment" ? uploadJudgment : null;
+        const uploadMutation =
+          purpose === "ruling" ? uploadRuling : purpose === "judgment" ? uploadJudgment : null;
         const adjournment = adjournmentForStage(row.stage_adjournments, column.stage);
         return (
           <TableCell key={column.key} className="p-1.5">
@@ -179,7 +186,8 @@ function DocketStageRow({
               attachments={
                 applicable && purpose && uploadMutation && row.can_edit
                   ? {
-                      hasFile: purpose === "ruling" ? row.has_ruling_document : row.has_judgment_document,
+                      hasFile:
+                        purpose === "ruling" ? row.has_ruling_document : row.has_judgment_document,
                       isUploading: uploadMutation.isPending,
                       onUpload: (file) => uploadMutation.mutate({ file, purpose }),
                     }
@@ -221,7 +229,11 @@ export function DocketStageSheet({
 }: {
   rows: DocketMatterBoardRow[];
   showCourt?: boolean;
-  onPatch: (id: string, values: TablesUpdate<"docket_matters">, expectedUpdatedAt: string | null) => Promise<unknown>;
+  onPatch: (
+    id: string,
+    values: TablesUpdate<"docket_matters">,
+    expectedUpdatedAt: string | null,
+  ) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
   const caseColBase =
@@ -230,8 +242,11 @@ export function DocketStageSheet({
 
   return (
     <div className="relative" data-tour="docket-board">
-      <div className="relative rounded-sm border border-foreground/10">
-        <Table className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]">
+      <div className="relative rounded-sm border border-border">
+        <Table
+          className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]"
+          aria-label="Docket board"
+        >
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={`${caseColBase} z-30`}>Case</TableHead>

@@ -41,23 +41,23 @@ export async function runBoundedConcurrent<T>(
   concurrency: number = DEFAULT_BULK_CONCURRENCY,
   options?: { signal?: AbortSignal },
 ): Promise<void> {
-  if (items.length === 0) return
-  let nextIndex = 0
+  if (items.length === 0) return;
+  let nextIndex = 0;
 
   async function runSlot(): Promise<void> {
     while (nextIndex < items.length) {
-      if (options?.signal?.aborted) return
-      const i = nextIndex++
+      if (options?.signal?.aborted) return;
+      const i = nextIndex++;
       try {
-        await worker(items[i], i)
+        await worker(items[i], i);
       } catch {
-        if (options?.signal?.aborted) return
+        if (options?.signal?.aborted) return;
       }
     }
   }
 
-  const slotCount = Math.max(1, Math.min(concurrency, items.length))
-  await Promise.all(Array.from({ length: slotCount }, () => runSlot()))
+  const slotCount = Math.max(1, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: slotCount }, () => runSlot()));
 }
 
 // ---------------------------------------------------------------------------
@@ -166,9 +166,9 @@ export const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "text/plain",
   "text/markdown",
   "text/x-markdown",
-])
+]);
 
-const ALLOWED_UPLOAD_EXTENSIONS = /\.(pdf|txt|md|markdown|docx|doc|png|jpe?g|webp)$/i
+const ALLOWED_UPLOAD_EXTENSIONS = /\.(pdf|txt|md|markdown|docx|doc|png|jpe?g|webp)$/i;
 
 /** A curator selecting an entire archive folder is exactly the scenario this phase targets — but "the browser attempts 5,000 x 200MB PDFs simultaneously" (Section 27) must not be possible. This is a sanity ceiling on ONE bulk batch, not a claim about the library's eventual total size. */
 export const MAX_BULK_FILES_PER_BATCH = 200;
@@ -184,11 +184,14 @@ export function validateFileForUpload(file: File): FileValidationResult {
     return { ok: false, reason: "File is empty." };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { ok: false, reason: `File exceeds the ${(MAX_FILE_SIZE_BYTES / 1_048_576).toFixed(0)} MB limit.` };
+    return {
+      ok: false,
+      reason: `File exceeds the ${(MAX_FILE_SIZE_BYTES / 1_048_576).toFixed(0)} MB limit.`,
+    };
   }
-  const mime = file.type || "application/octet-stream"
+  const mime = file.type || "application/octet-stream";
   if (!ALLOWED_UPLOAD_MIME_TYPES.has(mime) && !ALLOWED_UPLOAD_EXTENSIONS.test(file.name)) {
-    return { ok: false, reason: `File type "${mime}" is not supported.` }
+    return { ok: false, reason: `File type "${mime}" is not supported.` };
   }
   return { ok: true };
 }

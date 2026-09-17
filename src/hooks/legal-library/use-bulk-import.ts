@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getErrorMessage, formatDateTime, isCanonicalCitationUniqueViolation } from "@/lib/utils";
 import { isAbortError } from "@/lib/async-timeout";
@@ -66,6 +66,13 @@ export function useBulkImportCaseLaw() {
   const lastOptsRef = useRef<BulkOpts | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // If the component owning this hook unmounts mid-batch (route change --
+  // the tab switch no longer unmounts it, see LegalLibraryAdminPage), stop
+  // the OCR/extraction workers instead of letting them run on detached
+  // state. Each item already records "cancelled" through processOneItem's
+  // abort path.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   function patchItem(id: string, patch: Partial<BulkQueueItem>) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   }
@@ -120,8 +127,13 @@ export function useBulkImportCaseLaw() {
 
     try {
       if (signal?.aborted) {
-        patchItem(item.id, { status: "cancelled", error: "Cancelled before this file finished processing." });
-        await persistNonDraft("failed", "Cancelled before this file finished processing.", { outcomeFlag: "cancelled" });
+        patchItem(item.id, {
+          status: "cancelled",
+          error: "Cancelled before this file finished processing.",
+        });
+        await persistNonDraft("failed", "Cancelled before this file finished processing.", {
+          outcomeFlag: "cancelled",
+        });
         return;
       }
       if (item.jobId) {
@@ -144,7 +156,7 @@ export function useBulkImportCaseLaw() {
       patchItem(item.id, { status: "extracting", progressNote: null });
       const envelope = await ingestDocument(item.file, {
         onOcrProgress: ({ page, total }) => {
-          patchItem(item.id, { progressNote: `Recognizing page ${page} of ${total}` });
+          patchItem(item.id, { progressNote: `Recognising page ${page} of ${total}` });
         },
         signal,
       });
@@ -161,7 +173,10 @@ export function useBulkImportCaseLaw() {
       let jurisdictionName = "";
 
       if (envelope.status === "extracted" || envelope.status === "low_quality") {
-        const pages = envelope.pages.map((p) => ({ pageNumber: p.pageNumber, text: normalizeWhitespace(p.text) }));
+        const pages = envelope.pages.map((p) => ({
+          pageNumber: p.pageNumber,
+          text: normalizeWhitespace(p.text),
+        }));
         const normalizedText = normalizeWhitespace(envelope.text);
         const { fields, caseNameConfidence, citationSource } = extractCaseLawMetadataWithConfidence(
           normalizedText,
@@ -170,7 +185,8 @@ export function useBulkImportCaseLaw() {
         );
         if (shouldProposeCaseName(caseNameConfidence, envelope.ocrUsed) && fields.case_name) {
           caseName = fields.case_name;
-          caseNameSource = citationSource === "filename" && caseNameConfidence === "low" ? "filename" : "document";
+          caseNameSource =
+            citationSource === "filename" && caseNameConfidence === "low" ? "filename" : "document";
         }
         reportedCitation = fields.reported_citation;
         neutralCitation = fields.neutral_citation;
@@ -289,15 +305,20 @@ export function useBulkImportCaseLaw() {
         !jurisdictionId ||
         envelope.status === "low_quality" ||
         envelope.status === "requires_ocr" ||
-        envelope.ocrUsed
+        envelope.ocrUsed;
       patchItem(item.id, {
         status: needsReview ? "needs_review" : "ready",
         caseLawId: result.caseLawId,
       });
     } catch (e) {
       if (isAbortError(e) || signal?.aborted) {
-        patchItem(item.id, { status: "cancelled", error: "Cancelled before this file finished processing." });
-        await persistNonDraft("failed", "Cancelled before this file finished processing.", { outcomeFlag: "cancelled" });
+        patchItem(item.id, {
+          status: "cancelled",
+          error: "Cancelled before this file finished processing.",
+        });
+        await persistNonDraft("failed", "Cancelled before this file finished processing.", {
+          outcomeFlag: "cancelled",
+        });
         return;
       }
       const isCitationConflict = isCanonicalCitationUniqueViolation(e);
@@ -369,7 +390,9 @@ export function useBulkImportCaseLaw() {
       // single job (import_jobs.batch_id is nullable) — if creating it
       // fails for some reason, still process every file individually
       // rather than aborting the entire operation.
-      toast.warning(`Could not create a batch record (${getErrorMessage(e)}). Continuing without one.`);
+      toast.warning(
+        `Could not create a batch record (${getErrorMessage(e)}). Continuing without one.`,
+      );
     }
 
     const processable = initial.filter((it) => it.status !== "rejected");
@@ -448,7 +471,11 @@ export function useBulkImportCaseLaw() {
         }
         return prev.map((it) =>
           it.status === "queued" || it.status === "hashing" || it.status === "extracting"
-            ? { ...it, status: "cancelled" as const, error: "Cancelled before this file finished processing." }
+            ? {
+                ...it,
+                status: "cancelled" as const,
+                error: "Cancelled before this file finished processing.",
+              }
             : it,
         );
       });
@@ -507,7 +534,9 @@ export function useBulkImportCaseLaw() {
     const persistenceFailureCounter = { count: 0 };
     await processOneItem(item, lastBatchIdRef.current, opts, persistenceFailureCounter);
     if (persistenceFailureCounter.count > 0) {
-      toast.warning("This outcome could not be saved to the persistent batch record. It's shown above, but won't appear in Import Batches.");
+      toast.warning(
+        "This outcome could not be saved to the persistent batch record. It's shown above, but won't appear in Import Batches.",
+      );
     }
   }
 

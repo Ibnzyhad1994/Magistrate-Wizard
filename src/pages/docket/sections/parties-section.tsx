@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -18,6 +19,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -48,13 +50,10 @@ import {
 } from "@/lib/validations/docket";
 import { toTitleCase } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
-import type { DocketMatterParty } from "@/types/database.types";
+import type { DocketMatterParty } from "@/types";
 import { SignedThumb } from "@/components/common/signed-thumb";
 import { IdentificationImageControl } from "@/components/common/identification-image-control";
-import {
-  useClearPartyPhoto,
-  useSetPartyPhoto,
-} from "@/hooks/docket/use-identification-images";
+import { useClearPartyPhoto, useSetPartyPhoto } from "@/hooks/docket/use-identification-images";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 
 interface PartiesSectionProps {
@@ -66,9 +65,7 @@ export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps
   const { data, isPending, isError, error, refetch } = useDocketParties(matterId);
   const { data: access } = useDocketMatterAccess(matterId);
   const canEdit = (access?.canEdit ?? false) && !frozen;
-  const [dialogParty, setDialogParty] = useState<DocketMatterParty | "new" | null>(
-    null,
-  );
+  const [dialogParty, setDialogParty] = useState<DocketMatterParty | "new" | null>(null);
 
   const activeParties = data?.filter((p) => p.party_status === "active") ?? [];
   const correctedParties = data?.filter((p) => p.party_status !== "active") ?? [];
@@ -112,6 +109,7 @@ export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps
         />
       ) : (
         <Table>
+          <TableCaption className="sr-only">Parties to this matter</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead className="w-14">Photo</TableHead>
@@ -136,9 +134,7 @@ export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps
                     className="h-10 w-10 rounded-sm"
                   />
                 </TableCell>
-                <TableCell className="font-medium text-foreground">
-                  {party.full_name}
-                </TableCell>
+                <TableCell className="font-medium text-foreground">{party.full_name}</TableCell>
                 <TableCell>{toTitleCase(party.role)}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {toTitleCase(party.party_type)}
@@ -158,7 +154,12 @@ export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps
       )}
 
       {canEdit && partiesAlreadyEstablished && (
-        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setDialogParty("new")}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-muted-foreground"
+          onClick={() => setDialogParty("new")}
+        >
           <Plus className="h-4 w-4" />
           Add another party
         </Button>
@@ -225,9 +226,15 @@ function PartyDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent
+        preventDismissWhenDirty={form.formState.isDirty}
+        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
+      >
         <DialogHeader>
           <DialogTitle>{party ? "Edit party" : "Add party"}</DialogTitle>
+          <DialogDescription>
+            Name, role and representation for a person or organisation in this matter.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

@@ -2,10 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
-import {
-  filtersToRpcArgs,
-  type ProcedureFilters,
-} from "@/lib/docket-procedure";
+import { filtersToRpcArgs, type ProcedureFilters } from "@/lib/docket-procedure";
 import { matterProtocolStage } from "@/lib/docket-protocols";
 import { isQueueableError, MATTER_UNAVAILABLE_OFFLINE } from "@/lib/offline/is-queueable-error";
 import { currentProfileId } from "@/lib/offline/runtime";
@@ -16,8 +13,12 @@ import { ConcurrentEditError } from "@/lib/concurrency";
 export const docketMattersKeys = {
   all: ["docket-matters"] as const,
   list: (search: string) => ["docket-matters", "list", search] as const,
-  board: (search: string, filters: ProcedureFilters, exactDate: string | null, courtId: string | null) =>
-    ["docket-matters", "board", search, filters, exactDate, courtId] as const,
+  board: (
+    search: string,
+    filters: ProcedureFilters,
+    exactDate: string | null,
+    courtId: string | null,
+  ) => ["docket-matters", "board", search, filters, exactDate, courtId] as const,
   detail: (id: string) => ["docket-matters", "detail", id] as const,
 };
 
@@ -62,9 +63,7 @@ export function useDocketMatter(id: string | undefined) {
       try {
         const { data, error } = await supabase
           .from("docket_matters")
-          .select(
-            "*, courts(id, name, jurisdiction), magisterial_districts(id, name)",
-          )
+          .select("*, courts(id, name, jurisdiction), magisterial_districts(id, name)")
           .eq("id", id as string)
           .maybeSingle();
         if (error) throw error;
@@ -293,10 +292,7 @@ export function usePatchDocketProcedure() {
 export type BinnedDocketMatterRow =
   Database["public"]["Functions"]["list_binned_docket_matters"]["Returns"][number];
 
-function invalidateAfterBinChange(
-  queryClient: ReturnType<typeof useQueryClient>,
-  id?: string,
-) {
+function invalidateAfterBinChange(queryClient: ReturnType<typeof useQueryClient>, id?: string) {
   void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
   if (id) {
     void queryClient.invalidateQueries({ queryKey: docketMattersKeys.detail(id) });

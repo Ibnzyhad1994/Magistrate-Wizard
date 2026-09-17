@@ -35,7 +35,7 @@ const courtLabel = (person: AdminPersonRow) => {
     .map((court) => {
       if (court.kind === "clerk") return `${court.courtName} (clerk)`;
       const type = court.assignmentType
-        ? ASSIGNMENT_TYPE_LABEL[court.assignmentType] ?? court.assignmentType
+        ? (ASSIGNMENT_TYPE_LABEL[court.assignmentType] ?? court.assignmentType)
         : null;
       return type && type !== "Primary" ? `${court.courtName} (${type})` : court.courtName;
     })
@@ -67,7 +67,7 @@ export default function PeopleAdminPage() {
   const coverage = data?.coverage;
 
   const selectedLive = selected
-    ? (people ?? []).find((person) => person.id === selected.id) ?? selected
+    ? ((people ?? []).find((person) => person.id === selected.id) ?? selected)
     : null;
 
   const visible = useMemo(
@@ -104,8 +104,8 @@ export default function PeopleAdminPage() {
       {(coverage?.loginsSince || coverage?.activitySince) && (
         <p className="mb-3 text-xs text-muted-foreground">
           Sign-in and activity columns cover events since{" "}
-          {formatDateTime(coverage.loginsSince ?? coverage.activitySince ?? "")}. Anything
-          older isn&apos;t counted here.
+          {formatDateTime(coverage.loginsSince ?? coverage.activitySince ?? "")}. Anything older
+          isn&apos;t counted here.
         </p>
       )}
 
@@ -124,7 +124,7 @@ export default function PeopleAdminPage() {
           }
         />
       ) : (
-        <Table>
+        <Table aria-label="People">
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
@@ -162,7 +162,9 @@ export default function PeopleAdminPage() {
                       to={`${ROUTES.adminActivity}?q=${encodeURIComponent(person.email)}`}
                       className="block text-sm text-foreground underline-offset-2 hover:underline"
                     >
-                      <span className="line-clamp-2">{person.lastActivityLabel ?? "Recorded event"}</span>
+                      <span className="line-clamp-2">
+                        {person.lastActivityLabel ?? "Recorded event"}
+                      </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
                         {formatDateTime(person.lastActivityAt)}
                       </span>

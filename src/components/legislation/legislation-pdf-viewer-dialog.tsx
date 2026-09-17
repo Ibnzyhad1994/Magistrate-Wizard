@@ -24,6 +24,7 @@ export function LegislationPdfViewerDialog({
       <DialogContent
         className="left-0 top-0 flex h-dvh w-dvw max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 sm:rounded-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        aria-describedby={undefined}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         {/* pr-12 keeps every toolbar control clear of DialogContent's own

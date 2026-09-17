@@ -1,8 +1,5 @@
 import { useState, type ReactNode } from "react";
-import {
-  CinematicNavContext,
-  CinematicNavSetContext,
-} from "@/components/layout/use-cinematic-nav";
+import { CinematicNavContext, CinematicNavSetContext } from "@/components/layout/use-cinematic-nav";
 
 /**
  * Lets a Billboard tell the fixed top bar it is sitting on cinematic art,

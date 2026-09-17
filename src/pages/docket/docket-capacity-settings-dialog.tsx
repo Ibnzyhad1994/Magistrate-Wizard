@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { DetailsHint } from "@/components/common/details-hint";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -105,10 +106,37 @@ export function DocketCapacitySettingsDialog({
     onOpenChange(nextOpen);
   };
 
+  // The Clear control is the one destructive action here (blanking the
+  // field on blur is the same delete, but that is a deliberate edit; the
+  // icon button is one stray click away), so it confirms first.
+  const [pendingClear, setPendingClear] = useState<{
+    id: string;
+    name: string;
+    categoryId: string;
+  } | null>(null);
+
   const handleClear = (categoryId: string) => {
-    setDrafts((prev) => ({ ...prev, [categoryId]: "" }));
     const setting = settingByCategory.get(categoryId);
-    if (setting) del.mutate({ id: setting.id });
+    if (!setting) {
+      setDrafts((prev) => ({ ...prev, [categoryId]: "" }));
+      return;
+    }
+    const name = (categories ?? []).find((c) => c.id === categoryId)?.name ?? "this classification";
+    setPendingClear({ id: setting.id, name, categoryId });
+  };
+
+  const confirmClear = () => {
+    if (!pendingClear) return;
+    const { id, categoryId } = pendingClear;
+    del.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          setDrafts((prev) => ({ ...prev, [categoryId]: "" }));
+          setPendingClear(null);
+        },
+      },
+    );
   };
 
   return (
@@ -171,6 +199,17 @@ export function DocketCapacitySettingsDialog({
           </div>
         )}
       </DialogContent>
+      <AlertDialog
+        open={!!pendingClear}
+        onOpenChange={(open) => !open && setPendingClear(null)}
+        title={
+          pendingClear ? `Remove the daily limit for ${pendingClear.name}?` : "Remove this limit?"
+        }
+        description="There will be no capacity limit for this classification until you set one again. Dates that are currently marked full may stop showing as full."
+        confirmLabel="Remove limit"
+        isConfirming={del.isPending}
+        onConfirm={confirmClear}
+      />
     </Dialog>
   );
 }

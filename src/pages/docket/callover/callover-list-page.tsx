@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Gavel, Landmark, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ export default function CalloverListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newDate, setNewDate] = useState(getLocalDateOnly());
   const [newCourtId, setNewCourtId] = useState("");
+  const newCourtSelectId = useId();
+  const newDateId = useId();
 
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
   // With exactly one court there is no choice to make — pre-select it so
@@ -148,7 +150,7 @@ export default function CalloverListPage() {
                 key={co.id}
                 type="button"
                 onClick={() => navigate(ROUTES.callover(co.id))}
-                className="flex flex-col gap-1 rounded-sm border border-foreground/10 bg-foreground/[0.03] px-4 py-3 text-left transition-colors hover:bg-foreground/[0.06]"
+                className="flex flex-col gap-1 rounded-sm border border-border bg-foreground/[0.03] px-4 py-3 text-left transition-colors hover:bg-foreground/[0.06]"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">
@@ -176,15 +178,21 @@ export default function CalloverListPage() {
           <DialogHeader>
             <DialogTitle>New callover</DialogTitle>
             <DialogDescription>
-              Pick the sitting date. You can fill the list from that day&apos;s
-              matters once it is created.
+              Pick the sitting date. You can fill the list from that day&apos;s matters once it is
+              created.
             </DialogDescription>
           </DialogHeader>
 
           {(myCourts?.length ?? 0) > 1 && (
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-muted-foreground">Court</label>
+              <label
+                htmlFor={newCourtSelectId}
+                className="block text-xs font-medium text-muted-foreground"
+              >
+                Court
+              </label>
               <Select
+                id={newCourtSelectId}
                 value={effectiveNewCourtId}
                 onChange={(e) => setNewCourtId(e.target.value)}
                 aria-label="Court"
@@ -200,8 +208,15 @@ export default function CalloverListPage() {
           )}
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-muted-foreground">Sitting date</label>
-            <DateOnlyInput value={newDate} onChange={setNewDate} aria-label="Sitting date" />
+            <label htmlFor={newDateId} className="block text-xs font-medium text-muted-foreground">
+              Sitting date
+            </label>
+            <DateOnlyInput
+              id={newDateId}
+              value={newDate}
+              onChange={setNewDate}
+              aria-label="Sitting date"
+            />
           </div>
 
           <DialogFooter>

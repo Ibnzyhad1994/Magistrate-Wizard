@@ -46,6 +46,7 @@ export function useApplyCaseLawTags(caseLawId: string) {
       toast.success("Tags saved.");
       void queryClient.invalidateQueries({ queryKey: tagsKey(caseLawId) });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },

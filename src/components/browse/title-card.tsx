@@ -1,12 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  TONE_GRADIENT,
-  TONE_ICON,
-  TONE_LABEL,
-  type TitleCardTone,
-} from "@/lib/browse-tones";
+import { TONE_GRADIENT, TONE_ICON, TONE_LABEL, type TitleCardTone } from "@/lib/browse-tones";
 import { LIST_THUMB_CLASS, TILE_WIDTH_CLASS, type BrowseView } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
 
@@ -56,6 +51,8 @@ export function TitleCard({
     <img
       src={imageUrl!}
       alt=""
+      loading="lazy"
+      decoding="async"
       className="absolute inset-0 h-full w-full object-cover"
     />
   ) : (
@@ -98,7 +95,9 @@ export function TitleCard({
                   {eyebrow}
                 </p>
               )}
-              <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground">{title}</h3>
+              <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground">
+                {title}
+              </h3>
             </div>
             {badge && (
               <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
@@ -149,9 +148,13 @@ export function TitleCard({
                 {eyebrow}
               </p>
             )}
-            <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-primary-foreground">{title}</h3>
+            <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-primary-foreground">
+              {title}
+            </h3>
             {subtitle && (
-              <p className="line-clamp-3 text-[11px] leading-snug text-primary-foreground/85">{subtitle}</p>
+              <p className="line-clamp-3 text-[11px] leading-snug text-primary-foreground/85">
+                {subtitle}
+              </p>
             )}
             {meta && meta.length > 0 && (
               <p className="truncate text-[10px] text-primary-foreground/70">{meta.join(" · ")}</p>

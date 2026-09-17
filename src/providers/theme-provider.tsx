@@ -22,9 +22,7 @@ export function ThemeProvider({
   defaultTheme = DEFAULT_THEME,
   storageKey = LOCAL_STORAGE_KEYS.theme,
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(() =>
-    readStoredTheme(storageKey, defaultTheme),
-  );
+  const [theme, setThemeState] = useState<Theme>(() => readStoredTheme(storageKey, defaultTheme));
   const [systemIsDark, setSystemIsDark] = useState(prefersDarkScheme);
   const [systemWantsContrast, setSystemWantsContrast] = useState(prefersMoreContrast);
 
@@ -67,7 +65,5 @@ export function ThemeProvider({
     [theme, resolvedTheme, setTheme],
   );
 
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

@@ -1,9 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
-import {
-  AUTH_STORAGE_KEY,
-  createAuthStorage,
-} from "@/lib/auth/session-storage";
+import { AUTH_STORAGE_KEY, createAuthStorage } from "@/lib/auth/session-storage";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;

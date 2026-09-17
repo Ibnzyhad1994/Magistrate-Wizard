@@ -9,10 +9,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
 import { useIsDesktop } from "@/hooks/use-media-query";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  useDocketMatterBoard,
-  usePatchDocketProcedure,
-} from "@/hooks/docket/use-docket-matters";
+import { useDocketMatterBoard, usePatchDocketProcedure } from "@/hooks/docket/use-docket-matters";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
@@ -26,7 +23,11 @@ import { DailyProgressReportButton } from "@/pages/docket/daily-progress-report-
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
-import { EMPTY_PROCEDURE_FILTERS, hasActiveProcedureFilters, type ProcedureFilters } from "@/lib/docket-procedure";
+import {
+  EMPTY_PROCEDURE_FILTERS,
+  hasActiveProcedureFilters,
+  type ProcedureFilters,
+} from "@/lib/docket-procedure";
 import {
   boardParamsFromSearchParams,
   boardParamsToSearchParams,
@@ -214,9 +215,7 @@ export default function DocketListPage() {
     { enabled: scopeReady },
   );
   const patch = usePatchDocketProcedure();
-  const { data: coverUrls } = useSignedUrls(
-    (data ?? []).map((m) => m.cover_image_path),
-  );
+  const { data: coverUrls } = useSignedUrls((data ?? []).map((m) => m.cover_image_path));
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
 
   useEffect(() => {
@@ -283,9 +282,8 @@ export default function DocketListPage() {
         // administrator" was telling them to contact themselves — point
         // them at the self-seating card in Settings instead.
         <p className="mb-6 text-sm text-muted-foreground">
-          You have no current Court seating, so you can&apos;t create a new
-          matter. You can still view and act on matters retained or shared
-          with you below.{" "}
+          You have no current Court seating, so you can&apos;t create a new matter. You can still
+          view and act on matters retained or shared with you below.{" "}
           {isAdmin ? (
             <>
               Seat yourself at a court under{" "}
@@ -309,7 +307,8 @@ export default function DocketListPage() {
           )}
         </p>
       ) : (
-        scopeReady && (myCourts?.length ?? 0) > 1 && (
+        scopeReady &&
+        (myCourts?.length ?? 0) > 1 && (
           <div className="mb-6 flex items-center gap-2">
             <Landmark className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Select
@@ -427,11 +426,7 @@ export default function DocketListPage() {
                           ? "Clear search"
                           : "Clear filters"}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedDate(null)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
                       All Matters
                     </Button>
                   </div>
@@ -480,7 +475,9 @@ export default function DocketListPage() {
               <DocketStageSheet
                 rows={data}
                 showCourt={courtId === null}
-                onPatch={(id, values, expectedUpdatedAt) => patch.mutateAsync({ id, values, expectedUpdatedAt })}
+                onPatch={(id, values, expectedUpdatedAt) =>
+                  patch.mutateAsync({ id, values, expectedUpdatedAt })
+                }
                 onLogAppearance={setLogAppearance}
               />
             ) : (
@@ -521,7 +518,11 @@ export default function DocketListPage() {
         </div>
       )}
 
-      <CreateDocketMatterDialog open={createOpen} onOpenChange={setCreateOpen} defaultCourtId={courtId} />
+      <CreateDocketMatterDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        defaultCourtId={courtId}
+      />
       <DocketCapacitySettingsDialog open={capacityOpen} onOpenChange={setCapacityOpen} />
       {logAppearance && (
         <DocketEventDialog

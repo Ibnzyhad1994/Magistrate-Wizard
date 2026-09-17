@@ -135,7 +135,9 @@ export function useDashboardEventPulse(from: string, to: string, options?: { ena
         .limit(400);
       if (error) throw error;
       return (data ?? []).flatMap((row) => {
-        const matter = Array.isArray(row.docket_matters) ? row.docket_matters[0] : row.docket_matters;
+        const matter = Array.isArray(row.docket_matters)
+          ? row.docket_matters[0]
+          : row.docket_matters;
         if (!matter || matter.deleted_at) return [];
         return [
           {
@@ -213,4 +215,3 @@ export function useMatterSummaries(ids: string[], options?: { enabled?: boolean 
     },
   });
 }
-

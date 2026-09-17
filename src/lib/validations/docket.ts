@@ -176,9 +176,7 @@ export const docketMatterClassificationSchema = z.object({
   category_id: z.string().min(1, "Classification is required"),
   category_other: z.string().max(200).optional().or(z.literal("")),
 });
-export type DocketMatterClassificationFormValues = z.infer<
-  typeof docketMatterClassificationSchema
->;
+export type DocketMatterClassificationFormValues = z.infer<typeof docketMatterClassificationSchema>;
 
 export const docketMatterSchemaForCategories = (otherCategoryId: string | undefined) =>
   docketMatterSchema.superRefine((values, ctx) => {
@@ -216,9 +214,7 @@ export const docketMatterOutcomeSchema = z.object({
   orders_summary: z.string().max(4000).optional().or(z.literal("")),
   outcome: z.string().max(2000).optional().or(z.literal("")),
 });
-export type DocketMatterOutcomeFormValues = z.infer<
-  typeof docketMatterOutcomeSchema
->;
+export type DocketMatterOutcomeFormValues = z.infer<typeof docketMatterOutcomeSchema>;
 
 export const docketEventSchema = z.object({
   scheduled_date: z.string().min(1, "Date is required"),

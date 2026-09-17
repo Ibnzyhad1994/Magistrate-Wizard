@@ -15,7 +15,11 @@ const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const DEV_TOKEN_PROXY = "/__mw/google-oauth-token";
 
 const googleTokenUrl = () => {
-  if (import.meta.env.DEV && typeof window !== "undefined" && !window.magistrateWizard?.isElectron) {
+  if (
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    !window.magistrateWizard?.isElectron
+  ) {
     return DEV_TOKEN_PROXY;
   }
   return TOKEN_ENDPOINT;
@@ -55,20 +59,50 @@ export const createPkce = async () => {
   return { verifier, challenge: toBase64Url(digest) };
 };
 
+/**
+ * OAuth `state` = "<platform>.<random nonce>". The platform prefix is what
+ * the callback route already keyed on; the nonce is a fresh 128-bit value
+ * bound to this PKCE verifier and checked on the way back so a forged or
+ * replayed callback (login CSRF) cannot complete the exchange.
+ */
+export const createOAuthState = (platform: OAuthPlatform) => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return `${platform}.${toBase64Url(bytes)}`;
+};
+
+export const oauthStateMatches = (
+  expected: string | undefined,
+  received: string | null | undefined,
+) => {
+  if (!expected || !received) return false;
+  if (expected.length !== received.length) return false;
+  // Constant-time compare; the nonce is short but there is no reason to
+  // leak a prefix through early exit.
+  let diff = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    diff |= expected.charCodeAt(i) ^ received.charCodeAt(i);
+  }
+  return diff === 0;
+};
+
 export const buildGoogleAuthUrl = async (opts?: {
   platform?: OAuthPlatform;
   redirectUri?: string;
   verifier?: string;
   challenge?: string;
+  state?: string;
 }) => {
   const platform = opts?.platform ?? detectOAuthPlatform();
   const clientId = googleClientIdFor(platform);
   if (!clientId) {
     throw new Error("Google OAuth client ID is not configured for this platform.");
   }
-  const pkce = opts?.challenge && opts?.verifier
-    ? { verifier: opts.verifier, challenge: opts.challenge }
-    : await createPkce();
+  const pkce =
+    opts?.challenge && opts?.verifier
+      ? { verifier: opts.verifier, challenge: opts.challenge }
+      : await createPkce();
+  const state = opts?.state ?? createOAuthState(platform);
   const redirectUri = opts?.redirectUri ?? googleRedirectUriFor(platform);
   const url = new URL(AUTH_ENDPOINT);
   url.searchParams.set("client_id", clientId);
@@ -79,11 +113,14 @@ export const buildGoogleAuthUrl = async (opts?: {
   url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
-  url.searchParams.set("state", platform);
-  return { url: url.toString(), verifier: pkce.verifier, redirectUri, clientId, platform };
+  url.searchParams.set("state", state);
+  return { url: url.toString(), verifier: pkce.verifier, state, redirectUri, clientId, platform };
 };
 
-const tokensFromTokenResponse = (json: Record<string, unknown>, previous?: GoogleAuthTokens | null): GoogleAuthTokens => {
+const tokensFromTokenResponse = (
+  json: Record<string, unknown>,
+  previous?: GoogleAuthTokens | null,
+): GoogleAuthTokens => {
   const access = String(json.access_token ?? "");
   if (!access) throw new Error("Google did not return an access token.");
   const expiresIn = Number(json.expires_in ?? 3600);
@@ -136,7 +173,11 @@ export const refreshGoogleAccessToken = async (refreshToken: string, clientId: s
   if (!res.ok) {
     throw new Error(googleTokenError(json, "Google token refresh failed."));
   }
-  return tokensFromTokenResponse(json, { access_token: "", refresh_token: refreshToken, expiry: 0 });
+  return tokensFromTokenResponse(json, {
+    access_token: "",
+    refresh_token: refreshToken,
+    expiry: 0,
+  });
 };
 
 export const getValidAccessToken = async () => {
@@ -156,12 +197,28 @@ export const beginGoogleOAuth = async () => {
   await saveGoogleCalendarState({
     ...state,
     pkceVerifier: started.verifier,
+    oauthState: started.state,
     oauthClientId: started.clientId,
     oauthRedirectUri: started.redirectUri,
   });
 
   if (started.platform === "desktop" && window.magistrateWizard?.startGoogleOAuth) {
     const result = await window.magistrateWizard.startGoogleOAuth(started.url);
+    // The loopback server echoes Google's `state` back alongside the code
+    // (electron/main.mjs); an older preload without it fails closed.
+    const returnedState = (result as { state?: string | null }).state;
+    if (!oauthStateMatches(started.state, returnedState)) {
+      await saveGoogleCalendarState({
+        ...state,
+        pkceVerifier: undefined,
+        oauthState: undefined,
+        oauthClientId: undefined,
+        oauthRedirectUri: undefined,
+      });
+      throw new Error(
+        "Google sign-in could not be verified (state mismatch). Start Google sign-in again.",
+      );
+    }
     const tokens = await exchangeGoogleCode({
       code: result.code,
       redirectUri: result.redirectUri,
@@ -172,6 +229,7 @@ export const beginGoogleOAuth = async () => {
       ...state,
       tokens,
       pkceVerifier: undefined,
+      oauthState: undefined,
       oauthClientId: undefined,
       oauthRedirectUri: undefined,
     });
@@ -192,6 +250,20 @@ export const completeGoogleOAuthFromCallback = async (params: URLSearchParams) =
   if (!code) return false;
   const state = await loadGoogleCalendarState();
   if (!state.pkceVerifier) throw new Error("Missing PKCE verifier. Start Google sign-in again.");
+  if (!oauthStateMatches(state.oauthState, params.get("state"))) {
+    // Reject and discard the pending verifier: a callback that does not
+    // carry the nonce we issued is not one we started.
+    await saveGoogleCalendarState({
+      ...state,
+      pkceVerifier: undefined,
+      oauthState: undefined,
+      oauthClientId: undefined,
+      oauthRedirectUri: undefined,
+    });
+    throw new Error(
+      "Google sign-in could not be verified (state mismatch). Start Google sign-in again.",
+    );
+  }
   const platform = detectOAuthPlatform();
   const tokens = await exchangeGoogleCode({
     code,
@@ -203,6 +275,7 @@ export const completeGoogleOAuthFromCallback = async (params: URLSearchParams) =
     ...state,
     tokens,
     pkceVerifier: undefined,
+    oauthState: undefined,
     oauthClientId: undefined,
     oauthRedirectUri: undefined,
   });

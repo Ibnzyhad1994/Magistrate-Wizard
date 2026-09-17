@@ -1,4 +1,8 @@
-import { DEDICATED_CALENDAR_NAME, type GoogleEventLike, type GoogleEventPayload } from "@/lib/google-calendar/map-event";
+import {
+  DEDICATED_CALENDAR_NAME,
+  type GoogleEventLike,
+  type GoogleEventPayload,
+} from "@/lib/google-calendar/map-event";
 import { getValidAccessToken } from "@/lib/google-calendar/oauth";
 
 const CAL_API = "https://www.googleapis.com/calendar/v3";
@@ -11,10 +15,7 @@ export class GoogleCalendarHttpError extends Error {
   }
 }
 
-export const googleApi = async <T>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> => {
+export const googleApi = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
   const token = await getValidAccessToken();
   if (!token) throw new Error("Google Calendar is not connected.");
   const res = await fetch(`${CAL_API}${path}`, {
@@ -69,7 +70,10 @@ export const ensureDedicatedCalendarId = async (existingId: string | null) =>
         const calendar = await getCalendar(id);
         return calendar.id ?? null;
       } catch (error) {
-        if (error instanceof GoogleCalendarHttpError && (error.status === 404 || error.status === 410)) {
+        if (
+          error instanceof GoogleCalendarHttpError &&
+          (error.status === 404 || error.status === 410)
+        ) {
           return null;
         }
         throw error;
@@ -99,7 +103,11 @@ export type GoogleSyncPage = {
   nextPageToken?: string;
 };
 
-export const listGoogleChanges = (calendarId: string, syncToken?: string | null, pageToken?: string) => {
+export const listGoogleChanges = (
+  calendarId: string,
+  syncToken?: string | null,
+  pageToken?: string,
+) => {
   const params = new URLSearchParams({ showDeleted: "true" });
   if (syncToken) params.set("syncToken", syncToken);
   else params.set("maxResults", "250");

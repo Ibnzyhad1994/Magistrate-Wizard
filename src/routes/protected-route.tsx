@@ -65,9 +65,7 @@ export function ProtectedRoute({
   }
 
   if (gate === "login") {
-    return (
-      <Navigate to={ROUTES.login} state={{ from: location }} replace />
-    );
+    return <Navigate to={ROUTES.login} state={{ from: location }} replace />;
   }
 
   if (gate === "unauthorized") {

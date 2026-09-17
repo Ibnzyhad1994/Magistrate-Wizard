@@ -79,6 +79,7 @@ export function useUpdateIssueReport() {
       toast.success("Issue report updated.");
       void queryClient.invalidateQueries({ queryKey: issueReportKeys.all });
     },
+    meta: { silent: true },
     onError: () => {
       toast.error("Couldn't update the issue report.");
     },

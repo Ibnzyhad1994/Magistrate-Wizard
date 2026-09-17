@@ -28,7 +28,7 @@ import {
 } from "@/lib/validations/docket";
 import { isConcurrentEditError } from "@/lib/concurrency";
 import { NOT_SET } from "@/lib/empty-display";
-import type { DocketMatter } from "@/types/database.types";
+import type { DocketMatter } from "@/types";
 
 interface EditDocketMatterDetailsDialogProps {
   open: boolean;
@@ -61,7 +61,14 @@ export function EditDocketMatterDetailsDialog({
       matter_title: matter.matter_title,
       charge_or_issue: matter.charge_or_issue ?? "",
     });
-  }, [open, matter.case_number, matter.matter_title, matter.charge_or_issue, matter.updated_at, form]);
+  }, [
+    open,
+    matter.case_number,
+    matter.matter_title,
+    matter.charge_or_issue,
+    matter.updated_at,
+    form,
+  ]);
 
   async function onSubmit(values: DocketMatterIdentityFormValues) {
     try {
@@ -83,7 +90,7 @@ export function EditDocketMatterDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit details</DialogTitle>
           <DialogDescription>
@@ -155,9 +162,7 @@ export function EditDocketMatterDetailsDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={updateMatter.isPending}>
-                {updateMatter.isPending && (
-                  <LoadingSpinner className="text-current" size={16} />
-                )}
+                {updateMatter.isPending && <LoadingSpinner className="text-current" size={16} />}
                 Save
               </Button>
             </DialogFooter>

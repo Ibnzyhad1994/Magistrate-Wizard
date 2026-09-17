@@ -83,7 +83,10 @@ export function sanitizeExtractedText(input: string): SanitizeResult {
     // legitimate in prose: tab (0x09), line feed (0x0A), carriage
     // return (0x0D).
     const isC0Control =
-      (code >= 0x01 && code <= 0x08) || code === 0x0b || code === 0x0c || (code >= 0x0e && code <= 0x1f);
+      (code >= 0x01 && code <= 0x08) ||
+      code === 0x0b ||
+      code === 0x0c ||
+      (code >= 0x0e && code <= 0x1f);
     const isC1Control = code >= 0x7f && code <= 0x9f;
     if (isC0Control || isC1Control) {
       hadOtherControlChars = true;

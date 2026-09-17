@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
-import {
-  AUTH_SPLASH_FADE_MS,
-  AUTH_SPLASH_HOLD_MS,
-  shouldPlayAuthSplash,
-} from "@/lib/auth-splash";
+import { AUTH_SPLASH_FADE_MS, AUTH_SPLASH_HOLD_MS, shouldPlayAuthSplash } from "@/lib/auth-splash";
 
 interface AuthSplashProps {
   continueLabel: string;

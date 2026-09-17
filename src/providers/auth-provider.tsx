@@ -7,6 +7,7 @@ import { APP_NAME } from "@/lib/constants";
 import { isQueueableError } from "@/lib/offline/is-queueable-error";
 import { getCachedProfile, hydrateOfflineStore, setCachedProfile } from "@/lib/offline/store";
 import { isPasswordRecoveryUrl } from "@/lib/auth/session-policy";
+import { setSentryUser } from "@/lib/sentry";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -54,7 +55,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function init() {
       setStatus("loading");
-      await hydrateOfflineStore();
+      // Hydrating the offline store and restoring the session are
+      // independent I/O; running them one after the other put a full
+      // round of storage reads in front of the first paint for nothing.
+      const [, sessionResult] = await Promise.all([
+        hydrateOfflineStore(),
+        supabase.auth.getSession(),
+      ]);
+
+      if (!isMounted) return;
 
       // Supabase's client parses a password-recovery link's URL fragment
       // (#access_token=...&type=recovery&...) into a real session during
@@ -67,16 +76,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // its own getSession() call, independent of this store, so it still
       // works -- this only stops the app treating it as a real sign-in.
       if (isPasswordRecoveryUrl(window.location.hash, window.location.search)) {
-        if (isMounted) setSession(null);
+        setSession(null);
         return;
       }
 
       const {
         data: { session },
         error,
-      } = await supabase.auth.getSession();
-
-      if (!isMounted) return;
+      } = sessionResult;
 
       if (error) {
         toast.error("Couldn't restore your session. Please sign in again.");
@@ -85,8 +92,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setSession(session);
+      setSentryUser(session?.user ? { id: session.user.id } : null);
       if (session?.user) {
-        await loadProfile(session.user.id);
+        // Render the shell from the cached profile straight away and let
+        // the network copy reconcile in the background. Without a cache
+        // (first sign-in on this device) the profile is awaited as before
+        // so role-gated routes never flash to /unauthorized.
+        const cached = getCachedProfile(session.user.id);
+        if (cached) {
+          setProfile(cached);
+          void loadProfile(session.user.id);
+        } else {
+          await loadProfile(session.user.id);
+        }
       }
     }
 
@@ -114,6 +132,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (useAuthStore.getState().status === "locked") return;
         setSession(null);
         setProfile(null);
+        setSentryUser(null);
         return;
       }
       // TOKEN_REFRESHED (or any non-password event) must not lift the lock
@@ -121,6 +140,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Password re-auth is GoTrue SIGNED_IN.
       if (useAuthStore.getState().status === "locked" && event !== "SIGNED_IN") return;
       setSession(session);
+      setSentryUser(session.user ? { id: session.user.id } : null);
       if (session.user) {
         void loadProfile(session.user.id);
       }

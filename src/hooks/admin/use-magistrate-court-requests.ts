@@ -55,12 +55,12 @@ export function useMagistrateCourtRequestsToReview() {
       const confirmedById = new Map(
         (confirmationResult.data ?? []).map((row) => [row.request_id, row.email_confirmed]),
       );
-      return (requestsResult.data as unknown as Omit<MagistrateRequestForReview, "email_confirmed">[]).map(
-        (row) => ({
-          ...row,
-          email_confirmed: confirmedById.has(row.id) ? Boolean(confirmedById.get(row.id)) : null,
-        }),
-      );
+      return (
+        requestsResult.data as unknown as Omit<MagistrateRequestForReview, "email_confirmed">[]
+      ).map((row) => ({
+        ...row,
+        email_confirmed: confirmedById.has(row.id) ? Boolean(confirmedById.get(row.id)) : null,
+      }));
     },
   });
 }
@@ -117,6 +117,7 @@ export function useDecideMagistrateCourtRequest() {
       );
       invalidateAfterDecision(queryClient);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -142,6 +143,7 @@ export function useAdminBootstrapSelfApprove() {
       toast.success("Self-approval exception recorded and request approved.");
       invalidateAfterDecision(queryClient);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -195,6 +197,7 @@ export function useReturnUnassignedMagistrate() {
       );
       invalidateAfterDecision(queryClient);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -231,6 +234,7 @@ export function useCorrectUnassignedAccountType() {
       void queryClient.invalidateQueries({ queryKey: ["admin", "profile"] });
       void queryClient.invalidateQueries({ queryKey: ["admin", "clerk-courts"] });
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

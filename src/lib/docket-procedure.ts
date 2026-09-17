@@ -30,11 +30,7 @@ export const YES_NO_STATUSES = ["unset", "yes", "no"] as const;
 export const INFORMATION_SWORN_STATUSES = ["not_started", "done"] as const;
 export const DECISION_GRANTED_STATUSES = ["granted", "not_granted"] as const;
 
-export const WORKFLOW_PROTOCOLS = [
-  "criminal_trial",
-  "paper_committal",
-  "civil_summons",
-] as const;
+export const WORKFLOW_PROTOCOLS = ["criminal_trial", "paper_committal", "civil_summons"] as const;
 
 export const PROCEDURE_STAGES = [
   "arraignment",
@@ -329,7 +325,9 @@ export function visibleBoardColumns(
 ): BoardColumn[] {
   const protocols = new Set<WorkflowProtocol>();
   for (const row of rows) {
-    protocols.add(isWorkflowProtocol(row.workflow_protocol) ? row.workflow_protocol : "criminal_trial");
+    protocols.add(
+      isWorkflowProtocol(row.workflow_protocol) ? row.workflow_protocol : "criminal_trial",
+    );
   }
   if (protocols.size === 0) protocols.add("criminal_trial");
   return BOARD_COLUMNS.filter((column) =>
@@ -405,7 +403,10 @@ export function matchesProcedureFilters(
   if (filters.stages.length > 0 && !filters.stages.includes(currentStage(row))) {
     return false;
   }
-  if (filters.custody.length > 0 && !filters.custody.includes(row.custody_status as "on_bail" | "remanded")) {
+  if (
+    filters.custody.length > 0 &&
+    !filters.custody.includes(row.custody_status as "on_bail" | "remanded")
+  ) {
     return false;
   }
   if (filters.disclosure.length > 0 && !filters.disclosure.includes(row.disclosure_status)) {
@@ -542,33 +543,73 @@ export function appearanceHintForColumn(
   const label = procedureCellLabel(value);
   switch (column) {
     case "arraignment_status":
-      return { event_type: "Arraignment", stage_at_event: "First Appearance", notes: `Arraignment: ${label}` };
+      return {
+        event_type: "Arraignment",
+        stage_at_event: "First Appearance",
+        notes: `Arraignment: ${label}`,
+      };
     case "custody_status":
       return { event_type: "Bail", stage_at_event: "First Appearance", notes: `Custody: ${label}` };
     case "disclosure_status":
-      return { event_type: "Disclosure", stage_at_event: "Case Management", notes: `Disclosure: ${label}` };
+      return {
+        event_type: "Disclosure",
+        stage_at_event: "Case Management",
+        notes: `Disclosure: ${label}`,
+      };
     case "trial_status":
       return { event_type: "Trial", stage_at_event: "Trial", notes: `Trial: ${label}` };
     case "paper_committal_status":
-      return { event_type: "Paper Committal", stage_at_event: "Paper Committal", notes: `Paper Committal: ${label}` };
+      return {
+        event_type: "Paper Committal",
+        stage_at_event: "Paper Committal",
+        notes: `Paper Committal: ${label}`,
+      };
     case "ruling_status":
-      return { event_type: "Decision/Judgment", stage_at_event: "Decision", notes: `Ruling: ${label}` };
+      return {
+        event_type: "Decision/Judgment",
+        stage_at_event: "Decision",
+        notes: `Ruling: ${label}`,
+      };
     case "judgment_status":
-      return { event_type: "Decision/Judgment", stage_at_event: "Decision", notes: `Judgment: ${label}` };
+      return {
+        event_type: "Decision/Judgment",
+        stage_at_event: "Decision",
+        notes: `Judgment: ${label}`,
+      };
     case "sentence_status":
-      return { event_type: "Sentencing", stage_at_event: "Sentencing", notes: `Sentence: ${label}` };
+      return {
+        event_type: "Sentencing",
+        stage_at_event: "Sentencing",
+        notes: `Sentence: ${label}`,
+      };
     case "appeal_status":
       return { event_type: "Review", stage_at_event: "Enforcement", notes: `Appeal: ${label}` };
     case "information_sworn_status":
-      return { event_type: "First Appearance", stage_at_event: "Information Sworn", notes: `Information Sworn: ${label}` };
+      return {
+        event_type: "First Appearance",
+        stage_at_event: "Information Sworn",
+        notes: `Information Sworn: ${label}`,
+      };
     case "summons_served":
-      return { event_type: "Service", stage_at_event: "Summons Served", notes: `Summons Served: ${label}` };
+      return {
+        event_type: "Service",
+        stage_at_event: "Summons Served",
+        notes: `Summons Served: ${label}`,
+      };
     case "returns_of_summons":
-      return { event_type: "Service", stage_at_event: "Returns of Summons", notes: `Returns of Summons: ${label}` };
+      return {
+        event_type: "Service",
+        stage_at_event: "Returns of Summons",
+        notes: `Returns of Summons: ${label}`,
+      };
     case "civil_trial_held":
       return { event_type: "Trial", stage_at_event: "Trial", notes: `Trial: ${label}` };
     case "decision":
-      return { event_type: "Decision/Judgment", stage_at_event: "Decision", notes: `Decision: ${label}` };
+      return {
+        event_type: "Decision/Judgment",
+        stage_at_event: "Decision",
+        notes: `Decision: ${label}`,
+      };
   }
 }
 

@@ -5,12 +5,7 @@
  * surfaces so that person is not stuck with only Assign.
  */
 
-export type RosterRequestStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "cancelled"
-  | "expired";
+export type RosterRequestStatus = "pending" | "approved" | "rejected" | "cancelled" | "expired";
 
 export interface RosterRequestLike {
   id: string;

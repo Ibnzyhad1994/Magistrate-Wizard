@@ -28,10 +28,7 @@ import { ROLE_LABELS } from "@/lib/constants";
 import type { OccupiedCourtResolution } from "@/lib/occupied-court-exception";
 import { useRevokeClerkCourtAccess } from "@/hooks/clerk/use-clerk-access-review";
 
-export function PeopleCourtSheet(props: {
-  person: AdminPersonRow | null;
-  onClose: () => void;
-}) {
+export function PeopleCourtSheet(props: { person: AdminPersonRow | null; onClose: () => void }) {
   const person = props.person;
   const magistrateCourts = (person?.courts ?? []).filter((court) => court.kind === "magistrate");
   const clerkCourts = (person?.courts ?? []).filter((court) => court.kind === "clerk");
@@ -60,7 +57,9 @@ export function PeopleCourtSheet(props: {
   const [transferReason, setTransferReason] = useState("");
 
   const assignOccupied =
-    assignmentType === "regular" && Boolean(courtToAssign) && Boolean(occupiedIds?.has(courtToAssign));
+    assignmentType === "regular" &&
+    Boolean(courtToAssign) &&
+    Boolean(occupiedIds?.has(courtToAssign));
   const transferFrom = magistrateCourts.find((court) => court.assignmentId === transferFromId);
   const transferOccupied =
     Boolean(transferToId) &&
@@ -150,196 +149,86 @@ export function PeopleCourtSheet(props: {
 
             {canManageMagistrate && (
               <>
-            {neverSignedIn && (
-              <p className="rounded-sm border border-foreground/15 bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
-                This person has not signed in yet, so they do not occupy a court slot and will
-                not appear as blocking that court for someone else.
-              </p>
-            )}
+                {neverSignedIn && (
+                  <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+                    This person has not signed in yet, so they do not occupy a court slot and will
+                    not appear as blocking that court for someone else.
+                  </p>
+                )}
 
-            <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Landmark className="h-4 w-4" />
-                Current courts
-              </h3>
-              {magistrateCourts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No current magistrate sitting.</p>
-              ) : (
-                <ul className="divide-y divide-border rounded-md border border-border">
-                  {magistrateCourts.map((court) => {
-                    const typeLabel = court.assignmentType
-                      ? ASSIGNMENT_TYPE_LABEL[court.assignmentType] ?? court.assignmentType
-                      : "Primary";
-                    return (
-                      <li
-                        key={`${court.courtId}:${court.assignmentType ?? "regular"}`}
-                        className="flex items-start justify-between gap-2 px-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {court.courtName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {typeLabel}
-                            {court.occupiesPrimarySlot === false && court.assignmentType === "regular"
-                              ? " · does not occupy this court yet"
-                              : ""}
-                          </p>
-                        </div>
-                        {court.assignmentId && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setEndTarget({
-                                id: court.assignmentId!,
-                                courtName: court.courtName,
-                                kind: "magistrate",
-                              })
-                            }
+                <section className="space-y-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Landmark className="h-4 w-4" />
+                    Current courts
+                  </h3>
+                  {magistrateCourts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No current magistrate sitting.</p>
+                  ) : (
+                    <ul className="divide-y divide-border rounded-md border border-border">
+                      {magistrateCourts.map((court) => {
+                        const typeLabel = court.assignmentType
+                          ? (ASSIGNMENT_TYPE_LABEL[court.assignmentType] ?? court.assignmentType)
+                          : "Primary";
+                        return (
+                          <li
+                            key={`${court.courtId}:${court.assignmentType ?? "regular"}`}
+                            className="flex items-start justify-between gap-2 px-3 py-2"
                           >
-                            End
-                          </Button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">
+                                {court.courtName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {typeLabel}
+                                {court.occupiesPrimarySlot === false &&
+                                court.assignmentType === "regular"
+                                  ? " · does not occupy this court yet"
+                                  : ""}
+                              </p>
+                            </div>
+                            {court.assignmentId && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setEndTarget({
+                                    id: court.assignmentId!,
+                                    courtName: court.courtName,
+                                    kind: "magistrate",
+                                  })
+                                }
+                              >
+                                End
+                              </Button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
 
-            <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Plus className="h-4 w-4" />
-                Assign a court
-              </h3>
-              <div className="space-y-1.5">
-                <Label htmlFor="people-assign-court">Court</Label>
-                <Select
-                  id="people-assign-court"
-                  value={courtToAssign}
-                  onChange={(e) => {
-                    setCourtToAssign(e.target.value);
-                    setAssignResolution("");
-                  }}
-                >
-                  <option value="">
-                    {assignableCourts.length === 0 ? "No further active courts" : "Select a court…"}
-                  </option>
-                  {assignableCourts.map((court) => (
-                    <option key={court.id} value={court.id}>
-                      {court.name}
-                      {occupiedIds?.has(court.id) ? " (occupied)" : ""}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="people-assign-type">Sitting</Label>
-                <Select
-                  id="people-assign-type"
-                  value={assignmentType}
-                  onChange={(e) => {
-                    setAssignmentType(e.target.value as CourtAssignmentType);
-                    setAssignResolution("");
-                  }}
-                >
-                  {(["regular", "acting", "relief"] as const).map((type) => (
-                    <option key={type} value={type}>
-                      {ASSIGNMENT_TYPE_LABEL[type]}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              {assignOccupied && (
-                <OccupiedCourtResolutionFields
-                  name="people-assign-resolution"
-                  value={assignResolution}
-                  onChange={setAssignResolution}
-                />
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="people-assign-reason">Reason (optional)</Label>
-                <Textarea
-                  id="people-assign-reason"
-                  value={assignReason}
-                  onChange={(e) => setAssignReason(e.target.value)}
-                  placeholder="Recorded on the assignment if you replace or transfer"
-                />
-              </div>
-              <Button
-                size="sm"
-                disabled={
-                  !courtToAssign ||
-                  createAssignment.isPending ||
-                  (assignOccupied && !assignResolution)
-                }
-                onClick={() => {
-                  if (!courtToAssign) return;
-                  createAssignment.mutate(
-                    {
-                      courtId: courtToAssign,
-                      assignmentType,
-                      ifOccupied: assignOccupied
-                        ? (assignResolution as OccupiedIfNeeded)
-                        : undefined,
-                      reason: assignReason.trim() || undefined,
-                    },
-                    { onSuccess: resetAssign },
-                  );
-                }}
-              >
-                Assign
-              </Button>
-            </section>
-
-            <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <ArrowRightLeft className="h-4 w-4" />
-                Transfer to another court
-              </h3>
-              {magistrateCourts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Assign a court first, then you can transfer this magistrate.
-                </p>
-              ) : (
-                <>
+                <section className="space-y-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Plus className="h-4 w-4" />
+                    Assign a court
+                  </h3>
                   <div className="space-y-1.5">
-                    <Label htmlFor="people-transfer-from">From</Label>
+                    <Label htmlFor="people-assign-court">Court</Label>
                     <Select
-                      id="people-transfer-from"
-                      value={transferFromId}
+                      id="people-assign-court"
+                      value={courtToAssign}
                       onChange={(e) => {
-                        setTransferFromId(e.target.value);
-                        setTransferToId("");
-                        setTransferResolution("");
-                      }}
-                    >
-                      <option value="">Select current sitting…</option>
-                      {magistrateCourts.map((court) =>
-                        court.assignmentId ? (
-                          <option key={court.assignmentId} value={court.assignmentId}>
-                            {court.courtName}
-                          </option>
-                        ) : null,
-                      )}
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="people-transfer-to">To</Label>
-                    <Select
-                      id="people-transfer-to"
-                      value={transferToId}
-                      disabled={!transferFromId}
-                      onChange={(e) => {
-                        setTransferToId(e.target.value);
-                        setTransferResolution("");
+                        setCourtToAssign(e.target.value);
+                        setAssignResolution("");
                       }}
                     >
                       <option value="">
-                        {!transferFromId ? "Select a current sitting first" : "Select destination…"}
+                        {assignableCourts.length === 0
+                          ? "No further active courts"
+                          : "Select a court…"}
                       </option>
-                      {transferDestinations.map((court) => (
+                      {assignableCourts.map((court) => (
                         <option key={court.id} value={court.id}>
                           {court.name}
                           {occupiedIds?.has(court.id) ? " (occupied)" : ""}
@@ -347,50 +236,165 @@ export function PeopleCourtSheet(props: {
                       ))}
                     </Select>
                   </div>
-                  {transferOccupied && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="people-assign-type">Sitting</Label>
+                    <Select
+                      id="people-assign-type"
+                      value={assignmentType}
+                      onChange={(e) => {
+                        setAssignmentType(e.target.value as CourtAssignmentType);
+                        setAssignResolution("");
+                      }}
+                    >
+                      {(["regular", "acting", "relief"] as const).map((type) => (
+                        <option key={type} value={type}>
+                          {ASSIGNMENT_TYPE_LABEL[type]}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  {assignOccupied && (
                     <OccupiedCourtResolutionFields
-                      name="people-transfer-resolution"
-                      value={transferResolution}
-                      onChange={setTransferResolution}
-                      legend="The destination court already has a signed-in primary magistrate."
+                      name="people-assign-resolution"
+                      value={assignResolution}
+                      onChange={setAssignResolution}
                     />
                   )}
                   <div className="space-y-1.5">
-                    <Label htmlFor="people-transfer-reason">Reason (optional)</Label>
+                    <Label htmlFor="people-assign-reason">Reason (optional)</Label>
                     <Textarea
-                      id="people-transfer-reason"
-                      value={transferReason}
-                      onChange={(e) => setTransferReason(e.target.value)}
+                      id="people-assign-reason"
+                      value={assignReason}
+                      onChange={(e) => setAssignReason(e.target.value)}
+                      placeholder="Recorded on the assignment if you replace or transfer"
                     />
                   </div>
                   <Button
                     size="sm"
                     disabled={
-                      !transferFromId ||
-                      !transferToId ||
-                      transferAssignment.isPending ||
-                      (transferOccupied && !transferResolution)
+                      !courtToAssign ||
+                      createAssignment.isPending ||
+                      (assignOccupied && !assignResolution)
                     }
                     onClick={() => {
-                      if (!transferFromId || !transferToId) return;
-                      transferAssignment.mutate(
+                      if (!courtToAssign) return;
+                      createAssignment.mutate(
                         {
-                          assignmentId: transferFromId,
-                          newCourtId: transferToId,
-                          ifOccupied: transferOccupied
-                            ? (transferResolution as OccupiedIfNeeded)
+                          courtId: courtToAssign,
+                          assignmentType,
+                          ifOccupied: assignOccupied
+                            ? (assignResolution as OccupiedIfNeeded)
                             : undefined,
-                          reason: transferReason.trim() || undefined,
+                          reason: assignReason.trim() || undefined,
                         },
-                        { onSuccess: resetTransfer },
+                        { onSuccess: resetAssign },
                       );
                     }}
                   >
-                    Transfer
+                    Assign
                   </Button>
-                </>
-              )}
-            </section>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Transfer to another court
+                  </h3>
+                  {magistrateCourts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Assign a court first, then you can transfer this magistrate.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="people-transfer-from">From</Label>
+                        <Select
+                          id="people-transfer-from"
+                          value={transferFromId}
+                          onChange={(e) => {
+                            setTransferFromId(e.target.value);
+                            setTransferToId("");
+                            setTransferResolution("");
+                          }}
+                        >
+                          <option value="">Select current sitting…</option>
+                          {magistrateCourts.map((court) =>
+                            court.assignmentId ? (
+                              <option key={court.assignmentId} value={court.assignmentId}>
+                                {court.courtName}
+                              </option>
+                            ) : null,
+                          )}
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="people-transfer-to">To</Label>
+                        <Select
+                          id="people-transfer-to"
+                          value={transferToId}
+                          disabled={!transferFromId}
+                          onChange={(e) => {
+                            setTransferToId(e.target.value);
+                            setTransferResolution("");
+                          }}
+                        >
+                          <option value="">
+                            {!transferFromId
+                              ? "Select a current sitting first"
+                              : "Select destination…"}
+                          </option>
+                          {transferDestinations.map((court) => (
+                            <option key={court.id} value={court.id}>
+                              {court.name}
+                              {occupiedIds?.has(court.id) ? " (occupied)" : ""}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      {transferOccupied && (
+                        <OccupiedCourtResolutionFields
+                          name="people-transfer-resolution"
+                          value={transferResolution}
+                          onChange={setTransferResolution}
+                          legend="The destination court already has a signed-in primary magistrate."
+                        />
+                      )}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="people-transfer-reason">Reason (optional)</Label>
+                        <Textarea
+                          id="people-transfer-reason"
+                          value={transferReason}
+                          onChange={(e) => setTransferReason(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={
+                          !transferFromId ||
+                          !transferToId ||
+                          transferAssignment.isPending ||
+                          (transferOccupied && !transferResolution)
+                        }
+                        onClick={() => {
+                          if (!transferFromId || !transferToId) return;
+                          transferAssignment.mutate(
+                            {
+                              assignmentId: transferFromId,
+                              newCourtId: transferToId,
+                              ifOccupied: transferOccupied
+                                ? (transferResolution as OccupiedIfNeeded)
+                                : undefined,
+                              reason: transferReason.trim() || undefined,
+                            },
+                            { onSuccess: resetTransfer },
+                          );
+                        }}
+                      >
+                        Transfer
+                      </Button>
+                    </>
+                  )}
+                </section>
               </>
             )}
           </div>

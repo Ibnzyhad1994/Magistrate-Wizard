@@ -9,6 +9,7 @@ import { Sparkline, StageLedger } from "@/components/dashboard/stage-ledger";
 import { DashboardFileList } from "@/components/dashboard/dashboard-file-list";
 import { DashboardFolio, DashboardKicker } from "@/components/dashboard/dashboard-folio";
 import { useAuth } from "@/hooks/use-auth";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { useDocketMatterBoard } from "@/hooks/docket/use-docket-matters";
 import {
   useDashboardEventPulse,
@@ -19,7 +20,10 @@ import {
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { useCallovers } from "@/hooks/docket/use-callovers";
 import { useDocketCapacitySettings } from "@/hooks/docket/use-docket-capacity";
-import { useClerkAccessRequestsToReview, useOrphanedClerkAccessRequests } from "@/hooks/clerk/use-clerk-access-review";
+import {
+  useClerkAccessRequestsToReview,
+  useOrphanedClerkAccessRequests,
+} from "@/hooks/clerk/use-clerk-access-review";
 import { useIssueReports } from "@/hooks/admin/use-issue-reports";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { usePendingHearings } from "@/hooks/offline/use-pending-hearings";
@@ -60,7 +64,8 @@ export default function DashboardPage() {
   const isClerk = role === "clerk";
   const isAdmin = role === "admin";
   const today = getLocalDateOnly();
-  const weekDates = daysOfWeek(weekStartSunday(today));
+  usePageTitle("Dashboard");
+  const weekDates = useMemo(() => daysOfWeek(weekStartSunday(today)), [today]);
   const pulseFrom = addDaysIso(today, -90);
   const pulseTo = addDaysIso(today, 13);
 
@@ -87,55 +92,80 @@ export default function DashboardPage() {
   const pendingHearings = usePendingHearings();
   const capacitySettings = useDocketCapacitySettings();
 
-  const board = boardQuery.data ?? [];
-  const boardRows: BoardInsightRow[] = board.map((row) => ({
-    id: row.id,
-    status: row.status,
-    case_number: row.case_number,
-    matter_title: row.matter_title,
-    next_appearance: row.next_appearance,
-    procedure_stage: row.procedure_stage,
-    workflow_protocol: row.workflow_protocol,
-    ruling_status: row.ruling_status,
-    judgment_status: row.judgment_status,
-    has_ruling_document: row.has_ruling_document,
-    has_judgment_document: row.has_judgment_document,
-    created_at: row.created_at,
-  }));
-  const matterIds = boardRows.map((row) => row.id);
-  const partiesQuery = useDashboardPartyPresence(matterIds, { enabled: operational && matterIds.length > 0 });
+  // Derived collections are memoised so the insight/file memos below see
+  // stable references between renders (react-hooks/exhaustive-deps).
+  const board = useMemo(() => boardQuery.data ?? [], [boardQuery.data]);
+  const boardRows = useMemo<BoardInsightRow[]>(
+    () =>
+      board.map((row) => ({
+        id: row.id,
+        status: row.status,
+        case_number: row.case_number,
+        matter_title: row.matter_title,
+        next_appearance: row.next_appearance,
+        procedure_stage: row.procedure_stage,
+        workflow_protocol: row.workflow_protocol,
+        ruling_status: row.ruling_status,
+        judgment_status: row.judgment_status,
+        has_ruling_document: row.has_ruling_document,
+        has_judgment_document: row.has_judgment_document,
+        created_at: row.created_at,
+      })),
+    [board],
+  );
+  const matterIds = useMemo(() => boardRows.map((row) => row.id), [boardRows]);
+  const partiesQuery = useDashboardPartyPresence(matterIds, {
+    enabled: operational && matterIds.length > 0,
+  });
 
   const workload = workloadFromBoard(boardRows);
-  const events = eventsQuery.data ?? [];
+  const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
   const overdueCount = events.filter((event) => isOverdueScheduled(event, today)).length;
   const spark = appearancesByDay(events, today, 14);
-  const mattersWithoutParties = operational
-    ? boardRows
-        .filter((row) => row.status === "active")
-        .filter((row) => partiesQuery.data && !partiesQuery.data.has(row.id))
-        .map((row) => row.id)
-    : [];
+  const partiesPresent = partiesQuery.data;
+  const mattersWithoutParties = useMemo(
+    () =>
+      operational
+        ? boardRows
+            .filter((row) => row.status === "active")
+            .filter((row) => partiesPresent && !partiesPresent.has(row.id))
+            .map((row) => row.id)
+        : [],
+    [operational, boardRows, partiesPresent],
+  );
 
   const pendingClerkReviews = isClerk
     ? 0
     : (clerkReviewQuery.data ?? []).filter((row) => row.status === "pending").length;
   const openIssues = isAdmin
-    ? (issuesQuery.data ?? []).filter((row) => row.status === "open" || row.status === "in_progress").length
+    ? (issuesQuery.data ?? []).filter(
+        (row) => row.status === "open" || row.status === "in_progress",
+      ).length
     : 0;
-  const staleDrafts =
-    !isClerk
-      ? (judgmentsQuery.data ?? [])
-          .filter((row) => row.owner_id === user?.id && row.status === "draft")
-          .map((row) => ({ id: row.id, title: row.title, updatedAt: row.updated_at }))
-      : [];
+  const userId = user?.id;
+  const judgmentRows = judgmentsQuery.data;
+  const staleDrafts = useMemo(
+    () =>
+      !isClerk
+        ? (judgmentRows ?? [])
+            .filter((row) => row.owner_id === userId && row.status === "draft")
+            .map((row) => ({ id: row.id, title: row.title, updatedAt: row.updated_at }))
+        : [],
+    [isClerk, judgmentRows, userId],
+  );
 
-  const callovers = !isClerk
-    ? (calloversQuery.data ?? []).map((row) => ({
-        id: row.id,
-        status: row.status,
-        callover_date: row.callover_date,
-      }))
-    : [];
+  const calloverRows = calloversQuery.data;
+  const callovers = useMemo(
+    () =>
+      !isClerk
+        ? (calloverRows ?? []).map((row) => ({
+            id: row.id,
+            status: row.status,
+            callover_date: row.callover_date,
+          }))
+        : [],
+    [isClerk, calloverRows],
+  );
 
   const leftoverRetainedIds = useMemo(() => {
     if (filesFocus !== "retained") return [] as string[];
@@ -180,10 +210,17 @@ export default function DashboardPage() {
     filesFocus === focus ? ROUTES.dashboard : dashboardFilesHref(focus);
 
   const sitsCourt = (myCourts?.length ?? 0) > 0;
-  const capacityDays =
-    sitsCourt && !capacitySettings.isPending && (capacitySettings.data?.length ?? 0) === 0
-      ? weekDates.filter((date) => date >= today).slice(0, 5).map((date) => ({ date, band: "not_set" as const }))
-      : [];
+  const capacityUnset = !capacitySettings.isPending && (capacitySettings.data?.length ?? 0) === 0;
+  const capacityDays = useMemo(
+    () =>
+      sitsCourt && capacityUnset
+        ? weekDates
+            .filter((date) => date >= today)
+            .slice(0, 5)
+            .map((date) => ({ date, band: "not_set" as const }))
+        : [],
+    [sitsCourt, capacityUnset, weekDates, today],
+  );
 
   const insights = useMemo(
     () =>
@@ -241,7 +278,10 @@ export default function DashboardPage() {
             <p className="mt-3 font-brand text-sm tabular-nums tracking-wide text-muted-foreground">
               {todayLabel}
             </p>
-            <h1 className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground" data-tour="page-dashboard">
+            <h1
+              className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground"
+              data-tour="page-dashboard"
+            >
               Dashboard
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -273,7 +313,10 @@ export default function DashboardPage() {
               {todayLabel}
               {sittingLine ? ` · ${sittingLine}` : ""}
             </p>
-            <h1 className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground" data-tour="page-dashboard">
+            <h1
+              className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground"
+              data-tour="page-dashboard"
+            >
               Dashboard
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -385,7 +428,7 @@ export default function DashboardPage() {
                 <SuggestionList insights={insights} isPending={boardQuery.isPending} />
                 <AppearanceTimeline events={events} today={today} />
               </div>
-              <aside className="space-y-12 lg:col-span-5 lg:border-l lg:border-foreground/15 lg:pl-8">
+              <aside className="space-y-12 lg:col-span-5 lg:border-l lg:border-border lg:pl-8">
                 <Sparkline points={spark} />
                 <StageLedger counts={workload.byStage} />
               </aside>

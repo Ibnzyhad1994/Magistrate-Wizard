@@ -16,7 +16,7 @@ import {
 } from "@/lib/docket-protocols";
 import { getDocumentDownloadUrl, useDocuments, useUploadDocument } from "@/hooks/use-documents";
 import { getErrorMessage } from "@/lib/utils";
-import type { DocketMatter, Json, TablesUpdate } from "@/types/database.types";
+import type { DocketMatter, Json, TablesUpdate } from "@/types";
 
 const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgment">> = {
   ruling_status: "ruling",
@@ -64,7 +64,8 @@ export function DocketStageStrip({
       expectedUpdatedAt: matter.updated_at,
       patchValues: boardColumnPatch(column, next, categoryName),
       undoValues: boardColumnPatch(column, previous, categoryName),
-      patch: (values, expectedUpdatedAt) => onPatch(values as TablesUpdate<"docket_matters">, expectedUpdatedAt),
+      patch: (values, expectedUpdatedAt) =>
+        onPatch(values as TablesUpdate<"docket_matters">, expectedUpdatedAt),
       onLogAppearance,
     });
   }
@@ -111,10 +112,10 @@ export function DocketStageStrip({
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">
-          Where this file is. Click a cell to record the result. Outcome, Next
-          date, and Hearing progress sit on this Overview. Ruling and Judgment
-          cells can also attach the actual document, separate from the
-          Judgments tab, which is for a magistrate's own written judgments.
+          Where this file is. Click a cell to record the result. Outcome, Next date, and Hearing
+          progress sit on this Overview. Ruling and Judgment cells can also attach the actual
+          document, separate from the Judgments tab, which is for a magistrate's own written
+          judgments.
         </p>
         <ProcedureStageGrid
           layout="overview"

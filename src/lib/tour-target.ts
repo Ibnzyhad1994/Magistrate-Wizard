@@ -64,7 +64,9 @@ export const resolveTourTarget = async (step: WalkthroughStep): Promise<HTMLElem
 };
 
 export const readFirstMatterHref = (): string | null => {
-  const nodes = document.querySelectorAll<HTMLAnchorElement>(`a[data-tour="${FIRST_MATTER_TOUR_ID}"]`);
+  const nodes = document.querySelectorAll<HTMLAnchorElement>(
+    `a[data-tour="${FIRST_MATTER_TOUR_ID}"]`,
+  );
   const match = Array.from(nodes).find((el) => {
     const rect = el.getBoundingClientRect();
     return rect.width > 2 && rect.height > 2 && Boolean(el.getAttribute("href"));
@@ -90,17 +92,29 @@ export const pickTourFocus = (target: HTMLElement): HTMLElement => {
 };
 
 /** Use the painted text box so a full-width heading still rings the words. */
-export const tightTourBox = (el: HTMLElement): { top: number; left: number; width: number; height: number } => {
+export const tightTourBox = (
+  el: HTMLElement,
+): { top: number; left: number; width: number; height: number } => {
   const fallback = el.getBoundingClientRect();
   const tag = el.tagName;
   if (tag !== "H1" && tag !== "H2" && tag !== "H3") {
-    return { top: fallback.top, left: fallback.left, width: fallback.width, height: fallback.height };
+    return {
+      top: fallback.top,
+      left: fallback.left,
+      width: fallback.width,
+      height: fallback.height,
+    };
   }
   const range = document.createRange();
   range.selectNodeContents(el);
   const rects = Array.from(range.getClientRects()).filter(isUsableBox);
   if (rects.length === 0) {
-    return { top: fallback.top, left: fallback.left, width: fallback.width, height: fallback.height };
+    return {
+      top: fallback.top,
+      left: fallback.left,
+      width: fallback.width,
+      height: fallback.height,
+    };
   }
   const top = Math.min(...rects.map((box) => box.top));
   const left = Math.min(...rects.map((box) => box.left));

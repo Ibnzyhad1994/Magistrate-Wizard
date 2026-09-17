@@ -117,7 +117,8 @@ export function LegislationPdfUploadPanel({
     }
   }
 
-  const jurisdictionName = (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? "";
+  const jurisdictionName =
+    (jurisdictions ?? []).find((j) => j.id === fields.jurisdiction_id)?.name ?? "";
   const canSubmit =
     fields.code.trim() && fields.title.trim() && fields.jurisdiction_id && file && !analyzing;
 
@@ -157,7 +158,10 @@ export function LegislationPdfUploadPanel({
           <Input value={fields.title} onChange={(e) => setField("title", e.target.value)} />
         </Field>
         <Field label="Short title">
-          <Input value={fields.short_title} onChange={(e) => setField("short_title", e.target.value)} />
+          <Input
+            value={fields.short_title}
+            onChange={(e) => setField("short_title", e.target.value)}
+          />
         </Field>
         <JurisdictionField
           value={fields.jurisdiction_id || null}
@@ -165,13 +169,22 @@ export function LegislationPdfUploadPanel({
           jurisdictions={jurisdictions ?? []}
         />
         <Field label="Document type" hint="e.g. Act, Regulations, Rules, Order">
-          <Input value={fields.instrument_type} onChange={(e) => setField("instrument_type", e.target.value)} />
+          <Input
+            value={fields.instrument_type}
+            onChange={(e) => setField("instrument_type", e.target.value)}
+          />
         </Field>
         <Field label="Act number">
-          <Input value={fields.act_number} onChange={(e) => setField("act_number", e.target.value)} />
+          <Input
+            value={fields.act_number}
+            onChange={(e) => setField("act_number", e.target.value)}
+          />
         </Field>
         <Field label="Chapter number">
-          <Input value={fields.chapter_number} onChange={(e) => setField("chapter_number", e.target.value)} />
+          <Input
+            value={fields.chapter_number}
+            onChange={(e) => setField("chapter_number", e.target.value)}
+          />
         </Field>
         <Field label="Enactment year">
           <Input
@@ -181,12 +194,19 @@ export function LegislationPdfUploadPanel({
           />
         </Field>
         <Field label="Effective date">
-          <DateOnlyInput value={fields.effective_date} onChange={(v) => setField("effective_date", v)} />
+          <DateOnlyInput
+            value={fields.effective_date}
+            onChange={(v) => setField("effective_date", v)}
+          />
         </Field>
       </div>
 
       <Field label="Description or administrative note (optional)">
-        <Textarea value={fields.summary} onChange={(e) => setField("summary", e.target.value)} rows={3} />
+        <Textarea
+          value={fields.summary}
+          onChange={(e) => setField("summary", e.target.value)}
+          rows={3}
+        />
       </Field>
 
       <div className="space-y-2">
@@ -223,9 +243,7 @@ export function LegislationPdfUploadPanel({
                 : ""}
           </p>
         )}
-        {!file && (
-          <p className="text-xs text-muted-foreground">{PDF_ONLY_MESSAGE}</p>
-        )}
+        {!file && <p className="text-xs text-muted-foreground">{PDF_ONLY_MESSAGE}</p>}
       </div>
 
       <div className="flex justify-end">

@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { LEGAL_TAXONOMY_TOPICS } from "@/lib/legal-taxonomy";
 
 interface TagInputProps {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -25,6 +26,7 @@ interface TagInputProps {
  * support for free.
  */
 export function TagInput({
+  id,
   value,
   onChange,
   onSubmit,
@@ -36,6 +38,7 @@ export function TagInput({
   return (
     <>
       <Input
+        id={id}
         list={listId}
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -46,7 +47,7 @@ import { procedureStageLabel } from "@/lib/docket-procedure";
 import { matterProtocolStage } from "@/lib/docket-protocols";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
-import type { DocketEvent, DocketMatter } from "@/types/database.types";
+import type { DocketEvent, DocketMatter } from "@/types";
 
 /** A "hearing progress" entry is any docket_events row where at least one witness field has been recorded — the same table the Events tab reads, filtered/presented for trial-narrative purposes rather than scheduling logistics. */
 function hasProgressData(e: DocketEvent): boolean {
@@ -176,21 +177,38 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                 <SummaryItem label="Hearings" value={String(summary.hearings)} />
                 <SummaryItem
                   label="Witnesses completed"
-                  value={summary.witnessesCompleted != null ? String(summary.witnessesCompleted) : "Not recorded"}
+                  value={
+                    summary.witnessesCompleted != null
+                      ? String(summary.witnessesCompleted)
+                      : "Not recorded"
+                  }
                 />
                 <SummaryItem
                   label="Currently partly heard"
-                  value={summary.currentlyPartlyHeard != null ? String(summary.currentlyPartlyHeard) : "Not recorded"}
+                  value={
+                    summary.currentlyPartlyHeard != null
+                      ? String(summary.currentlyPartlyHeard)
+                      : "Not recorded"
+                  }
                 />
                 <SummaryItem
                   label="Witnesses remaining"
-                  value={summary.witnessesRemaining != null ? String(summary.witnessesRemaining) : "Not recorded"}
+                  value={
+                    summary.witnessesRemaining != null
+                      ? String(summary.witnessesRemaining)
+                      : "Not recorded"
+                  }
                 />
                 <SummaryItem
                   label="Last evidence date"
-                  value={summary.lastEvidenceDate ? formatDate(summary.lastEvidenceDate) : "Not recorded"}
+                  value={
+                    summary.lastEvidenceDate ? formatDate(summary.lastEvidenceDate) : "Not recorded"
+                  }
                 />
-                <SummaryItem label="Next date" value={nextDate ? formatDate(nextDate) : "Not recorded"} />
+                <SummaryItem
+                  label="Next date"
+                  value={nextDate ? formatDate(nextDate) : "Not recorded"}
+                />
               </div>
             )}
 
@@ -212,11 +230,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
             ) : (
               <div className="space-y-3">
                 {allAppearances.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className={`rounded-md border border-border p-3 ${canEdit ? "cursor-pointer hover:bg-muted/40" : ""}`}
-                    onClick={canEdit ? () => setDialogEntry(entry) : undefined}
-                  >
+                  <div key={entry.id} className="rounded-md border border-border p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-foreground">
                         {formatDate(entry.scheduled_date)}
@@ -237,14 +251,30 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                             ? "Heard / Adjourned"
                             : "Rescheduled"}
                       </span>
+                      {canEdit && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="ml-auto h-7 px-2 text-xs"
+                          onClick={() => setDialogEntry(entry)}
+                          aria-label={`Edit hearing progress for ${formatDate(entry.scheduled_date)}`}
+                        >
+                          Edit
+                        </Button>
+                      )}
                     </div>
                     {!hasProgressData(entry) && !entry.outcome_at_event && !entry.notes ? (
-                      <p className="mt-1 text-xs italic text-muted-foreground">No proceedings details recorded.</p>
+                      <p className="mt-1 text-xs italic text-muted-foreground">
+                        No proceedings details recorded.
+                      </p>
                     ) : (
                       <>
                         {hasProgressData(entry) && (
                           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                            {entry.witnesses_called != null && <span>Witnesses called: {entry.witnesses_called}</span>}
+                            {entry.witnesses_called != null && (
+                              <span>Witnesses called: {entry.witnesses_called}</span>
+                            )}
                             {entry.witnesses_completed != null && (
                               <span>Completed evidence: {entry.witnesses_completed}</span>
                             )}
@@ -257,9 +287,13 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                           </div>
                         )}
                         {entry.outcome_at_event && (
-                          <p className="mt-1 text-sm text-muted-foreground">{entry.outcome_at_event}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {entry.outcome_at_event}
+                          </p>
                         )}
-                        {entry.notes && <p className="mt-0.5 text-sm text-muted-foreground">{entry.notes}</p>}
+                        {entry.notes && (
+                          <p className="mt-0.5 text-sm text-muted-foreground">{entry.notes}</p>
+                        )}
                       </>
                     )}
                   </div>
@@ -332,15 +366,21 @@ function HearingProgressDialog({
       scheduled_date: entry?.scheduled_date ?? defaultDate,
       stage_at_event: entry?.stage_at_event ?? defaultStage,
       witnesses_called: entry?.witnesses_called != null ? String(entry.witnesses_called) : "",
-      witnesses_completed: entry?.witnesses_completed != null ? String(entry.witnesses_completed) : "",
-      witnesses_partly_heard: entry?.witnesses_partly_heard != null ? String(entry.witnesses_partly_heard) : "",
-      witnesses_remaining: entry?.witnesses_remaining != null ? String(entry.witnesses_remaining) : "",
+      witnesses_completed:
+        entry?.witnesses_completed != null ? String(entry.witnesses_completed) : "",
+      witnesses_partly_heard:
+        entry?.witnesses_partly_heard != null ? String(entry.witnesses_partly_heard) : "",
+      witnesses_remaining:
+        entry?.witnesses_remaining != null ? String(entry.witnesses_remaining) : "",
       outcome_at_event: entry?.outcome_at_event ?? "",
       notes: entry?.notes ?? "",
     },
   });
 
-  async function saveNextDateIfSet(acknowledgeOverride = false, overrideReason: string | null = null) {
+  async function saveNextDateIfSet(
+    acknowledgeOverride = false,
+    overrideReason: string | null = null,
+  ) {
     if (!nextDateValue) return true; // nothing to do — not an error
     const result = await setNextDate.mutateAsync({
       docketMatterId: matterId,
@@ -393,9 +433,16 @@ function HearingProgressDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent
+        preventDismissWhenDirty={form.formState.isDirty}
+        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
+      >
         <DialogHeader>
           <DialogTitle>{entry ? "Edit hearing progress" : "Record hearing progress"}</DialogTitle>
+          <DialogDescription>
+            Witness numbers, sitting notes and the outcome for this hearing date. Only the fields
+            you fill in are saved.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -493,8 +540,8 @@ function HearingProgressDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave any of the above blank if not known. A blank field is kept as "not recorded", never assumed to
-              be zero.
+              Leave any of the above blank if not known. A blank field is kept as "not recorded",
+              never assumed to be zero.
             </p>
 
             <FormField
@@ -504,7 +551,11 @@ function HearingProgressDialog({
                 <FormItem>
                   <FormLabel>Witnesses / details (optional)</FormLabel>
                   <FormControl>
-                    <Textarea rows={2} placeholder="e.g. PW1 John Thomas: completed; PW2 Mary Singh: partly heard" {...field} />
+                    <Textarea
+                      rows={2}
+                      placeholder="e.g. PW1 John Thomas: completed; PW2 Mary Singh: partly heard"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -528,14 +579,20 @@ function HearingProgressDialog({
             <div className="space-y-2 rounded-md border border-border p-3">
               <p className="text-xs font-medium text-foreground">Next date (optional)</p>
               <p className="text-xs text-muted-foreground">
-                If the matter was adjourned to a new date, set it here, same as setting it from the Docket board.
+                If the matter was adjourned to a new date, set it here, same as setting it from the
+                Docket board.
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <DateOnlyInput value={nextDateValue} onChange={setNextDateValue} aria-label="Next date" />
+                <DateOnlyInput
+                  value={nextDateValue}
+                  onChange={setNextDateValue}
+                  aria-label="Next date"
+                />
                 <Select
                   value={nextDateCategoryId}
                   onChange={(e) => setNextDateCategoryId(e.target.value)}
                   disabled={!nextDateValue}
+                  aria-label="Matter category for the next date"
                 >
                   <option value="">No category (not capacity-checked)</option>
                   {(categories ?? []).map((c) => (

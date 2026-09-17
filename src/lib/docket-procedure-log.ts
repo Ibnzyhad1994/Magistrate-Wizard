@@ -1,8 +1,5 @@
 import { toast } from "sonner";
-import {
-  appearanceHintForColumn,
-  type ProcedureColumnKey,
-} from "@/lib/docket-procedure";
+import { appearanceHintForColumn, type ProcedureColumnKey } from "@/lib/docket-procedure";
 
 export type ProcedureAppearanceHint = {
   event_type: string;
@@ -46,10 +43,7 @@ export async function logProcedurePatch(args: {
   previous: string;
   next: string;
   expectedUpdatedAt: string | null;
-  patch: (
-    values: ProcedurePatchValues,
-    expectedUpdatedAt: string | null,
-  ) => Promise<unknown>;
+  patch: (values: ProcedurePatchValues, expectedUpdatedAt: string | null) => Promise<unknown>;
   onLogAppearance: (hint: ProcedureAppearanceHint) => void;
   patchValues?: ProcedurePatchValues;
   undoValues?: ProcedurePatchValues;

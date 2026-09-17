@@ -9,13 +9,7 @@ import {
  * Extra copy behind a tap target. Hover tooltips fail on a phone; this
  * opens on click and stays until the magistrate taps away.
  */
-export function DetailsHint({
-  label,
-  details,
-}: {
-  label: string;
-  details: string;
-}) {
+export function DetailsHint({ label, details }: { label: string; details: string }) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -30,7 +24,7 @@ export function DetailsHint({
       <DropdownMenuContent
         align="start"
         collisionPadding={12}
-        className="z-[80] max-w-[min(18rem,calc(100vw-1.5rem))] border-border bg-card p-3 text-xs leading-relaxed text-foreground shadow-md"
+        className="z-hint max-w-[min(18rem,calc(100vw-1.5rem))] border-border bg-card p-3 text-xs leading-relaxed text-foreground shadow-md"
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
         {details}

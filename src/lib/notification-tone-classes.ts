@@ -1,4 +1,4 @@
-import type { NotificationTone } from "@/lib/notifications"
+import type { NotificationTone } from "@/lib/notifications";
 
 /**
  * Tailwind classes for each notification tone, shared by the bell's peek
@@ -12,19 +12,15 @@ import type { NotificationTone } from "@/lib/notifications"
  * unchanged in light and dark.
  */
 export const NOTIFICATION_TONE_ACCENT: Record<NotificationTone, string> = {
-  action: "bg-[hsl(var(--notice-action))]",
-  granted: "bg-[hsl(var(--notice-granted))]",
-  revoked: "bg-[hsl(var(--notice-revoked))]",
-  outcome: "bg-[hsl(var(--notice-outcome))]",
-}
+  action: "bg-notice-action",
+  granted: "bg-notice-granted",
+  revoked: "bg-notice-revoked",
+  outcome: "bg-notice-outcome",
+};
 
 export const NOTIFICATION_TONE_BADGE: Record<NotificationTone, string> = {
-  action:
-    "border-[hsl(var(--notice-action))]/40 bg-[hsl(var(--notice-action))]/15 text-[hsl(var(--notice-action))]",
-  granted:
-    "border-[hsl(var(--notice-granted))]/40 bg-[hsl(var(--notice-granted))]/15 text-[hsl(var(--notice-granted))]",
-  revoked:
-    "border-[hsl(var(--notice-revoked))]/40 bg-[hsl(var(--notice-revoked))]/15 text-[hsl(var(--notice-revoked))]",
-  outcome:
-    "border-[hsl(var(--notice-outcome))]/40 bg-[hsl(var(--notice-outcome))]/15 text-[hsl(var(--notice-outcome))]",
-}
+  action: "border-notice-action/40 bg-notice-action/15 text-notice-action",
+  granted: "border-notice-granted/40 bg-notice-granted/15 text-notice-granted",
+  revoked: "border-notice-revoked/40 bg-notice-revoked/15 text-notice-revoked",
+  outcome: "border-notice-outcome/40 bg-notice-outcome/15 text-notice-outcome",
+};

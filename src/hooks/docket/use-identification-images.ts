@@ -48,6 +48,7 @@ export function useSetMatterCover(matterId: string) {
       toast.success("Cover image saved.");
       invalidateMatterImagery(queryClient, matterId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -66,6 +67,7 @@ export function useClearMatterCover(matterId: string) {
       toast.success("Cover image removed.");
       invalidateMatterImagery(queryClient, matterId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -105,6 +107,7 @@ export function useSetPartyPhoto(matterId: string) {
       toast.success("Identification photo saved.");
       invalidateMatterImagery(queryClient, matterId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -123,6 +126,7 @@ export function useClearPartyPhoto(matterId: string) {
       toast.success("Identification photo removed.");
       invalidateMatterImagery(queryClient, matterId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

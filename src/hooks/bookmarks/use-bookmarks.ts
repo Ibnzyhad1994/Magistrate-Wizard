@@ -74,7 +74,13 @@ export function useAddBookmark() {
 export function useRemoveBookmark() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string; entityType: BookmarkEntityType; entityId: string }) => {
+    mutationFn: async ({
+      id,
+    }: {
+      id: string;
+      entityType: BookmarkEntityType;
+      entityId: string;
+    }) => {
       const { error } = await supabase.from("bookmarks").delete().eq("id", id);
       if (error) throw error;
     },

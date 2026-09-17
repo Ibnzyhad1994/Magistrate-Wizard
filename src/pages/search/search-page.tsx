@@ -4,12 +4,18 @@ import { Search as SearchIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
+import {
+  BrowseHeader,
+  BrowsePage,
+  TitleCard,
+  TitleCardSkeletonGallery,
+  TitleGallery,
+} from "@/components/browse";
 import { useGlobalSearch } from "@/hooks/search/use-global-search";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ROUTES } from "@/routes/paths";
 import type { TitleCardTone } from "@/lib/browse-tones";
-import type { SearchResult } from "@/types/database.types";
+import type { SearchResult } from "@/types";
 
 const TYPE_LABELS: Record<string, string> = {
   case: "Case",
@@ -59,7 +65,7 @@ function Headline({ text }: { text: string | null }) {
   const parts = text.split(/(<b>|<\/b>)/);
   let bold = false;
   return (
-    <p className="line-clamp-2 text-[11px] leading-snug text-foreground/60">
+    <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
       {parts.map((part, i) => {
         if (part === "<b>") {
           bold = true;
@@ -141,6 +147,7 @@ export default function SearchPage() {
             if (e.key === "Enter") setCommitted(input);
           }}
           aria-label="Search"
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- the search page is a single-purpose form; the query box is its only primary control
           autoFocus
         />
       </div>
@@ -173,7 +180,9 @@ export default function SearchPage() {
             <section key={type}>
               <h2 className="mb-4 text-xl font-bold text-foreground">
                 {TYPE_LABELS[type] ?? type}
-                <span className="ml-2 text-sm font-normal text-foreground/50">({results.length})</span>
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({results.length})
+                </span>
               </h2>
               <TitleGallery>
                 {results.map((r) => {

@@ -89,7 +89,9 @@ export function useClerkRoster() {
     queryFn: async (): Promise<ClerkRosterRow[]> => {
       const { data, error } = await supabase
         .from("clerk_courts")
-        .select("id, profile_id, court_id, started_at, ended_at, end_reason, courts(id, name, jurisdiction)")
+        .select(
+          "id, profile_id, court_id, started_at, ended_at, end_reason, courts(id, name, jurisdiction)",
+        )
         .order("started_at", { ascending: false });
       if (error) throw error;
       return (await enrichWithClerkProfiles(data ?? [])) as unknown as ClerkRosterRow[];
@@ -100,7 +102,11 @@ export function useClerkRoster() {
 export function useDecideClerkAccessRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { requestId: string; decision: "approved" | "rejected"; rejectionReason?: string }) => {
+    mutationFn: async (input: {
+      requestId: string;
+      decision: "approved" | "rejected";
+      rejectionReason?: string;
+    }) => {
       const { data, error } = await supabase.rpc("decide_clerk_access_request", {
         p_request_id: input.requestId,
         p_decision: input.decision,
@@ -116,6 +122,7 @@ export function useDecideClerkAccessRequest() {
       void queryClient.invalidateQueries({ queryKey: ["clerk-access-review", "orphaned"] });
       void notifyClerkAccess("decision_made", data.id);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -137,6 +144,7 @@ export function useRevokeClerkCourtAccess() {
       void queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
       void queryClient.invalidateQueries({ queryKey: ["clerk-access-review", "orphaned"] });
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -147,7 +155,9 @@ export function useOrphanedClerkAccessRequests(options?: { enabled?: boolean }) 
     queryKey: ["clerk-access-review", "orphaned"],
     enabled: options?.enabled,
     queryFn: async (): Promise<ClerkRequestForReview[]> => {
-      const { data, error } = await supabase.rpc("list_clerk_access_requests_needing_admin_attention");
+      const { data, error } = await supabase.rpc(
+        "list_clerk_access_requests_needing_admin_attention",
+      );
       if (error) throw error;
       // The RPC returns bare clerk_access_requests rows (no embeds) --
       // enrich with court/clerk names for a usable admin screen.

@@ -60,15 +60,14 @@ export function SessionLockDialog() {
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
-        overlayClassName="z-[220]"
-        className="z-[220] sm:max-w-md"
+        overlayClassName="z-lock"
+        className="z-lock sm:max-w-md"
       >
         <DialogHeader>
           <DialogTitle>Session locked</DialogTitle>
           <DialogDescription>
-            You have been inactive for an hour. Enter your password to continue.
-            Queued saves will sync, then this page reloads so you pick up the
-            latest app.
+            You have been inactive for an hour. Enter your password to continue. Queued saves will
+            sync, then this page reloads so you pick up the latest app.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void handleContinue(event)} className="space-y-4">
@@ -80,7 +79,7 @@ export function SessionLockDialog() {
               value={email}
               readOnly
               autoComplete="username"
-              className="h-11 border-foreground/15 bg-secondary text-foreground"
+              className="h-11 border-border bg-secondary text-foreground"
             />
           </div>
           <div className="space-y-2">
@@ -105,14 +104,14 @@ export function SessionLockDialog() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the lock overlay exists only to take the password; focusing it is the expected next action
               autoFocus
-              className="h-11 border-foreground/15 bg-secondary text-foreground"
+              className="h-11 border-border bg-secondary text-foreground"
             />
             {resetSent ? (
               <p className="text-xs text-foreground/70">
-                Check your email. Open the link in a new tab, set a new
-                password, then type it here. Keep this window open so work still
-                on the page is kept.
+                Check your email. Open the link in a new tab, set a new password, then type it here.
+                Keep this window open so work still on the page is kept.
               </p>
             ) : null}
           </div>
@@ -122,9 +121,7 @@ export function SessionLockDialog() {
               className="h-11 w-full"
               disabled={isReauthenticating || !password}
             >
-              {isReauthenticating && (
-                <LoadingSpinner className="text-current" size={16} />
-              )}
+              {isReauthenticating && <LoadingSpinner className="text-current" size={16} />}
               Continue
             </Button>
             <Button
@@ -136,7 +133,7 @@ export function SessionLockDialog() {
             >
               Sign out
             </Button>
-            <p className="text-center text-xs text-foreground/50">
+            <p className="text-center text-xs text-muted-foreground">
               Signing out leaves this page and unsaved work will be lost.
             </p>
           </DialogFooter>

@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase"
-import type { AuthEventType } from "@/lib/audit-activity"
+import { supabase } from "@/lib/supabase";
+import type { AuthEventType } from "@/lib/audit-activity";
 
 /**
  * Best-effort write to auth_event_log. Never throws: a failed audit
@@ -10,16 +10,16 @@ export const recordAuthEvent = async (
   email?: string | null,
 ): Promise<void> => {
   try {
-    const userAgent = typeof navigator === "undefined" ? null : navigator.userAgent
+    const userAgent = typeof navigator === "undefined" ? null : navigator.userAgent;
     const { error } = await supabase.rpc("record_auth_event", {
       p_event: event,
       p_email: email ?? "",
       p_user_agent: userAgent ?? "",
-    })
+    });
     if (error) {
-      console.warn("auth event was not recorded", error.message)
+      console.warn("auth event was not recorded", error.message);
     }
   } catch {
     // Swallow — this is a sidecar, not part of the auth contract.
   }
-}
+};

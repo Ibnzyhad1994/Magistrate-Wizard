@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
+import {
+  BrowseHeader,
+  BrowsePage,
+  TitleCard,
+  TitleCardSkeletonGallery,
+  TitleGallery,
+} from "@/components/browse";
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";

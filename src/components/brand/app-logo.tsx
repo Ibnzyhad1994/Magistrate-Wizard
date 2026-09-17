@@ -21,14 +21,14 @@ export function AppLogo({ size = "md", markOnly = false, className }: AppLogoPro
   const scale = SIZE[size];
 
   return (
-    <span
-      className={cn("inline-flex items-center gap-2.5", className)}
-      aria-label={APP_NAME}
-    >
+    <span className={cn("inline-flex items-center gap-2.5", className)} aria-label={APP_NAME}>
       <img
         src="/favicon.svg?v=2"
         alt=""
-        className={cn("shrink-0 rounded-[0.4rem] shadow-[0_1px_8px_rgba(229,9,20,0.35)]", scale.mark)}
+        className={cn(
+          "shrink-0 rounded-[0.4rem] shadow-[0_1px_8px_rgba(229,9,20,0.35)]",
+          scale.mark,
+        )}
         width={32}
         height={32}
         decoding="async"
@@ -37,10 +37,7 @@ export function AppLogo({ size = "md", markOnly = false, className }: AppLogoPro
         <span className="sr-only">{APP_NAME}</span>
       ) : (
         <span
-          className={cn(
-            "font-brand font-semibold tracking-[0.06em] whitespace-nowrap",
-            scale.type,
-          )}
+          className={cn("whitespace-nowrap font-brand font-semibold tracking-[0.06em]", scale.type)}
         >
           <span className="text-current">Magistrate</span>
           <span className="text-primary"> Wizard</span>

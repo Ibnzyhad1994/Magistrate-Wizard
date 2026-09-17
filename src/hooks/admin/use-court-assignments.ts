@@ -93,10 +93,7 @@ export function useUnassignedMagistrates() {
           .select("id, full_name, email, is_active, role")
           .eq("role", "magistrate")
           .order("full_name"),
-        supabase
-          .from("magistrate_courts")
-          .select("profile_id")
-          .is("ended_at", null),
+        supabase.from("magistrate_courts").select("profile_id").is("ended_at", null),
       ]);
       if (profilesResult.error) throw profilesResult.error;
       if (assignmentsResult.error) throw assignmentsResult.error;
@@ -223,7 +220,8 @@ export function useCreateCourtAssignment(profileId: string) {
   return useMutation({
     mutationFn: async (input: CreateCourtAssignmentInput) => {
       const courtId = typeof input === "string" ? input : input.courtId;
-      const assignmentType = typeof input === "string" ? "regular" : (input.assignmentType ?? "regular");
+      const assignmentType =
+        typeof input === "string" ? "regular" : (input.assignmentType ?? "regular");
       const ifOccupied = typeof input === "string" ? undefined : input.ifOccupied;
       const reason = typeof input === "string" ? undefined : input.reason;
       const { error } = await supabase.rpc("admin_seat_magistrate_at_court", {
@@ -239,6 +237,7 @@ export function useCreateCourtAssignment(profileId: string) {
       toast.success("Court assignment created.");
       invalidateAfterAdminCourtChange(queryClient, profileId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -263,6 +262,7 @@ export function useEndCourtAssignment(profileId: string) {
       toast.success("Court assignment ended.");
       invalidateAfterAdminCourtChange(queryClient, profileId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
@@ -306,6 +306,7 @@ export function useTransferCourtAssignment(profileId: string) {
       toast.success("Court assignment transferred.");
       invalidateAfterAdminCourtChange(queryClient, profileId);
     },
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

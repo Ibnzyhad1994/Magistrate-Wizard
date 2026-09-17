@@ -83,8 +83,8 @@ export function LinkJudgmentDialog({
         <DialogHeader>
           <DialogTitle>Link Judgment</DialogTitle>
           <DialogDescription>
-            Select one of your own Judgments to link as reference material
-            for this matter. Only Judgments you own can be linked.
+            Select one of your own Judgments to link as reference material for this matter. Only
+            Judgments you own can be linked.
           </DialogDescription>
         </DialogHeader>
 
@@ -96,7 +96,6 @@ export function LinkJudgmentDialog({
             placeholder="Search title, case number, or citation…"
             className="pl-8"
             aria-label="Search your judgments"
-            autoFocus
           />
         </div>
 
@@ -137,9 +136,7 @@ export function LinkJudgmentDialog({
                     )}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-medium text-foreground">
-                        {j.title}
-                      </span>
+                      <span className="block truncate font-medium text-foreground">{j.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {[j.case_number, j.citation].filter(Boolean).join(" · ") || NOT_SET}
                       </span>

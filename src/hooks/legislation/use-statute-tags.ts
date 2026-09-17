@@ -36,6 +36,7 @@ export function useApplyStatuteTags(statuteId: string) {
       toast.success("Tags saved.");
       void queryClient.invalidateQueries({ queryKey: tagsKey(statuteId) });
     },
+    meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
     },

@@ -47,22 +47,29 @@
     --destructive: 357 80% 42%;
     --destructive-foreground: 0 0% 100%;
 
+    /* --border is the quiet divider between cards and rows; --input is the
+       boundary of a control and must clear 3:1 (WCAG 1.4.11) against
+       both the canvas and a white card. */
     --border: 40 10% 85%;
-    --input: 40 10% 85%;
+    --input: 40 8% 54%;
     --ring: 357 80% 42%;
+    --link: 357 80% 42%;
 
     --brass: 42 60% 34%;
     --brass-foreground: 42 70% 24%;
 
     --match: 137 50% 30%;
 
-    --stage-progress: 38 92% 36%;
+    /* Amber is read as text (stage cell, "waiting on you" notices), so it
+       sits at 4.8:1 here; --capacity-filling keeps the brighter 36% because
+       it is only ever a fill under dark ink. */
+    --stage-progress: 38 92% 31%;
     --stage-done: 160 84% 26%;
     --stage-remand: 347 70% 44%;
     --stage-dismissed: 357 80% 44%;
     --stage-outcome-complete: 210 90% 40%;
 
-    --notice-action: 38 92% 36%;
+    --notice-action: 38 92% 31%;
     --notice-granted: 160 84% 26%;
     --notice-revoked: 357 80% 44%;
     --notice-outcome: 210 90% 40%;
@@ -115,8 +122,11 @@
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 18%;
-    --input: 0 0% 18%;
+    --input: 0 0% 42%;
     --ring: 357 92% 47%;
+    /* Brand red is 3.9:1 on the canvas — fine for a button fill, not for
+       body links. Links get a lifted red that clears 4.5:1. */
+    --link: 357 92% 62%;
 
     --brass: 42 55% 58%;
     --brass-foreground: 42 70% 78%;
@@ -190,6 +200,7 @@
     --border: 0 0% 0%;
     --input: 0 0% 0%;
     --ring: 357 100% 32%;
+    --link: 357 100% 32%;
 
     --brass: 42 100% 22%;
     --brass-foreground: 42 100% 16%;
@@ -234,7 +245,9 @@
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 357 100% 52%;
+    /* 45% rather than 52%: white ink on the brighter red was only 3.96:1,
+       which fails the very palette that promises 4.5:1 everywhere. */
+    --primary: 357 100% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 12%;
@@ -246,12 +259,13 @@
     --accent: 0 0% 14%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 357 100% 52%;
+    --destructive: 357 100% 45%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 100%;
     --input: 0 0% 100%;
     --ring: 55 100% 50%;
+    --link: 357 100% 65%;
 
     --brass: 42 100% 70%;
     --brass-foreground: 42 100% 85%;
@@ -278,7 +292,7 @@
 
     --sidebar-background: 0 0% 0%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 357 100% 52%;
+    --sidebar-primary: 357 100% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 100%;
@@ -316,21 +330,22 @@
     --destructive-foreground: 0 0% 100%;
 
     --border: 40 10% 85%;
-    --input: 40 10% 85%;
+    --input: 40 8% 54%;
     --ring: 357 80% 42%;
+    --link: 357 80% 42%;
 
     --brass: 41 100% 32%;
     --brass-foreground: 41 100% 24%;
 
     --match: 163 100% 24%;
 
-    --stage-progress: 41 100% 32%;
+    --stage-progress: 41 100% 28%;
     --stage-done: 163 100% 24%;
     --stage-remand: 326 55% 38%;
     --stage-dismissed: 26 100% 36%;
     --stage-outcome-complete: 202 100% 32%;
 
-    --notice-action: 41 100% 32%;
+    --notice-action: 41 100% 28%;
     --notice-granted: 163 100% 24%;
     --notice-revoked: 26 100% 36%;
     --notice-outcome: 202 100% 32%;
@@ -374,12 +389,14 @@
     --accent: 0 0% 20%;
     --accent-foreground: 0 0% 100%;
 
+    /* Okabe–Ito orange carries dark ink: white on it is only 2.7:1. */
     --destructive: 26 100% 52%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
     --border: 0 0% 18%;
-    --input: 0 0% 18%;
+    --input: 0 0% 42%;
     --ring: 357 92% 47%;
+    --link: 357 92% 62%;
 
     --brass: 41 100% 55%;
     --brass-foreground: 41 100% 72%;
@@ -444,9 +461,32 @@
     background: hsl(var(--background));
   }
 
+  /* Keyboard focus is visible in every palette. Primitives that draw
+     their own ring (buttons, inputs) still override this with
+     focus-visible:outline-none + ring-*; bare outline-none is banned. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
   .theme-high-contrast :focus-visible {
     outline: 3px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+
+  /* Collapse every animation and transition when the OS asks for less
+     motion. The tour pulse and auth splash keep their own explicit
+     `animation: none` below so they are switched off rather than merely
+     shortened. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -484,7 +524,7 @@
   }
 
   .richtext-content a {
-    @apply text-primary underline underline-offset-2;
+    @apply text-link underline underline-offset-2;
   }
 
   .richtext-content blockquote {

@@ -3,10 +3,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { googleClientIdFor } from "@/lib/google-calendar/platform";
 import { beginGoogleOAuth, completeGoogleOAuthFromCallback } from "@/lib/google-calendar/oauth";
-import {
-  disconnectGoogleCalendar,
-  runGoogleCalendarSyncNow,
-} from "@/lib/google-calendar/sync";
+import { disconnectGoogleCalendar, runGoogleCalendarSyncNow } from "@/lib/google-calendar/sync";
 import {
   isGoogleConnected,
   loadGoogleCalendarState,

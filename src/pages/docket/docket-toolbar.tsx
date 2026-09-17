@@ -25,11 +25,7 @@ export function DocketToolbar({
             Bin
           </Link>
         </Button>
-        <Button
-          variant="outline"
-          className="min-h-11 lg:min-h-9"
-          onClick={handleOpenCapacity}
-        >
+        <Button variant="outline" className="min-h-11 lg:min-h-9" onClick={handleOpenCapacity}>
           <Gauge className="h-4 w-4" />
           Docket Capacity
         </Button>

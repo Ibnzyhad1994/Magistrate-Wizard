@@ -32,23 +32,56 @@ interface CapacityStyle {
  * separate white/neutral state; only a genuinely unconfigured category
  * gets the neutral "not_set" treatment.
  */
-export function getCapacityStyle(scheduledCount: number, dailyCapacity: number | null | undefined): CapacityStyle {
+export function getCapacityStyle(
+  scheduledCount: number,
+  dailyCapacity: number | null | undefined,
+): CapacityStyle {
   if (dailyCapacity == null) {
-    return { band: "not_set", bg: "transparent", textClass: "text-muted-foreground", label: null, bold: false };
+    return {
+      band: "not_set",
+      bg: "transparent",
+      textClass: "text-muted-foreground",
+      label: null,
+      bold: false,
+    };
   }
 
   const ratio = scheduledCount / dailyCapacity; // deliberately NOT capped — over_capacity depends on the true ratio
 
   if (ratio > 1) {
-    return { band: "over_capacity", bg: "hsl(var(--capacity-over))", textClass: "text-white", label: "OVER CAPACITY", bold: true };
+    return {
+      band: "over_capacity",
+      bg: "hsl(var(--capacity-over))",
+      textClass: "text-white",
+      label: "OVER CAPACITY",
+      bold: true,
+    };
   }
   if (ratio === 1) {
-    return { band: "full", bg: "hsl(var(--capacity-full))", textClass: "text-white", label: "FULL", bold: true };
+    return {
+      band: "full",
+      bg: "hsl(var(--capacity-full))",
+      textClass: "text-white",
+      label: "FULL",
+      bold: true,
+    };
   }
   if (ratio >= 0.5) {
-    return { band: "amber", bg: "hsl(var(--capacity-filling))", textClass: "text-neutral-900", label: null, bold: false };
+    return {
+      band: "amber",
+      bg: "hsl(var(--capacity-filling))",
+      textClass: "text-neutral-900",
+      label: null,
+      bold: false,
+    };
   }
-  return { band: "green", bg: "hsl(var(--capacity-available))", textClass: "text-neutral-900", label: null, bold: false };
+  return {
+    band: "green",
+    bg: "hsl(var(--capacity-available))",
+    textClass: "text-neutral-900",
+    label: null,
+    bold: false,
+  };
 }
 
 export function capacityStatusLabel(status: string): string {

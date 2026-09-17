@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleCardSkeletonGallery, TitleGallery } from "@/components/browse";
+import {
+  BrowseHeader,
+  BrowsePage,
+  TitleCard,
+  TitleCardSkeletonGallery,
+  TitleGallery,
+} from "@/components/browse";
 import { useStatutes } from "@/hooks/legislation/use-legislation";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -58,13 +64,17 @@ export default function LegislationListPage() {
     [data],
   );
   const documentTypes = useMemo(
-    () => Array.from(new Set((data ?? []).map((s) => s.instrument_type).filter((v): v is string => !!v))).sort(),
+    () =>
+      Array.from(
+        new Set((data ?? []).map((s) => s.instrument_type).filter((v): v is string => !!v)),
+      ).sort(),
     [data],
   );
   const years = useMemo(
     () =>
-      Array.from(new Set((data ?? []).map((s) => s.enactment_year).filter((v): v is number => v != null)))
-        .sort((a, b) => b - a),
+      Array.from(
+        new Set((data ?? []).map((s) => s.enactment_year).filter((v): v is number => v != null)),
+      ).sort((a, b) => b - a),
     [data],
   );
 
@@ -77,7 +87,8 @@ export default function LegislationListPage() {
     if (year !== ALL) rows = rows.filter((s) => String(s.enactment_year ?? "") === year);
     const sorted = [...rows];
     if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
-    else if (sort === "year") sorted.sort((a, b) => (b.enactment_year ?? 0) - (a.enactment_year ?? 0));
+    else if (sort === "year")
+      sorted.sort((a, b) => (b.enactment_year ?? 0) - (a.enactment_year ?? 0));
     else sorted.sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
     return sorted;
   }, [data, debouncedQuery, matchingIds, jurisdiction, documentType, year, sort]);

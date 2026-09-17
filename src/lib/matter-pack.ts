@@ -87,8 +87,7 @@ export type MatterPackManifest = {
 };
 
 export type MatterPackParseResult =
-  | { ok: true; pack: MatterPackManifest }
-  | { ok: false; error: string };
+  { ok: true; pack: MatterPackManifest } | { ok: false; error: string };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -309,7 +308,11 @@ export const duplicateCaseNumbers = (
   targetCourtId: string,
 ) => {
   const onCourt = new Set(
-    existing.filter((row) => row.court_id === targetCourtId).map((row) => row.case_number.toLowerCase()),
+    existing
+      .filter((row) => row.court_id === targetCourtId)
+      .map((row) => row.case_number.toLowerCase()),
   );
-  return incoming.filter((row) => onCourt.has(row.case_number.toLowerCase())).map((row) => row.case_number);
+  return incoming
+    .filter((row) => onCourt.has(row.case_number.toLowerCase()))
+    .map((row) => row.case_number);
 };

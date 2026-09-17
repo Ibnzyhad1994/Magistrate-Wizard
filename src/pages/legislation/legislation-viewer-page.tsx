@@ -4,19 +4,22 @@ import { ExternalLink, FileWarning, Menu, Pencil, StickyNote } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { DocumentsPanel } from "@/components/common/documents-panel";
+import { SafeExternalLink } from "@/components/common/safe-external-link";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useStatute,
+  useStatuteProvision,
   useStatuteProvisions,
   useSupersedingStatute,
 } from "@/hooks/legislation/use-legislation";
 import { LegislationPdfViewer } from "@/components/legislation/legislation-pdf-viewer";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { formatDate, cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
@@ -62,15 +65,19 @@ export default function LegislationViewerPage() {
   const back = useBackNav(ROUTES.legislation, "Back to Legislation");
   const { hasRole } = useAuth();
   const { data: statute, isPending, isError, error, refetch } = useStatute(id);
+  usePageTitle(statute?.title ?? null);
   const { data: provisions, isPending: provisionsPending } = useStatuteProvisions(id);
+  // The contents list carries headings only; the body arrives from its own
+  // query for the provision being read and is merged here.
+  const { data: selectedBody } = useStatuteProvision(provisionId);
   const { data: supersedingStatute } = useSupersedingStatute(id);
   const [noteOpen, setNoteOpen] = useState(false);
   const [navSheetOpen, setNavSheetOpen] = useState(false);
 
-  const selected = useMemo(
-    () => provisions?.find((p) => p.id === provisionId) ?? null,
-    [provisions, provisionId],
-  );
+  const selected = useMemo(() => {
+    const node = provisions?.find((p) => p.id === provisionId);
+    return node ? { ...node, body_text: selectedBody?.body_text ?? null } : null;
+  }, [provisions, provisionId, selectedBody]);
 
   if (isPending) {
     return (
@@ -83,9 +90,7 @@ export default function LegislationViewerPage() {
   if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
   if (!statute) {
     return (
-      <InlineError
-        error={new Error("This item doesn't exist, or you don't have access to it.")}
-      />
+      <InlineError error={new Error("This item doesn't exist, or you don't have access to it.")} />
     );
   }
 
@@ -149,7 +154,9 @@ export default function LegislationViewerPage() {
             statute.act_number ? `Act No. ${statute.act_number}` : null,
             statute.enactment_year ? `${statute.enactment_year}` : null,
             statute.effective_date ? `Effective ${formatDate(statute.effective_date)}` : null,
-            statute.page_count ? `${statute.page_count} page${statute.page_count === 1 ? "" : "s"}` : null,
+            statute.page_count
+              ? `${statute.page_count} page${statute.page_count === 1 ? "" : "s"}`
+              : null,
           ]
             .filter(Boolean)
             .join(" · ") || undefined
@@ -172,7 +179,7 @@ export default function LegislationViewerPage() {
         </div>
 
         {statute.is_current_version === false && supersedingStatute && (
-          <div className="rounded-lg border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] p-3 text-sm text-[hsl(var(--notice-action))]">
+          <div className="rounded-lg border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] p-3 text-sm text-notice-action">
             This is a superseded version.{" "}
             <button
               type="button"
@@ -191,10 +198,10 @@ export default function LegislationViewerPage() {
           </Button>
           {statute.source_url && (
             <Button size="sm" variant="ghost" asChild>
-              <a href={statute.source_url} target="_blank" rel="noreferrer noopener">
+              <SafeExternalLink href={statute.source_url}>
                 <ExternalLink className="h-3.5 w-3.5" />
                 View original source
-              </a>
+              </SafeExternalLink>
             </Button>
           )}
           {!hasPdf && hasStructure && (
@@ -205,7 +212,12 @@ export default function LegislationViewerPage() {
                   Contents
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 overflow-y-auto p-3">
+              <SheetContent
+                side="left"
+                className="w-72 overflow-y-auto p-3"
+                aria-describedby={undefined}
+              >
+                <SheetTitle className="sr-only">Contents</SheetTitle>
                 {nav}
               </SheetContent>
             </Sheet>
@@ -215,7 +227,12 @@ export default function LegislationViewerPage() {
               route (router.tsx: allowedRoles=["admin"]). No edit surface
               is ever mounted here. */}
           {isAdmin && (
-            <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate(ROUTES.legislationEdit(statute.id))}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto"
+              onClick={() => navigate(ROUTES.legislationEdit(statute.id))}
+            >
               <Pencil className="h-4 w-4" />
               Edit
             </Button>
@@ -227,13 +244,15 @@ export default function LegislationViewerPage() {
           <LegislationPdfViewer
             documentId={statute.primary_document_id}
             title={statute.title}
-            className="h-[78dvh] min-h-[520px] overflow-hidden rounded-lg border border-foreground/10"
+            className="h-[78dvh] min-h-[520px] overflow-hidden rounded-lg border border-border"
           />
         ) : !hasLegacyContent ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
               <FileWarning className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm font-medium text-foreground">PDF unavailable: re-upload required</p>
+              <p className="text-sm font-medium text-foreground">
+                PDF unavailable: re-upload required
+              </p>
               <p className="max-w-sm text-sm text-muted-foreground">
                 {isAdmin
                   ? "This record has no PDF on file. Use Edit above to upload the original document."
@@ -244,8 +263,8 @@ export default function LegislationViewerPage() {
         ) : (
           <>
             <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-              Legacy extracted text from a previous import, not the
-              authoritative document. {isAdmin ? "Use Edit above to attach the original PDF." : ""}
+              Legacy extracted text from a previous import, not the authoritative document.{" "}
+              {isAdmin ? "Use Edit above to attach the original PDF." : ""}
             </div>
             {hasStructure ? (
               <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
@@ -280,10 +299,13 @@ export default function LegislationViewerPage() {
                         <CardTitle className="text-base">Overview</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {statute.summary && <p className="text-sm text-foreground">{statute.summary}</p>}
+                        {statute.summary && (
+                          <p className="text-sm text-foreground">{statute.summary}</p>
+                        )}
                         <p className="text-sm text-muted-foreground">
-                          {provisions?.length ?? 0} provision{(provisions?.length ?? 0) === 1 ? "" : "s"}{" "}
-                          on record. Select an item from Contents to read it.
+                          {provisions?.length ?? 0} provision
+                          {(provisions?.length ?? 0) === 1 ? "" : "s"} on record. Select an item
+                          from Contents to read it.
                         </p>
                       </CardContent>
                     </Card>
@@ -298,7 +320,9 @@ export default function LegislationViewerPage() {
                       <CardTitle className="text-base">Summary</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="whitespace-pre-wrap text-sm text-foreground">{statute.summary}</p>
+                      <p className="whitespace-pre-wrap text-sm text-foreground">
+                        {statute.summary}
+                      </p>
                     </CardContent>
                   </Card>
                 )}
@@ -308,9 +332,13 @@ export default function LegislationViewerPage() {
                   </CardHeader>
                   <CardContent>
                     {statute.full_text ? (
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{statute.full_text}</p>
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                        {statute.full_text}
+                      </p>
                     ) : (
-                      <p className="text-sm italic text-muted-foreground">No full text on record for this item.</p>
+                      <p className="text-sm italic text-muted-foreground">
+                        No full text on record for this item.
+                      </p>
                     )}
                   </CardContent>
                 </Card>

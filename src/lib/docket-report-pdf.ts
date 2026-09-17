@@ -110,7 +110,8 @@ function estimateMatterHeight(row: DailyDocketReportRow): number {
   // Rough but sufficient estimate to decide whether to start a fresh
   // page rather than split a matter's heading from its own content.
   let lines = 6; // heading + case info + stage/status line + custody line
-  if (row.appearance_status && (row.witnesses_called != null || row.witnesses_completed != null)) lines += 2;
+  if (row.appearance_status && (row.witnesses_called != null || row.witnesses_completed != null))
+    lines += 2;
   if (row.outcome_at_event) lines += 2;
   if (row.notes) lines += 2;
   if (row.orders_summary || row.outcome) lines += 2;
@@ -118,7 +119,10 @@ function estimateMatterHeight(row: DailyDocketReportRow): number {
   return lines * LINE + 20;
 }
 
-export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta: ReportMeta): jsPDF {
+export function generateDailyDocketReportPdf(
+  rows: DailyDocketReportRow[],
+  meta: ReportMeta,
+): jsPDF {
   const w = new ReportWriter();
 
   // ---- Header ----
@@ -184,7 +188,10 @@ export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta:
 
     w.text(`${i + 1}. ${row.matter_title}`, { size: 12, bold: true, gap: 2 });
 
-    const parties = (Array.isArray(row.parties) ? row.parties : []) as { full_name: string; role: string }[];
+    const parties = (Array.isArray(row.parties) ? row.parties : []) as {
+      full_name: string;
+      role: string;
+    }[];
     const partiesLine = parties.length
       ? parties.map((p) => `${toTitleCase(p.role)}: ${p.full_name}`).join("  ·  ")
       : null;
@@ -214,16 +221,22 @@ export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta:
         { size: 10 },
       );
     }
-    w.text(`Proceedings note: ${row.notes || row.outcome_at_event || "Not recorded"}`, { size: 10, gap: 4 });
+    w.text(`Proceedings note: ${row.notes || row.outcome_at_event || "Not recorded"}`, {
+      size: 10,
+      gap: 4,
+    });
 
     w.text("Orders / Outcome", { size: 10, bold: true });
     w.text(`Orders: ${row.orders_summary || "None recorded"}`, { size: 10 });
     w.text(`Outcome: ${row.outcome || "None recorded"}`, { size: 10, gap: 4 });
 
-    w.text(`Next Date: ${row.next_appearance ? formatReportDate(row.next_appearance) : "Not recorded"}`, {
-      size: 10,
-      gap: 10,
-    });
+    w.text(
+      `Next Date: ${row.next_appearance ? formatReportDate(row.next_appearance) : "Not recorded"}`,
+      {
+        size: 10,
+        gap: 10,
+      },
+    );
 
     if (i < rows.length - 1) w.ruleLine(0, 10);
   });
@@ -235,7 +248,9 @@ export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta:
     w.doc.setFont("helvetica", "normal");
     w.doc.setFontSize(8);
     w.doc.setTextColor(140);
-    w.doc.text(`Page ${p} of ${totalPages}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 20, { align: "right" });
+    w.doc.text(`Page ${p} of ${totalPages}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 20, {
+      align: "right",
+    });
   }
 
   return w.doc;
@@ -243,11 +258,17 @@ export function generateDailyDocketReportPdf(rows: DailyDocketReportRow[], meta:
 
 function formatReportDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /** `Docket-Progress-Report_<Court>_<date>.pdf`, filesystem-safe. */
 export function reportFileName(dateStr: string, courtName: string | null): string {
-  const safeCourt = courtName ? `_${courtName.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "")}` : "";
+  const safeCourt = courtName
+    ? `_${courtName.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "")}`
+    : "";
   return `Docket-Progress-Report${safeCourt}_${dateStr}.pdf`;
 }

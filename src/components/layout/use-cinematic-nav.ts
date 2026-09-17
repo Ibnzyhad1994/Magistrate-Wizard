@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { createContext, useContext, useEffect, type Dispatch, type SetStateAction } from "react";
 
 export const CinematicNavContext = createContext(false);
 export const CinematicNavSetContext = createContext<Dispatch<SetStateAction<number>>>(

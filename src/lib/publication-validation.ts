@@ -64,7 +64,9 @@ export function validateCaseLawForPublish(fields: CaseLawPublishFields): string[
     errors.push("Court is missing.");
   }
   if (fields.content_quality_status === "failed") {
-    errors.push("Extracted text failed automated quality checks and requires correction before publish.");
+    errors.push(
+      "Extracted text failed automated quality checks and requires correction before publish.",
+    );
   }
   return errors;
 }
@@ -86,7 +88,9 @@ export function validateLegislationForPublish(fields: LegislationPublishFields):
     errors.push("Jurisdiction is missing.");
   }
   if (fields.content_quality_status === "failed") {
-    errors.push("Extracted text failed automated quality checks and requires correction before publish.");
+    errors.push(
+      "Extracted text failed automated quality checks and requires correction before publish.",
+    );
   }
   return errors;
 }

@@ -20,7 +20,11 @@ import {
   useCaseLawCountsByJurisdiction,
   useCaseLawCountsByCategory,
 } from "@/hooks/legal-library/use-legal-taxonomy";
-import { facetOptionLabel, isFacetSelectionValid, visibleFacetOptions } from "@/lib/case-law-facets";
+import {
+  facetOptionLabel,
+  isFacetSelectionValid,
+  visibleFacetOptions,
+} from "@/lib/case-law-facets";
 import { CreateCaseLawDialog } from "@/pages/case-law/create-case-law-dialog";
 import { ROUTES } from "@/routes/paths";
 
@@ -48,9 +52,21 @@ export default function CaseLawListPage() {
   // selection -- so a facet's own valid alternatives are never wrongly
   // excluded by itself, while its options still shrink to what the other
   // active filters actually leave matching.
-  const { data: courtCounts } = useCaseLawCountsByCourt({ query: debouncedQuery, jurisdictionId, categoryId });
-  const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction({ query: debouncedQuery, courtId, categoryId });
-  const { data: categoryCounts } = useCaseLawCountsByCategory({ query: debouncedQuery, courtId, jurisdictionId });
+  const { data: courtCounts } = useCaseLawCountsByCourt({
+    query: debouncedQuery,
+    jurisdictionId,
+    categoryId,
+  });
+  const { data: jurisdictionCounts } = useCaseLawCountsByJurisdiction({
+    query: debouncedQuery,
+    courtId,
+    categoryId,
+  });
+  const { data: categoryCounts } = useCaseLawCountsByCategory({
+    query: debouncedQuery,
+    courtId,
+    jurisdictionId,
+  });
 
   // If a previously-active filter's own value no longer has any accessible
   // matching records once the OTHER filters/search text changed, clear it
@@ -100,7 +116,8 @@ export default function CaseLawListPage() {
     // personal research row has no court_id/jurisdiction_id relationship
     // to filter by.
     const matches = (row: (typeof all)[number]) =>
-      (!q || (matchingIds?.has(row.id) ?? false)) && (!categoryId || row.category_id === categoryId);
+      (!q || (matchingIds?.has(row.id) ?? false)) &&
+      (!categoryId || row.category_id === categoryId);
     return {
       canonical: all.filter((c) => c.owner_id === null && matches(c)),
       mine: all.filter((c) => c.owner_id === user?.id && matches(c)),
@@ -233,9 +250,7 @@ export default function CaseLawListPage() {
           <TabsList>
             <TabsTrigger value="canonical">Canonical ({canonicalRows.length})</TabsTrigger>
             <TabsTrigger value="mine">My Research ({mine.length})</TabsTrigger>
-            <TabsTrigger value="discoverable">
-              Discoverable ({discoverable.length})
-            </TabsTrigger>
+            <TabsTrigger value="discoverable">Discoverable ({discoverable.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="canonical">
             {canonicalLoading ? (

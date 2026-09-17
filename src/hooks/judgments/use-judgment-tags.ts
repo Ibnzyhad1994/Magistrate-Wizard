@@ -31,6 +31,7 @@ export function useAddJudgmentTag(judgmentId: string) {
       if (error) throw error;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: key(judgmentId) }),
+    meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

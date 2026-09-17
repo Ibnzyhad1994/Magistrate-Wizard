@@ -71,7 +71,9 @@ export const CALLOVER_OUTCOMES: readonly CalloverOutcomeMeta[] = [
 export const CALLOVER_OUTCOME_VALUES: readonly string[] = CALLOVER_OUTCOMES.map((o) => o.value);
 
 /** Metadata for a known outcome. Unknown/free-text outcomes are valid and simply carry no hints. */
-export function calloverOutcomeMeta(outcome: string | null | undefined): CalloverOutcomeMeta | null {
+export function calloverOutcomeMeta(
+  outcome: string | null | undefined,
+): CalloverOutcomeMeta | null {
   if (!outcome) return null;
   return CALLOVER_OUTCOMES.find((o) => o.value === outcome) ?? null;
 }
@@ -135,9 +137,7 @@ export function calloverProgress(items: readonly CalloverItemLike[]): CalloverPr
  * an outcome that normally fixes a return date, but left without one.
  * Surfaced as a confirmation, never a block — see outcomeExpectsNextDate.
  */
-export function itemsMissingExpectedNextDate<T extends CalloverItemLike>(
-  items: readonly T[],
-): T[] {
+export function itemsMissingExpectedNextDate<T extends CalloverItemLike>(items: readonly T[]): T[] {
   return items.filter(
     (i) => i.called_at !== null && outcomeExpectsNextDate(i.outcome) && !i.next_date,
   );

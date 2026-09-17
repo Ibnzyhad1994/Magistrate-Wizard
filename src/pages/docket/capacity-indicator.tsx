@@ -38,7 +38,7 @@ export function CapacityIndicator({
     );
     if (variant === "bar") {
       return (
-        <div className="flex items-center justify-between rounded px-2 py-1 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between rounded-md px-2 py-1 text-xs text-muted-foreground">
           <span>{categoryName}</span>
           <span>Capacity not set</span>
         </div>
@@ -84,7 +84,7 @@ export function CapacityIndicator({
 
   return (
     <div
-      className={`flex items-center justify-between gap-2 rounded border border-border px-2 py-1 text-xs ${style.textClass}`}
+      className={`flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs ${style.textClass}`}
       style={{ backgroundColor: style.bg }}
     >
       <span className={style.bold ? "font-bold" : undefined}>{categoryName}</span>

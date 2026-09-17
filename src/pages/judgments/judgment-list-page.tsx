@@ -46,9 +46,7 @@ export default function JudgmentListPage() {
     return {
       drafts: all.filter((j) => j.owner_id === user?.id && j.status === "draft" && matches(j)),
       finals: all.filter((j) => j.owner_id === user?.id && j.status === "final" && matches(j)),
-      discoverable: all.filter(
-        (j) => j.owner_id !== user?.id && j.is_discoverable && matches(j),
-      ),
+      discoverable: all.filter((j) => j.owner_id !== user?.id && j.is_discoverable && matches(j)),
     };
   }, [data, user?.id, debouncedQuery, matchingIds]);
 
@@ -94,9 +92,7 @@ export default function JudgmentListPage() {
           <TabsList>
             <TabsTrigger value="drafts">My Drafts ({drafts.length})</TabsTrigger>
             <TabsTrigger value="final">My Final ({finals.length})</TabsTrigger>
-            <TabsTrigger value="discoverable">
-              Discoverable ({discoverable.length})
-            </TabsTrigger>
+            <TabsTrigger value="discoverable">Discoverable ({discoverable.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="drafts">
             <JudgmentTable
@@ -111,8 +107,8 @@ export default function JudgmentListPage() {
             <JudgmentTable
               rows={finals}
               onOpen={(id) => navigate(ROUTES.judgmentDetail(id))}
-              emptyTitle="No finalized judgments yet"
-              emptyDescription="Finalized judgments you own will appear here."
+              emptyTitle="No finalised judgments yet"
+              emptyDescription="Finalised judgments you own will appear here."
             />
           </TabsContent>
           <TabsContent value="discoverable">

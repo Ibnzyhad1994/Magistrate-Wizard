@@ -5,10 +5,7 @@ import { useCallback, useEffect, useState, type RefObject } from "react";
  * Used by tab strips and browse rows so mobile chrome (fades, chevrons)
  * only appears when there is overflow.
  */
-export const useHScroll = (
-  ref: RefObject<HTMLElement | null>,
-  watch?: unknown,
-) => {
+export const useHScroll = (ref: RefObject<HTMLElement | null>, watch?: unknown) => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 

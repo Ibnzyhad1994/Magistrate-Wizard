@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
-import { RichTextEditor } from "@/components/common/rich-text-editor";
+import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { TagInput } from "@/components/common/tag-input";
@@ -55,14 +55,12 @@ import { useDocuments, downloadDocumentAsFile } from "@/hooks/use-documents";
 import { ingestDocument } from "@/lib/ingest-document";
 import { proposeTagsScored } from "@/lib/legal-extraction";
 import { suggestCategoryFromTopics } from "@/lib/legal-taxonomy";
-import {
-  judgmentFieldsSchema,
-  type JudgmentFieldsFormValues,
-} from "@/lib/validations/judgment";
+import { judgmentFieldsSchema, type JudgmentFieldsFormValues } from "@/lib/validations/judgment";
 import { formatDate, formatDateTime, getErrorMessage, toTitleCase } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
 import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Billboard } from "@/components/browse";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -122,11 +120,15 @@ function useAutoClassifyJudgment(judgmentId: string, currentCategoryId: string |
       }
 
       if (newTags.length === 0 && !categoryName) {
-        toast.message("No confident tags or category found in this document. Add them manually if needed.");
+        toast.message(
+          "No confident tags or category found in this document. Add them manually if needed.",
+        );
       } else {
         toast.success(
           [
-            newTags.length > 0 ? `${newTags.length} tag${newTags.length === 1 ? "" : "s"} added` : null,
+            newTags.length > 0
+              ? `${newTags.length} tag${newTags.length === 1 ? "" : "s"} added`
+              : null,
             categoryName ? `category set to "${categoryName}"` : null,
           ]
             .filter(Boolean)
@@ -148,6 +150,7 @@ export default function JudgmentDetailPage() {
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.judgments, "Back to Judgments");
   const { data: judgment, isPending, isError, error, refetch } = useJudgment(id);
+  usePageTitle(judgment?.title ?? null);
   const { user } = useAuth();
   const { data: categories } = useLegalCaseCategories();
   // Both called unconditionally, before the early returns below, so this
@@ -192,6 +195,12 @@ export default function JudgmentDetailPage() {
 
   const isDraft = judgment.status === "draft";
   const isOwner = judgment.owner_id === user?.id;
+  // Visibility is owner-or-discoverable (0045 governs field mutability,
+  // not visibility), so a non-owner can be reading a draft. RLS already
+  // refuses their writes; the page must not LOOK editable to them either,
+  // and lifecycle controls (finalise / unlock / delete / discoverable) are
+  // the owner's alone -- no admin bypass on judgments.
+  const canEdit = isDraft && isOwner;
   const categoryName = (categories ?? []).find((c) => c.id === judgment.category_id)?.name;
 
   const handleExportPdf = () => {
@@ -203,7 +212,7 @@ export default function JudgmentDetailPage() {
       judgmentDate: judgment.judgment_date,
       status: judgment.status,
       contentText: judgment.content_text,
-      generatedAtLabel: new Date().toLocaleString(),
+      generatedAtLabel: formatDateTime(new Date().toISOString()),
     });
     doc.save(judgmentPdfFileName(judgment.title));
   };
@@ -218,7 +227,7 @@ export default function JudgmentDetailPage() {
           [
             judgment.citation,
             !isDraft && judgment.finalized_at
-              ? `Finalized ${formatDateTime(judgment.finalized_at)}`
+              ? `Finalised ${formatDateTime(judgment.finalized_at)}`
               : null,
           ]
             .filter(Boolean)
@@ -239,55 +248,63 @@ export default function JudgmentDetailPage() {
           </Button>
         </div>
 
-      <LifecycleBar judgment={judgment} contentDirty={contentDirty} />
-
-      <ContentCard
-        key={`${judgment.id}-${judgment.updated_at}`}
-        judgment={judgment}
-        isDraft={isDraft}
-        onDirtyChange={setContentDirty}
-      />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <FieldsCard judgment={judgment} isDraft={isDraft} />
-        </div>
-        <div className="space-y-3">
-          <DiscoverabilityCard judgment={judgment} />
-          <ClassificationCard
-            judgmentId={judgment.id}
-            categoryId={judgment.category_id}
-            onGenerateFromDocument={() => void runFromLatestDocument()}
-            isGenerating={autoClassify.isRunning}
-          />
-        </div>
-      </div>
-
-      {isOwner && <JudgmentVersionHistory judgmentId={judgment.id} status={judgment.status} />}
-
-      <Tabs defaultValue="links">
-        <TabsList>
-          <TabsTrigger value="links">Links</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          {isOwner && <TabsTrigger value="sharing">Sharing</TabsTrigger>}
-        </TabsList>
-        <TabsContent value="links">
-          <LinksPanel judgmentId={judgment.id} />
-        </TabsContent>
-        <TabsContent value="documents">
-          <DocumentsPanel
-            entityType="judgment"
-            entityId={judgment.id}
-            onUploaded={(file) => void autoClassify.run(file)}
-          />
-        </TabsContent>
-        {isOwner && (
-          <TabsContent value="sharing">
-            <SharingPanel itemType="judgment" itemId={judgment.id} canManage />
-          </TabsContent>
+        {isOwner ? (
+          <LifecycleBar judgment={judgment} contentDirty={contentDirty} />
+        ) : (
+          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {isDraft
+              ? "This is another magistrate's draft, shared with you to read. Only its author can edit, finalise or delete it."
+              : "Read-only: this judgment belongs to another magistrate."}
+          </p>
         )}
-      </Tabs>
-    </div>
+
+        <ContentCard
+          key={`${judgment.id}-${judgment.updated_at}`}
+          judgment={judgment}
+          isDraft={canEdit}
+          onDirtyChange={setContentDirty}
+        />
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <FieldsCard judgment={judgment} isDraft={canEdit} />
+          </div>
+          <div className="space-y-3">
+            {isOwner && <DiscoverabilityCard judgment={judgment} />}
+            <ClassificationCard
+              judgmentId={judgment.id}
+              categoryId={judgment.category_id}
+              onGenerateFromDocument={() => void runFromLatestDocument()}
+              isGenerating={autoClassify.isRunning}
+            />
+          </div>
+        </div>
+
+        {isOwner && <JudgmentVersionHistory judgmentId={judgment.id} status={judgment.status} />}
+
+        <Tabs defaultValue="links">
+          <TabsList>
+            <TabsTrigger value="links">Links</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            {isOwner && <TabsTrigger value="sharing">Sharing</TabsTrigger>}
+          </TabsList>
+          <TabsContent value="links">
+            <LinksPanel judgmentId={judgment.id} />
+          </TabsContent>
+          <TabsContent value="documents">
+            <DocumentsPanel
+              entityType="judgment"
+              entityId={judgment.id}
+              onUploaded={(file) => void autoClassify.run(file)}
+            />
+          </TabsContent>
+          {isOwner && (
+            <TabsContent value="sharing">
+              <SharingPanel itemType="judgment" itemId={judgment.id} canManage />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
     </>
   );
 }
@@ -305,6 +322,7 @@ function LifecycleBar({
   const unlock = useUnlockJudgment(judgment.id);
   const del = useDeleteJudgment();
   const [confirmFinalize, setConfirmFinalize] = useState(false);
+  const [confirmUnlock, setConfirmUnlock] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isDraft = judgment.status === "draft";
 
@@ -316,10 +334,12 @@ function LifecycleBar({
             size="sm"
             disabled={contentDirty}
             onClick={() => setConfirmFinalize(true)}
-            title={contentDirty ? "Save your content first. See the Content card below." : undefined}
+            title={
+              contentDirty ? "Save your content first. See the Content card below." : undefined
+            }
           >
             <Lock className="h-4 w-4" />
-            Finalize
+            Finalise
           </Button>
           <Button
             size="sm"
@@ -332,8 +352,8 @@ function LifecycleBar({
           </Button>
           <p className="text-xs text-muted-foreground">
             {contentDirty
-              ? "You have unsaved Content changes. Click \"Save content\" below before finalizing, or they'll be lost."
-              : "Draft: all fields are editable. Finalizing locks the substantive fields until you Unlock the judgment to make corrections."}
+              ? 'You have unsaved Content changes. Click "Save content" below before finalising, or they\'ll be lost.'
+              : "Draft: all fields are editable. Finalising locks the substantive fields until you Unlock the judgment to make corrections."}
           </p>
         </>
       ) : (
@@ -341,16 +361,15 @@ function LifecycleBar({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => unlock.mutate()}
+            onClick={() => setConfirmUnlock(true)}
             disabled={unlock.isPending}
           >
             {unlock.isPending ? <LoadingSpinner size={14} /> : <LockOpen className="h-4 w-4" />}
             Unlock
           </Button>
           <p className="text-xs text-muted-foreground">
-            Final: substantive fields are locked. Unlock returns this
-            judgment to an editable draft so you can make corrections, then
-            finalize it again when ready.
+            Final: substantive fields are locked. Unlock returns this judgment to an editable draft
+            so you can make corrections, then finalise it again when ready.
           </p>
         </>
       )}
@@ -358,14 +377,22 @@ function LifecycleBar({
       <AlertDialog
         open={confirmFinalize}
         onOpenChange={setConfirmFinalize}
-        title="Finalize this judgment?"
+        title="Finalise this judgment?"
         description="Title, case number, court, date, citation, and content will be locked until you Unlock the judgment to make corrections."
-        confirmLabel="Finalize"
+        confirmLabel="Finalise"
         confirmVariant="default"
         isConfirming={finalize.isPending}
-        onConfirm={() =>
-          finalize.mutate(undefined, { onSuccess: () => setConfirmFinalize(false) })
-        }
+        onConfirm={() => finalize.mutate(undefined, { onSuccess: () => setConfirmFinalize(false) })}
+      />
+      <AlertDialog
+        open={confirmUnlock}
+        onOpenChange={setConfirmUnlock}
+        title="Unlock this judgment?"
+        description="It returns to a draft: the substantive fields become editable again and it no longer reads as final to anyone it is shared with or discoverable by. A new version is recorded when you finalise it again."
+        confirmLabel="Unlock"
+        confirmVariant="default"
+        isConfirming={unlock.isPending}
+        onConfirm={() => unlock.mutate(undefined, { onSuccess: () => setConfirmUnlock(false) })}
       />
       <AlertDialog
         open={confirmDelete}
@@ -573,21 +600,51 @@ function FieldsCard({
 function DiscoverabilityCard({
   judgment,
 }: {
-  judgment: { id: string; is_discoverable: boolean };
+  judgment: { id: string; is_discoverable: boolean; status: string };
 }) {
   const setDiscoverable = useSetJudgmentDiscoverable(judgment.id);
+  const [pending, setPending] = useState<boolean | null>(null);
+  const checkboxId = useId();
+  const isDraft = judgment.status === "draft";
   return (
     <Card>
       <CardContent className="p-3">
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <label htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2 text-sm">
           <Checkbox
+            id={checkboxId}
             checked={judgment.is_discoverable}
-            onCheckedChange={(checked) => setDiscoverable.mutate(checked)}
+            onCheckedChange={(checked) => setPending(checked === true)}
             disabled={setDiscoverable.isPending}
           />
           <span className="text-foreground">Discoverable to other magistrates</span>
         </label>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {judgment.is_discoverable
+            ? "Every magistrate can find and read this judgment, including in search."
+            : "Only you and the people you share it with can see it."}
+        </p>
       </CardContent>
+      <AlertDialog
+        open={pending !== null}
+        onOpenChange={(open) => !open && setPending(null)}
+        title={
+          pending ? "Make this judgment discoverable?" : "Stop others discovering this judgment?"
+        }
+        confirmLabel={pending ? "Make discoverable" : "Make private"}
+        confirmVariant="default"
+        isConfirming={setDiscoverable.isPending}
+        description={
+          pending
+            ? isDraft
+              ? "This is still a draft. Every magistrate will be able to open and read it as it stands, including in search results, until you turn this off. Consider finalising it first."
+              : "Every magistrate will be able to open and read it, including in search results, until you turn this off."
+            : "It will no longer appear for other magistrates. Existing shares are not affected; revoke those on the Sharing tab."
+        }
+        onConfirm={() => {
+          if (pending === null) return;
+          setDiscoverable.mutate(pending, { onSuccess: () => setPending(null) });
+        }}
+      />
     </Card>
   );
 }
@@ -613,6 +670,7 @@ function ClassificationCard({
   onGenerateFromDocument: () => void;
   isGenerating: boolean;
 }) {
+  const tagsInputId = useId();
   const { data } = useJudgmentTags(judgmentId);
   const addTag = useAddJudgmentTag(judgmentId);
   const removeTag = useRemoveJudgmentTag(judgmentId);
@@ -686,9 +744,12 @@ function ClassificationCard({
           hint="What offence/matter this judgment concerns."
         />
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-muted-foreground">Tags</label>
+          <label htmlFor={tagsInputId} className="block text-xs font-medium text-muted-foreground">
+            Tags
+          </label>
           <div className="flex gap-2">
             <TagInput
+              id={tagsInputId}
               value={value}
               onChange={setValue}
               onSubmit={() => {
@@ -713,9 +774,7 @@ function ClassificationCard({
                 </button>
               </Badge>
             ))}
-            {data?.length === 0 && (
-              <p className="text-sm text-muted-foreground">No tags yet.</p>
-            )}
+            {data?.length === 0 && <p className="text-sm text-muted-foreground">No tags yet.</p>}
           </div>
         </div>
       </CardContent>
@@ -784,21 +843,21 @@ function ContentCard({
                 quiet. */}
             <SaveState isDirty={dirty} isSaving={updateContent.isPending} />
             {dirty && (
-            <Button
-              size="sm"
-              disabled={updateContent.isPending}
-              onClick={() => {
-                if (!pending) return;
-                updateContent.mutate(
-                  { content: pending.json, content_text: pending.text },
-                  { onSuccess: () => markDirty(false) },
-                );
-              }}
-            >
-              {updateContent.isPending && <LoadingSpinner className="text-current" size={14} />}
-              <CheckCircle2 className="h-4 w-4" />
-              Save content
-            </Button>
+              <Button
+                size="sm"
+                disabled={updateContent.isPending}
+                onClick={() => {
+                  if (!pending) return;
+                  updateContent.mutate(
+                    { content: pending.json, content_text: pending.text },
+                    { onSuccess: () => markDirty(false) },
+                  );
+                }}
+              >
+                {updateContent.isPending && <LoadingSpinner className="text-current" size={14} />}
+                <CheckCircle2 className="h-4 w-4" />
+                Save content
+              </Button>
             )}
           </div>
         )}
@@ -862,9 +921,7 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
                       </span>
                     </span>
                   ) : (
-                    <span className="italic text-muted-foreground">
-                      Matter unavailable
-                    </span>
+                    <span className="italic text-muted-foreground">Matter unavailable</span>
                   )}
                 </li>
               ))}
@@ -896,9 +953,7 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
               {quickCodes.map((qc) => (
                 <li key={qc.id}>
                   {qc.quick_codes ? (
-                    <span className="font-mono text-foreground">
-                      {qc.quick_codes.code_word}
-                    </span>
+                    <span className="font-mono text-foreground">{qc.quick_codes.code_word}</span>
                   ) : (
                     <span className="italic text-muted-foreground">Unavailable</span>
                   )}

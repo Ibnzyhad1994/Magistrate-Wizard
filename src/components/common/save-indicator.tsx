@@ -21,7 +21,9 @@ export function SaveIndicator({ state, onRetry, className }: SaveIndicatorProps)
 
   if (state === "saving") {
     return (
-      <span className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}>
+      <span
+        className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}
+      >
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Saving…
       </span>
@@ -30,7 +32,9 @@ export function SaveIndicator({ state, onRetry, className }: SaveIndicatorProps)
 
   if (state === "saved") {
     return (
-      <span className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}>
+      <span
+        className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}
+      >
         <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
         Saved
       </span>

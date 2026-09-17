@@ -1,32 +1,32 @@
-import { clearOfflineForProfile } from "@/lib/offline/store"
-import { supabase } from "@/lib/supabase"
-import { useAuthStore } from "@/store/auth-store"
-import { toast } from "sonner"
+import { clearOfflineCacheForProfile } from "@/lib/offline/store";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/auth-store";
+import { toast } from "sonner";
 
-let lockInFlight: Promise<void> | null = null
-let lastAuthToastAt = 0
+let lockInFlight: Promise<void> | null = null;
+let lastAuthToastAt = 0;
 
 export function notifyAuthExpiredSave(): void {
-  const now = Date.now()
-  if (now - lastAuthToastAt < 4_000) return
-  lastAuthToastAt = now
-  toast.error("Sign in to save — your work is still on this page.")
+  const now = Date.now();
+  if (now - lastAuthToastAt < 4_000) return;
+  lastAuthToastAt = now;
+  toast.error("Sign in to save — your work is still on this page.");
 }
 
-const LOCAL_SIGNOUT_ATTEMPTS = 3
+const LOCAL_SIGNOUT_ATTEMPTS = 3;
 
 async function dropLocalTokens(): Promise<void> {
-  let lastError: unknown
+  let lastError: unknown;
   for (let attempt = 0; attempt < LOCAL_SIGNOUT_ATTEMPTS; attempt += 1) {
     try {
-      const { error } = await supabase.auth.signOut({ scope: "local" })
-      if (!error) return
-      lastError = error
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (!error) return;
+      lastError = error;
     } catch (err) {
-      lastError = err
+      lastError = err;
     }
   }
-  if (lastError) throw lastError
+  if (lastError) throw lastError;
 }
 
 /**
@@ -44,19 +44,24 @@ async function dropLocalTokens(): Promise<void> {
  * further authentication required. Cleared on the transition into
  * `locked`, not after every retry, so a flaky first attempt doesn't wipe
  * the cache repeatedly.
+ *
+ * The offline OUTBOX (hearings saved while offline, and the failed list)
+ * is deliberately kept: a lock is not a sign-out, the person is expected
+ * back, and the post-unlock flush exists precisely to send that work.
+ * Only an explicit sign-out (use-auth.ts) clears the outbox.
  */
 export async function lockCurrentSession(): Promise<void> {
-  const state = useAuthStore.getState()
-  if (state.status !== "authenticated" && state.status !== "locked") return
+  const state = useAuthStore.getState();
+  if (state.status !== "authenticated" && state.status !== "locked") return;
   if (state.status === "authenticated") {
-    state.lockSession()
-    if (state.user?.id) void clearOfflineForProfile(state.user.id)
+    state.lockSession();
+    if (state.user?.id) void clearOfflineCacheForProfile(state.user.id);
   }
-  if (lockInFlight) return lockInFlight
+  if (lockInFlight) return lockInFlight;
   lockInFlight = dropLocalTokens()
     .catch(() => undefined)
     .finally(() => {
-      lockInFlight = null
-    })
-  return lockInFlight
+      lockInFlight = null;
+    });
+  return lockInFlight;
 }

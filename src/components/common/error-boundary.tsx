@@ -20,10 +20,7 @@ interface ErrorBoundaryState {
  * entire provider tree in `AppProviders` so a crash anywhere below still
  * renders a recoverable full-page error instead of a blank screen.
  */
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -47,11 +44,7 @@ export class ErrorBoundary extends Component<
       return (
         <FullPageError
           title={`${APP_NAME} hit an unexpected error`}
-          message={
-            this.state.error
-              ? getErrorMessage(this.state.error)
-              : undefined
-          }
+          message={this.state.error ? getErrorMessage(this.state.error) : undefined}
           onRetry={this.handleRetry}
         />
       );
@@ -72,11 +65,7 @@ export function RouteErrorBoundary() {
     return (
       <FullPageError
         title={`${error.status} ${error.statusText}`}
-        message={
-          typeof error.data === "string"
-            ? error.data
-            : "This page could not be loaded."
-        }
+        message={typeof error.data === "string" ? error.data : "This page could not be loaded."}
         onRetry={() => window.location.assign("/")}
         retryLabel="Go home"
       />

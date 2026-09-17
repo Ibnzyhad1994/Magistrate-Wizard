@@ -1,12 +1,8 @@
 import { create } from "zustand";
 import type { Session, User } from "@supabase/supabase-js";
-import type { Profile } from "@/types/database.types";
+import type { Profile } from "@/types";
 
-export type AuthStatus =
-  | "loading"
-  | "authenticated"
-  | "unauthenticated"
-  | "locked";
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "locked";
 
 interface AuthState {
   status: AuthStatus;

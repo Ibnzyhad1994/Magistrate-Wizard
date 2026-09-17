@@ -1,22 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  Bookmark,
-  BookOpen,
-  Braces,
-  Gavel,
-  Scale,
-  ScrollText,
-  StickyNote,
-} from "lucide-react";
+import { Bookmark, BookOpen, Braces, Gavel, Scale, ScrollText, StickyNote } from "lucide-react";
 
 export type TitleCardTone =
-  | "docket"
-  | "judgment"
-  | "case-law"
-  | "legislation"
-  | "note"
-  | "code"
-  | "bookmark";
+  "docket" | "judgment" | "case-law" | "legislation" | "note" | "code" | "bookmark";
 
 /** Cinematic poster fills used when there is no artwork. */
 export const TONE_GRADIENT: Record<TitleCardTone, string> = {

@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/brand/app-logo";
 import { AppCanvas } from "@/components/theme/app-canvas";
 import { ROUTES } from "@/routes/paths";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function UnauthorizedPage() {
+  usePageTitle("Not authorised");
   return (
     <AppCanvas>
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
@@ -22,9 +24,8 @@ export default function UnauthorizedPage() {
             You don&apos;t have access
           </h1>
           <p className="max-w-md text-base text-foreground/70">
-            Your account role doesn&apos;t have permission to view this
-            resource. Contact your administrator if you believe this is a
-            mistake.
+            Your account role doesn&apos;t have permission to view this resource. Contact your
+            administrator if you believe this is a mistake.
           </p>
         </div>
         <Button asChild className="h-12 px-8 text-base font-semibold">

@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { reportError } from "@/lib/sentry";
 
 /**
  * Merge Tailwind class names, resolving conflicts in favor of the
@@ -299,7 +300,25 @@ const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
   // currently the ONLY thing standing between a Code+Jurisdiction
   // collision and the generic "That already exists." fallback.
   ["statutes_code_jurisdiction_idx", "An Act with this Code already exists for this jurisdiction."],
+  // Docket case numbers are unique per district (docket_matters_district_
+  // case_number_unique). The create dialog links to the existing matter
+  // when it sees this sentence, so keep the copy stable.
+  [
+    "docket_matters_district_case_number_unique",
+    "That case number already exists in this district.",
+  ],
 ];
+
+/**
+ * Raw Postgres/PostgREST text that must never reach a toast. Anything
+ * matching is replaced by a generic sentence and the original is sent to
+ * Sentry (or the console) via `reportError`, so the mapping table above can
+ * grow from real reports instead of from users reading SQL.
+ */
+const RAW_DATABASE_MESSAGE =
+  /^(PGRST|duplicate key|permission denied|violates|new row|null value|invalid input syntax)/i;
+
+export const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 /**
  * Type guard for narrowing unknown errors (e.g. from catch blocks or
@@ -309,17 +328,17 @@ const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
  * the raw driver/Postgres exception text.
  */
 export function isCanonicalCitationUniqueViolation(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false
-  const code = "code" in error ? String((error as { code: unknown }).code) : ""
-  if (code !== "23505") return false
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code: unknown }).code) : "";
+  if (code !== "23505") return false;
   const haystack = [
     "message" in error ? String((error as { message: unknown }).message ?? "") : "",
     "details" in error ? String((error as { details: unknown }).details ?? "") : "",
     "hint" in error ? String((error as { hint: unknown }).hint ?? "") : "",
   ]
     .join(" ")
-    .toLowerCase()
-  return haystack.includes("case_law_citation_canonical_unique_idx")
+    .toLowerCase();
+  return haystack.includes("case_law_citation_canonical_unique_idx");
 }
 
 /**
@@ -333,14 +352,14 @@ export function isCanonicalCitationUniqueViolation(error: unknown): boolean {
  * rewording the sentence silently restored the Retry button.
  */
 export function isRateLimitedError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false
-  if (!("message" in error)) return false
-  const raw = (error as { message: unknown }).message
-  return typeof raw === "string" && raw === RATE_LIMITED_SENTINEL
+  if (!error || typeof error !== "object") return false;
+  if (!("message" in error)) return false;
+  const raw = (error as { message: unknown }).message;
+  return typeof raw === "string" && raw === RATE_LIMITED_SENTINEL;
 }
 
 /** What the database raises; never shown to a user (see getErrorMessage). */
-const RATE_LIMITED_SENTINEL = "rate_limited"
+const RATE_LIMITED_SENTINEL = "rate_limited";
 
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
@@ -371,9 +390,14 @@ export function getErrorMessage(error: unknown): string {
     if (
       typeof (error as { message?: unknown }).message === "string" &&
       /network|fetch/i.test((error as { message: string }).message) &&
+      typeof navigator !== "undefined" &&
       !navigator.onLine
     ) {
       return "You appear to be offline. Check your connection and try again.";
+    }
+    if (rawMessage && RAW_DATABASE_MESSAGE.test(rawMessage)) {
+      reportError(error, { source: "error-message", code, raw: rawMessage });
+      return GENERIC_ERROR_MESSAGE;
     }
     if (rawMessage) return rawMessage;
   }
