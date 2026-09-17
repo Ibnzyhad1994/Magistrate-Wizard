@@ -118,7 +118,14 @@ async function uploadAndFinalize(client, { values, file, pageCount, hasTextLayer
   return { statuteId: statute.id, documentId: document.id, path };
 }
 
-const created = { users: [], jurisdictionId: null, statutes: [], storagePaths: [] };
+const created = {
+  users: [],
+  jurisdictionId: null,
+  districtId: null,
+  courtId: null,
+  statutes: [],
+  storagePaths: [],
+};
 
 async function main() {
   const { data: regionalGroup } = await admin
@@ -138,6 +145,33 @@ async function main() {
   created.users.push(adminUser.id);
   const magistrateUser = await createUser(email("magistrate"), "magistrate");
   created.users.push(magistrateUser.id);
+
+  // Library access for a magistrate requires a currently-active Court
+  // (0117), so give the fixture one; the assignment is what the read
+  // envelope keys on, not the role alone.
+  const { data: district, error: districtErr } = await admin
+    .from("magisterial_districts")
+    .insert({ name: `TEST File-First District ${stamp}` })
+    .select()
+    .single();
+  if (districtErr) throw districtErr;
+  created.districtId = district.id;
+  const { data: court, error: courtErr } = await admin
+    .from("courts")
+    .insert({
+      name: `TEST File-First Court ${stamp}`,
+      jurisdiction: "Test",
+      district_id: district.id,
+      is_active: true,
+    })
+    .select()
+    .single();
+  if (courtErr) throw courtErr;
+  created.courtId = court.id;
+  const { error: sittingErr } = await admin
+    .from("magistrate_courts")
+    .insert({ profile_id: magistrateUser.id, court_id: court.id });
+  if (sittingErr) throw sittingErr;
   const clerkUser = await createUser(email("clerk"), "clerk");
   created.users.push(clerkUser.id);
 
@@ -147,14 +181,12 @@ async function main() {
 
   // --- 1. Baseline: a magistrate (not admin) cannot create Legislation ---
   {
-    const { error } = await magistrateClient
-      .from("statutes")
-      .insert({
-        code: `MAG-${stamp}`,
-        title: "Should fail",
-        jurisdiction: jurisdiction.name,
-        jurisdiction_id: jurisdiction.id,
-      });
+    const { error } = await magistrateClient.from("statutes").insert({
+      code: `MAG-${stamp}`,
+      title: "Should fail",
+      jurisdiction: jurisdiction.name,
+      jurisdiction_id: jurisdiction.id,
+    });
     checkErr("1. A non-admin cannot create a statutes row (RLS)", error, true);
   }
 
@@ -239,14 +271,12 @@ async function main() {
 
   // --- 9. District/jurisdiction-scoped uniqueness still enforced for a genuinely new Act ---
   {
-    const { error } = await adminClient
-      .from("statutes")
-      .insert({
-        code: `VIG-${stamp}`,
-        title: "Duplicate code",
-        jurisdiction: jurisdiction.name,
-        jurisdiction_id: jurisdiction.id,
-      });
+    const { error } = await adminClient.from("statutes").insert({
+      code: `VIG-${stamp}`,
+      title: "Duplicate code",
+      jurisdiction: jurisdiction.name,
+      jurisdiction_id: jurisdiction.id,
+    });
     checkErr(
       "9. A second CURRENT statute with the same code+jurisdiction is rejected (partial unique index)",
       error,
@@ -485,6 +515,13 @@ async function cleanup() {
     }
     if (created.jurisdictionId) {
       await admin.from("legal_jurisdictions").delete().eq("id", created.jurisdictionId);
+    }
+    if (created.courtId) {
+      await admin.from("magistrate_courts").delete().eq("court_id", created.courtId);
+      await admin.from("courts").delete().eq("id", created.courtId);
+    }
+    if (created.districtId) {
+      await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     }
     for (const userId of created.users) {
       await admin.auth.admin.deleteUser(userId);

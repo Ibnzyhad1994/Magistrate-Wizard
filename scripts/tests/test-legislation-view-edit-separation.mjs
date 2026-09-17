@@ -71,7 +71,14 @@ async function createUser(emailAddr, role) {
   return data.user;
 }
 
-const created = { users: [], jurisdictionId: null, statutes: [], storagePaths: [] };
+const created = {
+  users: [],
+  jurisdictionId: null,
+  districtId: null,
+  courtId: null,
+  statutes: [],
+  storagePaths: [],
+};
 
 async function main() {
   const { data: regionalGroup } = await admin
@@ -91,6 +98,33 @@ async function main() {
   created.users.push(adminUser.id);
   const magistrateUser = await createUser(email("magistrate"), "magistrate");
   created.users.push(magistrateUser.id);
+
+  // Library access for a magistrate requires a currently-active Court
+  // (0117), so give the fixture one; the assignment is what the read
+  // envelope keys on, not the role alone.
+  const { data: district, error: districtErr } = await admin
+    .from("magisterial_districts")
+    .insert({ name: `TEST View-Edit District ${stamp}` })
+    .select()
+    .single();
+  if (districtErr) throw districtErr;
+  created.districtId = district.id;
+  const { data: court, error: courtErr } = await admin
+    .from("courts")
+    .insert({
+      name: `TEST View-Edit Court ${stamp}`,
+      jurisdiction: "Test",
+      district_id: district.id,
+      is_active: true,
+    })
+    .select()
+    .single();
+  if (courtErr) throw courtErr;
+  created.courtId = court.id;
+  const { error: sittingErr } = await admin
+    .from("magistrate_courts")
+    .insert({ profile_id: magistrateUser.id, court_id: court.id });
+  if (sittingErr) throw sittingErr;
   const clerkUser = await createUser(email("clerk"), "clerk");
   created.users.push(clerkUser.id);
 
@@ -197,18 +231,16 @@ async function main() {
     await magistrateClient.storage
       .from("documents")
       .upload(magPath, magFile, { contentType: "application/pdf" });
-    const { error } = await magistrateClient
-      .from("documents")
-      .insert({
-        uploaded_by: (await magistrateClient.auth.getUser()).data.user.id,
-        file_name: "hack.pdf",
-        file_path: magPath,
-        file_size: magFile.size,
-        mime_type: "application/pdf",
-        entity_type: "statute",
-        entity_id: statute.id,
-        purpose: "attachment",
-      });
+    const { error } = await magistrateClient.from("documents").insert({
+      uploaded_by: (await magistrateClient.auth.getUser()).data.user.id,
+      file_name: "hack.pdf",
+      file_path: magPath,
+      file_size: magFile.size,
+      mime_type: "application/pdf",
+      entity_type: "statute",
+      entity_id: statute.id,
+      purpose: "attachment",
+    });
     checkErr(
       "4. A magistrate cannot insert a documents row for entity_type='statute' (replace-file path)",
       error,
@@ -247,6 +279,7 @@ async function main() {
       .select()
       .single();
     check("5c. A magistrate can insert a draft Act", !magCreateErr && !!magDraft);
+    if (magCreateErr) console.log("   (error:", magCreateErr.message, ")");
     if (magDraft) {
       created.statutes.push(magDraft.id);
       const magPath = `${magUserId}/statute/${magDraft.id}/${Date.now()}-mag-act.pdf`;
@@ -390,6 +423,13 @@ async function cleanup() {
     }
     if (created.jurisdictionId) {
       await admin.from("legal_jurisdictions").delete().eq("id", created.jurisdictionId);
+    }
+    if (created.courtId) {
+      await admin.from("magistrate_courts").delete().eq("court_id", created.courtId);
+      await admin.from("courts").delete().eq("id", created.courtId);
+    }
+    if (created.districtId) {
+      await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     }
     for (const userId of created.users) {
       await admin.auth.admin.deleteUser(userId);

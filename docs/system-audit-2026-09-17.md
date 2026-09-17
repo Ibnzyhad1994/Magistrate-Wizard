@@ -7,7 +7,7 @@
 
 Checkbox key: `[ ]` proposed, `[x]` implemented in this pass. Severity: **C** critical, **H** high, **M** medium, **L** low. Effort: **S** ≤ half a day, **M** 1–3 days, **L** a week or more.
 
-> **Status update (same day, end of the implementation pass):** items marked `[x]` were implemented in the working tree on 2026-09-17 by six parallel implementation passes plus a coordinator pass (codemods, Prettier, lockfile, local migration apply). `[ ]` items remain open; most are product decisions or multi-day refactors listed under §11 as design-first or Sprint 4. New migrations 0154–0156 are **unapplied to hosted projects** and follow the in-review rule in `DEVELOPMENT_WORKFLOW.md`.
+> **Status update (same day, end of the implementation pass):** items marked `[x]` were implemented in the working tree on 2026-09-17 by six parallel implementation passes plus a coordinator pass (codemods, Prettier, lockfile, local migration apply). `[ ]` items remain open; most are product decisions or multi-day refactors listed under §11 as design-first or Sprint 4. New migrations 0154–0157 are **unapplied to hosted projects** and follow the in-review rule in `DEVELOPMENT_WORKFLOW.md`. The full live suite (`npm run test:live`, 78/78) was run against a from-scratch local stack once Docker was back; 0157 fixes the two defects that surfaced (magistrate own-draft statute reads, `search_statutes` ambiguity).
 
 ---
 
@@ -370,9 +370,9 @@ Established invariants from `DEVELOPMENT_WORKFLOW.md` (owner-only quick codes, n
 
 | Package                           | Now     | Target              | Why                                                                                      | Effort |
 | --------------------------------- | ------- | ------------------- | ---------------------------------------------------------------------------------------- | ------ |
-| electron                          | 34.5.8  | ≥ 44.4              | context-isolation bypass, UAF, ASAR bypass advisories                                    | M      | ✅ done
-| electron-builder                  | 25.1.8  | 26.15+              | clears the critical `tar` and the high `builder-util-runtime` credential-leak advisories | S      | ✅ done
-| react-router-dom                  | 6.30.4  | 6.30.x patch (or 7) | open redirect via backslash; `fixAvailable: true` non-major                              | S      | ✅ done
+| electron                          | 34.5.8  | ≥ 44.4              | context-isolation bypass, UAF, ASAR bypass advisories                                    | M      | ✅ done |
+| electron-builder                  | 25.1.8  | 26.15+              | clears the critical `tar` and the high `builder-util-runtime` credential-leak advisories | S      | ✅ done |
+| react-router-dom                  | 6.30.4  | 6.30.x patch (or 7) | open redirect via backslash; `fixAvailable: true` non-major                              | S      | ✅ done |
 | @tiptap/*                         | 2.27    | 3.31+               | `mergeAttributes` prototype pollution (moderate, shipped bundle)                         | M      |
 | vite                              | 5.4     | 6.x/7.x             | dev-server path traversal and esbuild request advisories (dev only)                      | M      |
 | @capacitor/*                      | 6       | 8.5                 | `@capacitor/cli` tar advisory; two majors behind                                         | M      |

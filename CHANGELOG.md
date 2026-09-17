@@ -51,6 +51,7 @@ coordinator fills in specifics per area; headline changes:
 ### Workflows
 
 - Migration 0156: displaced magistrates and admins are notified on eviction, replace, co-sit and transfer; stale-draft notices dedupe for 30 days; honest webhook delivery states with retry and audited secret reveal; issue reporters are notified of decisions.
+- Migration 0157: a magistrate can read back the draft Act they inserted (0114's Add flow failed on `INSERT ... RETURNING` because the only SELECT policy was published-or-admin), still gated on an active Court and never visible to clerks; `search_statutes` no longer raises `column reference "id" is ambiguous` (the 0137 PL/pgSQL wrapper left its CTE columns unqualified). Found once the local stack was rebuilt from scratch; the two legislation live tests now give their magistrate a Court, as 0117 requires.
 - Duplicate case-number pre-check; confirmations on matter close/reopen, unlink, capacity clear, unlock and discoverability; owner-only judgment lifecycle controls; draft PDF watermark; bulk import survives tab switches and stuck rows can be cleared; offline outbox survives the idle lock, replay failures are shown, replayed updates carry an `updated_at` guard; Help menu links the manual and guides.
 
 ### UI
