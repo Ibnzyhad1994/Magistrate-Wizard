@@ -1,0 +1,12 @@
+# Generated or vendored: never reformat
+src/types/database.types.ts
+package-lock.json
+dist
+release
+android
+ios
+supabase/.temp
+public/tesseract
+public/cmaps
+public/standard_fonts
+docs/**/*.pdf

@@ -94,3 +94,6 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Python tooling caches (docs/diagrams/tools)
+__pycache__/
