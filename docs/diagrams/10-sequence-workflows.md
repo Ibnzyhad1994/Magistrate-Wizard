@@ -127,13 +127,13 @@ sequenceDiagram
 
 ## What is not a workflow yet
 
-| Topic | Status |
-|---|---|
-| Outlook calendar sync | Columns reserved; no sync |
+| Topic                                | Status                                                           |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| Outlook calendar sync                | Columns reserved; no sync                                        |
 | Judgment / personal Case Law sharing | Designed in principle; `shares.item_type` is Docket-only in 0037 |
-| Clerk-specific permissions | Role exists; no Clerk RLS |
-| URL crawlers / AI extract | Not built |
-| Scanned-PDF OCR | Built in-browser (Tesseract.js); curator must still verify |
-| Password reset completion page | Email currently returns the user to `/login` |
-| Profile / Settings | Disabled in the user menu |
-| View-share greying out editors | RLS only; controls stay enabled |
+| Clerk-specific permissions           | Role exists; no Clerk RLS                                        |
+| URL crawlers / AI extract            | Not built                                                        |
+| Scanned-PDF OCR                      | Built in-browser (Tesseract.js); curator must still verify       |
+| Password reset completion page       | Email currently returns the user to `/login`                     |
+| Profile / Settings                   | Disabled in the user menu                                        |
+| View-share greying out editors       | RLS only; controls stay enabled                                  |

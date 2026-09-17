@@ -104,12 +104,12 @@ Publish RPCs reject placeholder metadata (for example `"Untitled (pending review
 
 Bulk import records every file:
 
-| Outcome | `import_jobs.status` | Row created? |
-|---|---|---|
-| New draft | `needs_review` / `ready` | Yes |
-| Byte-identical file | `duplicate` | No new authority; link to existing |
-| Same citation, different file | `duplicate` | File attached to the **existing** Case Law as another source document |
-| Validation reject / crash | `failed` | Bare job row so the batch still accounts for the file |
+| Outcome                       | `import_jobs.status`     | Row created?                                                          |
+| ----------------------------- | ------------------------ | --------------------------------------------------------------------- |
+| New draft                     | `needs_review` / `ready` | Yes                                                                   |
+| Byte-identical file           | `duplicate`              | No new authority; link to existing                                    |
+| Same citation, different file | `duplicate`              | File attached to the **existing** Case Law as another source document |
+| Validation reject / crash     | `failed`                 | Bare job row so the batch still accounts for the file                 |
 
 `import_batches.expected_file_count` is stored at create time. A batch is fully accounted when `count(jobs) >= expected_file_count`. Older batches with a null count are labelled **legacy — incomplete history**.
 

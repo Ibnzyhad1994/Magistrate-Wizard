@@ -2,26 +2,26 @@
 
 Professional diagrams for **Magistrate Wizard**, a legal knowledge platform for Guyana magistrates.
 
-These diagrams follow the **Magistrate Wizard Architecture Specification (Final, Revision 3)** and the live schema (migrations `0001`–`0067`). Addendum 2 is historical only: Docket Matters are **court-anchored**, not individually owned. Root `README.md` still describes an early “cases” product — do not copy that into new diagrams. Live SQL wins over stale §3 notes (for example, a Docket share *does* extend to events, parties, and tags).
+These diagrams follow the **Magistrate Wizard Architecture Specification (Final, Revision 3)** and the live schema (migrations `0001`–`0067`). Addendum 2 is historical only: Docket Matters are **court-anchored**, not individually owned. Root `README.md` still describes an early “cases” product — do not copy that into new diagrams. Live SQL wins over stale §3 notes (for example, a Docket share _does_ extend to events, parties, and tags).
 
 ## How to read this pack
 
-| Audience | Start here |
-|---|---|
-| New magistrate / clerk | [Layman workflow guides](../workflows-layman/README.md) |
-| Product / operations | [User journeys](09-user-journeys.md) then [Access control](08-access-control.md) |
-| Software engineer | [System context](01-system-context.md) → [Containers](02-c4-containers.md) → [ERD overview](04-erd-complete.md) |
-| Database / security | [Access control](08-access-control.md) and the detailed ERDs |
+| Audience               | Start here                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| New magistrate / clerk | [Layman workflow guides](../workflows-layman/README.md)                                                         |
+| Product / operations   | [User journeys](09-user-journeys.md) then [Access control](08-access-control.md)                                |
+| Software engineer      | [System context](01-system-context.md) → [Containers](02-c4-containers.md) → [ERD overview](04-erd-complete.md) |
+| Database / security    | [Access control](08-access-control.md) and the detailed ERDs                                                    |
 
 Every mermaid diagram is the source of truth. Hero diagrams:
 
-| Preview | File |
-|---|---|
-| System context | [`assets/system-context.png`](assets/system-context.png) |
+| Preview                  | File                                                           |
+| ------------------------ | -------------------------------------------------------------- |
+| System context           | [`assets/system-context.png`](assets/system-context.png)       |
 | Three-path Docket access | [`assets/three-path-access.png`](assets/three-path-access.png) |
-| Court / desk / library | [`assets/domain-map.png`](assets/domain-map.png) |
-| Entity map | [`assets/erd-overview.png`](assets/erd-overview.png) |
-| Magistrate vs admin day | [`assets/user-swimlanes.png`](assets/user-swimlanes.png) |
+| Court / desk / library   | [`assets/domain-map.png`](assets/domain-map.png)               |
+| Entity map               | [`assets/erd-overview.png`](assets/erd-overview.png)           |
+| Magistrate vs admin day  | [`assets/user-swimlanes.png`](assets/user-swimlanes.png)       |
 
 Excalidraw source: [`excalidraw/three-path-access.excalidraw`](excalidraw/three-path-access.excalidraw)
 
@@ -63,8 +63,8 @@ Regenerate with `python docs/diagrams/tools/build_pdfs.py`.
 
 ## Authority
 
-| Document | Role |
-|---|---|
-| `docs/architecture/Magistrate-Wizard-Architecture-Specification-FINAL.md` | Current architecture |
-| `supabase/migrations/` | What is actually live |
-| Addenda 2 and 3, Reconciliation Report | Historical design notes only |
+| Document                                                                  | Role                         |
+| ------------------------------------------------------------------------- | ---------------------------- |
+| `docs/architecture/Magistrate-Wizard-Architecture-Specification-FINAL.md` | Current architecture         |
+| `supabase/migrations/`                                                    | What is actually live        |
+| Addenda 2 and 3, Reconciliation Report                                    | Historical design notes only |

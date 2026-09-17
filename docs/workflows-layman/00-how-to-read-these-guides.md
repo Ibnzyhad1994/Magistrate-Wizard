@@ -12,18 +12,18 @@ It is not a public website. Members of the public cannot browse it. Every screen
 
 ## Words used here
 
-| Word | Everyday meaning in Magistrate Wizard |
-|---|---|
-| **Court** | A physical Guyana Magistrates' Court (for example, a sitting at a named location). Not the Caribbean Court of Justice as a reported authority. |
-| **District** | The Magisterial District that Court belongs to. Case numbers are unique *inside a district*, not nationwide. |
-| **Docket matter** | One case file on that Court's list. Arraignment, maintenance, traffic — all are "matters". |
-| **Event** | One listed appearance or hearing date for that matter. |
-| **Retained / part-heard** | You kept access to **one** matter after you stopped sitting that Court, so you can finish it. |
-| **Share** | You let a *named colleague* see one matter. Exceptional, not the normal way work moves on. |
-| **Canonical case law** | An entry in the official library, published by an administrator. Everyone signed in can read it. |
-| **Personal case law** | Your own research card. Private unless you mark it discoverable. |
-| **Discoverable** | Others may *read*. They still cannot edit. Used for judgments and personal case law — **never** for the docket. |
-| **Admin** | Someone who seats magistrates at Courts and publishes the library. Admin is **not** a master key to other people's private writing. |
+| Word                      | Everyday meaning in Magistrate Wizard                                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Court**                 | A physical Guyana Magistrates' Court (for example, a sitting at a named location). Not the Caribbean Court of Justice as a reported authority. |
+| **District**              | The Magisterial District that Court belongs to. Case numbers are unique _inside a district_, not nationwide.                                   |
+| **Docket matter**         | One case file on that Court's list. Arraignment, maintenance, traffic — all are "matters".                                                     |
+| **Event**                 | One listed appearance or hearing date for that matter.                                                                                         |
+| **Retained / part-heard** | You kept access to **one** matter after you stopped sitting that Court, so you can finish it.                                                  |
+| **Share**                 | You let a _named colleague_ see one matter. Exceptional, not the normal way work moves on.                                                     |
+| **Canonical case law**    | An entry in the official library, published by an administrator. Everyone signed in can read it.                                               |
+| **Personal case law**     | Your own research card. Private unless you mark it discoverable.                                                                               |
+| **Discoverable**          | Others may _read_. They still cannot edit. Used for judgments and personal case law — **never** for the docket.                                |
+| **Admin**                 | Someone who seats magistrates at Courts and publishes the library. Admin is **not** a master key to other people's private writing.            |
 
 ## A picture of the locks
 

@@ -88,17 +88,17 @@ flowchart TB
 
 ## Cardinality cheat sheet
 
-| From | To | How |
-|---|---|---|
-| District | Courts | 1 — many |
-| Court | Magistrates | many — many via `magistrate_courts` (time-bounded) |
-| Court | Docket Matters | 1 — many |
-| Matter | Events / Parties / Tags / Assignments | 1 — many |
-| Matter | Judgments | many — many, association only |
-| Matter | Case Law | many — many, association only |
-| Magistrate | Judgments / Quick Codes / Bench Notes | 1 — many, owned |
-| Case Law | Annotations | 1 — many, always private to the annotator |
-| Statute | Provisions | 1 — many, self-parented tree |
+| From       | To                                    | How                                                |
+| ---------- | ------------------------------------- | -------------------------------------------------- |
+| District   | Courts                                | 1 — many                                           |
+| Court      | Magistrates                           | many — many via `magistrate_courts` (time-bounded) |
+| Court      | Docket Matters                        | 1 — many                                           |
+| Matter     | Events / Parties / Tags / Assignments | 1 — many                                           |
+| Matter     | Judgments                             | many — many, association only                      |
+| Matter     | Case Law                              | many — many, association only                      |
+| Magistrate | Judgments / Quick Codes / Bench Notes | 1 — many, owned                                    |
+| Case Law   | Annotations                           | 1 — many, always private to the annotator          |
+| Statute    | Provisions                            | 1 — many, self-parented tree                       |
 
 ## Deliberate non-relationships
 

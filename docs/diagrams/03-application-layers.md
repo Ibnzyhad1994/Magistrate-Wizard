@@ -92,10 +92,10 @@ flowchart LR
 
 ## Provider / store facts
 
-| Layer | Module | Role |
-|---|---|---|
-| Composition | `src/providers/app-providers.tsx` | Order: Error → Theme → Query → Tooltip → Auth |
-| Session | `src/store/auth-store.ts` | Mirrors Supabase user + profile |
-| Chrome | `src/store/ui-store.ts` | Sidebar, mobile nav, command palette |
-| Routes | `src/routes/router.tsx` | Admin routes are a separate `allowedRoles={["admin"]}` tree |
-| Nav | `src/components/layout/nav-config.ts` | Court Assignments and Legal Library are admin-only items |
+| Layer       | Module                                | Role                                                        |
+| ----------- | ------------------------------------- | ----------------------------------------------------------- |
+| Composition | `src/providers/app-providers.tsx`     | Order: Error → Theme → Query → Tooltip → Auth               |
+| Session     | `src/store/auth-store.ts`             | Mirrors Supabase user + profile                             |
+| Chrome      | `src/store/ui-store.ts`               | Sidebar, mobile nav, command palette                        |
+| Routes      | `src/routes/router.tsx`               | Admin routes are a separate `allowedRoles={["admin"]}` tree |
+| Nav         | `src/components/layout/nav-config.ts` | Court Assignments and Legal Library are admin-only items    |

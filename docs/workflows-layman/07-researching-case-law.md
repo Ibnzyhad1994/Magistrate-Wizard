@@ -5,10 +5,10 @@
 
 ## Two kinds of card, one list
 
-| Kind | Who writes it | Who reads it |
-|---|---|---|
-| **Library (canonical)** | Administrator, after review | Everyone, once **published** |
-| **Personal** | You | You, unless you mark it discoverable |
+| Kind                    | Who writes it               | Who reads it                         |
+| ----------------------- | --------------------------- | ------------------------------------ |
+| **Library (canonical)** | Administrator, after review | Everyone, once **published**         |
+| **Personal**            | You                         | You, unless you mark it discoverable |
 
 They live in the same **Case Law** area so a search can return both. They are not two different apps.
 
@@ -32,7 +32,7 @@ flowchart LR
 
 ## Browse published law
 
-Open **Case Law**. Use the canonical tab. You may filter by jurisdiction and deciding court (the *reported* court — CCJ, a High Court, and so on — not the Magistrates' Court you sit).
+Open **Case Law**. Use the canonical tab. You may filter by jurisdiction and deciding court (the _reported_ court — CCJ, a High Court, and so on — not the Magistrates' Court you sit).
 
 Unpublished imports never appear here. That is how the library stays clean.
 
@@ -44,7 +44,7 @@ Mark discoverable only if you want colleagues to read the card. They still will 
 
 ## Annotations
 
-Pin a passage and a note. Multiple notes per case are fine. The person who owns the library entry (even an admin) cannot see *your* notes on it. If the parent card later becomes unreadable to you, your notes hide until you can read the parent again. They are not deleted.
+Pin a passage and a note. Multiple notes per case are fine. The person who owns the library entry (even an admin) cannot see _your_ notes on it. If the parent card later becomes unreadable to you, your notes hide until you can read the parent again. They are not deleted.
 
 ## Pin onto a docket matter
 

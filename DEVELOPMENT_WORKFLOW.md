@@ -7,7 +7,7 @@ Permanent working rules for this repository, established at the GitHub onboardin
 - Applied migrations are **never** edited after the fact. A defect discovered in an already-applied migration is fixed by a **new forward migration**, not by rewriting history.
 - One migration number maps to exactly one migration file. Numbers are never silently reused.
 - Migration numbering stays sequential and reconciled against live Supabase migration history (`list_migrations`), not inferred from local filenames alone.
-- Renumbering an *unapplied* migration is fine and has happened several times in this project (e.g. the 0039 repair, the 0041/0042 Bookmark split, the 0046 lifecycle-search-path repair) — but nothing that has already been applied to Supabase is ever renamed or edited.
+- Renumbering an _unapplied_ migration is fine and has happened several times in this project (e.g. the 0039 repair, the 0041/0042 Bookmark split, the 0046 lifecycle-search-path repair) — but nothing that has already been applied to Supabase is ever renamed or edited.
 - Live migration history is the source of truth for what actually happened; local files must remain reproducible from Git and reconciled against it before every push.
 
 ## Database change workflow
@@ -69,7 +69,7 @@ These access-control decisions are established and must not be casually reopened
 - Failed experiments are never represented as completed work in commit messages or the architecture spec.
 - Privacy/RLS-affecting changes require a behavioral regression pass (rollback-only) before being described as done.
 - Any new `SECURITY DEFINER` function requires an explicit threat-model note (why DEFINER instead of INVOKER, fixed `search_path`, EXECUTE grants, what it exposes) before being treated as approved.
-- Supabase advisors (security + performance) are reviewed after every security-sensitive migration, and any *new* finding is called out explicitly rather than folded silently into "no new findings."
+- Supabase advisors (security + performance) are reviewed after every security-sensitive migration, and any _new_ finding is called out explicitly rather than folded silently into "no new findings."
 - Git commit messages describe the verified state that resulted, not just which files changed.
 - GitHub history should not be allowed to drift many migrations behind live Supabase — reconcile local files against `list_migrations` before any push that touches `supabase/migrations/`.
 

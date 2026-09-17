@@ -46,10 +46,10 @@ Think of Magistrate Wizard as a **courthouse filing cabinet with locks on every 
 
 ## What is inside vs outside
 
-| Inside Magistrate Wizard | Outside / future |
-|---|---|
-| Docket, hearings, parties, shares | Outlook two-way sync |
-| Judgments, Quick Codes, Bench Notes | AI extraction |
-| Canonical + personal Case Law | Live URL crawlers |
-| Legislation reader + ingestion review (including local scanned-PDF OCR) | Cloud document-AI OCR |
-| Search (respects the same locks) | Public internet publishing |
+| Inside Magistrate Wizard                                                | Outside / future           |
+| ----------------------------------------------------------------------- | -------------------------- |
+| Docket, hearings, parties, shares                                       | Outlook two-way sync       |
+| Judgments, Quick Codes, Bench Notes                                     | AI extraction              |
+| Canonical + personal Case Law                                           | Live URL crawlers          |
+| Legislation reader + ingestion review (including local scanned-PDF OCR) | Cloud document-AI OCR      |
+| Search (respects the same locks)                                        | Public internet publishing |

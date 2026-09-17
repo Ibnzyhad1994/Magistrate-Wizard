@@ -27,16 +27,16 @@ flowchart TD
 
 ## The matter page
 
-| Tab | What it is for |
-|---|---|
-| Overview | Charge or issue, **procedure strip**, rolling orders, overall outcome, status, cover image, retain |
-| Events | Each listed date — when they must return and what was ordered that day |
-| Parties | People and roles, optional identification photo |
-| Tags | Court-visible labels such as "urgent" (not your private sticky notes) |
-| Judgments | Pin *your* written rulings to this file |
-| Case Law | Pin authorities you can read |
-| Documents | PDFs and other attachments |
-| Sharing | Let one named colleague in |
+| Tab       | What it is for                                                                                     |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| Overview  | Charge or issue, **procedure strip**, rolling orders, overall outcome, status, cover image, retain |
+| Events    | Each listed date — when they must return and what was ordered that day                             |
+| Parties   | People and roles, optional identification photo                                                    |
+| Tags      | Court-visible labels such as "urgent" (not your private sticky notes)                              |
+| Judgments | Pin _your_ written rulings to this file                                                            |
+| Case Law  | Pin authorities you can read                                                                       |
+| Documents | PDFs and other attachments                                                                         |
+| Sharing   | Let one named colleague in                                                                         |
 
 You can bookmark the matter from the header.
 

@@ -38,11 +38,11 @@ Typical rows:
 
 ## Common surprises
 
-| You expected | What actually happens |
-|---|---|
-| "I registered, so I should see a docket." | Registration only creates *you*. An administrator must seat you at a Court. |
-| "I am an administrator, so I see every docket." | No. Admin tools manage the *roster* and the *library*. To work a docket you still need a real Court assignment, like any magistrate. |
-| "Search will find everything in the system." | Search only returns what you are already allowed to open. |
+| You expected                                    | What actually happens                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| "I registered, so I should see a docket."       | Registration only creates _you_. An administrator must seat you at a Court.                                                          |
+| "I am an administrator, so I see every docket." | No. Admin tools manage the _roster_ and the _library_. To work a docket you still need a real Court assignment, like any magistrate. |
+| "Search will find everything in the system."    | Search only returns what you are already allowed to open.                                                                            |
 
 ## If something goes wrong
 

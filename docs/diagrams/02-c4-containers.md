@@ -40,13 +40,13 @@ flowchart TB
 
 ## Container responsibilities
 
-| Container | Responsibility | Not responsible for |
-|---|---|---|
-| SPA | Screens, forms, signed-URL display, optimistic UI | Enforcing privacy. RLS is the real lock |
-| Auth | Session, signup, password reset | Court assignment. Signup creates a profile with **zero** Courts |
-| Postgres | Schema, RLS, triggers, search, ingestion RPCs | File bytes |
-| `documents` bucket | PDFs, images, covers, identification photos | Deciding who may read. A matching `documents` row + parent RLS is required |
-| `avatars` bucket | Profile pictures | Judicial content |
+| Container          | Responsibility                                    | Not responsible for                                                        |
+| ------------------ | ------------------------------------------------- | -------------------------------------------------------------------------- |
+| SPA                | Screens, forms, signed-URL display, optimistic UI | Enforcing privacy. RLS is the real lock                                    |
+| Auth               | Session, signup, password reset                   | Court assignment. Signup creates a profile with **zero** Courts            |
+| Postgres           | Schema, RLS, triggers, search, ingestion RPCs     | File bytes                                                                 |
+| `documents` bucket | PDFs, images, covers, identification photos       | Deciding who may read. A matching `documents` row + parent RLS is required |
+| `avatars` bucket   | Profile pictures                                  | Judicial content                                                           |
 
 ## Search as a container capability
 

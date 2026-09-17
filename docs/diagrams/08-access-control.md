@@ -36,10 +36,10 @@ flowchart TB
 
 View vs edit on a share:
 
-| Permission | Parent matter | Events / parties / tags | Judgment / Case Law **links** | Quick Code ↔ Docket links |
-|---|---|---|---|---|
-| `view` | SELECT | SELECT | SELECT if BOTH sides already readable | SELECT only |
-| `edit` | SELECT + UPDATE | Same mutation rights as a sitting magistrate on those children | SELECT only. INSERT/DELETE need Court or retained (`has_docket_matter_authority`), plus Judgment **ownership** to pin a Judgment | INSERT/DELETE allowed (the Quick Code must still be yours) |
+| Permission | Parent matter   | Events / parties / tags                                        | Judgment / Case Law **links**                                                                                                    | Quick Code ↔ Docket links                                  |
+| ---------- | --------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `view`     | SELECT          | SELECT                                                         | SELECT if BOTH sides already readable                                                                                            | SELECT only                                                |
+| `edit`     | SELECT + UPDATE | Same mutation rights as a sitting magistrate on those children | SELECT only. INSERT/DELETE need Court or retained (`has_docket_matter_authority`), plus Judgment **ownership** to pin a Judgment | INSERT/DELETE allowed (the Quick Code must still be yours) |
 
 No resharing. Recipient may relinquish. Soft-revoke only. Live `shares.item_type` is **Docket only** (real FK, not a polymorphic uuid).
 
@@ -102,18 +102,18 @@ flowchart TB
     end
 ```
 
-| Entity | Default | Share? | Discoverable pool? | Admin bypass? |
-|---|---|---|---|---|
-| Docket Matter | Court-anchored | Yes, exceptional | **Never** | **No** |
-| Retained assignment | Named magistrate | N/A (it is the grant) | No | **No** |
-| Judgment | Private | Future (not in 0037) | Yes, read-only | **No** |
-| Canonical Case Law | All authenticated (published) | N/A | N/A | Write yes |
-| Personal Case Law | Private | Future | Yes, read-only | **No** |
-| Annotation | Annotator only | Never | No | **No** |
-| Quick Code | Owner only | No | **Never** | **No** |
-| Bench Note | Author only | No | No | **No** |
-| Documents | Follows parent | Follows parent | Follows parent | SELECT/INSERT follow parent. **DELETE** still allows `is_admin()` (metadata/blob only — not a Docket read bypass) |
-| `magistrate_courts` | Self SELECT; Admin write | N/A | N/A | Yes (roster, not content) |
+| Entity              | Default                       | Share?                | Discoverable pool? | Admin bypass?                                                                                                     |
+| ------------------- | ----------------------------- | --------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Docket Matter       | Court-anchored                | Yes, exceptional      | **Never**          | **No**                                                                                                            |
+| Retained assignment | Named magistrate              | N/A (it is the grant) | No                 | **No**                                                                                                            |
+| Judgment            | Private                       | Future (not in 0037)  | Yes, read-only     | **No**                                                                                                            |
+| Canonical Case Law  | All authenticated (published) | N/A                   | N/A                | Write yes                                                                                                         |
+| Personal Case Law   | Private                       | Future                | Yes, read-only     | **No**                                                                                                            |
+| Annotation          | Annotator only                | Never                 | No                 | **No**                                                                                                            |
+| Quick Code          | Owner only                    | No                    | **Never**          | **No**                                                                                                            |
+| Bench Note          | Author only                   | No                    | No                 | **No**                                                                                                            |
+| Documents           | Follows parent                | Follows parent        | Follows parent     | SELECT/INSERT follow parent. **DELETE** still allows `is_admin()` (metadata/blob only — not a Docket read bypass) |
+| `magistrate_courts` | Self SELECT; Admin write      | N/A                   | N/A                | Yes (roster, not content)                                                                                         |
 
 ## Association side-channel rule
 
@@ -144,11 +144,11 @@ The Quick Code association UI is **read-only today** — the tables and RLS exis
 
 ## Roles in the product today
 
-| Role | UI | Database |
-|---|---|---|
-| `magistrate` | Full workspace | `profiles.role` is **not** consulted by Docket RLS. Authority is assignment / retain / share / ownership |
-| `clerk` | Same nav as magistrate. Copy treats clerks as share recipients | **Enum leftover.** No Clerk policies. Identical RLS to a magistrate if they have the same assignment/share/ownership |
-| `admin` | Extra: Court Assignments, Legal Library | Roster + canonical library write. **Zero** extra SELECT on Docket / private Judgment / personal Case Law / Quick Codes / Bench Notes |
+| Role         | UI                                                             | Database                                                                                                                             |
+| ------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `magistrate` | Full workspace                                                 | `profiles.role` is **not** consulted by Docket RLS. Authority is assignment / retain / share / ownership                             |
+| `clerk`      | Same nav as magistrate. Copy treats clerks as share recipients | **Enum leftover.** No Clerk policies. Identical RLS to a magistrate if they have the same assignment/share/ownership                 |
+| `admin`      | Extra: Court Assignments, Legal Library                        | Roster + canonical library write. **Zero** extra SELECT on Docket / private Judgment / personal Case Law / Quick Codes / Bench Notes |
 
 An administrator who also sits a Court needs a real `magistrate_courts` row, created the same way as anyone else's.
 

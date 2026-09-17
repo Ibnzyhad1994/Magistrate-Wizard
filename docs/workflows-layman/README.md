@@ -11,19 +11,19 @@ Technical diagrams for engineers live in [`../diagrams/README.md`](../diagrams/R
 
 ## Read in this order
 
-| # | Guide | One-sentence point |
-|---|---|---|
-| 0 | [How to read these guides](00-how-to-read-these-guides.md) | What "Court", "Docket", and "private" mean here |
-| 1 | [Getting started](01-getting-started.md) | Sign in. A new account is not yet assigned to a Court |
-| 2 | [Court assignment](02-court-assignment.md) | An administrator seats you at a Court. That is how the Docket opens |
-| 3 | [Working a docket matter](03-working-a-docket-matter.md) | Create and run a case file that belongs to the Court |
-| 4 | [Hearings, parties, documents](04-hearings-parties-documents.md) | List dates, people, photos, and files |
-| 5 | [Sharing and retained matters](05-sharing-and-retained.md) | Covering colleague vs part-heard after you leave |
-| 6 | [Writing a judgment](06-writing-a-judgment.md) | Your writing stays yours, even if the Court docket does not |
-| 7 | [Researching case law](07-researching-case-law.md) | Shared library vs your private notes |
-| 8 | [Legislation, notes, and shortcuts](08-legislation-notes-codes.md) | Statutes, bench notes, quick codes |
-| 9 | [Admin: roster and library](09-admin-roster-and-library.md) | Seating magistrates and publishing authorities |
-| 10 | [Search and bookmarks](10-search-and-bookmarks.md) | Find only what you are already allowed to open |
+| #   | Guide                                                              | One-sentence point                                                  |
+| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| 0   | [How to read these guides](00-how-to-read-these-guides.md)         | What "Court", "Docket", and "private" mean here                     |
+| 1   | [Getting started](01-getting-started.md)                           | Sign in. A new account is not yet assigned to a Court               |
+| 2   | [Court assignment](02-court-assignment.md)                         | An administrator seats you at a Court. That is how the Docket opens |
+| 3   | [Working a docket matter](03-working-a-docket-matter.md)           | Create and run a case file that belongs to the Court                |
+| 4   | [Hearings, parties, documents](04-hearings-parties-documents.md)   | List dates, people, photos, and files                               |
+| 5   | [Sharing and retained matters](05-sharing-and-retained.md)         | Covering colleague vs part-heard after you leave                    |
+| 6   | [Writing a judgment](06-writing-a-judgment.md)                     | Your writing stays yours, even if the Court docket does not         |
+| 7   | [Researching case law](07-researching-case-law.md)                 | Shared library vs your private notes                                |
+| 8   | [Legislation, notes, and shortcuts](08-legislation-notes-codes.md) | Statutes, bench notes, quick codes                                  |
+| 9   | [Admin: roster and library](09-admin-roster-and-library.md)        | Seating magistrates and publishing authorities                      |
+| 10  | [Search and bookmarks](10-search-and-bookmarks.md)                 | Find only what you are already allowed to open                      |
 
 ## The three ideas that unlock everything
 

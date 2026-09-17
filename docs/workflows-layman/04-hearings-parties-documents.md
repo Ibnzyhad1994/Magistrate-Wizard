@@ -10,7 +10,7 @@ A matter lasts. Hearings stack up: first appearance, adjournment, trial, review.
 1. Open the matter → **Events**.
 2. Add an event.
 3. **Date is required.** Time may wait until the list is settled.
-4. Optionally note type, stage, what was ordered *that day*, and free notes.
+4. Optionally note type, stage, what was ordered _that day_, and free notes.
 
 "Next appearance" is not a separate field. The system looks at the dated events. If you reschedule, change the event — do not keep a stale "next date" on the folder cover.
 

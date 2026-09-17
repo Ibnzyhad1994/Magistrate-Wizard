@@ -2,7 +2,7 @@
 
 **Who:** you, the author  
 **Goal:** draft, lock, and optionally let colleagues read  
-**Everyday analogy:** the opinion is in *your* bound volume. The docket folder may point to it. Pointing is not photocopying.
+**Everyday analogy:** the opinion is in _your_ bound volume. The docket folder may point to it. Pointing is not photocopying.
 
 ## Create
 
@@ -36,7 +36,7 @@ You cannot delete a final judgment until you unlock it back to draft. Unlock fir
 Off (default): only you.  
 On: every signed-in magistrate may **read**. They still cannot edit, delete, or take it over.
 
-This is *not* making it canonical case law. It is not publishing to the world. It is "colleagues may look this up".
+This is _not_ making it canonical case law. It is not publishing to the world. It is "colleagues may look this up".
 
 ## Link to a docket matter
 

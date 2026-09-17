@@ -6,7 +6,7 @@
 
 ## Why this exists
 
-A docket is **not** "Magistrate X's cases". It is **that Court's cases**. The software therefore asks: *who is currently sitting this Court?*
+A docket is **not** "Magistrate X's cases". It is **that Court's cases**. The software therefore asks: _who is currently sitting this Court?_
 
 That answer lives in a dated assignment. While the end date is empty, you have the keys. When the sitting ends — by the magistrate relinquishing it, or an administrator correcting it — those keys stop working.
 
@@ -50,4 +50,4 @@ Suppose you retained matter 45 from a Court you left. A new magistrate is now se
 
 ## Related guide
 
-When you are about to leave, read [Sharing and retained matters](05-sharing-and-retained.md) *before* you relinquish your sitting. You can only retain a matter while you still have the Court keys.
+When you are about to leave, read [Sharing and retained matters](05-sharing-and-retained.md) _before_ you relinquish your sitting. You can only retain a matter while you still have the Court keys.

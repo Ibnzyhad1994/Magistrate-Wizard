@@ -51,6 +51,52 @@ There is no application-level nightly dump into a second bucket in this
 slice. Hash-chained `audit_log` rows prove whether the ledger was rewritten
 after insert; they are not a substitute for backups.
 
+## Rollback
+
+Production only moves forward. There are three layers and each rolls back
+differently:
+
+- **Frontend (Vercel).** Open the Vercel project → Deployments, pick the
+  last known-good Production deployment and **Promote to Production**
+  (`vercel promote <deployment-url>` from the CLI does the same). This is
+  instant and does not touch the database. Then fix forward on `develop`;
+  the next green develop run fast-forwards `main` and redeploys.
+- **Database (migrations).** Migrations are forward-only
+  (`DEVELOPMENT_WORKFLOW.md`): an applied migration is never reverted or
+  edited. A bad migration is fixed by a **new forward migration** that
+  repairs it, taken through the same 13-stage workflow and applied by
+  `deploy-db.yml` (or `supabase db push`). If the frontend cannot run
+  against the current schema, promote the previous Vercel deployment first
+  so users are on a build that matches. Restoring a PITR snapshot is the
+  last resort and loses every write after the timestamp.
+- **Edge functions.** Redeploy the previous version:
+  `git checkout <previous-tag-or-sha> -- supabase/functions && supabase functions deploy <name>`
+  from a linked checkout, or run `deploy-db.yml` manually from the
+  previous commit via workflow_dispatch on a branch that carries it.
+
+Record what was rolled back and why in the "develop CI failing" issue (if
+open) or a new issue, so the forward fix has a trail.
+
+## Restore drills
+
+Run a restore drill **quarterly**: restore the latest backup (or a PITR
+point) into a scratch project, point a preview environment at it, and walk
+the checklist under "Restore a hosted project". Note the wall-clock time it
+took and the age of the newest row recovered; those two numbers are the
+measured RTO and RPO below. File the result as an issue titled
+`Restore drill YYYY-QN`.
+
+## RTO / RPO
+
+| Objective                                    | Target                                                                         | Measured (last drill) |
+| -------------------------------------------- | ------------------------------------------------------------------------------ | --------------------- |
+| RTO (time to a working app on restored data) | **TBC** — proposed 4 hours                                                     | not yet measured      |
+| RPO (maximum data loss)                      | **TBC** — PITR granularity if enabled, otherwise the daily backup (up to 24 h) | not yet measured      |
+
+Confirm whether PITR is enabled on the production project (Dashboard →
+Project Settings → Database → Backups) and replace the placeholders after
+the first drill. Storage objects are not covered by PITR: see "Storage".
+
 ## Related jobs
 
 - Docket bin purge: `purge_expired_docket_matters` (hourly when `pg_cron` exists).

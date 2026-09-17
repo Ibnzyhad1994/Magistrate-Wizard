@@ -65,12 +65,12 @@ Do not add a confirm dialog before recording a stage.
 
 ### Move to bin copy
 
-| Surface | Today | Change |
-|---|---|---|
-| Matter chrome button | Delete | Move to bin |
-| Confirm dialog title | Move this matter to the bin? | keep |
-| Bin page empty description | Matters you delete from the docket appear here for 7 days. | Matters you move to the bin appear here for 7 days. |
-| Bin page header description | Deleted files stay here… | Binned files stay here for 7 days. Restore to put them back on the docket, or empty now to permanently delete. |
+| Surface                     | Today                                                      | Change                                                                                                         |
+| --------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Matter chrome button        | Delete                                                     | Move to bin                                                                                                    |
+| Confirm dialog title        | Move this matter to the bin?                               | keep                                                                                                           |
+| Bin page empty description  | Matters you delete from the docket appear here for 7 days. | Matters you move to the bin appear here for 7 days.                                                            |
+| Bin page header description | Deleted files stay here…                                   | Binned files stay here for 7 days. Restore to put them back on the docket, or empty now to permanently delete. |
 
 Keep the trash icon and destructive styling. The dialog still calls `useBinDocketMatter`.
 
@@ -134,21 +134,21 @@ No new tables or RPCs. Week helpers are pure date math. Toolbar is layout only. 
 
 ## Files
 
-| File | Role |
-|---|---|
-| `src/lib/docket-week.ts` | Week start / days of week |
-| `scripts/tests/test-docket-week.mjs` | Tests for the helpers |
-| `src/pages/docket/docket-capacity-strip.tsx` | Week default, Month disclosure, week chevrons |
-| `src/pages/docket/docket-toolbar.tsx` | Sticky Bin / Capacity / New matter |
-| `src/pages/docket/docket-list-page.tsx` | Wire toolbar, cards vs sheet, copy |
-| `src/pages/docket/docket-matter-card.tsx` | Phone list card |
-| `src/pages/docket/procedure-stage-grid.tsx` | Shared 2×4 (and wrap) grid |
-| `src/pages/docket/docket-stage-strip.tsx` | Use shared grid |
-| `src/pages/docket/docket-stage-sheet.tsx` | Shared toast helper; remove swipe hint |
-| `src/pages/docket/docket-stage-cell.tsx` | Optional `minHeight` for phone cards |
-| `src/pages/docket/docket-matter-detail-page.tsx` | Move to bin label |
-| `src/pages/docket/docket-bin-page.tsx` | Binned / move-to-bin copy |
-| `package.json` | `test:docket-week` script next to existing docket tests |
+| File                                             | Role                                                    |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `src/lib/docket-week.ts`                         | Week start / days of week                               |
+| `scripts/tests/test-docket-week.mjs`             | Tests for the helpers                                   |
+| `src/pages/docket/docket-capacity-strip.tsx`     | Week default, Month disclosure, week chevrons           |
+| `src/pages/docket/docket-toolbar.tsx`            | Sticky Bin / Capacity / New matter                      |
+| `src/pages/docket/docket-list-page.tsx`          | Wire toolbar, cards vs sheet, copy                      |
+| `src/pages/docket/docket-matter-card.tsx`        | Phone list card                                         |
+| `src/pages/docket/procedure-stage-grid.tsx`      | Shared 2×4 (and wrap) grid                              |
+| `src/pages/docket/docket-stage-strip.tsx`        | Use shared grid                                         |
+| `src/pages/docket/docket-stage-sheet.tsx`        | Shared toast helper; remove swipe hint                  |
+| `src/pages/docket/docket-stage-cell.tsx`         | Optional `minHeight` for phone cards                    |
+| `src/pages/docket/docket-matter-detail-page.tsx` | Move to bin label                                       |
+| `src/pages/docket/docket-bin-page.tsx`           | Binned / move-to-bin copy                               |
+| `package.json`                                   | `test:docket-week` script next to existing docket tests |
 
 ## Success
 

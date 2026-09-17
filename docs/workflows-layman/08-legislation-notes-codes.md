@@ -36,7 +36,7 @@ Quick codes are **your** text shortcuts. Example: a standard adjournment formula
 - Unique per person. Two magistrates may both use `adj`.
 - Nobody else can see them. Not the administrator. Not a colleague you shared a docket with.
 - **Copy** puts the snippet on the clipboard. There is no in-editor “type `adj` and it expands” yet.
-- Existing links to matters, judgments, or case law can be *viewed*. Creating or removing those links is not in the screens yet.
+- Existing links to matters, judgments, or case law can be _viewed_. Creating or removing those links is not in the screens yet.
 
 ```mermaid
 flowchart LR
@@ -46,8 +46,8 @@ flowchart LR
 
 ## Bookmarks vs notes vs codes
 
-| Tool | Purpose |
-|---|---|
-| Bookmark | "I want to find this again." |
+| Tool       | Purpose                                  |
+| ---------- | ---------------------------------------- |
+| Bookmark   | "I want to find this again."             |
 | Bench note | "I want to write about this, privately." |
 | Quick code | "I want to reuse a paragraph of my own." |

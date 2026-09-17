@@ -157,30 +157,30 @@ Bookmarkable: Docket Matter, Judgment, Case Law, Quick Code, Bench Note, Statute
 
 ## Honest gaps in the live UI
 
-| You might expect | What the SPA actually does |
-|---|---|
-| View-share disables editors | Controls stay enabled; RLS rejects the write with a toast |
-| Link Case Law from the matter tab | Matter tab is read-only. Link from **Case Law** detail |
-| Link a Judgment from the Judgment page | Links panel is read-only. Link from the **matter** Judgments tab |
-| Type a Quick Code to expand in an editor | **Copy** copies `content` to the clipboard |
-| Create Quick Code ↔ matter/judgment/case-law links | Associations dialog is **read-only** |
-| New Bench Note on a docket / judgment / case-law page | Create from Bench Notes list, or from a legislation section |
-| Password-reset email sets a new password in-app | Link lands on `/login`. No set-password page. Profile / Settings are disabled |
-| Clerk-only screens | None. Clerk collapses onto the magistrate RLS envelope |
+| You might expect                                      | What the SPA actually does                                                    |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------- |
+| View-share disables editors                           | Controls stay enabled; RLS rejects the write with a toast                     |
+| Link Case Law from the matter tab                     | Matter tab is read-only. Link from **Case Law** detail                        |
+| Link a Judgment from the Judgment page                | Links panel is read-only. Link from the **matter** Judgments tab              |
+| Type a Quick Code to expand in an editor              | **Copy** copies `content` to the clipboard                                    |
+| Create Quick Code ↔ matter/judgment/case-law links    | Associations dialog is **read-only**                                          |
+| New Bench Note on a docket / judgment / case-law page | Create from Bench Notes list, or from a legislation section                   |
+| Password-reset email sets a new password in-app       | Link lands on `/login`. No set-password page. Profile / Settings are disabled |
+| Clerk-only screens                                    | None. Clerk collapses onto the magistrate RLS envelope                        |
 
 ## Screen map
 
-| Path | Who | Purpose |
-|---|---|---|
-| `/dashboard` | Any signed-in user | Courts, upcoming appearances, retained, drafts |
-| `/docket` | Any | Matters via the three paths |
-| `/docket/:id` | Lawful access | Operational workspace |
-| `/judgments` | Any | Own + discoverable |
-| `/case-law` | Any | Published canonical + own/discoverable personal |
-| `/legislation` | Any | Published statutes + provision reader |
-| `/quick-codes` | Any | Own snippets only |
-| `/bench-notes` | Any | Own notes only |
-| `/bookmarks` | Any | Own bookmarks |
-| `/search` | Any | RLS-filtered global search |
-| `/admin/court-assignments` | Admin UI role | Roster |
-| `/admin/legal-library` | Admin UI role | Ingestion + review |
+| Path                       | Who                | Purpose                                         |
+| -------------------------- | ------------------ | ----------------------------------------------- |
+| `/dashboard`               | Any signed-in user | Courts, upcoming appearances, retained, drafts  |
+| `/docket`                  | Any                | Matters via the three paths                     |
+| `/docket/:id`              | Lawful access      | Operational workspace                           |
+| `/judgments`               | Any                | Own + discoverable                              |
+| `/case-law`                | Any                | Published canonical + own/discoverable personal |
+| `/legislation`             | Any                | Published statutes + provision reader           |
+| `/quick-codes`             | Any                | Own snippets only                               |
+| `/bench-notes`             | Any                | Own notes only                                  |
+| `/bookmarks`               | Any                | Own bookmarks                                   |
+| `/search`                  | Any                | RLS-filtered global search                      |
+| `/admin/court-assignments` | Admin UI role      | Roster                                          |
+| `/admin/legal-library`     | Admin UI role      | Ingestion + review                              |

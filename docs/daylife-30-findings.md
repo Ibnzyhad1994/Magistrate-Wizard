@@ -17,11 +17,11 @@ Harness result: **92 pass / 2 fail** steps. Findings below re-score those two fa
 
 ## Verdict summary
 
-| Verdict | Meaning | Count (this run) |
-|---------|---------|------------------|
-| **Holds** | Prevented or recoverable in-product | 22 from the harness, plus UI gates confirmed in the browser |
-| **Degrades** | RPC/SQL works, or listing works, but the UI has no control or hides a valid next step | 5 (including multi-magistrate clerk approval) |
-| **Breaks** | Deadlock: no in-app admin action completes the job without SQL | 1 cluster: `can_manage_clerks` with no UI |
+| Verdict      | Meaning                                                                               | Count (this run)                                            |
+| ------------ | ------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **Holds**    | Prevented or recoverable in-product                                                   | 22 from the harness, plus UI gates confirmed in the browser |
+| **Degrades** | RPC/SQL works, or listing works, but the UI has no control or hides a valid next step | 5 (including multi-magistrate clerk approval)               |
+| **Breaks**   | Deadlock: no in-app admin action completes the job without SQL                        | 1 cluster: `can_manage_clerks` with no UI                   |
 
 Nothing in this run corrupted assignments, duplicated pending rows, or let an unassigned magistrate write a docket matter.
 
@@ -31,23 +31,23 @@ Nothing in this run corrupted assignments, duplicated pending rows, or let an un
 
 All emails are `@magistrate-wizard.local`. Password: `password123`.
 
-| Email prefix | Role / state |
-|--------------|----------------|
-| `daylife.mag01` … `mag10` | Magistrates, approved (mag01 Acquero, mag02 Friendship, …) |
+| Email prefix                  | Role / state                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `daylife.mag01` … `mag10`     | Magistrates, approved (mag01 Acquero, mag02 Friendship, …)                                                                                             |
 | `daylife.clerk01` … `clerk08` | Clerks paired to mag01–08. **clerk01 and clerk02 are still pending** (see break). clerk03–07 approved. clerk08 was rejected then re-requested via RPC. |
-| `daylife.wrongcourt1` | Returned (requested occupied Aishalton) |
-| `daylife.wrongcourt2` | Returned, then wrongly approved, then assignment ended |
-| `daylife.clerkasmag` | Signed up as magistrate; admin corrected to **clerk** |
-| `daylife.magasclerk` | Signed up as clerk; admin corrected to **magistrate** |
-| `daylife.cancelled` | Cancelled, requested again, then returned |
-| `daylife.pending` | Still pending (Leonora 1) — left for the admin inbox |
-| `daylife.duplicate` | Duplicate submit blocked; original still pending |
-| `daylife.orphanclerk` | Clerk at Leonora 2 with no clerk approver |
-| `daylife.multi` | Two courts approved (Georgetown 8 and 9) |
-| `daylife.covering` | Own court plus **acting** on Acquero (RPC) |
-| `daylife.empty` | Approved, empty docket |
-| `daylife.outsider` | Never requested a court |
-| `daylife.relinquish` | Approved then self-relinquished |
+| `daylife.wrongcourt1`         | Returned (requested occupied Aishalton)                                                                                                                |
+| `daylife.wrongcourt2`         | Returned, then wrongly approved, then assignment ended                                                                                                 |
+| `daylife.clerkasmag`          | Signed up as magistrate; admin corrected to **clerk**                                                                                                  |
+| `daylife.magasclerk`          | Signed up as clerk; admin corrected to **magistrate**                                                                                                  |
+| `daylife.cancelled`           | Cancelled, requested again, then returned                                                                                                              |
+| `daylife.pending`             | Still pending (Leonora 1) — left for the admin inbox                                                                                                   |
+| `daylife.duplicate`           | Duplicate submit blocked; original still pending                                                                                                       |
+| `daylife.orphanclerk`         | Clerk at Leonora 2 with no clerk approver                                                                                                              |
+| `daylife.multi`               | Two courts approved (Georgetown 8 and 9)                                                                                                               |
+| `daylife.covering`            | Own court plus **acting** on Acquero (RPC)                                                                                                             |
+| `daylife.empty`               | Approved, empty docket                                                                                                                                 |
+| `daylife.outsider`            | Never requested a court                                                                                                                                |
+| `daylife.relinquish`          | Approved then self-relinquished                                                                                                                        |
 
 ---
 
@@ -97,7 +97,7 @@ Statutes browse returned **0 rows** — the local library is empty, not an acces
 
 [`src/pages/clerk/clerk-access-page.tsx`](src/pages/clerk/clerk-access-page.tsx) builds the picker from every historical `court_id` (`requestedCourtIds`), including rejected and cancelled. The clerk’s next step after a return is therefore hidden even though the RPC would accept it.
 
-**Admin remedy today:** none needed if the magistrate approves a *new* RPC row; the clerk cannot create that row from the UI. Workaround: magistrate/admin cannot submit a clerk request on their behalf. Practical workaround is SQL or a magistrate asking them to request a *different* court.
+**Admin remedy today:** none needed if the magistrate approves a _new_ RPC row; the clerk cannot create that row from the UI. Workaround: magistrate/admin cannot submit a clerk request on their behalf. Practical workaround is SQL or a magistrate asking them to request a _different_ court.
 
 ### 2. Admin cannot approve orphaned clerk requests
 
@@ -131,11 +131,11 @@ The harness updated `daylife.pending` to clerk via PostgREST as the admin, then 
 
 This run:
 
-| Court | Magistrates currently seated | clerk01/02 approve |
-|-------|------------------------------|--------------------|
-| Acquero | mag01 (regular) + covering (acting, this run) + persona.novice (acting, leftover) | **Denied** |
-| Friendship | mag02 (regular) + persona.covering (relief, leftover) | **Denied** |
-| General Magistrate Court | mag03 only | **Allowed** (clerk03) |
+| Court                    | Magistrates currently seated                                                      | clerk01/02 approve    |
+| ------------------------ | --------------------------------------------------------------------------------- | --------------------- |
+| Acquero                  | mag01 (regular) + covering (acting, this run) + persona.novice (acting, leftover) | **Denied**            |
+| Friendship               | mag02 (regular) + persona.covering (relief, leftover)                             | **Denied**            |
+| General Magistrate Court | mag03 only                                                                        | **Allowed** (clerk03) |
 
 Adding a covering/acting magistrate — a normal “help with the list” mistake — turns a working clerk inbox into an orphan. Admin unresolved then says “fix roster”, but ending the extra sitting or flipping `can_manage_clerks` is **SQL only**.
 
@@ -158,18 +158,18 @@ This is the only **break** in the sense of “the intended in-app recovery does 
 
 ## Human errors injected vs outcome
 
-| Mistake | What we did | Outcome |
-|---------|-------------|---------|
-| Wrong court at signup | Occupied Aishalton | Admin return with reason — **holds** |
-| Cancel then need the court again | Cancel + submit same court | **Holds** for magistrates; **degrades** for clerks (picker) |
-| Double-submit | Second pending | Clean RPC error — **holds** |
-| Clerk signed up as magistrate | `correct_unassigned_account_type` → clerk | **Holds**; notification sent |
-| Magistrate signed up as clerk | Correct → magistrate | **Holds** |
-| Admin approved the wrong court | Approve then end assignment | **Holds** (no undo-approve) |
-| Covering magistrate added to a court | Acting RPC | Clerk approval **broke** at that court |
-| Clerk at a court with no reviewer | Orphan list | Listed, cannot approve — **degrades** |
-| Unassigned mag opens the suite | `/docket` | Redirect to court-assignments — **holds** |
-| Clerk writes a judgment | Insert | RLS deny — **holds** |
+| Mistake                              | What we did                               | Outcome                                                     |
+| ------------------------------------ | ----------------------------------------- | ----------------------------------------------------------- |
+| Wrong court at signup                | Occupied Aishalton                        | Admin return with reason — **holds**                        |
+| Cancel then need the court again     | Cancel + submit same court                | **Holds** for magistrates; **degrades** for clerks (picker) |
+| Double-submit                        | Second pending                            | Clean RPC error — **holds**                                 |
+| Clerk signed up as magistrate        | `correct_unassigned_account_type` → clerk | **Holds**; notification sent                                |
+| Magistrate signed up as clerk        | Correct → magistrate                      | **Holds**                                                   |
+| Admin approved the wrong court       | Approve then end assignment               | **Holds** (no undo-approve)                                 |
+| Covering magistrate added to a court | Acting RPC                                | Clerk approval **broke** at that court                      |
+| Clerk at a court with no reviewer    | Orphan list                               | Listed, cannot approve — **degrades**                       |
+| Unassigned mag opens the suite       | `/docket`                                 | Redirect to court-assignments — **holds**                   |
+| Clerk writes a judgment              | Insert                                    | RLS deny — **holds**                                        |
 
 ---
 

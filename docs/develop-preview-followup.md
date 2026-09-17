@@ -37,7 +37,7 @@ Current source already gates those routes with `requireApprovedMagistrateCourt` 
 
 ### Unassigned magistrate still saw Case Law
 
-Reported on `/dashboard` for an unassigned magistrate (Samir Mohammed): full nav, Case Law still open, banner *“Judgments, Case Law, Quick Codes, and Bench Notes remain available.”*
+Reported on `/dashboard` for an unassigned magistrate (Samir Mohammed): full nav, Case Law still open, banner _“Judgments, Case Law, Quick Codes, and Bench Notes remain available.”_
 
 That banner is the **old** product rule (library open, only Docket needs a court). Current `develop` is supposed to lock the full suite until a court is approved. The preview bundle still shipped the old rule, which is why the screenshot happened.
 

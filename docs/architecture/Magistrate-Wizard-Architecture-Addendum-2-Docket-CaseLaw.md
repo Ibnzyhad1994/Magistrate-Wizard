@@ -15,13 +15,13 @@ Recommendation: **do not transition `cases` in place at all.** Instead:
 3. Point all new application development at `docket_matters`, never at `cases`.
 4. Once `docket_matters` is live and you're satisfied it's the correct replacement, a later, separate, explicit migration formally deprecates `cases`/`case_parties` — either dropping them outright (safe, since nothing will reference them by then) or leaving them as inert legacy tables if you'd rather keep the historical migration trail visually intact. That decision can wait; it costs nothing to defer.
 
-I considered the alternative — renaming `cases` to `docket_matters` via `ALTER TABLE ... RENAME` and evolving its columns in place — and rejected it even as a *future* recommendation. A rename-and-evolve approach only pays off when there's live data worth preserving through the transition; here there isn't, so a clean new table is strictly simpler, avoids any chance of dragging over docket-irrelevant columns (like the `search_vector` generated expression, which would need rebuilding anyway), and avoids any window where the table's name and shape disagree.
+I considered the alternative — renaming `cases` to `docket_matters` via `ALTER TABLE ... RENAME` and evolving its columns in place — and rejected it even as a _future_ recommendation. A rename-and-evolve approach only pays off when there's live data worth preserving through the transition; here there isn't, so a clean new table is strictly simpler, avoids any chance of dragging over docket-irrelevant columns (like the `search_vector` generated expression, which would need rebuilding anyway), and avoids any window where the table's name and shape disagree.
 
 ---
 
 ## 2. `docket_matters` + `docket_events`/`hearings`: recommended, and why
 
-Yes — a parent/child split, not a single flat table. A docket matter (an arraignment, a maintenance dispute, a traffic citation) persists across its lifecycle and typically accumulates multiple hearings: first appearance, pretrial, trial, sentencing, review, etc. Modeling every hearing as more columns on one row (`hearing_1_date`, `hearing_2_date`...) doesn't work — the count is unbounded and per-hearing detail (what happened, what was ordered, at *that* hearing) gets lost or crammed into free text. A child table gives you:
+Yes — a parent/child split, not a single flat table. A docket matter (an arraignment, a maintenance dispute, a traffic citation) persists across its lifecycle and typically accumulates multiple hearings: first appearance, pretrial, trial, sentencing, review, etc. Modeling every hearing as more columns on one row (`hearing_1_date`, `hearing_2_date`...) doesn't work — the count is unbounded and per-hearing detail (what happened, what was ordered, at _that_ hearing) gets lost or crammed into free text. A child table gives you:
 
 - unlimited hearings per matter without schema changes
 - a natural place to record per-hearing outcome/orders distinct from the matter's overall outcome
@@ -69,9 +69,9 @@ Related-entity links (documents, judgments, legal authorities, bench notes) are 
 - Outlook can supply or receive **individual appearance data** (date, time, location) for a `docket_events` row.
 - Outlook never touches the matter's legal substance — charges, parties, stage, orders, outcome all live on `docket_matters`/`docket_events` fields that have no Outlook counterpart and are never overwritten by a sync.
 - A unique constraint on `(external_calendar_provider, external_calendar_event_id)` prevents the same Outlook event from being imported twice.
-- Matching an incoming Outlook event to an *existing* matter (vs. creating a new one) is an application-layer concern for later — but it depends on `docket_matters.case_number` staying indexed and clean, which it already is in this design.
+- Matching an incoming Outlook event to an _existing_ matter (vs. creating a new one) is an application-layer concern for later — but it depends on `docket_matters.case_number` staying indexed and clean, which it already is in this design.
 
-This means Magistrate Wizard stays authoritative for what a docket matter *is*; Outlook, if and when connected, is just one possible input/output channel for *when things happen* — exactly the boundary you asked for.
+This means Magistrate Wizard stays authoritative for what a docket matter _is_; Outlook, if and when connected, is just one possible input/output channel for _when things happen_ — exactly the boundary you asked for.
 
 ---
 
@@ -91,11 +91,11 @@ case_law  (existing columns kept, plus:)
   + key_holdings text
 ```
 
-The **nullable `owner_id`** is the key design move: `owner_id IS NULL` means "canonical, admin-curated library entry" (today's behavior, preserved exactly — visible to everyone, writable only by admins). `owner_id = <some magistrate>` means "a personal research entry," which then follows the *same* three-way visibility model as cases/judgments: visible to its owner, or to anyone if `is_discoverable = true`, or to specific recipients via the `shares` table (item_type extended to include `'case_law'`).
+The **nullable `owner_id`** is the key design move: `owner_id IS NULL` means "canonical, admin-curated library entry" (today's behavior, preserved exactly — visible to everyone, writable only by admins). `owner_id = <some magistrate>` means "a personal research entry," which then follows the _same_ three-way visibility model as cases/judgments: visible to its owner, or to anyone if `is_discoverable = true`, or to specific recipients via the `shares` table (item_type extended to include `'case_law'`).
 
 This merges "shared library" and "personal knowledge base" into one table and one search surface instead of maintaining two parallel case-law systems — a magistrate searching case law sees canonical entries and their own personal entries (and anything shared with them) in one result set, which is almost certainly what you want in practice. I considered keeping them as two separate tables (e.g., a new `personal_case_law` distinct from the admin `case_law`) and rejected it: it would duplicate the entire schema, double the search-function surface, and force the UI to awkwardly merge two sources everywhere a magistrate looks something up. Flagging this as a real fork in the road, though — if you'd rather keep the canonical library completely separate from anything a magistrate writes themselves, say so and I'll redesign around two tables instead.
 
-**"Relevant passages" + "personal annotations"** — rather than a single text blob, I'd recommend a small child table so a magistrate can pin *multiple* specific excerpts per authority, each with its own note:
+**"Relevant passages" + "personal annotations"** — rather than a single text blob, I'd recommend a small child table so a magistrate can pin _multiple_ specific excerpts per authority, each with its own note:
 
 ```
 case_law_annotations (
@@ -106,7 +106,7 @@ case_law_annotations (
 
 This is inherently per-user and private by nature (owner-scoped RLS, no sharing/discoverable concept needed at the annotation level even when the parent `case_law` entry itself is shared or discoverable) — someone you've shared a case-law entry with sees the entry, not your private annotations on it, unless you separately choose to make an annotation visible (not requested; not building that now).
 
-**"Categorisation/tags" and "legal topics"** — I'd recommend *not* adding a separate `legal_topics` column. `tags`/`case_law_tags` already exist and already serve exactly this purpose; introducing a second, parallel categorization mechanism would just fragment the vocabulary. Legal topics become tags.
+**"Categorisation/tags" and "legal topics"** — I'd recommend _not_ adding a separate `legal_topics` column. `tags`/`case_law_tags` already exist and already serve exactly this purpose; introducing a second, parallel categorization mechanism would just fragment the vocabulary. Legal topics become tags.
 
 **Source documents** — already covered once `documents` goes polymorphic (Addendum §7 / original report §7); `case_law` just needs `'case_law'` added to the `entity_type` enum.
 
@@ -114,9 +114,9 @@ This is inherently per-user and private by nature (owner-scoped RLS, no sharing/
 
 ## 6. Consequences for RLS, sharing, search, Quick Codes, Judgments, Bench Notes, Documents, Tags
 
-- **RLS — two distinct visibility domains now, not one.** Docket matters are, by default, strictly private business of the presiding magistrate — I'm proposing `docket_matters` support *explicit sharing* (e.g., a covering magistrate needs temporary access to a colleague's docket) but **not** the discoverable pool. Court dockets aren't the kind of thing that should ever be "browsable" the way research material is. Case Law, by contrast, gets the full three-way model (owner/shared/discoverable) as described above, matching the original report's design for cases/judgments. **This assumption — no discoverable pool for the Docket — needs your confirmation; see Section 9.**
+- **RLS — two distinct visibility domains now, not one.** Docket matters are, by default, strictly private business of the presiding magistrate — I'm proposing `docket_matters` support _explicit sharing_ (e.g., a covering magistrate needs temporary access to a colleague's docket) but **not** the discoverable pool. Court dockets aren't the kind of thing that should ever be "browsable" the way research material is. Case Law, by contrast, gets the full three-way model (owner/shared/discoverable) as described above, matching the original report's design for cases/judgments. **This assumption — no discoverable pool for the Docket — needs your confirmation; see Section 9.**
 - **Global search** groups become **Docket, Case Law, Judgments, Quick Codes, Statutes** (five groups) instead of the earlier three named in the original PRD text ("Cases" has now split into Docket and Case Law, so its search group splits accordingly). Docket search results always respect strict ownership — there's no `is_discoverable` path for docket matters to leak through, by design.
-- **Quick Codes** — the "linked cases" join table becomes `quick_code_docket_matters`, and a *new* `quick_code_case_law` join table is added (Quick Codes should link to Case Law directly, per your vocabulary list — "linked where useful to Case Law, Judgments, Docket Matters, statutes"). `quick_code_judgments` is unchanged from the original plan.
+- **Quick Codes** — the "linked cases" join table becomes `quick_code_docket_matters`, and a _new_ `quick_code_case_law` join table is added (Quick Codes should link to Case Law directly, per your vocabulary list — "linked where useful to Case Law, Judgments, Docket Matters, statutes"). `quick_code_judgments` is unchanged from the original plan.
 - **Judgments** gain a `docket_matter_judgments` join table (many-to-many, not one-to-one — a consolidated judgment can cover multiple matters, and a matter can accumulate more than one judgment, e.g. interim + final rulings).
 - **Bench Notes** currently attach only to `case_id` (pointing at the table being phased out). Going forward they need to attach to `docket_matters` and, plausibly, to `judgments` and `case_law` entries too (a working note on a piece of precedent is a completely normal use case). Rather than adding a third and fourth nullable FK column, I'd recommend converting `bench_notes`' parent link to the same polymorphic `entity_type`/`entity_id` pattern being used for `documents` — one consistent mechanism instead of a different shape per table. **This is a design change beyond what either report has proposed so far and needs your sign-off; see Section 9.**
 - **Documents** — `entity_type` enum (already being introduced per the original report) now explicitly needs `'docket_matter'` and `'case_law'` added to its value set, alongside `'judgment'`, `'quick_code'`, and (until deprecated) `'case'`.
@@ -224,6 +224,6 @@ cases, case_parties  — remain exactly as in migrations 0001–0012 until
 - **Confirm the nullable-`owner_id`-on-`case_law` design** (one table serving both the canonical library and personal research) versus keeping them as two separate tables. I've recommended the merged approach; flagging it because it's the single biggest structural decision in this addendum.
 - **Judgment-to-docket-matter relationship: many-to-many (my recommendation) or strictly one matter per judgment?** Affects whether `docket_matter_judgments` is a join table or a plain FK on `judgments`.
 - **Are the Outlook-sync placeholder columns on `docket_events` (`external_calendar_provider`, `external_calendar_event_id`, `external_calendar_synced_at`) an acceptable shape to reserve now, even though no sync logic is being built?** If you already know more about how the eventual integration should work (which calendar fields matter, one-way vs. two-way sync), it may be worth refining these column names now rather than later.
-- **Should `docket_matters.orders_summary`/`outcome` live on the matter (a rolling summary) in addition to per-event `outcome_at_event`/`orders_made_at_event` on `docket_events` (as I've proposed), or should the matter-level fields be dropped and derived entirely from the latest event?** I lean toward keeping both — the matter-level fields capture the *overall* disposition, the event-level fields capture what happened at each specific hearing — but wanted to surface it explicitly rather than assume.
+- **Should `docket_matters.orders_summary`/`outcome` live on the matter (a rolling summary) in addition to per-event `outcome_at_event`/`orders_made_at_event` on `docket_events` (as I've proposed), or should the matter-level fields be dropped and derived entirely from the latest event?** I lean toward keeping both — the matter-level fields capture the _overall_ disposition, the event-level fields capture what happened at each specific hearing — but wanted to surface it explicitly rather than assume.
 
 Nothing will be written or applied until you've weighed in on these and approved the revised plan as a whole.

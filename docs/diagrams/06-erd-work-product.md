@@ -114,13 +114,13 @@ stateDiagram-v2
 
 ## Association-table rules (BOTH sides, never OR)
 
-| Join table | SELECT | INSERT / DELETE | Parent delete |
-|---|---|---|---|
-| `docket_matter_judgments` | Docket access **and** Judgment read | Docket access **and Judgment ownership** | Matter RESTRICT, Judgment CASCADE |
-| `docket_matter_case_law` | Docket **and** Case Law read | Docket **and Case Law read** (not ownership) | Both RESTRICT |
-| `quick_code_docket_matters` | Quick Code owner **and** Docket | Same. Edit-share on Docket can mutate the link | Quick Code CASCADE, Matter RESTRICT |
-| `quick_code_judgments` | Quick Code owner **and** Judgment read | Same | Both CASCADE |
-| `quick_code_case_law` | Quick Code owner **and** Case Law read | Same | Quick Code CASCADE, Case Law RESTRICT |
+| Join table                  | SELECT                                 | INSERT / DELETE                                | Parent delete                         |
+| --------------------------- | -------------------------------------- | ---------------------------------------------- | ------------------------------------- |
+| `docket_matter_judgments`   | Docket access **and** Judgment read    | Docket access **and Judgment ownership**       | Matter RESTRICT, Judgment CASCADE     |
+| `docket_matter_case_law`    | Docket **and** Case Law read           | Docket **and Case Law read** (not ownership)   | Both RESTRICT                         |
+| `quick_code_docket_matters` | Quick Code owner **and** Docket        | Same. Edit-share on Docket can mutate the link | Quick Code CASCADE, Matter RESTRICT   |
+| `quick_code_judgments`      | Quick Code owner **and** Judgment read | Same                                           | Both CASCADE                          |
+| `quick_code_case_law`       | Quick Code owner **and** Case Law read | Same                                           | Quick Code CASCADE, Case Law RESTRICT |
 
 Discoverability of a Judgment can make a Quick Code↔Judgment link appear or disappear **without mutating the join row**.
 

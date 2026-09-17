@@ -2,13 +2,13 @@
 
 Two different kindnesses. Do not mix them up.
 
-| | **Share** | **Retain (part-heard)** |
-|---|---|---|
-| When | A colleague needs this *one* file for a short consultation | You are leaving the Court but this matter is still yours to finish |
-| Who grants it | Anyone who already has Court or retained access | Only **you**, and only **for yourself**, while you still sit the Court |
-| How wide | One named person | One named person — you |
-| How it ends | Revoke, or they give it back | You end it, or completing/archiving the matter ends it |
-| Typical story | "Please look at this maintenance file with me." | "I started the trial; I will finish it after I move." |
+|               | **Share**                                                  | **Retain (part-heard)**                                                |
+| ------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------- |
+| When          | A colleague needs this _one_ file for a short consultation | You are leaving the Court but this matter is still yours to finish     |
+| Who grants it | Anyone who already has Court or retained access            | Only **you**, and only **for yourself**, while you still sit the Court |
+| How wide      | One named person                                           | One named person — you                                                 |
+| How it ends   | Revoke, or they give it back                               | You end it, or completing/archiving the matter ends it                 |
+| Typical story | "Please look at this maintenance file with me."            | "I started the trial; I will finish it after I move."                  |
 
 ```mermaid
 flowchart TB
@@ -35,11 +35,11 @@ flowchart TB
 4. They cannot pass the share on.
 5. To change view into edit: revoke, then share again. The old row stays as history.
 
-If the page says you cannot share, you only have a *view* share yourself, or you no longer have Court/retained authority.
+If the page says you cannot share, you only have a _view_ share yourself, or you no longer have Court/retained authority.
 
 **View** lets them read the matter, events, parties, and tags. It does not let them pin a Judgment or Case Law card. **Edit** lets them change the file, but still does not open a Judgment they do not own, and still cannot pin Judgment or Case Law (that needs Court or retained keys).
 
-The Sharing screen may still *show* Save buttons to a view-only colleague. If they try, the save fails. The lock is in the database, not a greyed-out form.
+The Sharing screen may still _show_ Save buttons to a view-only colleague. If they try, the save fails. The lock is in the database, not a greyed-out form.
 
 ## How to retain
 
@@ -53,7 +53,7 @@ After your sitting ends, the matter stays on your Dashboard under **Retained / P
 
 Before a magistrate leaves office:
 
-1. They retain any part-heard files *first*.
+1. They retain any part-heard files _first_.
 2. Administrator ends Court sittings.
 3. Remaining live retains are ended when the work is truly handed on.
 4. Keep the person's name in the system. Deleting the profile is an emergency, not a retirement party.

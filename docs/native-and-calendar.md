@@ -13,14 +13,39 @@ npm run native:sync-version
 
 Settings → About shows `APP_VERSION` and `APP_BUILD`.
 
+## Release and version bump
+
+Tags drive every native build (`release-android.yml`,
+`release-electron.yml`, `build-check-ios.yml` all run on `v*`). The
+web app is deployed continuously from `main` and does not wait for a tag.
+
+1. On `develop`: bump `version` in `package.json` (semver; pre-releases as
+   `0.4.0-alpha.1`) and increment `versionCode` in `native/version.json`
+   (monotonic integer; Google Play rejects a reused or lower value).
+2. `npm run native:sync-version` — writes the version into the Android and
+   iOS projects and the Electron metadata. Commit the result together:
+   `chore(release): v0.4.0-alpha.1`.
+3. Move the **Unreleased** section of `CHANGELOG.md` under the new version
+   heading in the same commit.
+4. Push `develop`; wait for the develop gate to fast-forward `main`.
+5. Tag the merged commit on `main` and push the tag:
+   `git tag v0.4.0-alpha.1 <sha> && git push origin v0.4.0-alpha.1`.
+6. Watch the tag workflows. The APK is attached to a GitHub Release only
+   when the Android keystore secrets are configured; otherwise it (and the
+   Windows installer, always unsigned for now) is a workflow artifact.
+
+Tags and `package.json` must agree: the last tag is `v0.2.0-alpha.2` while
+`package.json` is `0.3.0`, so the next release should tag `v0.3.0` (or bump
+past it) rather than leave the two diverged.
+
 ## Local credentials
 
 Keep secrets in `.env` / `.env.local` (gitignored). Copy `.env.example`.
 
-| Variable | Web / Windows | Android emulator |
-|---|---|---|
-| `VITE_SUPABASE_URL` | `http://127.0.0.1:55321` | `http://10.0.2.2:55321` |
-| `VITE_SUPABASE_ANON_KEY` | from `npm run db:status` | same key |
+| Variable                 | Web / Windows            | Android emulator        |
+| ------------------------ | ------------------------ | ----------------------- |
+| `VITE_SUPABASE_URL`      | `http://127.0.0.1:55321` | `http://10.0.2.2:55321` |
+| `VITE_SUPABASE_ANON_KEY` | from `npm run db:status` | same key                |
 
 Google OAuth uses **PKCE public clients** (no client secret in the app).
 Google “Web application” clients are confidential and reject token exchange
@@ -136,13 +161,13 @@ Events tab. All-day when `scheduled_time` is null. Cancelled /
 
 ## Google sync contract
 
-| Direction | Behaviour |
-|---|---|
-| Push | Title = case number + matter title; start = date[+time]; location; description = type + deep link only |
-| Push | `cancelled` / `entered_in_error` → Google `cancelled` |
-| Pull | If Google start/location changed → update only `scheduled_date`, `scheduled_time`, `location` |
-| Pull | Ignore description/attendees; never create a Docket row from a random Google event |
-| Disconnect | Leave Google events in place and stop updating |
+| Direction  | Behaviour                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| Push       | Title = case number + matter title; start = date[+time]; location; description = type + deep link only |
+| Push       | `cancelled` / `entered_in_error` → Google `cancelled`                                                  |
+| Pull       | If Google start/location changed → update only `scheduled_date`, `scheduled_time`, `location`          |
+| Pull       | Ignore description/attendees; never create a Docket row from a random Google event                     |
+| Disconnect | Leave Google events in place and stop updating                                                         |
 
 Per-user mappings live in `docket_event_calendar_links`. The old
 `docket_events.external_calendar_*` columns stay unused.

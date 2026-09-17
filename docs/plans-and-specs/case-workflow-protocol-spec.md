@@ -43,11 +43,11 @@ Stage-by-stage detail:
 4. **Trial** — Yes/No field (a trial may or may not occur in these matter types; unlike Paper Committal, this stage keeps the "Trial" label). Build in the ability to adjourn before the trial commences — a matter may need to be stood down so parties can bring supporting documentation (e.g., receipts, payslips, proof of income/expenses for a child, in maintenance matters). This adjournment option should be available at each stage, not just before Trial.
 5. **Decision** — the field(s) captured here depend on the classification selected:
 
-   | Classification | Decision field |
-   |---|---|
+   | Classification          | Decision field                   |
+   | ----------------------- | -------------------------------- |
    | Protection Order Matter | Granted / Not Granted (selector) |
-   | Maintenance Matter | Amount ordered (numeric input) |
-   | Liability Matter | Amount paid (numeric input) |
+   | Maintenance Matter      | Amount ordered (numeric input)   |
+   | Liability Matter        | Amount paid (numeric input)      |
 
 6. **Outcome** — Completed / Adjourned.
 
@@ -65,15 +65,15 @@ Adjournment should be modeled as a status/state available at the relevant stages
 
 Lookup names are the live `docket_matter_categories.name` values from 0119 (plus the new Paper Committal row). The spec's title-case labels match those rows.
 
-| Spec classification | `docket_matter_categories.name` | `workflow_protocol` |
-|---|---|---|
-| Criminal Trial | `Criminal trial` | `criminal_trial` |
-| Paper Committal | `Paper Committal` (new row, not Other) | `paper_committal` |
-| Protection Order Matter | `Protection order matter` | `civil_summons` |
-| Maintenance Matter | `Maintenance matter` | `civil_summons` |
-| Liability Matter | `Liability matter` | `civil_summons` |
-| Other (spec is silent) | `Other` | `criminal_trial` (keep today's board) |
-| Unclassified / null category | — | `criminal_trial` |
+| Spec classification          | `docket_matter_categories.name`        | `workflow_protocol`                   |
+| ---------------------------- | -------------------------------------- | ------------------------------------- |
+| Criminal Trial               | `Criminal trial`                       | `criminal_trial`                      |
+| Paper Committal              | `Paper Committal` (new row, not Other) | `paper_committal`                     |
+| Protection Order Matter      | `Protection order matter`              | `civil_summons`                       |
+| Maintenance Matter           | `Maintenance matter`                   | `civil_summons`                       |
+| Liability Matter             | `Liability matter`                     | `civil_summons`                       |
+| Other (spec is silent)       | `Other`                                | `criminal_trial` (keep today's board) |
+| Unclassified / null category | —                                      | `criminal_trial`                      |
 
 Changing classification after create switches the board. Existing Maintenance / Liability / Protection files receive the civil columns at defaults. We do **not** invent a mapping from old criminal cells; magistrates re-enter the civil steps. Criminal cells remain in the database but the board ignores them.
 
