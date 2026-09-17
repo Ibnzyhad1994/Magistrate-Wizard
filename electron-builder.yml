@@ -1,3 +1,10 @@
+# electron-builder 26 configuration (keys verified against the bundled
+# app-builder-lib scheme.json: appId, productName, copyright, directories,
+# files, win.target, nsis.* are all current; nothing here is deprecated).
+# Built by `npm run native:electron:dist` locally and by
+# .github/workflows/release-electron.yml on `v*` tags. The installer is
+# unsigned until a code-signing certificate exists (set CSC_LINK /
+# CSC_KEY_PASSWORD in the environment and electron-builder signs on its own).
 appId: gy.magistrate.wizard
 productName: Magistrate Wizard
 copyright: Copyright Magistrate Wizard

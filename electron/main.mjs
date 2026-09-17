@@ -24,6 +24,10 @@ const MIME = {
 };
 
 let staticServer = null;
+// The only origin the app window may ever navigate to: the local static
+// server in production, the Vite dev server in development. Set once the
+// window is created, before loadURL.
+let appOrigin = null;
 
 const sendFile = (res, filePath) => {
   const type = MIME[extname(filePath).toLowerCase()] ?? "application/octet-stream";
@@ -55,6 +59,62 @@ const startStaticServer = () =>
     });
   });
 
+const originOf = (url) => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * URLs the renderer may hand to the OS browser. `http:` is allowed only
+ * for the app's own local origin (which is what a same-window link would
+ * hit anyway); everything else must be `https:` or `mailto:`. `file:`,
+ * `javascript:`, custom schemes and anything unparseable are refused.
+ */
+export const isAllowedExternalUrl = (url, allowedHttpOrigin) => {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === "https:" || parsed.protocol === "mailto:") return true;
+  if (parsed.protocol === "http:") return allowedHttpOrigin !== null && parsed.origin === allowedHttpOrigin;
+  return false;
+};
+
+const openExternalIfAllowed = (url) => {
+  if (isAllowedExternalUrl(url, appOrigin)) {
+    void shell.openExternal(url);
+  } else {
+    console.warn("[electron] blocked external URL:", url);
+  }
+};
+
+const hardenWebContents = (contents) => {
+  // Links / window.open never open a second BrowserWindow; safe ones go
+  // to the OS browser, the rest are dropped.
+  contents.setWindowOpenHandler(({ url }) => {
+    openExternalIfAllowed(url);
+    return { action: "deny" };
+  });
+
+  // Full-document navigations stay on the app's own origin. In-app
+  // routing is pushState/hash based and does not raise these events;
+  // Google OAuth on desktop runs in the OS browser via the loopback
+  // server below, never inside this window.
+  const guardNavigation = (event, url) => {
+    if (appOrigin !== null && originOf(url) === appOrigin) return;
+    event.preventDefault();
+    console.warn("[electron] blocked navigation:", url);
+  };
+  contents.on("will-navigate", guardNavigation);
+  contents.on("will-redirect", guardNavigation);
+  contents.on("will-attach-webview", (event) => event.preventDefault());
+};
+
 const createWindow = async () => {
   const win = new BrowserWindow({
     width: 1440,
@@ -68,21 +128,21 @@ const createWindow = async () => {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webviewTag: false,
     },
   });
 
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
-    return { action: "deny" };
-  });
+  hardenWebContents(win.webContents);
 
   if (isDev) {
+    appOrigin = originOf(DEV_URL);
     await win.loadURL(DEV_URL);
     return;
   }
 
   const hosted = await startStaticServer();
   staticServer = hosted.server;
+  appOrigin = originOf(hosted.url);
   await win.loadURL(hosted.url);
 };
 
@@ -96,6 +156,7 @@ const startGoogleLoopback = (authUrl) =>
         return;
       }
       const code = requestUrl.searchParams.get("code");
+      const state = requestUrl.searchParams.get("state");
       const error = requestUrl.searchParams.get("error");
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
@@ -106,7 +167,7 @@ const startGoogleLoopback = (authUrl) =>
       server.close();
       if (error) reject(new Error(error));
       else if (!code) reject(new Error("Google did not return an authorization code."));
-      else resolve({ code, redirectUri: `http://127.0.0.1:${port}/oauth/google/callback` });
+      else resolve({ code, state, redirectUri: `http://127.0.0.1:${port}/oauth/google/callback` });
     });
 
     let port = 0;

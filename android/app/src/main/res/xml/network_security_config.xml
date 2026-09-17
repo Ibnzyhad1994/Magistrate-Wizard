@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Referenced from AndroidManifest.xml (android:networkSecurityConfig).
+  Cleartext HTTP is permitted ONLY to the emulator host alias and the
+  device loopback so a dev build can reach local Supabase at
+  http://10.0.2.2:56321 (see .env.example). Every other host, including
+  the hosted Supabase project, must be HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

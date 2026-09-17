@@ -2,15 +2,16 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
 import { googleOAuthTokenProxyPlugin } from "./scripts/google-oauth-token-proxy.mjs";
 import { buildCsp, cspWithInlineScriptHashes } from "./scripts/content-security-policy";
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf8")) as {
   version: string;
 };
-const native = JSON.parse(
-  readFileSync(path.resolve(__dirname, "native/version.json"), "utf8"),
-) as { versionCode: number };
+const native = JSON.parse(readFileSync(path.resolve(__dirname, "native/version.json"), "utf8")) as {
+  versionCode: number;
+};
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -37,6 +38,19 @@ export default defineConfig(({ mode }) => {
           );
         },
       },
+      // `ANALYZE=1 npx vite build` writes an interactive treemap of every
+      // chunk to dist/stats.html. Off by default so an ordinary build emits
+      // nothing extra.
+      ...(env.ANALYZE === "1"
+        ? [
+            visualizer({
+              filename: "dist/stats.html",
+              gzipSize: true,
+              brotliSize: true,
+              open: false,
+            }),
+          ]
+        : []),
     ],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
@@ -62,6 +76,36 @@ export default defineConfig(({ mode }) => {
     },
     worker: {
       format: "es",
+    },
+    build: {
+      // Size budget. Route chunks are tens of kB; the vendor chunks below
+      // and pdf.js (lazy, ~530 kB) are the only ones expected near this
+      // line. A new chunk crossing it should be split, not waved through
+      // by raising the number.
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          // Stable vendor chunks so a change to one page does not
+          // invalidate React or Supabase in every client's cache, and so
+          // TipTap/ProseMirror only load with the editor.
+          manualChunks(id: string) {
+            if (!id.includes("node_modules")) return undefined;
+            if (
+              /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(
+                id,
+              )
+            ) {
+              return "vendor-react";
+            }
+            if (/[\\/]node_modules[\\/]@supabase[\\/]/.test(id)) return "vendor-supabase";
+            if (/[\\/]node_modules[\\/](@tiptap[\\/]|prosemirror-)/.test(id))
+              return "vendor-editor";
+            if (/[\\/]node_modules[\\/]@radix-ui[\\/]/.test(id)) return "vendor-radix";
+            if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) return "vendor-icons";
+            return undefined;
+          },
+        },
+      },
     },
   };
 });
