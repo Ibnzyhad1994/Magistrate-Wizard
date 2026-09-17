@@ -7,17 +7,28 @@
 //     approved or rejected.
 //
 // SECURITY MODEL: this function is invoked by an authenticated client
-// (supabase.functions.invoke(), which attaches the caller's own JWT --
-// Supabase's platform verifies that JWT before this code even runs,
-// unless verify_jwt is explicitly disabled for this function, which it
-// is not). The caller only ever supplies a request_id; every fact this
-// function acts on (clerk identity, court, magistrate identity, current
-// decision state, email-verification status) is re-derived HERE, from
-// the database, using the service-role key -- never trusted from the
+// (supabase.functions.invoke(), which attaches the caller's own JWT).
+// The platform's verify_jwt gate accepts ANY valid JWT -- including the
+// public anon key -- so this code verifies the caller itself:
+//   1. `admin.auth.getUser(jwt)` must resolve to a real user (401 if not).
+//   2. That user must be the request's clerk (profile_id) or someone who
+//      may review requests for the request's court -- exactly the
+//      can_manage_clerk_access() predicate (0144/0151: sole sitting,
+//      unique primary, can_manage_clerks flag, or Court Assignment
+//      Administrator), evaluated as the caller via an RLS-scoped client so
+//      Postgres, not this file, owns that rule. Anyone else gets 403.
+// The caller only ever supplies a request_id; every fact this function
+// acts on (clerk identity, court, magistrate identity, current decision
+// state, email-verification status) is re-derived HERE, from the
+// database, using the service-role key -- never trusted from the
 // invocation payload. A malicious or buggy client cannot forge a
 // notification about a decision that didn't actually happen, or about a
 // request that isn't actually verified/pending, because this function
 // simply looks up the real row and computes recipients itself.
+//
+// Every database value interpolated into an email body is HTML-escaped
+// (full_name, email, staff_id, note, rejection_reason, court name) so a
+// crafted profile or request cannot inject markup into a reviewer's inbox.
 //
 // Never sends anything if the request's clerk has not verified their
 // email (mirrors clerk_access_request_email_confirmed() in Postgres).
@@ -37,13 +48,14 @@
 //   NOTIFY_FROM_EMAIL     - the verified "from" address to send as
 //   APP_BASE_URL           - e.g. https://benchbook.example.gov, used to
 //                            build the "Review access request" link
-// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically
-// by the Supabase platform to every Edge Function and need no manual
-// configuration.
+// SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are
+// provided automatically by the Supabase platform to every Edge Function
+// and need no manual configuration.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const NOTIFY_FROM_EMAIL = Deno.env.get("NOTIFY_FROM_EMAIL");
@@ -55,6 +67,28 @@ interface RequestBody {
   event: "request_created" | "decision_made";
   request_id: string;
 }
+
+/** Minimal HTML escaping for text interpolated into email bodies. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Only an http(s) base URL may become a clickable link in an email. */
+const safeAppUrl = (path: string) => {
+  if (!/^https?:\/\//i.test(APP_BASE_URL)) return null;
+  return escapeHtml(`${APP_BASE_URL.replace(/\/+$/, "")}${path}`);
+};
+
+const bearerToken = (req: Request) => {
+  const header = req.headers.get("Authorization") ?? "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+};
 
 async function sendEmail(to: string, subject: string, html: string) {
   if (!RESEND_API_KEY || !NOTIFY_FROM_EMAIL) {
@@ -81,6 +115,17 @@ Deno.serve(async (req) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // --- Caller verification (a valid anon-key JWT is NOT a user) ---------
+  const jwt = bearerToken(req);
+  if (!jwt) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const { data: callerData, error: callerErr } = await admin.auth.getUser(jwt);
+  const caller = callerData?.user;
+  if (callerErr || !caller?.id) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   let body: RequestBody;
   try {
     body = await req.json();
@@ -89,6 +134,9 @@ Deno.serve(async (req) => {
   }
   if (!body.request_id || !body.event) {
     return new Response("request_id and event are required", { status: 400 });
+  }
+  if (body.event !== "request_created" && body.event !== "decision_made") {
+    return new Response("Unknown event", { status: 400 });
   }
 
   const { data: request, error: requestErr } = await admin
@@ -99,7 +147,24 @@ Deno.serve(async (req) => {
     .eq("id", body.request_id)
     .single();
   if (requestErr || !request) {
+    // Same status for "no such row" and "not yours" so request ids cannot
+    // be enumerated by an unrelated user.
     return new Response("Request not found", { status: 404 });
+  }
+
+  // --- Caller authorization: the request's clerk, or a reviewer for its
+  // court (can_manage_clerk_access, evaluated AS the caller). -------------
+  if (caller.id !== request.profile_id) {
+    const asCaller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: mayReview, error: reviewErr } = await asCaller.rpc("can_manage_clerk_access", {
+      p_court_id: request.court_id,
+    });
+    if (reviewErr || mayReview !== true) {
+      return new Response("Request not found", { status: 404 });
+    }
   }
 
   const { data: clerkUser } = await admin.auth.admin.getUserById(request.profile_id);
@@ -113,7 +178,8 @@ Deno.serve(async (req) => {
     admin.from("courts").select("name").eq("id", request.court_id).single(),
   ]);
 
-  const reviewUrl = `${APP_BASE_URL}/clerk-access-requests`;
+  const courtName = escapeHtml(court?.name ?? "a court");
+  const reviewUrl = safeAppUrl("/clerk-access-requests");
 
   if (body.event === "request_created") {
     if (request.status !== "pending") {
@@ -162,18 +228,19 @@ Deno.serve(async (req) => {
       .select("id, email, full_name")
       .in("id", authorizedProfileIds);
 
+    const clerkName = escapeHtml(clerkProfile?.full_name ?? "A clerk");
+    const clerkEmail = escapeHtml(clerkProfile?.email ?? "");
+    const html =
+      `<p>${clerkName} (${clerkEmail}) has requested access to <strong>${courtName}</strong>.</p>` +
+      (request.staff_id ? `<p>Staff ID: ${escapeHtml(request.staff_id)}</p>` : "") +
+      (request.note ? `<p>Note: ${escapeHtml(request.note)}</p>` : "") +
+      `<p>Requested: ${escapeHtml(request.requested_at)}</p>` +
+      (reviewUrl ? `<p><a href="${reviewUrl}">Review access request</a></p>` : "");
+
     const results = await Promise.all(
-      (magistrates ?? []).map((m) =>
-        sendEmail(
-          m.email,
-          `Clerk access request: ${court?.name ?? "a court"}`,
-          `<p>${clerkProfile?.full_name ?? "A clerk"} (${clerkProfile?.email}) has requested access to <strong>${court?.name ?? "a court"}</strong>.</p>` +
-            (request.staff_id ? `<p>Staff ID: ${request.staff_id}</p>` : "") +
-            (request.note ? `<p>Note: ${request.note}</p>` : "") +
-            `<p>Requested: ${request.requested_at}</p>` +
-            `<p><a href="${reviewUrl}">Review access request</a></p>`,
-        ),
-      ),
+      (magistrates ?? [])
+        .filter((m) => Boolean(m.email))
+        .map((m) => sendEmail(m.email, `Clerk access request: ${court?.name ?? "a court"}`, html)),
     );
 
     await admin
@@ -195,15 +262,16 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ skipped: "clerk has no email on file" }), { status: 200 });
   }
 
+  const docketUrl = safeAppUrl("/docket");
   const result = await sendEmail(
     clerkProfile.email,
     request.status === "approved"
       ? `Your access to ${court?.name ?? "the court"} has been approved`
       : `Your request for ${court?.name ?? "the court"} was not approved`,
     request.status === "approved"
-      ? `<p>Your request for access to <strong>${court?.name ?? "the court"}</strong> has been approved. You can now open its docket in ${APP_BASE_URL ? `<a href="${APP_BASE_URL}/docket">BenchBook</a>` : "BenchBook"}.</p>`
-      : `<p>Your request for access to <strong>${court?.name ?? "the court"}</strong> was not approved.</p>` +
-        (request.rejection_reason ? `<p>Reason: ${request.rejection_reason}</p>` : ""),
+      ? `<p>Your request for access to <strong>${courtName}</strong> has been approved. You can now open its docket in ${docketUrl ? `<a href="${docketUrl}">BenchBook</a>` : "BenchBook"}.</p>`
+      : `<p>Your request for access to <strong>${courtName}</strong> was not approved.</p>` +
+        (request.rejection_reason ? `<p>Reason: ${escapeHtml(request.rejection_reason)}</p>` : ""),
   );
 
   await admin

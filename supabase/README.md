@@ -1,48 +1,97 @@
 # Magistrate Wizard — Supabase backend
 
-11 migrations, applied in filename order, build the entire backend:
-
-| # | File | Adds |
-|---|------|------|
-| 0001 | `0001_init.sql` | `user_role` enum, `profiles`, `handle_new_user()` signup trigger, `is_admin()`, `set_updated_at()` |
-| 0002 | `0002_courts.sql` | `courts`, `profiles.court_id`, `my_court_id()` |
-| 0003 | `0003_cases.sql` | `case_status`/`party_role` enums, `cases`, `case_parties`, `user_can_access_case()` |
-| 0004 | `0004_bench_notes.sql` | `note_status` enum, `bench_notes` (+FTS), `user_can_access_bench_note()` |
-| 0005 | `0005_legal_library.sql` | `statutes`, `case_law` (+FTS) — shared, admin-curated reference data |
-| 0006 | `0006_tags.sql` | `tags` + per-entity join tables |
-| 0007 | `0007_documents.sql` | `documents` metadata table |
-| 0008 | `0008_comments_bookmarks.sql` | `comments`, `bookmarks` (+entity-validation trigger) |
-| 0009 | `0009_audit_log.sql` | `audit_log` + generic audit trigger on the sensitive tables |
-| 0010 | `0010_search.sql` | `search_statutes`, `search_case_law`, `search_bench_notes`, `search_cases`, `global_search` RPCs |
-| 0011 | `0011_storage.sql` | `documents` + `avatars` Storage buckets and their policies |
+Everything under `supabase/migrations/` is the backend: schema, RLS,
+functions, triggers, Storage buckets and policies, search, scheduled
+jobs. Migrations are numbered `NNNN_description.sql`, applied in filename
+order, and **forward-only** — an applied migration is never edited; a
+defect is fixed by a new migration. Numbering is sequential with two
+documented gaps (`0049`, `0140`). `ls supabase/migrations` is the
+authoritative list; do not maintain a table of them here.
 
 Every table has RLS enabled from the migration that creates it — there is
-no window where a table exists without policies.
+no window where a table exists without policies. Every function pins
+`search_path`. The security and privacy invariants the policies encode are
+recorded in `docs/adr/` and `DEVELOPMENT_WORKFLOW.md`; do not weaken them
+"because a helper would be simpler".
 
-## Option A — Supabase CLI (recommended)
+`supabase/functions/` holds the two edge functions (`clerk-access-notify`,
+`webhook-dispatch`). `supabase/seed.sql` is the synthetic local seed
+(never real user content).
+
+## Local development loop
 
 ```bash
-npm install -g supabase        # if you don't have it
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase db push                # applies every migration in supabase/migrations, in order
+npm run db:start      # docker: API on 127.0.0.1:56321 (see config.toml for the other ports)
+npm run db:status     # prints the anon/service keys for .env
+npm run db:reset      # drops, re-applies every migration, loads seed.sql
+npm run dev           # Vite on 127.0.0.1:5373
+npm run db:stop
 ```
 
-`<your-project-ref>` is the id in your project's URL
-(`https://<project-ref>.supabase.co`) — also under Project Settings → General.
+`.env` needs `VITE_SUPABASE_URL=http://127.0.0.1:56321` and the anon key
+from `db:status` (copy `.env.example`). Android emulators reach the host
+as `http://10.0.2.2:56321`.
 
-## Option B — Dashboard SQL editor
+After the schema changes, regenerate the frontend types:
 
-If you'd rather not install the CLI: open **SQL Editor** in your Supabase
-project, and run each file **in numeric order**, one at a time,
-`0001_init.sql` → `0011_storage.sql`. Each file is idempotent-safe to
-re-run only up to the point of first failure — if one errors partway
-through, fix and re-run just that statement rather than the whole file,
-since `create table`/`create type` will error on a second run (`create
-policy`/function bodies use `or replace` or are safe to skip if already
-applied).
+```bash
+npm run supabase:types    # writes src/types/database.types.ts from the LOCAL schema
+```
 
-## After the migrations run
+That file is pure generator output; hand-written aliases live in
+`src/types/db-aliases.ts`, so regenerating is always safe.
+
+Live-database tests (`npm run test:live`) run against this local stack and
+refuse a remote host unless `ALLOW_REMOTE_SUPABASE=1` is set.
+
+## Adding a migration
+
+This mirrors the "Database change workflow" in `DEVELOPMENT_WORKFLOW.md`;
+the PR template repeats it as a checklist. Stages are not skipped to save
+time.
+
+1. **Inspect live first.** Confirm the current schema, RLS, functions and
+   triggers on the environment you are changing (`supabase db diff`, the
+   Dashboard, or `list_migrations`) — do not assume from local files.
+2. **Number it.** Next unused number, one number per file, reconciled
+   against live migration history. Renumbering an *unapplied* migration is
+   fine; renaming or editing an applied one never is.
+3. **Design and threat-model it.** Who can read/write what afterwards? Any
+   new `SECURITY DEFINER` function needs an explicit note: why DEFINER,
+   fixed `search_path`, EXECUTE grants, what it exposes.
+4. **Pretest locally.** `npm run db:reset` must apply cleanly from 0001.
+   Run the behavioural pretest with disposable fixtures only — never the
+   real admin profile. Migration CI does the same apply on every develop
+   push.
+5. **Review / approve**, then **apply** (`supabase db push` against the
+   linked project, or `deploy-db.yml` for production from `main`).
+6. **Verify live**: structure, behavioural regression (RLS/privacy changes
+   get a rollback-only pass), Supabase advisors (security + performance) —
+   call out any *new* finding explicitly.
+7. **Update the architecture spec** (`docs/architecture/`), regenerate types,
+   add the `CHANGELOG.md` line, commit the migration + spec + related docs
+   together. Frontend changes go in a separate commit where practical.
+8. **Never commit an unapplied migration to `main` as if it were live.**
+   `main` must always reconstruct what is actually on production.
+
+## Hosted projects
+
+```bash
+npm install -g supabase        # or use npx
+supabase login
+supabase link --project-ref <project-ref>
+supabase db push --dry-run     # shows exactly what would apply
+supabase db push               # applies every pending migration, in order
+supabase functions deploy clerk-access-notify
+supabase functions deploy webhook-dispatch
+```
+
+`<project-ref>` is the id in `https://<project-ref>.supabase.co`. The
+production and develop-preview refs, and which branch feeds which, are in
+`docs/environments.md`. On `main`, `.github/workflows/deploy-db.yml` runs
+the same commands inside the `production` GitHub Environment.
+
+## After the first migration run on a new project
 
 1. **Promote your own account to admin.** Every new signup defaults to
    `role = 'magistrate'`. Sign up once through the app, then in the SQL
@@ -52,78 +101,55 @@ applied).
    update public.profiles set role = 'admin' where email = 'you@example.com';
    ```
 
-   Admins are the only role that can write to `courts`, `statutes`, and
-   `case_law` — you'll need at least one before the reference library is
-   usable.
+   Admins are the only role that can write to `courts` and the curated
+   legal library, approve court and clerk access requests, and read the
+   audit log.
 
-2. **Create at least one court.** Cases and profiles are scoped to a
-   court for row-level security, so nothing else will be visible until
-   one exists:
+2. **Create at least one court** (Admin → Courts, or SQL):
 
    ```sql
-   insert into public.courts (name, jurisdiction) values ('County Magistrate Court', 'Sample County');
+   insert into public.courts (name, jurisdiction) values ('Georgetown Magistrates Court', 'Demerara');
    ```
 
-   Then assign it to users: `update public.profiles set court_id = '<court-id>' where id = '<user-id>';`
-   (or pass `court_id` in `options.data` on `supabase.auth.signUp()` — see
-   `handle_new_user()` in `0002_courts.sql`.)
+   Magistrates then request a sitting from `/court-assignments` and an
+   admin approves it from `/admin/court-assignments`. A magistrate without
+   an approved court cannot open the docket or the library.
 
 3. **Confirm the Storage buckets exist.** Dashboard → Storage should show
-   `documents` (private, 25 MB limit) and `avatars` (public, 5 MB limit).
-   The `insert into storage.buckets ... on conflict do nothing` in
-   `0011_storage.sql` creates them; this step is just to verify.
+   `documents` (private) and `avatars` (public). The migrations create them
+   with `on conflict do nothing`; this step is just to verify.
 
 4. **Set Auth URLs.** Dashboard → Authentication → URL Configuration:
-   - Site URL → your deployed app origin (or `http://localhost:5173` for
-     local dev).
-   - Redirect URLs → add the same origin. This is what
-     `resetPasswordForEmail`'s `redirectTo` (in `src/hooks/use-auth.ts`)
-     depends on for the forgot-password flow to land back on `/login`.
+   Site URL → the deployed origin (or `http://127.0.0.1:5373` locally);
+   add the same origin to Redirect URLs — `resetPasswordForEmail` depends on
+   it for the forgot-password flow.
 
-5. **Point the frontend at this project.** In the app root, copy
-   `.env.example` to `.env` and fill in Project Settings → API → Project
-   URL / anon public key.
+5. **Edge function secrets** (`supabase secrets set ...`): see the
+   "Clerk access notifications" block in `.env.example`. Both functions
+   no-op with a log line when unconfigured.
 
-6. **Regenerate frontend types against the live schema** (optional —
-   `src/types/database.types.ts` is already hand-authored to match these
-   11 migrations exactly, but once the CLI is linked you can keep it in
-   sync automatically):
-
-   ```bash
-   SUPABASE_PROJECT_ID=<your-project-ref> npm run supabase:types
-   ```
+6. **Point the frontend at the project**: `VITE_SUPABASE_URL` and
+   `VITE_SUPABASE_ANON_KEY` in `.env` (local) or the Vercel project
+   settings (hosted).
 
 ## Design notes worth knowing before you build on this
 
-- **Court-scoped RLS.** `my_court_id()` / `user_can_access_case()` /
-  `user_can_access_bench_note()` are the three functions basically every
-  policy in 0003 onward is built from. A magistrate or clerk only ever
-  sees rows in their own `court_id`; admins see everything.
-- **Bench note privacy.** `bench_notes.is_private` (default `true`)
-  restricts a note to its author until explicitly shared by flipping it
-  to `false` — at which point it becomes visible to the rest of the
-  author's court (or anyone with access to the note's case, if it's
-  attached to one).
-- **`ON DELETE RESTRICT` on judicial content.** `cases.created_by`,
-  `bench_notes.author_id`, and `documents.uploaded_by` all use `RESTRICT`
-  rather than `CASCADE` — you cannot delete a Supabase auth user who has
-  filed cases, written notes, or uploaded documents without first
-  reassigning or archiving that content. Deactivate accounts via
-  `profiles.is_active = false` instead of deleting them.
-- **`statutes` / `case_law` are curated, not per-court.** They're shared
-  across every court and writable only by admins — treat them as the
-  platform's canonical legal reference set, not user content.
-- **Full-text search** uses generated `tsvector` columns (`GENERATED
-  ALWAYS ... STORED`) with GIN indexes, so it updates automatically on
-  write with no extra application code. Query it via the RPCs in
-  `0010_search.sql` (e.g. `supabase.rpc('global_search', { p_query: 'search terms' })`),
-  not by querying `search_vector` directly.
-- **`content_text` on `bench_notes` is client-supplied.** TipTap's
-  `editor.getJSON()` goes in `content`; call `editor.getText()` for the
-  same save and send it as `content_text` — that's what feeds the search
-  index, since extracting plain text from arbitrary ProseMirror JSON in
-  SQL isn't practical.
-- **Audit log is admin-only and append-only.** No one — including
-  admins — has insert/update/delete access; every row comes from
-  `audit_trigger_fn()`, which runs as `SECURITY DEFINER` off the table
-  triggers in `0009_audit_log.sql`.
+- **Court-anchored access.** Docket matter access is the three-path
+  predicate: current court assignment OR retained assignment OR an active
+  share. Judgments are owner-or-`is_discoverable`; bench notes are
+  author-only; quick codes are owner-only with no admin bypass. Case law
+  has canonical (`owner_id IS NULL`) and personal rows, and personal rows
+  are private. Association tables are deliberately asymmetric
+  (`docket_matter_case_law` vs `quick_code_docket_matters`).
+- **`ON DELETE RESTRICT` on judicial content.** You cannot delete an auth
+  user who has authored matters, judgments, notes or documents. Deactivate
+  via `profiles.is_active = false` instead.
+- **Curated library.** `statutes`, `case_law` (canonical), `legal_sources`
+  and the taxonomy tables are shared across courts and writable only by
+  admins; ingestion goes through `import_batches` / `import_jobs`.
+- **Full-text search** uses generated `tsvector` columns with GIN indexes.
+  Query through the search RPCs, not `search_vector` directly.
+- **Audit log is admin-read, append-only and hash-chained.** Rows come only
+  from the trigger function; nothing can update or delete them.
+- **Scheduled jobs** (`pg_cron` where available): hourly docket bin purge,
+  daily `run_scheduled_maintenance`. See `docs/backup-and-recovery.md`.
