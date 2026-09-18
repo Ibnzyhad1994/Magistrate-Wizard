@@ -9,6 +9,7 @@ import { flushOutbox } from "@/lib/offline/flush";
 import {
   enqueueCreate,
   enqueueMatterPatch,
+  type OutboxJob,
   enqueueNextDate,
   enqueueGooglePending,
   enqueueUpdate,
@@ -18,6 +19,7 @@ import {
 import {
   appendFailedJobs,
   discardFailedJob,
+  getFailedJobs,
   getOutboxJobs,
   getProfileCache,
   setOutboxJobs,
@@ -199,6 +201,27 @@ export const discardFailedHearing = async (jobId: string) => {
   const profileId = await currentProfileId();
   if (!profileId) return;
   await discardFailedJob(profileId, jobId);
+};
+
+/**
+ * Re-queues a job that was dead-lettered as a CONFLICT, deliberately
+ * without its row-version guard so it will overwrite what is there now.
+ *
+ * Offered only for conflicts, and only as an explicit choice: the person
+ * has been shown what changed and what they would replace. It is not an
+ * automatic retry and it is never offered for a refusal, which will not
+ * resolve by trying again. RLS still decides -- dropping the guard
+ * removes an optimistic-concurrency check, not an access check.
+ */
+export const reapplyFailedJob = async (jobId: string) => {
+  const profileId = await currentProfileId();
+  if (!profileId) return;
+  const entry = getFailedJobs(profileId).find((item) => item.job.id === jobId);
+  if (!entry || entry.reason !== "conflict") return;
+  const job = { ...entry.job, baseUpdatedAt: null, attempts: 0 } as OutboxJob;
+  await setOutboxJobs(profileId, [...getOutboxJobs(profileId), job]);
+  await discardFailedJob(profileId, jobId);
+  await flushPendingHearings();
 };
 
 export const enqueueGooglePendingIfNeeded = async (eventId: string, matterId: string) => {

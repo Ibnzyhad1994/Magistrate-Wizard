@@ -8,6 +8,7 @@ import {
 import {
   discardFailedHearing,
   flushPendingHearings,
+  reapplyFailedJob,
   startOfflineFlushListeners,
 } from "@/lib/offline/runtime";
 import { describeFailedJob } from "@/lib/offline/outbox";
@@ -107,15 +108,31 @@ export function OfflineSyncBanner() {
                   {describeFailedJob(item).detail}
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="onDark"
-                onClick={() => void discardFailedHearing(item.job.id)}
-                aria-label={`Discard failed save for ${item.job.caseNumber}`}
-              >
-                Discard
-              </Button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {/* Offered only for a conflict: the person has been shown
+                    what changed and is choosing to replace it. Never for a
+                    refusal, which will not resolve by trying again. */}
+                {item.reason === "conflict" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="onDark"
+                    onClick={() => void reapplyFailedJob(item.job.id)}
+                    aria-label={`Apply your version anyway for ${item.job.caseNumber}`}
+                  >
+                    Apply anyway
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="onDark"
+                  onClick={() => void discardFailedHearing(item.job.id)}
+                  aria-label={`Discard failed save for ${item.job.caseNumber}`}
+                >
+                  Discard
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
