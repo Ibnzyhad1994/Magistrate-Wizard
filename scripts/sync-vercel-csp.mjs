@@ -8,10 +8,12 @@
  * This script adds the header-only directive `frame-ancestors 'none'` (meta
  * CSPs cannot carry it), HSTS, and the cache rules for the hashed bundle.
  *
- * Supabase origin: VITE_SUPABASE_URL from the environment when set, otherwise
- * PRODUCTION_SUPABASE_URL below. vercel.json is committed and serves
- * production, so the production project is the default and a non-https
- * origin (a local Docker URL) is refused.
+ * Supabase origins: vercel.json is committed and served on every Vercel
+ * deployment of this project, including the develop preview whose API is
+ * PREVIEW_SUPABASE_URL. The header therefore allowlists both hosted
+ * projects. VITE_SUPABASE_URL is ignored here so a local Docker URL cannot
+ * leak into the committed file, and so a preview-only origin cannot lock
+ * production out.
  *
  *   npm run csp:sync            rewrite vercel.json
  *   npm run test:vercel-headers assert vercel.json is in sync (runs in CI)
@@ -24,6 +26,7 @@ import { buildCsp, cspWithInlineScriptHashes } from "./content-security-policy.t
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const PRODUCTION_SUPABASE_URL = "https://gipijpeahkznfwitjccy.supabase.co";
+export const PREVIEW_SUPABASE_URL = "https://kmfjejfsbtvbhvpoxvhb.supabase.co";
 export const HSTS_VALUE = "max-age=63072000; includeSubDomains; preload";
 export const ASSET_CACHE_VALUE = "public, max-age=31536000, immutable";
 export const HTML_CACHE_VALUE = "no-cache";
@@ -33,7 +36,9 @@ export function readIndexHtml() {
 }
 
 export function buildVercelCsp(supabaseUrl, indexHtml) {
-  return `${cspWithInlineScriptHashes(buildCsp(supabaseUrl), indexHtml)}; frame-ancestors 'none'`;
+  const extra =
+    supabaseUrl === PRODUCTION_SUPABASE_URL ? [PREVIEW_SUPABASE_URL] : [];
+  return `${cspWithInlineScriptHashes(buildCsp(supabaseUrl, extra), indexHtml)}; frame-ancestors 'none'`;
 }
 
 export function renderVercelConfig({
@@ -76,14 +81,8 @@ export function renderVercelJson(options) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isMain) {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || PRODUCTION_SUPABASE_URL;
-  if (!/^https:\/\//.test(supabaseUrl)) {
-    console.error(`Refusing to write a non-https Supabase origin into vercel.json: ${supabaseUrl}`);
-    console.error("Unset VITE_SUPABASE_URL (the production project is the default) and rerun.");
-    process.exit(2);
-  }
   const target = path.join(ROOT, "vercel.json");
-  const next = renderVercelJson({ supabaseUrl });
+  const next = renderVercelJson({ supabaseUrl: PRODUCTION_SUPABASE_URL });
   const check = process.argv.includes("--check");
   let current = "";
   try {
@@ -100,6 +99,8 @@ if (isMain) {
     process.exit(1);
   } else {
     writeFileSync(target, next);
-    console.log(`vercel.json written (Supabase origin ${new URL(supabaseUrl).origin})`);
+    console.log(
+      `vercel.json written (Supabase origins ${PRODUCTION_SUPABASE_URL} ${PREVIEW_SUPABASE_URL})`,
+    );
   }
 }

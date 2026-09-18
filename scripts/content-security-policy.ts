@@ -11,6 +11,14 @@ import { createHash } from "node:crypto";
  *
  * frame-src / img-src host-sources are origin-level (paths are ignored),
  * so we pass `new URL(supabaseUrl).origin`, not a /storage/ prefix.
+ *
+ * `extraSupabaseUrls` is for committed Vercel headers: that file is served
+ * on every deployment of the project, including the develop preview whose
+ * `VITE_SUPABASE_URL` is a different hosted project. A header that only
+ * allowlists production makes login fetch fail in the browser (TypeError
+ * "Failed to fetch") because header CSP and the Vite meta CSP both apply
+ * and the intersection wins. Local Vite builds must not pass extras — the
+ * Docker origin must stay the only Supabase host in that policy.
  */
 export function supabaseCspOrigin(supabaseUrl: string): string {
   try {
@@ -20,8 +28,12 @@ export function supabaseCspOrigin(supabaseUrl: string): string {
   }
 }
 
-export function buildCsp(supabaseUrl: string): string {
+export function buildCsp(supabaseUrl: string, extraSupabaseUrls: readonly string[] = []): string {
   const origin = supabaseCspOrigin(supabaseUrl);
+  const extraOrigins = extraSupabaseUrls
+    .map(supabaseCspOrigin)
+    .filter((item) => item.length > 0 && item !== origin);
+  const supabaseOrigins = [origin, ...extraOrigins].join(" ");
   return [
     "default-src 'self'",
     "script-src 'self' 'wasm-unsafe-eval'",
@@ -31,10 +43,10 @@ export function buildCsp(supabaseUrl: string): string {
     // this origin is a bug, not a feature.
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
-    `img-src 'self' blob: data: ${origin}`,
+    `img-src 'self' blob: data: ${supabaseOrigins}`,
     "media-src 'self' blob:",
-    `connect-src 'self' ${origin} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
-    `frame-src 'self' blob: ${origin}`,
+    `connect-src 'self' ${supabaseOrigins} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
+    `frame-src 'self' blob: ${supabaseOrigins}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

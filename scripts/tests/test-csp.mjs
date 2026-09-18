@@ -21,6 +21,7 @@ const check = (label, actual, expected) => {
 };
 
 const production = "https://gipijpeahkznfwitjccy.supabase.co";
+const preview = "https://kmfjejfsbtvbhvpoxvhb.supabase.co";
 const withSlash = `${production}/`;
 const local = "http://127.0.0.1:56321";
 
@@ -76,6 +77,24 @@ check(
   "local CSP does not leak the production host",
   localCsp.includes("gipijpeahkznfwitjccy"),
   false,
+);
+
+const hostedCsp = buildCsp(production, [preview]);
+check(
+  "extra hosted origin lands in connect-src",
+  hostedCsp.includes(`connect-src 'self' ${production} ${preview} `),
+  true,
+);
+check(
+  "extra hosted origin lands in frame-src and img-src",
+  hostedCsp.includes(`frame-src 'self' blob: ${production} ${preview}`) &&
+    hostedCsp.includes(`img-src 'self' blob: data: ${production} ${preview}`),
+  true,
+);
+check(
+  "duplicate extra origin matching the primary is ignored",
+  buildCsp(production, [production, `${production}/`]),
+  buildCsp(production),
 );
 
 // --- inline-script hashing --------------------------------------------------

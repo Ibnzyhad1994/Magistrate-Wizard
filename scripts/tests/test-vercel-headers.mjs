@@ -8,6 +8,7 @@ import {
   ASSET_CACHE_VALUE,
   HSTS_VALUE,
   HTML_CACHE_VALUE,
+  PREVIEW_SUPABASE_URL,
   PRODUCTION_SUPABASE_URL,
   readIndexHtml,
   renderVercelJson,
@@ -47,6 +48,11 @@ check(
 );
 check("CSP keeps frame-ancestors 'none'", csp.includes("frame-ancestors 'none'"), true);
 check("CSP allows the production Supabase origin", csp.includes(PRODUCTION_SUPABASE_URL), true);
+check(
+  "CSP also allows the develop-preview Supabase origin (same vercel.json on every deploy)",
+  csp.includes(PREVIEW_SUPABASE_URL),
+  true,
+);
 check("CSP does not carry a local Docker origin", /127\.0\.0\.1|localhost/.test(csp), false);
 check("script-src has no 'unsafe-inline'", /script-src[^;]*'unsafe-inline'/.test(csp), false);
 
