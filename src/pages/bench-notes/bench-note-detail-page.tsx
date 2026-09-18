@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
+import { QuickCodeInsert } from "@/components/quick-codes/quick-code-insert";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { SaveIndicator } from "@/components/common/save-indicator";
 import {
@@ -256,6 +257,7 @@ export default function BenchNoteDetailPage() {
               content={(note.content as JSONContent | null) ?? null}
               placeholder="Write your note…"
               onChange={handleEditorChange}
+              toolbarExtra={({ insertText }) => <QuickCodeInsert onInsert={insertText} />}
             />
           </CardContent>
         </Card>

@@ -12,11 +12,17 @@ import {
   Heading2,
   Link as LinkIcon,
 } from "lucide-react";
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { isSafeHref } from "@/lib/html-sanitize";
 import { Button } from "@/components/ui/button";
 import { LinkDialog } from "@/components/common/link-dialog";
+
+/** Handed to `toolbarExtra` so a caller can put text into the document. */
+export type RichTextEditorApi = {
+  /** Inserts plain text at the cursor and returns focus to the document. */
+  insertText: (text: string) => void;
+};
 
 interface RichTextEditorProps {
   content: JSONContent | null;
@@ -28,6 +34,15 @@ interface RichTextEditorProps {
   ariaLabel?: string;
   /** Id of a visible label element naming the editing area. */
   ariaLabelledBy?: string;
+  /**
+   * Extra toolbar control, rendered after Link and only while editable.
+   * A render prop rather than a node because the control needs to write
+   * into the document, and the editor instance is deliberately private —
+   * the component is lazy-loaded, so a ref would have to cross a Suspense
+   * boundary. Keeps domain features (Quick Codes) out of this generic
+   * editor.
+   */
+  toolbarExtra?: (api: RichTextEditorApi) => ReactNode;
 }
 
 /**
@@ -51,6 +66,7 @@ export function RichTextEditor({
   className,
   ariaLabel,
   ariaLabelledBy,
+  toolbarExtra,
 }: RichTextEditorProps) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkInitial, setLinkInitial] = useState("");
@@ -179,6 +195,9 @@ export function RichTextEditor({
           >
             <LinkIcon className="h-4 w-4" />
           </ToolbarButton>
+          {toolbarExtra?.({
+            insertText: (text) => editor.chain().focus().insertContent(text).run(),
+          })}
         </div>
       )}
       <EditorContent editor={editor} />

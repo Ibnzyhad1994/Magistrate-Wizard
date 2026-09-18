@@ -33,6 +33,7 @@ import { InlineError } from "@/components/common/inline-error";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
+import { QuickCodeInsert } from "@/components/quick-codes/quick-code-insert";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
@@ -893,6 +894,7 @@ function ContentCard({
             setPending({ json, text });
             markDirty(true);
           }}
+          toolbarExtra={({ insertText }) => <QuickCodeInsert onInsert={insertText} />}
         />
         {!isDraft && !judgment.content_text?.trim() && (
           <p className="text-sm italic text-muted-foreground">No content on record.</p>
