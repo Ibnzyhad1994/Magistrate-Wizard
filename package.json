@@ -178,6 +178,9 @@
   "overrides": {
     "mammoth": {
       "@xmldom/xmldom": "0.8.15"
+    },
+    "@capacitor/cli": {
+      "tar": "^7.5.22"
     }
   },
   "devDependencies": {
