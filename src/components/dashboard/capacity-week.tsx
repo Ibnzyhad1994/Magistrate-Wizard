@@ -34,17 +34,15 @@ function DayCell({ date, today }: { date: string; today: string }) {
         to={`${ROUTES.docket}?date=${date}&view=list`}
         aria-label={`${weekday} ${date}. ${hint}`}
         className={cn(
-          "flex min-h-[5.75rem] flex-col items-center justify-center gap-1 px-1 py-3 text-center outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring",
+          "flex min-h-[5.75rem] flex-col items-center justify-center gap-1 bg-card px-1 py-3 text-center outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring",
           isToday && "ring-1 ring-inset ring-foreground/40",
         )}
         style={{ backgroundColor: isPending ? undefined : style.bg }}
       >
-        <span
-          className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${style.textClass}`}
-        >
-          {weekday}
+        <span className={`eyebrow ${style.textClass}`}>{weekday}</span>
+        <span className={`text-2xl font-bold leading-none tracking-tight ${style.textClass}`}>
+          {dayNum}
         </span>
-        <span className={`font-brand text-2xl leading-none ${style.textClass}`}>{dayNum}</span>
         <span className={`text-[10px] tabular-nums tracking-wide ${style.textClass}`}>
           {isPending ? "…" : total}
         </span>
@@ -63,7 +61,7 @@ export function CapacityWeek({ dates, today }: { dates: string[]; today: string 
       >
         Sitting load
       </DashboardHeading>
-      <div className="grid grid-cols-7 overflow-hidden border border-foreground/20">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border border-hairline bg-hairline shadow-elevation-1 hc:border-border">
         {dates.map((date) => (
           <DayCell key={date} date={date} today={today} />
         ))}

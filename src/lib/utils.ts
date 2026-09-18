@@ -1,6 +1,21 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
 import { reportError } from "@/lib/sentry";
+
+/**
+ * tailwind-merge only knows Tailwind's stock font sizes; without this it
+ * reads `text-display` / `text-title` as colours and drops whichever of
+ * "text-title text-foreground" comes first. Keep in step with the
+ * fontSize entries in tailwind.config.ts.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: ["display-xl", "display", "title-lg", "title", "heading"] }],
+      shadow: [{ shadow: ["elevation-1", "elevation-2", "elevation-3"] }],
+    },
+  },
+});
 
 /**
  * Merge Tailwind class names, resolving conflicts in favor of the

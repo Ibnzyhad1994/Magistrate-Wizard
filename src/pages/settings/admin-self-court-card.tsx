@@ -54,7 +54,7 @@ export function AdminSelfCourtCard() {
 
   return (
     <>
-      <Card className="mt-6 max-w-xl">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Court Assignments</CardTitle>
           <CardDescription>

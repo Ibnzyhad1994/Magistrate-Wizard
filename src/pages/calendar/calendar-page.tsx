@@ -99,23 +99,31 @@ export default function CalendarPage() {
         dataTour="page-calendar"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant={view === "month" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("month")}
-              aria-pressed={view === "month"}
+            {/* A view switch, not a commit action, so it is a segmented
+                control rather than a red button. */}
+            <div
+              role="group"
+              aria-label="Calendar view"
+              className="inline-grid grid-cols-2 rounded-md bg-surface-2 p-0.5 hc:border hc:border-border"
             >
-              Month
-            </Button>
-            <Button
-              variant={view === "agenda" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("agenda")}
-              aria-pressed={view === "agenda"}
-            >
-              Agenda
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleToday}>
+              {(["month", "agenda"] as const).map((option) => (
+                <Button
+                  key={option}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setView(option)}
+                  aria-pressed={view === option}
+                  className={cn(
+                    "min-h-9 px-4",
+                    view === option &&
+                      "bg-surface-1 text-foreground shadow-elevation-1 hover:bg-surface-1 hc:bg-foreground hc:text-background",
+                  )}
+                >
+                  {option === "month" ? "Month" : "Agenda"}
+                </Button>
+              ))}
+            </div>
+            <Button variant="secondary" size="sm" onClick={handleToday}>
               Today
             </Button>
             <Button variant="ghost" size="icon" onClick={handlePrev} aria-label="Previous month">
@@ -153,7 +161,7 @@ export default function CalendarPage() {
       {view === "month" && !isPending && !isError ? (
         <div
           className={cn(
-            "overflow-x-auto rounded-md border border-border bg-card transition-opacity duration-150",
+            "overflow-x-auto rounded-md border border-hairline bg-card shadow-elevation-1 transition-opacity duration-150 hc:border-border",
             // Month navigation now holds the previous month's grid while
             // the next loads (placeholderData) instead of blanking to
             // skeletons — dimming keeps that legible as "refreshing"
@@ -162,11 +170,11 @@ export default function CalendarPage() {
           )}
           aria-busy={isFetching}
         >
-          <div className="grid grid-cols-7 border-b border-border">
+          <div className="grid grid-cols-7 border-b border-hairline hc:border-border">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="px-0.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-2 sm:text-[11px]"
+                className="eyebrow px-0.5 py-2.5 text-center text-[10px] text-muted-foreground sm:px-2"
               >
                 {day}
               </div>
@@ -181,14 +189,14 @@ export default function CalendarPage() {
                 <div
                   key={date}
                   className={cn(
-                    "min-h-[3.25rem] border-b border-r border-foreground/5 p-1 sm:min-h-[6.5rem] sm:p-1.5",
-                    !inMonth && "bg-muted/60 text-muted-foreground",
+                    "min-h-[3.25rem] border-b border-r border-hairline p-1 transition-colors hover:bg-surface-2 sm:min-h-[6.5rem] sm:p-1.5",
+                    !inMonth && "bg-background text-muted-foreground",
                   )}
                 >
                   <div
                     className={cn(
-                      "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                      isToday && "bg-primary font-semibold text-primary-foreground",
+                      "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
+                      isToday && "bg-primary font-bold text-primary-foreground",
                     )}
                   >
                     {Number(date.slice(8))}
@@ -215,10 +223,14 @@ export default function CalendarPage() {
                           type="button"
                           onClick={() => handleOpenEvent(event)}
                           className={cn(
-                            "block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-foreground/90 hover:bg-foreground/10",
+                            // A chip with a coloured leading edge, the way an
+                            // event reads in a streaming guide: colour says what
+                            // kind of thing it is, the surface says it is one item.
+                            "block w-full truncate rounded-sm border-l-2 border-primary bg-primary/10 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-primary/20",
                             isInactiveEventStatus(event.event_status) &&
-                              "text-muted-foreground line-through",
-                            event.pending && "text-notice-action",
+                              "border-muted-foreground/40 bg-muted text-muted-foreground line-through",
+                            event.pending &&
+                              "border-notice-action bg-notice-action/10 text-notice-action",
                           )}
                           title={event.court_name ?? undefined}
                           aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
@@ -244,7 +256,7 @@ export default function CalendarPage() {
       {view === "agenda" && !isPending && !isError && events.length > 0 ? (
         <ol
           className={cn(
-            "divide-y divide-foreground/10 overflow-hidden rounded-md border border-border bg-card transition-opacity duration-150",
+            "divide-y divide-hairline overflow-hidden rounded-md border border-hairline bg-card shadow-elevation-1 transition-opacity duration-150 hc:border-border",
             isFetching && "opacity-60",
           )}
           aria-busy={isFetching}
@@ -255,7 +267,7 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => handleOpenEvent(event)}
                 className={cn(
-                  "flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-foreground/5 sm:flex-row sm:items-center sm:justify-between",
+                  "flex w-full flex-col gap-1 border-l-2 border-primary px-4 py-3 text-left transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
                   event.pending && "text-notice-action",
                 )}

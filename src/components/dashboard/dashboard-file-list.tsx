@@ -44,7 +44,7 @@ export function DashboardFileList({
           None on the files in view.
         </p>
       ) : (
-        <ol className="divide-y divide-foreground/10 border-y border-border">
+        <ol className="divide-y divide-hairline border-y border-hairline">
           {rows.map((row, index) => {
             const ordinal = String(index + 1).padStart(2, "0");
             return (
@@ -53,14 +53,14 @@ export function DashboardFileList({
                   to={row.href}
                   className="group grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[3rem_minmax(0,8rem)_minmax(0,1fr)] sm:gap-4"
                 >
-                  <span className="font-brand text-lg tabular-nums tracking-wide text-muted-foreground group-hover:text-foreground">
+                  <span className="text-lg font-semibold tabular-nums tracking-tight text-muted-foreground group-hover:text-foreground">
                     {ordinal}
                   </span>
-                  <span className="hidden truncate font-brand text-sm tabular-nums tracking-wide text-muted-foreground sm:block">
+                  <span className="hidden truncate text-sm tabular-nums text-muted-foreground sm:block">
                     {row.case_number || "—"}
                   </span>
                   <span className="min-w-0">
-                    <span className="block font-brand text-sm tabular-nums tracking-wide text-muted-foreground sm:hidden">
+                    <span className="block text-sm tabular-nums text-muted-foreground sm:hidden">
                       {row.case_number || "—"}
                     </span>
                     <span className="block text-base font-medium leading-snug text-foreground group-hover:text-primary">

@@ -39,7 +39,7 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
             {title}
             {/* Netflix's "Explore all": slides in beside the title on
                 hover, always present for touch and keyboard. */}
-            <span className="text-eyebrow flex items-center gap-0.5 text-link transition-[opacity,transform] duration-250 ease-out-expo md:-translate-x-1 md:opacity-0 md:group-focus-within/row:translate-x-0 md:group-focus-within/row:opacity-100 md:group-hover/row:translate-x-0 md:group-hover/row:opacity-100">
+            <span className="eyebrow flex items-center gap-0.5 text-link transition-[opacity,transform] duration-250 ease-out-expo md:-translate-x-1 md:opacity-0 md:group-focus-within/row:translate-x-0 md:group-focus-within/row:opacity-100 md:group-hover/row:translate-x-0 md:group-hover/row:opacity-100">
               See all
               <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
             </span>

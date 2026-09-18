@@ -204,8 +204,7 @@ export default function DashboardPage() {
     (boardQuery.isPending ||
       eventsQuery.isPending ||
       (filesFocus === "no_parties" && partiesQuery.isPending) ||
-      (filesFocus === "retained" &&
-        (retainedIdsQuery.isPending || extraRetainedQuery.isFetching)));
+      (filesFocus === "retained" && (retainedIdsQuery.isPending || extraRetainedQuery.isFetching)));
 
   const metricHref = (focus: DashboardFileFocus) =>
     filesFocus === focus ? ROUTES.dashboard : dashboardFilesHref(focus);
@@ -276,13 +275,8 @@ export default function DashboardPage() {
         <DashboardFolio>
           <header className="mb-10 max-w-2xl">
             <DashboardKicker>Briefing</DashboardKicker>
-            <p className="mt-3 font-brand text-sm tabular-nums tracking-wide text-muted-foreground">
-              {todayLabel}
-            </p>
-            <h1
-              className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground"
-              data-tour="page-dashboard"
-            >
+            <p className="mt-3 text-sm tabular-nums text-muted-foreground">{todayLabel}</p>
+            <h1 className="mt-4 text-display text-foreground" data-tour="page-dashboard">
               Dashboard
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -310,14 +304,11 @@ export default function DashboardPage() {
         <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <DashboardKicker>Chambers briefing</DashboardKicker>
-            <p className="mt-3 font-brand text-sm tabular-nums tracking-wide text-muted-foreground">
+            <p className="mt-3 text-sm tabular-nums text-muted-foreground">
               {todayLabel}
               {sittingLine ? ` · ${sittingLine}` : ""}
             </p>
-            <h1
-              className="mt-4 font-brand text-5xl tracking-[0.08em] text-foreground"
-              data-tour="page-dashboard"
-            >
+            <h1 className="mt-4 text-display text-foreground" data-tour="page-dashboard">
               Dashboard
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -338,10 +329,10 @@ export default function DashboardPage() {
         <MetricLedger>
           {boardQuery.isPending ? (
             <>
-              <Skeleton className="h-28 rounded-none" />
-              <Skeleton className="h-28 rounded-none" />
-              <Skeleton className="h-28 rounded-none" />
-              <Skeleton className="h-28 rounded-none" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
             </>
           ) : (
             <>
@@ -429,7 +420,7 @@ export default function DashboardPage() {
                 <SuggestionList insights={insights} isPending={boardQuery.isPending} />
                 <AppearanceTimeline events={events} today={today} />
               </div>
-              <aside className="space-y-12 lg:col-span-5 lg:border-l lg:border-border lg:pl-8">
+              <aside className="space-y-12 lg:col-span-5 lg:border-l lg:border-hairline lg:pl-8">
                 <Sparkline points={spark} />
                 <StageLedger counts={workload.byStage} />
               </aside>

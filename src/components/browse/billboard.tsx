@@ -146,7 +146,10 @@ export function Billboard({
           {primaryAction && (
             <BillboardButton
               action={primaryAction}
-              variant={cinematic ? "play" : "default"}
+              // A detail page's lead action is "back", which is navigation,
+              // not a commitment — it gets the translucent secondary, and
+              // the white Play stays the Home billboard's alone.
+              variant={isDetail ? (cinematic ? "more" : "outline") : cinematic ? "play" : "default"}
               icon={isDetail ? "back" : "play"}
               compact={isDetail}
             />

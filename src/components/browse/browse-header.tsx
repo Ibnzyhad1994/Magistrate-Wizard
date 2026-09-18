@@ -59,7 +59,7 @@ export function BrowseHeader({
       )}
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          {eyebrow && <p className="text-eyebrow mb-2 text-muted-foreground">{eyebrow}</p>}
+          {eyebrow && <p className="eyebrow mb-2 text-muted-foreground">{eyebrow}</p>}
           <h1 className="w-fit text-display text-foreground" data-tour={dataTour}>
             {title}
           </h1>

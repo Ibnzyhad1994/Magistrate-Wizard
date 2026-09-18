@@ -15,7 +15,7 @@ import {
   addDaysIso,
   dayOfLabel,
 } from "@/lib/docket-week";
-import { formatDate, getLocalDateOnly, parseDateOnly } from "@/lib/utils";
+import { cn, formatDate, getLocalDateOnly, parseDateOnly } from "@/lib/utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -131,10 +131,10 @@ function DayTile({
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={hint}
-      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-sm border text-xs transition-colors ${
+      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-md border text-xs transition-[background-color,box-shadow,transform] duration-150 ease-out-expo hover:-translate-y-px hover:shadow-elevation-1 ${
         size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20"
       } ${style.textClass} ${
-        today ? "border-2 border-stage-outcome-complete" : "border-border"
+        today ? "border-2 border-stage-outcome-complete" : "border-hairline hc:border-border"
       } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
       style={{ backgroundColor: style.bg }}
     >
@@ -273,12 +273,12 @@ export function DocketCapacityStrip({
 
   return (
     <div
-      className="mb-4 space-y-3 rounded-md border border-border p-3"
+      className="mb-6 space-y-3 rounded-md border border-hairline bg-card p-3 shadow-elevation-1 hc:border-border sm:p-4"
       data-tour="docket-week-strip"
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 text-sm font-medium text-foreground">{heading}</span>
+          <span className="min-w-0 text-heading text-foreground">{heading}</span>
           <div className="flex shrink-0 items-center gap-0.5">
             <HintTooltip label={`Previous ${navUnit}`}>
               <Button
@@ -310,7 +310,7 @@ export function DocketCapacityStrip({
         <div
           role="group"
           aria-label="Capacity calendar view"
-          className="grid w-full grid-cols-3 rounded-md border border-foreground/15 p-0.5"
+          className="grid w-full grid-cols-3 rounded-md bg-surface-2 p-0.5 hc:border hc:border-border"
         >
           {CAPACITY_VIEWS.map((view) => {
             const selected = calendarView === view.id;
@@ -321,8 +321,12 @@ export function DocketCapacityStrip({
                 size="sm"
                 type="button"
                 aria-pressed={selected}
-                variant={selected ? "secondary" : "ghost"}
-                className="min-h-11 w-full px-1 text-xs sm:text-sm"
+                variant="ghost"
+                className={cn(
+                  "min-h-11 w-full px-1 text-xs sm:text-sm",
+                  selected &&
+                    "bg-surface-1 text-foreground shadow-elevation-1 hover:bg-surface-1 hc:bg-foreground hc:text-background",
+                )}
                 onClick={handleSelectView}
               >
                 {view.label}

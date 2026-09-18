@@ -34,7 +34,7 @@ export function SoundCuesCard() {
   };
 
   return (
-    <Card className="mt-6 max-w-xl">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">Sound cues</CardTitle>
         <CardDescription>
@@ -97,7 +97,7 @@ export function HearingRemindersCard() {
   };
 
   return (
-    <Card className="mt-6 max-w-xl">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">Sitting-day reminders</CardTitle>
         <CardDescription>
@@ -155,7 +155,7 @@ export function DownloadMyDataCard() {
   };
 
   return (
-    <Card className="mt-6 max-w-xl">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">Download my data</CardTitle>
         <CardDescription>

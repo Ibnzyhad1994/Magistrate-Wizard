@@ -30,7 +30,7 @@ export function StageLedger({ counts }: { counts: Record<string, number> }) {
                   style={{ width: `${Math.round((count / max) * 100)}%` }}
                 />
               </span>
-              <span className="font-brand tabular-nums text-foreground">{count}</span>
+              <span className="font-semibold tabular-nums text-foreground">{count}</span>
             </li>
           ))}
         </ul>

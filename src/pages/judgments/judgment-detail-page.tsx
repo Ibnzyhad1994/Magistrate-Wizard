@@ -251,7 +251,7 @@ export default function JudgmentDetailPage() {
         {isOwner ? (
           <LifecycleBar judgment={judgment} contentDirty={contentDirty} />
         ) : (
-          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          <p className="rounded-md border border-hairline bg-surface-1 px-3 py-2 text-xs text-muted-foreground hc:border-border">
             {isDraft
               ? "This is another magistrate's draft, shared with you to read. Only its author can edit, finalise or delete it."
               : "Read-only: this judgment belongs to another magistrate."}
@@ -327,7 +327,7 @@ function LifecycleBar({
   const isDraft = judgment.status === "draft";
 
   return (
-    <div className="sticky top-[68px] z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
+    <div className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 flex flex-wrap items-center gap-2 rounded-md border border-hairline bg-background/85 p-3 shadow-elevation-2 backdrop-blur-md hc:border-border hc:bg-background">
       {isDraft ? (
         <>
           <Button

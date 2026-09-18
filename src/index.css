@@ -669,7 +669,7 @@
   }
 
   /* Label style shared by eyebrows, kickers and column headings. */
-  .text-eyebrow {
+  .eyebrow {
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.16em;

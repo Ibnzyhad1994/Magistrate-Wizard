@@ -31,7 +31,7 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
                 to={ROUTES.docketMatterEvents(event.docket_matter_id)}
                 className="block outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <p className="font-brand text-[10px] font-semibold uppercase tracking-[0.2em] text-destructive">
+                <p className="eyebrow text-destructive">
                   Overdue · {formatDate(event.scheduled_date)}
                 </p>
                 <p className="mt-1 text-sm text-foreground">
@@ -51,10 +51,10 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
           {upcoming.map((event) => (
             <li
               key={event.id}
-              className="grid grid-cols-[4.25rem_1fr] gap-4 border-b border-border py-3 last:border-0 sm:grid-cols-[5rem_1fr]"
+              className="grid grid-cols-[4.25rem_1fr] gap-4 border-b border-hairline py-3 last:border-0 sm:grid-cols-[5rem_1fr]"
             >
               <div className="text-right">
-                <p className="font-brand text-sm tabular-nums leading-tight text-foreground">
+                <p className="text-sm font-semibold tabular-nums leading-tight text-foreground">
                   {formatDate(event.scheduled_date, { day: "numeric", month: "short" })}
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -68,7 +68,7 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
                 <p className="truncate text-sm font-medium text-foreground">
                   {event.case_number} · {event.matter_title}
                 </p>
-                <p className="mt-1 font-brand text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="eyebrow mt-1 text-muted-foreground">
                   {toTitleCase((event.event_type ?? "appearance").replace(/_/g, " "))}
                   {event.outcome_at_event ? ` · ${event.outcome_at_event}` : ""}
                 </p>

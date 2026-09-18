@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 const MARK: Record<InsightSeverity, { label: string; className: string }> = {
   urgent: { label: "Now", className: "text-destructive" },
-  attention: { label: "Soon", className: "text-[hsl(var(--brass))]" },
+  attention: { label: "Soon", className: "text-notice-action" },
   nudge: { label: "Next", className: "text-muted-foreground" },
 };
 
@@ -34,7 +34,7 @@ export function SuggestionList({
           No gaps on the files in view. Keep logging appearances and procedure as you sit.
         </p>
       ) : (
-        <ol className="divide-y divide-foreground/10">
+        <ol className="divide-y divide-hairline">
           {insights.map((insight, index) => {
             const mark = MARK[insight.severity];
             const ordinal = String(index + 1).padStart(2, "0");
@@ -44,27 +44,15 @@ export function SuggestionList({
                   to={insight.href}
                   className="group grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[3rem_3.25rem_minmax(0,1fr)] sm:gap-4"
                 >
-                  <span className="font-brand text-lg tabular-nums tracking-wide text-muted-foreground group-hover:text-foreground">
+                  <span className="text-lg font-semibold tabular-nums tracking-tight text-muted-foreground group-hover:text-foreground">
                     {ordinal}
                   </span>
-                  <span
-                    className={cn(
-                      "hidden font-brand text-[10px] font-semibold uppercase tracking-[0.22em] sm:block",
-                      mark.className,
-                    )}
-                  >
+                  <span className={cn("eyebrow hidden sm:block", mark.className)}>
                     {mark.label}
                   </span>
                   <span className="min-w-0">
                     <span className="flex items-baseline gap-2 sm:hidden">
-                      <span
-                        className={cn(
-                          "font-brand text-[10px] font-semibold uppercase tracking-[0.22em]",
-                          mark.className,
-                        )}
-                      >
-                        {mark.label}
-                      </span>
+                      <span className={cn("eyebrow", mark.className)}>{mark.label}</span>
                     </span>
                     <span className="block text-base font-medium leading-snug text-foreground group-hover:text-primary">
                       {insight.title}
@@ -72,9 +60,7 @@ export function SuggestionList({
                     <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
                       {insight.why}
                     </span>
-                    <span className="mt-2 inline-block font-brand text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                      {insight.cta} →
-                    </span>
+                    <span className="eyebrow mt-2 inline-block text-link">{insight.cta} →</span>
                   </span>
                 </Link>
               </li>

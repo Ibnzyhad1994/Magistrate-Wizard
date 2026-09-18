@@ -19,7 +19,7 @@ export function GoogleCalendarCard() {
   const connected = googleCalendarConnected(state);
 
   return (
-    <Card className="max-w-xl">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">Google Calendar</CardTitle>
         <CardDescription>

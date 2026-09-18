@@ -3,9 +3,11 @@ import { DetailsHint } from "@/components/common/details-hint";
 import { cn } from "@/lib/utils";
 
 /**
- * Morning cause-list chrome: blotting-paper rules, a crimson margin
- * like a legal pad, brass kickers. Home stays cinematic; this page
- * should read as a folio laid on the bench.
+ * Briefing frame. Once a folio pastiche (ruled paper, crimson margin,
+ * serif kickers); now the same surfaces and type as the rest of the
+ * product so the operational page and the cinematic Home read as one
+ * app. The ledger structure and numbered logs are what carry the
+ * "briefing" feel, not the chrome.
  */
 export function DashboardFolio({
   children,
@@ -14,31 +16,11 @@ export function DashboardFolio({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={cn("relative", className)}>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent,transparent_31px,hsl(var(--foreground)/0.055)_32px)]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-primary sm:w-1.5"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-3 hidden w-px bg-primary/35 sm:block"
-      />
-      <div className="relative pl-6 sm:pl-10">{children}</div>
-    </div>
-  );
+  return <div className={cn("relative", className)}>{children}</div>;
 }
 
 export function DashboardKicker({ children }: { children: ReactNode }) {
-  return (
-    <p className="font-brand text-[11px] font-semibold uppercase tracking-[0.32em] text-[hsl(var(--brass))]">
-      {children}
-    </p>
-  );
+  return <p className="eyebrow text-muted-foreground">{children}</p>;
 }
 
 export function DashboardHeading({
@@ -53,8 +35,8 @@ export function DashboardHeading({
   children: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex items-center gap-1.5 border-b border-foreground/20 pb-2">
-      <h2 id={id} className="font-brand text-xl tracking-[0.14em] text-foreground">
+    <div className="mb-5 flex items-center gap-1.5 border-b border-hairline pb-2 hc:border-border">
+      <h2 id={id} className="text-title text-foreground">
         {children}
       </h2>
       <DetailsHint label={hintLabel} details={hint} />
