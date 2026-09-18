@@ -35,6 +35,22 @@ export const TONE_GRADIENT_HERO: Record<TitleCardTone, string> = {
     "from-[#f3e0d4] via-[#f7ebe4] to-[hsl(var(--background))] dark:from-[#3f1d0a] dark:via-[#c2410c] dark:to-[#1c0a05]",
 };
 
+/**
+ * The tone's hue as a CSS custom-property reference (index.css defines
+ * `--tone-*` once, theme-invariant). Set it as `--band` on an element
+ * carrying `.tone-band` and the palette's own `--tone-alpha` decides how
+ * loud the wash is.
+ */
+export const TONE_HSL_VAR: Record<TitleCardTone, string> = {
+  docket: "var(--tone-docket)",
+  judgment: "var(--tone-judgment)",
+  "case-law": "var(--tone-case-law)",
+  legislation: "var(--tone-legislation)",
+  note: "var(--tone-note)",
+  code: "var(--tone-code)",
+  bookmark: "var(--tone-bookmark)",
+};
+
 export const TONE_ICON: Record<TitleCardTone, LucideIcon> = {
   docket: Gavel,
   judgment: Scale,

@@ -1,12 +1,17 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Raised surface. Stands off the canvas by luminance and elevation, with a
+ * hairline crease rather than a frame; high contrast swaps the crease for
+ * the real border token because it has no shadows to lean on.
+ */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "rounded-sm border border-border bg-card text-card-foreground shadow-none",
+        "rounded-md border border-hairline bg-card text-card-foreground shadow-elevation-1 hc:border-border",
         className,
       )}
       {...props}
@@ -32,11 +37,7 @@ const CardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement> & { as?: CardTitleTag }
 >(({ className, as: Tag = "h3", ...props }, ref) => (
-  <Tag
-    ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
-    {...props}
-  />
+  <Tag ref={ref} className={cn("text-heading leading-none", className)} {...props} />
 ));
 CardTitle.displayName = "CardTitle";
 

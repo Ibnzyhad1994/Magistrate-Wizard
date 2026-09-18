@@ -34,20 +34,18 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
         {href ? (
           <Link
             to={href}
-            className="text-lg font-semibold tracking-tight text-foreground hover:text-foreground/80"
+            className="inline-flex items-baseline gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {title}
+            {/* Netflix's "Explore all": slides in beside the title on
+                hover, always present for touch and keyboard. */}
+            <span className="text-eyebrow flex items-center gap-0.5 text-link transition-[opacity,transform] duration-250 ease-out-expo md:-translate-x-1 md:opacity-0 md:group-focus-within/row:translate-x-0 md:group-focus-within/row:opacity-100 md:group-hover/row:translate-x-0 md:group-hover/row:opacity-100">
+              See all
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
           </Link>
         ) : (
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
-        )}
-        {href && (
-          <Link
-            to={href}
-            className="text-xs font-semibold uppercase tracking-wide text-foreground/70 hover:text-foreground"
-          >
-            See all
-          </Link>
+          <h2 className="text-title text-foreground">{title}</h2>
         )}
       </div>
 

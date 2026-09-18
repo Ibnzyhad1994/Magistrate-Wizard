@@ -111,7 +111,11 @@ export function TopNav() {
         "browse-gutter",
         overlay
           ? "bg-transparent bg-gradient-to-b from-black/80 to-transparent text-primary-foreground"
-          : "bg-background text-foreground",
+          : scrolled
+            ? // Frosted once content is moving underneath; the page tint
+              // shows through so the bar reads as part of the canvas.
+              "bg-background/85 text-foreground shadow-elevation-1 backdrop-blur-md hc:bg-background"
+            : "bg-background text-foreground",
       )}
     >
       <Button
@@ -150,12 +154,15 @@ export function TopNav() {
             to={item.href}
             className={({ isActive }) =>
               cn(
-                "transition-colors",
+                // Active page carries a red rule under the label — the
+                // same mark the Tabs rail uses, so "where am I" is one
+                // signal across the product.
+                "relative rounded-sm py-1 transition-colors after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity after:duration-250 after:content-['']",
                 overlay ? "hover:text-primary-foreground" : "hover:text-foreground",
                 isActive &&
                   (overlay
-                    ? "font-semibold text-primary-foreground"
-                    : "font-semibold text-foreground"),
+                    ? "font-semibold text-primary-foreground after:opacity-100"
+                    : "font-semibold text-foreground after:opacity-100"),
               )
             }
             end={item.href === ROUTES.home}
@@ -179,7 +186,7 @@ export function TopNav() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="min-w-[12rem] border-foreground/10 bg-card"
+              className="min-w-[12rem] border-hairline bg-surface-1 shadow-elevation-3 hc:border-border"
             >
               {moreGroups.map((section, index) => (
                 <DropdownMenuGroup key={section.id}>

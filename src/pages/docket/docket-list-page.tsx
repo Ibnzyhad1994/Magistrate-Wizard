@@ -395,30 +395,51 @@ export default function DocketListPage() {
         <InlineError error={error} onRetry={() => void refetch()} className="border-0" />
       ) : !data || data.length === 0 ? (
         <div className="space-y-4">
-          <div {...(!showTourExample ? { "data-tour": "docket-board" } : {})}>
-            <EmptyState
-              icon={ClipboardList}
-              title={
-                emptyBecauseDateAndFilters
-                  ? `No appearances on ${formatDate(selectedDate as string)} match these filters`
-                  : emptyBecauseFilters
-                    ? "No matters at this stage"
-                    : emptyBecauseDate
-                      ? `No appearances on ${formatDate(selectedDate as string)} at ${courtScopeLabel}`
-                      : "No docket matters yet"
-              }
-              description={
-                emptyBecauseDateAndFilters
-                  ? `Nothing on this day at ${courtScopeLabel} matches the current search or stage filters. Clear the filters to see the rest of the day, or switch to All Matters.`
-                  : emptyBecauseFilters
-                    ? "Nothing matches these filters. Clear them to see the rest of the list."
-                    : emptyBecauseDate
-                      ? "No live matter at this court has an appearance on this day. Switch to All Matters to see the rest of the Docket."
-                      : "Matters you create, are assigned, or are shared on will appear here."
-              }
-              action={
-                emptyBecauseDateAndFilters ? (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+          {/* During the walkthrough the example sheet IS the empty state:
+              it carries the docket-board tour target and its own caption
+              says there is nothing on the docket yet, so the generic
+              "No docket matters yet" panel above it only doubled up. */}
+          {showTourExample ? null : (
+            <div data-tour="docket-board">
+              <EmptyState
+                icon={ClipboardList}
+                title={
+                  emptyBecauseDateAndFilters
+                    ? `No appearances on ${formatDate(selectedDate as string)} match these filters`
+                    : emptyBecauseFilters
+                      ? "No matters at this stage"
+                      : emptyBecauseDate
+                        ? `No appearances on ${formatDate(selectedDate as string)} at ${courtScopeLabel}`
+                        : "No docket matters yet"
+                }
+                description={
+                  emptyBecauseDateAndFilters
+                    ? `Nothing on this day at ${courtScopeLabel} matches the current search or stage filters. Clear the filters to see the rest of the day, or switch to All Matters.`
+                    : emptyBecauseFilters
+                      ? "Nothing matches these filters. Clear them to see the rest of the list."
+                      : emptyBecauseDate
+                        ? "No live matter at this court has an appearance on this day. Switch to All Matters to see the rest of the Docket."
+                        : "Matters you create, are assigned, or are shared on will appear here."
+                }
+                action={
+                  emptyBecauseDateAndFilters ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <Button variant="play" size="sm" onClick={clearRefinements}>
+                        {searchOn && filtersOn
+                          ? "Clear search and filters"
+                          : searchOn
+                            ? "Clear search"
+                            : "Clear filters"}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                        All Matters
+                      </Button>
+                    </div>
+                  ) : emptyBecauseFilters ? (
+                    // Clears the search text as well as the stage filters:
+                    // this branch fires for either, so clearing only the
+                    // filters left the button doing visibly nothing when a
+                    // search term was the thing narrowing the list.
                     <Button variant="play" size="sm" onClick={clearRefinements}>
                       {searchOn && filtersOn
                         ? "Clear search and filters"
@@ -426,38 +447,23 @@ export default function DocketListPage() {
                           ? "Clear search"
                           : "Clear filters"}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                  ) : emptyBecauseDate ? (
+                    <Button variant="play" size="sm" onClick={() => setSelectedDate(null)}>
                       All Matters
                     </Button>
-                  </div>
-                ) : emptyBecauseFilters ? (
-                  // Clears the search text as well as the stage filters:
-                  // this branch fires for either, so clearing only the
-                  // filters left the button doing visibly nothing when a
-                  // search term was the thing narrowing the list.
-                  <Button variant="play" size="sm" onClick={clearRefinements}>
-                    {searchOn && filtersOn
-                      ? "Clear search and filters"
-                      : searchOn
-                        ? "Clear search"
-                        : "Clear filters"}
-                  </Button>
-                ) : emptyBecauseDate ? (
-                  <Button variant="play" size="sm" onClick={() => setSelectedDate(null)}>
-                    All Matters
-                  </Button>
-                ) : (
-                  !searchOn &&
-                  !noCourts && (
-                    <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
-                      <Plus className="h-4 w-4" />
-                      Create the first matter
-                    </Button>
+                  ) : (
+                    !searchOn &&
+                    !noCourts && (
+                      <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
+                        <Plus className="h-4 w-4" />
+                        Create the first matter
+                      </Button>
+                    )
                   )
-                )
-              }
-            />
-          </div>
+                }
+              />
+            </div>
+          )}
           {showTourExample && <DocketTourExample />}
         </div>
       ) : (

@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { TopNav } from "@/components/layout/top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { CinematicNavProvider } from "@/components/layout/cinematic-nav";
@@ -13,6 +13,9 @@ import { RouteAnnouncer } from "@/components/common/route-announcer";
  * Pages own their own horizontal gutter (`browse-gutter` / `BrowsePage`).
  */
 export function AppLayout() {
+  // Keyed on the path so each route change re-mounts the wrapper and
+  // replays the page-in rise. Reduced motion collapses it to a cut.
+  const { pathname } = useLocation();
   return (
     <TourProvider>
       <div className="min-h-dvh w-full bg-background">
@@ -32,7 +35,9 @@ export function AppLayout() {
           <OfflineSyncBanner />
           <MobileNav />
           <main id="main-content" tabIndex={-1} className="min-h-dvh">
-            <Outlet />
+            <div key={pathname} className="animate-page-in">
+              <Outlet />
+            </div>
           </main>
           <RouteAnnouncer />
         </CinematicNavProvider>

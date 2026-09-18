@@ -156,7 +156,8 @@ export function DocketTourExample() {
       className="pointer-events-none select-none"
     >
       <p className="mb-2 text-xs font-medium text-muted-foreground">
-        Example — not a file on your docket
+        No docket matters yet. This example is not a file on your docket — it shows how a matter
+        reads on the working sheet.
       </p>
       {isDesktop ? <DesktopExampleSheet /> : <MobileExampleCard />}
     </section>

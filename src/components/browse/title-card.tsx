@@ -165,7 +165,10 @@ export function TitleCard({
       </article>
     );
 
-  const wrapClass = layout === "list" ? "block w-full min-w-0" : "block shrink-0 snap-start";
+  const wrapClass = cn(
+    "group rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    layout === "list" ? "block w-full min-w-0" : "block shrink-0 snap-start",
+  );
 
   if (href) {
     return (
@@ -176,7 +179,7 @@ export function TitleCard({
   }
 
   return (
-    <button type="button" onClick={onClick} className={`${wrapClass} text-left`}>
+    <button type="button" onClick={onClick} className={cn(wrapClass, "text-left")}>
       {body}
     </button>
   );
