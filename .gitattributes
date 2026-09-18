@@ -1,3 +1,7 @@
 # Migrations are applied byte-for-byte by the Supabase CLI; 0142-style textual
 # function patches assume LF, so never let autocrlf turn them into CRLF.
 *.sql text eol=lf
+
+# The CSP script hash in vercel.json is computed from index.html's inline
+# bootstrap; the bytes must be the LF ones the Linux build serves.
+index.html text eol=lf

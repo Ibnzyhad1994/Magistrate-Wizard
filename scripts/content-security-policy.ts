@@ -43,10 +43,7 @@ export function supabaseCspWsOrigin(supabaseUrl: string): string {
  * reports the blocked Auth request as "NetworkError when attempting to fetch
  * resource". Native shells have no `vercel.json`, so they still need the meta.
  */
-export function shouldInjectMetaCsp(
-  mode: string,
-  env: { VERCEL?: string } = process.env,
-): boolean {
+export function shouldInjectMetaCsp(mode: string, env: { VERCEL?: string } = process.env): boolean {
   return mode !== "development" && !env.VERCEL;
 }
 
@@ -94,9 +91,12 @@ export function buildCsp(supabaseUrl: string, extraSupabaseUrls: readonly string
  * can assert the real index.html against the real CSP.
  */
 export function cspWithInlineScriptHashes(csp: string, html: string): string {
-  const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
-    (match) => match[1] ?? "",
-  );
+  // Hash the bytes Vercel serves: the build runs on Linux from the LF file
+  // in git. A Windows checkout with core.autocrlf hands this function CRLF,
+  // and a hash of that would only ever match on the machine that made it.
+  const inline = [
+    ...html.replace(/\r\n/g, "\n").matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
+  ].map((match) => match[1] ?? "");
   if (inline.length === 0) return csp;
   const hashes = inline.map(
     (source) => `'sha256-${createHash("sha256").update(source, "utf8").digest("base64")}'`,

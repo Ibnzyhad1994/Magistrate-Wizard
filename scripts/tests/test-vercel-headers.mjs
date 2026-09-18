@@ -56,8 +56,11 @@ check(
 check("CSP does not carry a local Docker origin", /127\.0\.0\.1|localhost/.test(csp), false);
 check("script-src has no 'unsafe-inline'", /script-src[^;]*'unsafe-inline'/.test(csp), false);
 
+// Normalised the same way as the generator: the served file is LF.
 const inline = [
-  ...readIndexHtml().matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
+  ...readIndexHtml()
+    .replace(/\r\n/g, "\n")
+    .matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
 ].map((m) => m[1]);
 const expectedHash = `'sha256-${createHash("sha256")
   .update(inline[0] ?? "", "utf8")
@@ -73,9 +76,18 @@ check(
   header("/assets/(.*)", "Cache-Control"),
   ASSET_CACHE_VALUE,
 );
-check("SPA HTML is not stored (CSP header updates must not 304)", header("/(.*)", "Cache-Control"), HTML_CACHE_VALUE);
+check(
+  "SPA HTML is not stored (CSP header updates must not 304)",
+  header("/(.*)", "Cache-Control"),
+  HTML_CACHE_VALUE,
+);
 check("index.html is never cached", header("/index.html", "Cache-Control"), HTML_CACHE_VALUE);
-check("connect-src names both hosted wss origins", csp.includes("wss://gipijpeahkznfwitjccy.supabase.co") && csp.includes("wss://kmfjejfsbtvbhvpoxvhb.supabase.co"), true);
+check(
+  "connect-src names both hosted wss origins",
+  csp.includes("wss://gipijpeahkznfwitjccy.supabase.co") &&
+    csp.includes("wss://kmfjejfsbtvbhvpoxvhb.supabase.co"),
+  true,
+);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
