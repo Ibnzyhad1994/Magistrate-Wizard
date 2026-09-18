@@ -2,7 +2,16 @@ import { useEffect, useId, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Lock, LockOpen, Trash2, CheckCircle2, Sparkles, Pencil, FileDown } from "lucide-react";
+import {
+  Lock,
+  LockOpen,
+  Trash2,
+  CheckCircle2,
+  Sparkles,
+  Pencil,
+  FileDown,
+  StickyNote,
+} from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +35,7 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { TagInput } from "@/components/common/tag-input";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { CategoryField } from "@/components/legal-library/taxonomy-fields";
@@ -161,6 +171,7 @@ export default function JudgmentDetailPage() {
   const autoClassify = useAutoClassifyJudgment(id ?? "", judgment?.category_id ?? null);
   const { data: documents } = useDocuments("judgment", id);
   const [contentDirty, setContentDirty] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
 
   async function runFromLatestDocument() {
     const latest = (documents ?? [])[0];
@@ -242,6 +253,10 @@ export default function JudgmentDetailPage() {
           <Badge variant={isDraft ? "secondary" : "default"}>{toTitleCase(judgment.status)}</Badge>
           {categoryName && <Badge variant="outline">{categoryName}</Badge>}
           <BookmarkToggle entityType="judgment" entityId={judgment.id} />
+          <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
+            <StickyNote className="h-4 w-4" />
+            New bench note
+          </Button>
           <Button size="sm" variant="outline" onClick={handleExportPdf}>
             <FileDown className="h-4 w-4" />
             Export PDF
@@ -305,6 +320,12 @@ export default function JudgmentDetailPage() {
           )}
         </Tabs>
       </div>
+
+      <CreateBenchNoteDialog
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        defaultParent={{ entityType: "judgment", entityId: judgment.id, label: judgment.title }}
+      />
     </>
   );
 }

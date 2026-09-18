@@ -22,7 +22,7 @@ import { useBackNav } from "@/hooks/use-back-nav";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { formatDate, cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
-import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
+import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { Billboard } from "@/components/browse";
 
 const LEVEL_ORDER = ["part", "chapter", "section", "subsection", "paragraph", "schedule"];

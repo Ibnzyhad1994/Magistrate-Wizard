@@ -15,7 +15,7 @@ import {
 import { useBenchNotes } from "@/hooks/bench-notes/use-bench-notes";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { CreateBenchNoteDialog } from "@/pages/bench-notes/create-bench-note-dialog";
+import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, toTitleCase } from "@/lib/utils";
 

@@ -27,6 +27,7 @@ import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { SaveState } from "@/components/common/save-state";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { DateOnlyInput } from "@/components/common/date-only-input";
 import { SafeExternalLink } from "@/components/common/safe-external-link";
 import { useAuth } from "@/hooks/use-auth";
@@ -71,6 +72,7 @@ export default function CaseLawDetailPage() {
   const deleteCanonicalCaseLaw = useDeleteCanonicalCaseLaw();
   const setReviewStatus = useSetCaseLawReviewStatus();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [confirmDeleteCanonical, setConfirmDeleteCanonical] = useState(false);
   const { data: categories } = useLegalCaseCategories();
 
@@ -113,6 +115,10 @@ export default function CaseLawDetailPage() {
           </Badge>
           {categoryName && <Badge variant="outline">{categoryName}</Badge>}
           <BookmarkToggle entityType="case_law" entityId={caseLaw.id} />
+          <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
+            <StickyNote className="h-4 w-4" />
+            New bench note
+          </Button>
         </div>
 
         {isOwner && (
@@ -203,6 +209,16 @@ export default function CaseLawDetailPage() {
             />
           </TabsContent>
         </Tabs>
+
+        <CreateBenchNoteDialog
+          open={noteOpen}
+          onOpenChange={setNoteOpen}
+          defaultParent={{
+            entityType: "case_law",
+            entityId: caseLaw.id,
+            label: caseLaw.case_name,
+          }}
+        />
 
         <AlertDialog
           open={confirmDelete}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Pencil, Trash2, RotateCcw } from "lucide-react";
+import { Pencil, Trash2, RotateCcw, StickyNote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +23,7 @@ import { JudgmentsSection } from "@/pages/docket/sections/judgments-section";
 import { CaseLawSection } from "@/pages/docket/sections/case-law-section";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
+import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { Billboard } from "@/components/browse";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { SharingSection } from "@/pages/docket/sections/sharing-section";
@@ -63,6 +64,7 @@ export default function DocketMatterDetailPage() {
   const { data: access } = useDocketMatterAccess(id);
   const { data: coverUrls } = useSignedUrls([matter?.cover_image_path]);
   const [editOpen, setEditOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [purgeOpen, setPurgeOpen] = useState(false);
 
   const canEdit = access?.canEdit ?? false;
@@ -184,6 +186,10 @@ export default function DocketMatterDetailPage() {
             {toTitleCase(matter.status)}
           </Badge>
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
+          <Button size="sm" variant="ghost" onClick={() => setNoteOpen(true)}>
+            <StickyNote className="h-3.5 w-3.5" />
+            New bench note
+          </Button>
           {liveEdit && (
             <>
               <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
@@ -252,6 +258,15 @@ export default function DocketMatterDetailPage() {
       </div>
 
       <EditDocketMatterDetailsDialog open={editOpen} onOpenChange={setEditOpen} matter={matter} />
+      <CreateBenchNoteDialog
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        defaultParent={{
+          entityType: "docket_matter",
+          entityId: matter.id,
+          label: `${matter.case_number} · ${matter.matter_title}`,
+        }}
+      />
       <AlertDialog
         open={purgeOpen}
         onOpenChange={setPurgeOpen}
