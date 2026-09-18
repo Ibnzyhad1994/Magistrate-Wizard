@@ -204,7 +204,8 @@ export default function DashboardPage() {
     (boardQuery.isPending ||
       eventsQuery.isPending ||
       (filesFocus === "no_parties" && partiesQuery.isPending) ||
-      (filesFocus === "retained" && (retainedIdsQuery.isPending || extraRetainedQuery.isPending)));
+      (filesFocus === "retained" &&
+        (retainedIdsQuery.isPending || extraRetainedQuery.isFetching)));
 
   const metricHref = (focus: DashboardFileFocus) =>
     filesFocus === focus ? ROUTES.dashboard : dashboardFilesHref(focus);
