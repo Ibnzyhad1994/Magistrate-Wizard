@@ -73,9 +73,10 @@ export default function CalloverListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Callovers"
+        tone="docket"
         description="Run a list of matters in one sitting: record an outcome and a next date for each without opening every file. Matters that pre-date this docket can be entered here at their true stage."
         action={
-          <Button variant="play" onClick={() => setCreateOpen(true)} disabled={noCourts}>
+          <Button onClick={() => setCreateOpen(true)} disabled={noCourts}>
             <Plus className="h-4 w-4" />
             New callover
           </Button>
@@ -116,12 +117,13 @@ export default function CalloverListPage() {
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
         <EmptyState
+          tone="docket"
           icon={Gavel}
           title="No callovers yet"
           description="Create one for a sitting date and fill it from that day's list."
           action={
             !noCourts && (
-              <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4" />
                 New callover
               </Button>

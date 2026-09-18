@@ -255,6 +255,7 @@ export default function DocketListPage() {
     <BrowsePage>
       <BrowseHeader
         title={docketScopeTitle(selectedCourt?.court_name ?? null)}
+        tone="docket"
         description="List is the working sheet. On a phone each file shows its stages. Tiles stay for cover-photo browse. Set Next date and record hearing progress on each file."
         showViewSelect
         viewSelectValue={effectiveBrowseView}
@@ -402,6 +403,7 @@ export default function DocketListPage() {
           {showTourExample ? null : (
             <div data-tour="docket-board">
               <EmptyState
+                tone="docket"
                 icon={ClipboardList}
                 title={
                   emptyBecauseDateAndFilters
@@ -424,7 +426,7 @@ export default function DocketListPage() {
                 action={
                   emptyBecauseDateAndFilters ? (
                     <div className="flex flex-wrap items-center justify-center gap-2">
-                      <Button variant="play" size="sm" onClick={clearRefinements}>
+                      <Button variant="secondary" size="sm" onClick={clearRefinements}>
                         {searchOn && filtersOn
                           ? "Clear search and filters"
                           : searchOn
@@ -440,7 +442,7 @@ export default function DocketListPage() {
                     // this branch fires for either, so clearing only the
                     // filters left the button doing visibly nothing when a
                     // search term was the thing narrowing the list.
-                    <Button variant="play" size="sm" onClick={clearRefinements}>
+                    <Button variant="secondary" size="sm" onClick={clearRefinements}>
                       {searchOn && filtersOn
                         ? "Clear search and filters"
                         : searchOn
@@ -448,13 +450,13 @@ export default function DocketListPage() {
                           : "Clear filters"}
                     </Button>
                   ) : emptyBecauseDate ? (
-                    <Button variant="play" size="sm" onClick={() => setSelectedDate(null)}>
+                    <Button variant="secondary" size="sm" onClick={() => setSelectedDate(null)}>
                       All Matters
                     </Button>
                   ) : (
                     !searchOn &&
                     !noCourts && (
-                      <Button variant="play" size="sm" onClick={() => setCreateOpen(true)}>
+                      <Button size="sm" onClick={() => setCreateOpen(true)}>
                         <Plus className="h-4 w-4" />
                         Create the first matter
                       </Button>

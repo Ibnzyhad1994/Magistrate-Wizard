@@ -97,12 +97,13 @@ export default function LegislationListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Legislation"
+        tone="legislation"
         description="Acts, regulations, and other legal instruments, maintained centrally and available to every magistrate."
         showViewSelect
         dataTour="page-legislation"
         action={
           canCreate ? (
-            <Button variant="play" onClick={handleOpenCreate}>
+            <Button onClick={handleOpenCreate}>
               <Plus className="h-4 w-4" />
               Add legislation
             </Button>
@@ -188,6 +189,7 @@ export default function LegislationListPage() {
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState
+          tone="legislation"
           icon={ScrollText}
           title={data && data.length > 0 ? "No matches" : "No legislation yet"}
           description={
@@ -197,7 +199,7 @@ export default function LegislationListPage() {
           }
           action={
             data && data.length === 0 && canCreate ? (
-              <Button size="sm" variant="play" onClick={handleOpenCreate}>
+              <Button size="sm" onClick={handleOpenCreate}>
                 <Plus className="h-4 w-4" />
                 Add legislation
               </Button>

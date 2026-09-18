@@ -54,10 +54,11 @@ export default function JudgmentListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Judgments"
+        tone="judgment"
         description="Your draft and final judgments, plus judgments other magistrates have made discoverable."
         showViewSelect
         action={
-          <Button variant="play" onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New draft
           </Button>
@@ -153,13 +154,14 @@ function JudgmentTable({
   if (rows.length === 0) {
     return (
       <EmptyState
+        tone="judgment"
         icon={Scale}
         className="mt-4"
         title={emptyTitle}
         description={emptyDescription}
         action={
           onCreate && (
-            <Button size="sm" variant="play" onClick={onCreate}>
+            <Button size="sm" onClick={onCreate}>
               <Plus className="h-4 w-4" />
               New draft
             </Button>

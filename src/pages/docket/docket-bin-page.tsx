@@ -37,6 +37,7 @@ export default function DocketBinPage() {
     <BrowsePage>
       <BrowseHeader
         title="Docket bin"
+        tone="docket"
         description="Binned files stay here for 7 days. Restore to put them back on the docket, or empty now to permanently delete."
         action={
           <Button variant="outline" asChild>
@@ -51,6 +52,7 @@ export default function DocketBinPage() {
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
         <EmptyState
+          tone="docket"
           icon={Trash2}
           title="Bin is empty"
           description="Matters you move to the bin appear here for 7 days."

@@ -94,6 +94,7 @@ export default function CalendarPage() {
     <BrowsePage>
       <BrowseHeader
         title="Calendar"
+        tone="docket"
         description="Hearings and appearances from Docket matters you can already see. Google sync lives in Settings."
         dataTour="page-calendar"
         action={
@@ -142,6 +143,7 @@ export default function CalendarPage() {
 
       {!isPending && !isError && events.length === 0 && view === "agenda" ? (
         <EmptyState
+          tone="docket"
           icon={CalendarDays}
           title="No sittings this month"
           description="Appearances you can view on the Docket will show here."

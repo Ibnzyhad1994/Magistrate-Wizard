@@ -64,11 +64,12 @@ export default function BenchNotesListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Bench Notes"
+        tone="note"
         description="Your notes, attached to Docket Matters, Judgments, Case Law, or Legislation."
         showViewSelect
         dataTour="page-bench-notes"
         action={
-          <Button variant="play" onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New Bench Note
           </Button>
@@ -118,6 +119,7 @@ export default function BenchNotesListPage() {
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : filtered.length === 0 ? (
         <EmptyState
+          tone="note"
           icon={StickyNote}
           className="mt-8"
           title={data && data.length > 0 ? "No matches" : "No Bench Notes yet"}
@@ -127,7 +129,7 @@ export default function BenchNotesListPage() {
               : "Attach a note to a matter, judgment, case law entry, or Act to see it here."
           }
           action={
-            <Button size="sm" variant="play" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
               New Bench Note
             </Button>

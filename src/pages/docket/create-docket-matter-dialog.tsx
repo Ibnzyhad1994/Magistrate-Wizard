@@ -299,7 +299,7 @@ export function CreateDocketMatterDialog({
                 : "You're not currently seated at a Court, so you can't create a Docket Matter yet. Request a court under Court Assignments."
             }
             action={
-              <Button variant="play" size="sm" asChild>
+              <Button size="sm" asChild>
                 <Link to={isAdmin ? ROUTES.settings : ROUTES.courtAssignments}>
                   {isAdmin ? "Go to Settings" : "Request a court"}
                 </Link>

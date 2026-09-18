@@ -64,6 +64,7 @@ export default function BookmarksPage() {
     <BrowsePage>
       <BrowseHeader
         title="Bookmarks"
+        tone="bookmark"
         description="Quick links to matters, judgments, research, and more you've saved."
         showViewSelect
       />
@@ -74,6 +75,7 @@ export default function BookmarksPage() {
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
         <EmptyState
+          tone="bookmark"
           icon={BookmarkIcon}
           title="No bookmarks yet"
           description="Bookmark a Docket Matter, Judgment, Case Law entry, Quick Code, or Bench Note to see it here."

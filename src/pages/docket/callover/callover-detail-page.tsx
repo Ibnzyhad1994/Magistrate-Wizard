@@ -173,7 +173,6 @@ export default function CalloverDetailPage() {
             action={
               editable && (
                 <Button
-                  variant="play"
                   size="sm"
                   onClick={() => populate.mutate(null)}
                   disabled={populate.isPending}

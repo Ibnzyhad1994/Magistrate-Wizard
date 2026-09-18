@@ -140,10 +140,10 @@ export default function QuickCodesPage() {
     <BrowsePage>
       <BrowseHeader
         title="Quick Codes"
+        tone="code"
         description="Reusable boilerplate text, private to you."
         action={
           <Button
-            variant="play"
             onClick={() => {
               setEditing(null);
               setFormOpen(true);
@@ -188,6 +188,7 @@ export default function QuickCodesPage() {
         <Card>
           <CardContent className="p-0">
             <EmptyState
+              tone="code"
               icon={Braces}
               className="border-0"
               title={data && data.length > 0 ? "No matches" : "No Quick Codes yet"}

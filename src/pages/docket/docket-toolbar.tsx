@@ -33,7 +33,6 @@ export function DocketToolbar({
           <HintTooltip label="You have no current Court assignment.">
             <span className="inline-flex">
               <Button
-                variant="play"
                 disabled
                 className="min-h-11 lg:min-h-9"
                 data-tour="docket-new-matter"
@@ -46,7 +45,6 @@ export function DocketToolbar({
           </HintTooltip>
         ) : (
           <Button
-            variant="play"
             className="min-h-11 lg:min-h-9"
             onClick={handleNewMatter}
             data-tour="docket-new-matter"

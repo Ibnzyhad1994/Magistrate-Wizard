@@ -115,7 +115,10 @@ export function TopNav() {
             ? // Frosted once content is moving underneath; the page tint
               // shows through so the bar reads as part of the canvas.
               "bg-background/85 text-foreground shadow-elevation-1 backdrop-blur-md hc:bg-background"
-            : "bg-background text-foreground",
+            : // At rest the bar fades into whatever sits under it — a page
+              // header's tone band runs up behind it instead of being cut
+              // off at the bar's edge. High contrast keeps it opaque.
+              "bg-gradient-to-b from-background via-background/80 to-background/0 text-foreground hc:bg-background hc:bg-none",
       )}
     >
       <Button

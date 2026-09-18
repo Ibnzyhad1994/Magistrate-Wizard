@@ -157,11 +157,12 @@ export default function CaseLawListPage() {
     <BrowsePage>
       <BrowseHeader
         title="Case Law"
+        tone="case-law"
         description="Canonical authorities, your personal research, and research other magistrates have made discoverable."
         showViewSelect
         dataTour="page-case-law"
         action={
-          <Button variant="play" onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New research entry
           </Button>
@@ -313,13 +314,14 @@ function CaseLawTable({
   if (rows.length === 0) {
     return (
       <EmptyState
+        tone="case-law"
         icon={BookOpen}
         className="mt-4"
         title={emptyTitle}
         description={emptyDescription}
         action={
           onCreate && (
-            <Button size="sm" variant="play" onClick={onCreate}>
+            <Button size="sm" onClick={onCreate}>
               <Plus className="h-4 w-4" />
               New research entry
             </Button>
