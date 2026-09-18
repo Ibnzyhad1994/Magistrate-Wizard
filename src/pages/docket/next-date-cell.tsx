@@ -21,6 +21,8 @@ import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog"
 import { HintTooltip } from "@/components/ui/tooltip";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
+import { sittingDayVerdict, nextSittingDay } from "@/lib/court-calendar";
+import { useNonSittingDays } from "@/hooks/docket/use-court-calendar";
 
 /**
  * The Next Date cell on the Docket board — click/tap it to set or change
@@ -36,11 +38,16 @@ export function NextDateCell({
   matterId,
   nextDate,
   matterCategoryId,
+  courtId,
+  districtId,
   canEdit,
 }: {
   matterId: string;
   nextDate: string | null;
   matterCategoryId?: string | null;
+  /** Scopes the non-sitting-day check to this matter's court. */
+  courtId?: string | null;
+  districtId?: string | null;
   canEdit: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +82,8 @@ export function NextDateCell({
       </HintTooltip>
       {open && (
         <NextDateDialog
+          courtId={courtId}
+          districtId={districtId}
           matterId={matterId}
           currentDate={nextDate}
           matterCategoryId={matterCategoryId ?? null}
@@ -89,12 +98,17 @@ export function NextDateDialog({
   matterId,
   currentDate,
   matterCategoryId,
+  courtId,
+  districtId,
   onClose,
   onSaved,
 }: {
   matterId: string;
   currentDate: string | null;
   matterCategoryId: string | null;
+  /** Scopes the non-sitting-day check; omitted means national rules only. */
+  courtId?: string | null;
+  districtId?: string | null;
   onClose: () => void;
   /**
    * Fired with the date that was actually scheduled, once the RPC has
@@ -123,6 +137,11 @@ export function NextDateDialog({
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [pendingOverride, setPendingOverride] = useState<SetNextDateResult | null>(null);
   const isPastDate = Boolean(date) && date < getLocalDateOnly();
+  const { data: nonSittingDays } = useNonSittingDays();
+  const scope = { courtId: courtId ?? null, districtId: districtId ?? null };
+  const verdict = date ? sittingDayVerdict(date, scope, nonSittingDays ?? []) : null;
+  const nextSitting =
+    verdict && !verdict.sitting ? nextSittingDay(date, scope, nonSittingDays ?? []) : null;
 
   // events loads asynchronously, so the category can't be known at the
   // very first render — fill it in once it arrives, but only if the
@@ -188,6 +207,27 @@ export function NextDateDialog({
             <p id={`${fieldId}-past`} className="text-xs text-warning">
               {formatDate(date)} has passed. Saving will cancel the next scheduled appearance and
               leave this matter with no future date.
+            </p>
+          )}
+          {/* Advisory only. A magistrate may lawfully sit on a holiday --
+              urgent bail, remand returns, an emergency protection order --
+              so this never blocks the save, and it is not stricter than
+              the capacity limit, which only warns. */}
+          {verdict && !verdict.sitting && !isPastDate && (
+            <p className="text-xs text-warning">
+              {formatDate(date)} is {verdict.reason}. The court does not normally sit that day.
+              {nextSitting ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2 hover:text-foreground"
+                    onClick={() => setDate(nextSitting)}
+                  >
+                    Use {formatDate(nextSitting)} instead
+                  </button>
+                </>
+              ) : null}
             </p>
           )}
         </div>

@@ -226,6 +226,8 @@ function DocketStageRow({
           matterId={row.id}
           nextDate={row.next_appearance}
           matterCategoryId={row.category_id}
+          courtId={row.court_id}
+          districtId={row.district_id}
           canEdit={row.can_edit}
         />
       </TableCell>

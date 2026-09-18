@@ -785,6 +785,77 @@ export type Database = {
           },
         ]
       }
+      court_non_sitting_days: {
+        Row: {
+          court_id: string | null
+          created_at: string
+          created_by: string | null
+          district_id: string | null
+          holiday_date: string
+          id: string
+          kind: string
+          last_updated_by: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          court_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          district_id?: string | null
+          holiday_date: string
+          id?: string
+          kind: string
+          last_updated_by?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          court_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          district_id?: string | null
+          holiday_date?: string
+          id?: string
+          kind?: string
+          last_updated_by?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_non_sitting_days_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "court_non_sitting_days_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "court_non_sitting_days_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "magisterial_districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "court_non_sitting_days_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courts: {
         Row: {
           address: string | null
@@ -2446,9 +2517,9 @@ export type Database = {
           note: string | null
           notified_admin_at: string | null
           notified_requester_at: string | null
+          occupied_resolution: string | null
           profile_id: string
           rejection_reason: string | null
-          occupied_resolution: string | null
           request_kind: string
           requested_assignment_type: string
           requested_at: string
@@ -2468,9 +2539,9 @@ export type Database = {
           note?: string | null
           notified_admin_at?: string | null
           notified_requester_at?: string | null
+          occupied_resolution?: string | null
           profile_id: string
           rejection_reason?: string | null
-          occupied_resolution?: string | null
           request_kind?: string
           requested_assignment_type?: string
           requested_at?: string
@@ -2490,9 +2561,9 @@ export type Database = {
           note?: string | null
           notified_admin_at?: string | null
           notified_requester_at?: string | null
+          occupied_resolution?: string | null
           profile_id?: string
           rejection_reason?: string | null
-          occupied_resolution?: string | null
           request_kind?: string
           requested_assignment_type?: string
           requested_at?: string
@@ -2938,6 +3009,24 @@ export type Database = {
           },
         ]
       }
+      stale_draft_notices: {
+        Row: {
+          item_id: string
+          item_type: string
+          notified_at: string
+        }
+        Insert: {
+          item_id: string
+          item_type: string
+          notified_at?: string
+        }
+        Update: {
+          item_id?: string
+          item_type?: string
+          notified_at?: string
+        }
+        Relationships: []
+      }
       statute_provisions: {
         Row: {
           body_text: string | null
@@ -3335,6 +3424,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_bootstrap_self_approve_magistrate_court_request: {
+        Args: { p_reason: string; p_request_id: string }
+        Returns: {
+          approval_kind: string | null
+          cancelled_at: string | null
+          court_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          note: string | null
+          notified_admin_at: string | null
+          notified_requester_at: string | null
+          occupied_resolution: string | null
+          profile_id: string
+          rejection_reason: string | null
+          request_kind: string
+          requested_assignment_type: string
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string | null
+          status: Database["public"]["Enums"]["magistrate_court_request_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "magistrate_court_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_seat_magistrate_at_court: {
         Args: {
           p_assignment_type?: string
@@ -3392,37 +3512,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      admin_bootstrap_self_approve_magistrate_court_request: {
-        Args: { p_reason: string; p_request_id: string }
-        Returns: {
-          approval_kind: string | null
-          cancelled_at: string | null
-          court_id: string
-          created_at: string
-          expires_at: string | null
-          id: string
-          note: string | null
-          notified_admin_at: string | null
-          notified_requester_at: string | null
-          profile_id: string
-          rejection_reason: string | null
-          occupied_resolution: string | null
-          request_kind: string
-          requested_assignment_type: string
-          requested_at: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          staff_id: string | null
-          status: Database["public"]["Enums"]["magistrate_court_request_status"]
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "magistrate_court_requests"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       apply_case_law_tags: {
         Args: { p_case_law_id: string; p_tag_names: string[] }
         Returns: undefined
@@ -3458,29 +3547,39 @@ export type Database = {
           category_id: string | null
           category_other: string | null
           charge_or_issue: string | null
+          civil_trial_held: string
           court_id: string
           cover_image_path: string | null
           created_at: string
           created_by: string
           custody_status: string
+          decision_amount: number | null
+          decision_granted: string | null
           deleted_at: string | null
           deleted_by: string | null
           disclosure_status: string
           district_id: string
           id: string
+          information_sworn_status: string
           judgment_status: string
           last_updated_by: string | null
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          outcome_adjourned: boolean
           outcome_status: string | null
-          procedure_stage: string | null
+          paper_committal_status: string
+          procedure_stage: string
+          returns_of_summons: string
           ruling_status: string
           search_vector: unknown
           sentence_status: string
+          stage_adjournments: Json
           status: Database["public"]["Enums"]["docket_matter_status"]
+          summons_served: string
           trial_status: string
           updated_at: string
+          workflow_protocol: string
         }
         SetofOptions: {
           from: "*"
@@ -3555,9 +3654,9 @@ export type Database = {
           note: string | null
           notified_admin_at: string | null
           notified_requester_at: string | null
+          occupied_resolution: string | null
           profile_id: string
           rejection_reason: string | null
-          occupied_resolution: string | null
           request_kind: string
           requested_assignment_type: string
           requested_at: string
@@ -3709,6 +3808,9 @@ export type Database = {
           statute_id: string
         }[]
       }
+      current_profile_court_id: { Args: never; Returns: string }
+      current_profile_email: { Args: never; Returns: string }
+      current_profile_is_active: { Args: never; Returns: boolean }
       current_profile_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -3761,9 +3863,9 @@ export type Database = {
           note: string | null
           notified_admin_at: string | null
           notified_requester_at: string | null
+          occupied_resolution: string | null
           profile_id: string
           rejection_reason: string | null
-          occupied_resolution: string | null
           request_kind: string
           requested_assignment_type: string
           requested_at: string
@@ -3781,7 +3883,36 @@ export type Database = {
         }
       }
       dispatch_pending_webhooks: { Args: never; Returns: number }
+      docket_matter_matches_query: {
+        Args: {
+          p_case_number: string
+          p_charge_or_issue: string
+          p_docket_matter_id: string
+          p_matter_title: string
+          p_query: string
+          p_search_vector: unknown
+        }
+        Returns: boolean
+      }
+      docket_matter_search_rank: {
+        Args: {
+          p_case_number: string
+          p_docket_matter_id: string
+          p_matter_title: string
+          p_query: string
+          p_search_vector: unknown
+        }
+        Returns: number
+      }
       download_my_data: { Args: never; Returns: Json }
+      end_other_regular_assignments_at_court: {
+        Args: {
+          p_court_id: string
+          p_keep_profile_id: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
       enforce_rpc_rate_limit: {
         Args: { p_max: number; p_rpc: string; p_window_seconds: number }
         Returns: undefined
@@ -3902,6 +4033,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_clerk: { Args: never; Returns: boolean }
+      is_court_sitting_day: {
+        Args: { p_court_id?: string; p_date: string; p_district_id?: string }
+        Returns: boolean
+      }
       is_magistrate: { Args: never; Returns: boolean }
       is_sole_admin_bootstrap_available: { Args: never; Returns: boolean }
       list_active_courts_for_magistrate_signup: {
@@ -4008,8 +4143,8 @@ export type Database = {
           cover_image_path: string
           created_at: string
           custody_status: string
-          decision_amount: number | null
-          decision_granted: string | null
+          decision_amount: number
+          decision_granted: string
           disclosure_status: string
           district_id: string
           has_judgment_document: boolean
@@ -4087,6 +4222,10 @@ export type Database = {
         Args: { p_callover_id: string; p_date?: string }
         Returns: number
       }
+      profile_has_completed_first_sign_in: {
+        Args: { p_profile_id: string }
+        Returns: boolean
+      }
       publish_case_law_import: {
         Args: { p_case_law_id: string }
         Returns: undefined
@@ -4110,8 +4249,6 @@ export type Database = {
         Args: { p_reason?: string; p_statute_id: string }
         Returns: undefined
       }
-      retry_webhook_delivery: { Args: { p_outbox_id: string }; Returns: boolean }
-      reveal_webhook_secret: { Args: { p_endpoint_id: string }; Returns: string }
       relinquish_magistrate_court: {
         Args: { p_assignment_id: string; p_reason?: string }
         Returns: {
@@ -4135,11 +4272,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resolve_docket_assignment_identities: {
+        Args: { p_ids: string[] }
+        Returns: {
+          assignment_id: string
+          display_name: string
+          profile_id: string
+        }[]
+      }
       resolve_docket_assignment_identity: {
         Args: { p_assignment_id: string }
         Returns: {
           display_name: string
           profile_id: string
+        }[]
+      }
+      resolve_docket_share_identities: {
+        Args: { p_share_ids: string[] }
+        Returns: {
+          granted_by: string
+          grantor_display_name: string
+          recipient_display_name: string
+          recipient_id: string
+          share_id: string
         }[]
       }
       resolve_docket_share_identity: {
@@ -4176,29 +4331,39 @@ export type Database = {
           category_id: string | null
           category_other: string | null
           charge_or_issue: string | null
+          civil_trial_held: string
           court_id: string
           cover_image_path: string | null
           created_at: string
           created_by: string
           custody_status: string
+          decision_amount: number | null
+          decision_granted: string | null
           deleted_at: string | null
           deleted_by: string | null
           disclosure_status: string
           district_id: string
           id: string
+          information_sworn_status: string
           judgment_status: string
           last_updated_by: string | null
           matter_title: string
           orders_summary: string | null
           outcome: string | null
+          outcome_adjourned: boolean
           outcome_status: string | null
-          procedure_stage: string | null
+          paper_committal_status: string
+          procedure_stage: string
+          returns_of_summons: string
           ruling_status: string
           search_vector: unknown
           sentence_status: string
+          stage_adjournments: Json
           status: Database["public"]["Enums"]["docket_matter_status"]
+          summons_served: string
           trial_status: string
           updated_at: string
+          workflow_protocol: string
         }
         SetofOptions: {
           from: "*"
@@ -4207,9 +4372,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      retry_webhook_delivery: {
+        Args: { p_outbox_id: string }
+        Returns: boolean
+      }
       return_unassigned_magistrate_to_requester: {
         Args: { p_profile_id: string; p_reason?: string }
         Returns: number
+      }
+      reveal_webhook_secret: {
+        Args: { p_endpoint_id: string }
+        Returns: string
       }
       revoke_clerk_court_access: {
         Args: { p_assignment_id: string; p_reason?: string }
@@ -4436,9 +4609,9 @@ export type Database = {
           note: string | null
           notified_admin_at: string | null
           notified_requester_at: string | null
+          occupied_resolution: string | null
           profile_id: string
           rejection_reason: string | null
-          occupied_resolution: string | null
           request_kind: string
           requested_assignment_type: string
           requested_at: string
@@ -4710,3 +4883,4 @@ export const Constants = {
     },
   },
 } as const
+
