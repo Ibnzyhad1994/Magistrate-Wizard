@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, Plus, ClipboardList, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import {
   toggleSelection,
 } from "@/lib/docket-selection";
 import { DocketBulkAdjournDialog } from "@/pages/docket/docket-bulk-adjourn-dialog";
+import { DocketCloseoutPanel } from "@/pages/docket/docket-closeout-panel";
 import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import {
   EMPTY_PROCEDURE_FILTERS,
@@ -227,6 +228,7 @@ export default function DocketListPage() {
     { enabled: scopeReady },
   );
   const patch = usePatchDocketProcedure();
+  const navigate = useNavigate();
   const offlineBoard = useTakeBoardOffline(selectedDate, courtId);
   // Bulk adjourn only for a specific day at or after today: the RPC
   // supersedes the earliest appearance on or after today regardless of
@@ -415,6 +417,16 @@ export default function DocketListPage() {
           aria-label="Search docket matters"
         />
       </div>
+
+      {/* Only for a specific day, and only once the rows are in: this is
+          a reconciliation of what was listed, not a general view. */}
+      {selectedDate && !isPending && !isError && (data?.length ?? 0) > 0 && (
+        <DocketCloseoutPanel
+          rows={data ?? []}
+          closingDate={selectedDate}
+          onOpenMatter={(id) => navigate(ROUTES.docketMatter(id))}
+        />
+      )}
 
       <DocketStageFilters filters={filters} onChange={setFilters} />
 
