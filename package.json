@@ -205,7 +205,7 @@
     "husky": "^9.1.7",
     "jsdom": "^30.0.1",
     "lint-staged": "^17.5.1",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.28",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
     "rollup-plugin-visualizer": "^7.1.1",
