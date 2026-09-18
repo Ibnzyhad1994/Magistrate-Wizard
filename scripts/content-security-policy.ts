@@ -28,12 +28,36 @@ export function supabaseCspOrigin(supabaseUrl: string): string {
   }
 }
 
+/** Realtime uses the same host over ws/wss; an https: source does not cover it. */
+export function supabaseCspWsOrigin(supabaseUrl: string): string {
+  const origin = supabaseCspOrigin(supabaseUrl);
+  if (origin.startsWith("https://")) return `wss://${origin.slice("https://".length)}`;
+  if (origin.startsWith("http://")) return `ws://${origin.slice("http://".length)}`;
+  return origin;
+}
+
+/**
+ * Vercel already sends the policy as an HTTP header (`vercel.json`). A second
+ * copy in a `<meta>` tag is AND-ed with that header. The two copies drifted
+ * (preview vs production Supabase origin, different script hashes), and Firefox
+ * reports the blocked Auth request as "NetworkError when attempting to fetch
+ * resource". Native shells have no `vercel.json`, so they still need the meta.
+ */
+export function shouldInjectMetaCsp(
+  mode: string,
+  env: { VERCEL?: string } = process.env,
+): boolean {
+  return mode !== "development" && !env.VERCEL;
+}
+
 export function buildCsp(supabaseUrl: string, extraSupabaseUrls: readonly string[] = []): string {
   const origin = supabaseCspOrigin(supabaseUrl);
   const extraOrigins = extraSupabaseUrls
     .map(supabaseCspOrigin)
     .filter((item) => item.length > 0 && item !== origin);
-  const supabaseOrigins = [origin, ...extraOrigins].join(" ");
+  const origins = [origin, ...extraOrigins];
+  const supabaseOrigins = origins.join(" ");
+  const supabaseWsOrigins = origins.map(supabaseCspWsOrigin).join(" ");
   return [
     "default-src 'self'",
     "script-src 'self' 'wasm-unsafe-eval'",
@@ -45,7 +69,7 @@ export function buildCsp(supabaseUrl: string, extraSupabaseUrls: readonly string
     "font-src 'self' data:",
     `img-src 'self' blob: data: ${supabaseOrigins}`,
     "media-src 'self' blob:",
-    `connect-src 'self' ${supabaseOrigins} ws: wss: https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
+    `connect-src 'self' ${supabaseOrigins} ${supabaseWsOrigins} https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
     `frame-src 'self' blob: ${supabaseOrigins}`,
     "object-src 'none'",
     "base-uri 'self'",

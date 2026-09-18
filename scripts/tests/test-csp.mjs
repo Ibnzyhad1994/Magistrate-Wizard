@@ -6,7 +6,9 @@ import { createHash } from "node:crypto";
 import {
   buildCsp,
   cspWithInlineScriptHashes,
+  shouldInjectMetaCsp,
   supabaseCspOrigin,
+  supabaseCspWsOrigin,
 } from "../content-security-policy.ts";
 
 let failures = 0;
@@ -28,6 +30,15 @@ const local = "http://127.0.0.1:56321";
 check("production URL origin has no trailing slash", supabaseCspOrigin(production), production);
 check("trailing slash is stripped to origin", supabaseCspOrigin(withSlash), production);
 check("local supabase origin is preserved", supabaseCspOrigin(local), local);
+check("https supabase maps to wss for realtime", supabaseCspWsOrigin(production), production.replace("https://", "wss://"));
+check("local docker maps to ws for realtime", supabaseCspWsOrigin(local), "ws://127.0.0.1:56321");
+check("production Vite builds inject the meta CSP", shouldInjectMetaCsp("production", {}), true);
+check("dev mode never injects the meta CSP", shouldInjectMetaCsp("development", {}), false);
+check(
+  "Vercel builds skip the meta CSP (the HTTP header is the only policy)",
+  shouldInjectMetaCsp("production", { VERCEL: "1" }),
+  false,
+);
 
 const csp = buildCsp(withSlash);
 const frameSrc = csp.split("; ").find((d) => d.startsWith("frame-src")) ?? "";
@@ -46,6 +57,12 @@ check(
   csp.includes(`connect-src 'self' ${production} `),
   true,
 );
+check(
+  "connect-src allows wss on the supabase host (not scheme-wide wss:)",
+  csp.includes(` ${production.replace("https://", "wss://")} `),
+  true,
+);
+check("connect-src does not allow every websocket", /connect-src[^;]*\bws:/.test(csp), false);
 check("object-src stays none", csp.includes("object-src 'none'"), true);
 check("a different host is not allowlisted", csp.includes("https://evil.example"), false);
 

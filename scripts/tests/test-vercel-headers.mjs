@@ -73,7 +73,9 @@ check(
   header("/assets/(.*)", "Cache-Control"),
   ASSET_CACHE_VALUE,
 );
+check("SPA HTML is not stored (CSP header updates must not 304)", header("/(.*)", "Cache-Control"), HTML_CACHE_VALUE);
 check("index.html is never cached", header("/index.html", "Cache-Control"), HTML_CACHE_VALUE);
+check("connect-src names both hosted wss origins", csp.includes("wss://gipijpeahkznfwitjccy.supabase.co") && csp.includes("wss://kmfjejfsbtvbhvpoxvhb.supabase.co"), true);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

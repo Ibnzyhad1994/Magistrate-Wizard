@@ -29,7 +29,9 @@ export const PRODUCTION_SUPABASE_URL = "https://gipijpeahkznfwitjccy.supabase.co
 export const PREVIEW_SUPABASE_URL = "https://kmfjejfsbtvbhvpoxvhb.supabase.co";
 export const HSTS_VALUE = "max-age=63072000; includeSubDomains; preload";
 export const ASSET_CACHE_VALUE = "public, max-age=31536000, immutable";
-export const HTML_CACHE_VALUE = "no-cache";
+// no-store so a header-only CSP change cannot stick behind a 304 that
+// reuses the previous document (and its previous Content-Security-Policy).
+export const HTML_CACHE_VALUE = "no-store";
 
 export function readIndexHtml() {
   return readFileSync(path.join(ROOT, "index.html"), "utf8");
@@ -52,6 +54,7 @@ export function renderVercelConfig({
         source: "/(.*)",
         headers: [
           { key: "Content-Security-Policy", value: buildVercelCsp(supabaseUrl, indexHtml) },
+          { key: "Cache-Control", value: HTML_CACHE_VALUE },
           { key: "Strict-Transport-Security", value: HSTS_VALUE },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
