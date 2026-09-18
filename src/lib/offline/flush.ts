@@ -8,6 +8,7 @@ import {
   type FailedOutboxJob,
   type HearingFields,
   type MatterPatchJob,
+  type NextDateJob,
   type OutboxJob,
   type UpdateOutboxJob,
 } from "@/lib/offline/outbox";
@@ -31,6 +32,16 @@ export type FlushDeps = {
    * overwritten. Optional so an existing caller that only queues hearings
    * keeps working unchanged.
    */
+  /**
+   * Replays a queued next date. Returns the RPC's status so the flush can
+   * tell "scheduled" from "the court was already full when this synced",
+   * which is neither a network failure nor a refusal.
+   */
+  setNextDate?: (
+    matterId: string,
+    scheduledDate: string,
+    categoryId: string | null,
+  ) => Promise<{ status: string }>;
   patchMatter?: (
     matterId: string,
     patch: TablesUpdate<"docket_matters">,
@@ -65,7 +76,7 @@ const errorMessage = (error: unknown): string => {
 };
 
 const failedJob = (
-  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob,
+  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob | NextDateJob,
   reason: FailedOutboxJob["reason"],
   message: string,
 ): FailedOutboxJob => ({ job, reason, message, failedAt: new Date().toISOString() });
@@ -102,7 +113,7 @@ const stoppedResult = (
 
 const handleJobError = (
   error: unknown,
-  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob,
+  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob | NextDateJob,
   queue: OutboxJob[],
   remaining: OutboxJob[],
   insertedIds: string[],
@@ -152,7 +163,12 @@ const DRAIN_ORDER: Record<OutboxJob["kind"], number> = {
   create: 0,
   matterPatch: 1,
   update: 2,
-  googlePending: 3,
+  // After board changes: the RPC stamps the new appearance's
+  // stage_at_event from the matter's CURRENT stage, so a cell change made
+  // in the same sitting has to land first or the appearance records the
+  // stage the file was at before the magistrate moved it.
+  nextDate: 3,
+  googlePending: 4,
 };
 
 export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<FlushResult> => {
@@ -203,6 +219,45 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
               job,
               "conflict",
               "This file was changed by someone else after you edited it offline, so your board changes were not applied.",
+            ),
+          );
+          continue;
+        }
+        updatedIds.push(job.id);
+      } catch (error) {
+        const handled = handleJobError(
+          error,
+          job,
+          queue,
+          remaining,
+          insertedIds,
+          updatedIds,
+          failed,
+        );
+        if (handled === "drop") continue;
+        return handled;
+      }
+      continue;
+    }
+
+    if (job.kind === "nextDate") {
+      if (!deps.setNextDate) {
+        remaining.push(job);
+        continue;
+      }
+      try {
+        const outcome = await deps.setNextDate(job.matterId, job.scheduledDate, job.categoryId);
+        if (outcome.status === "capacity_reached") {
+          // The RPC wrote nothing. Not a network failure and not a
+          // refusal, so it needs its own reason -- and the override is
+          // deliberately NOT acknowledged on the magistrate's behalf:
+          // that writes a capacity-override row with a reason attributed
+          // to them, days after the fact.
+          failed.push(
+            failedJob(
+              job,
+              "capacity",
+              `Your court was already at capacity for ${job.scheduledDate} when this synced, so the next date was not set. Set it again to override.`,
             ),
           );
           continue;

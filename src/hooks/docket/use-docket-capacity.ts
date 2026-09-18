@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { isKnownOffline } from "@/lib/offline/is-queueable-error";
+import { enqueueQueuedNextDate } from "@/lib/offline/runtime";
 import type { Database } from "@/types/database.types";
 
 export const docketCapacityKeys = {
@@ -243,6 +245,25 @@ export function useSetDocketMatterNextDate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: SetNextDateInput): Promise<SetNextDateResult> => {
+      // Queue rather than issue a request the browser will hold until the
+      // network returns; offline the capacity check cannot run at all, so
+      // the override is never acknowledged on the magistrate's behalf.
+      if (isKnownOffline()) {
+        const cached = queryClient
+          .getQueriesData<{ id: string; case_number?: string; matter_title?: string }[]>({
+            queryKey: ["docket-matters", "board"],
+          })
+          .flatMap(([, rows]) => rows ?? [])
+          .find((row) => row.id === input.docketMatterId);
+        await enqueueQueuedNextDate({
+          matterId: input.docketMatterId,
+          scheduledDate: input.scheduledDate,
+          categoryId: input.categoryId ?? null,
+          caseNumber: cached?.case_number ?? "",
+          matterTitle: cached?.matter_title ?? "",
+        });
+        return { status: "queued" } as unknown as SetNextDateResult;
+      }
       const { data, error } = await supabase.rpc("set_docket_matter_next_date", {
         p_docket_matter_id: input.docketMatterId,
         p_scheduled_date: input.scheduledDate,
@@ -256,6 +277,10 @@ export function useSetDocketMatterNextDate() {
       return row;
     },
     onSuccess: (result, variables) => {
+      if (result.status === "queued") {
+        toast.success("Next date saved on this device. Will sync when online.");
+        return;
+      }
       if (result.status === "created") {
         toast.success("Next date saved.");
         void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });

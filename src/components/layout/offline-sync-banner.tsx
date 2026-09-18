@@ -101,7 +101,9 @@ export function OfflineSyncBanner() {
                     ? "Changed elsewhere: "
                     : item.reason === "stalled"
                       ? "Kept failing, so it was set aside to let the rest sync: "
-                      : "Not accepted: "}
+                      : item.reason === "capacity"
+                        ? "Your court was full: "
+                        : "Not accepted: "}
                   {describeFailedJob(item).detail}
                 </p>
               </div>

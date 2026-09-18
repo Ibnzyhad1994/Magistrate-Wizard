@@ -26,6 +26,7 @@
     "test:global-search-provisions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-global-search-provisions.mjs",
     "test:offline-store-kv": "node --import ./scripts/test-support/register.mjs scripts/tests/test-offline-store-kv.mjs",
     "test:offline-matter-patch": "node --import ./scripts/test-support/register.mjs scripts/tests/test-offline-matter-patch.mjs",
+    "test:offline-next-date": "node --import ./scripts/test-support/register.mjs scripts/tests/test-offline-next-date.mjs",
     "test:session-idle": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "test:session-lock": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-lock-security.mjs",
     "test:notifications-rls": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-rls.mjs",

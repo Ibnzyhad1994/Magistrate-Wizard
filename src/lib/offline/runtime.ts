@@ -9,6 +9,7 @@ import { flushOutbox } from "@/lib/offline/flush";
 import {
   enqueueCreate,
   enqueueMatterPatch,
+  enqueueNextDate,
   enqueueGooglePending,
   enqueueUpdate,
   makeLocalEventId,
@@ -66,6 +67,17 @@ const liveFlushDeps = () => ({
    * file changed elsewhere (or is no longer visible), which is a conflict
    * to report, never a silent overwrite.
    */
+  setNextDate: async (matterId: string, scheduledDate: string, categoryId: string | null) => {
+    const { data, error } = await supabase.rpc("set_docket_matter_next_date", {
+      p_docket_matter_id: matterId,
+      p_scheduled_date: scheduledDate,
+      p_category_id: categoryId ?? undefined,
+      // Never acknowledged on replay -- see the flush's capacity branch.
+      p_acknowledge_override: false,
+    });
+    if (error) throw error;
+    return { status: data?.[0]?.status ?? "created" };
+  },
   patchMatter: async (
     matterId: string,
     patch: TablesUpdate<"docket_matters">,
@@ -126,6 +138,19 @@ export const enqueueQueuedMatterPatch = async (input: {
   if (!profileId) throw new Error("You need to be signed in to save a change.");
   const jobs = enqueueMatterPatch(getOutboxJobs(profileId), input);
   await setOutboxJobs(profileId, jobs);
+};
+
+/** Queues a next date for one matter, replacing anything already queued. */
+export const enqueueQueuedNextDate = async (input: {
+  matterId: string;
+  scheduledDate: string;
+  categoryId: string | null;
+  caseNumber: string;
+  matterTitle: string;
+}) => {
+  const profileId = await currentProfileId();
+  if (!profileId) throw new Error("You need to be signed in to set a next date.");
+  await setOutboxJobs(profileId, enqueueNextDate(getOutboxJobs(profileId), input));
 };
 
 export const enqueueQueuedUpdate = async (input: {

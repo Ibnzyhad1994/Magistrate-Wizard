@@ -88,13 +88,39 @@ export type MatterPatchJob = {
   attempts?: number;
 };
 
+/**
+ * A queued next date. Separate from matterPatch because it is not a
+ * column write: `set_docket_matter_next_date` supersedes whatever event
+ * currently drives `next_appearance`, and applies a capacity check.
+ *
+ * Safe to replay: the RPC is convergent (it always ends with one
+ * scheduled event on the requested date) and has an explicit no-op branch
+ * when the requested date already is the next date, so a duplicate replay
+ * after a half-finished flush cannot double-schedule.
+ */
+export type NextDateJob = {
+  kind: "nextDate";
+  /** `nextdate:<matterId>` */
+  id: string;
+  matterId: string;
+  scheduledDate: string;
+  categoryId: string | null;
+  caseNumber: string;
+  matterTitle: string;
+  attempts?: number;
+};
+
 export type GooglePendingJob = {
   kind: "googlePending";
   id: string;
   matterId: string;
 };
 
-export type OutboxJob = CreateOutboxJob | UpdateOutboxJob | MatterPatchJob | GooglePendingJob;
+export type OutboxJob =
+  CreateOutboxJob | UpdateOutboxJob | MatterPatchJob | NextDateJob | GooglePendingJob;
+
+/** The id a matter's queued next date is coalesced under. */
+export const nextDateJobId = (matterId: string) => `nextdate:${matterId}`;
 
 /** The id a matter's queued board changes are coalesced under. */
 export const matterPatchJobId = (matterId: string) => `matter:${matterId}`;
@@ -105,13 +131,13 @@ export const matterPatchJobId = (matterId: string) => `matter:${matterId}`;
  * after it was edited offline. Kept until the user discards it.
  */
 export type FailedOutboxJob = {
-  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob;
+  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob | NextDateJob;
   /**
    * `dropped` = the server refused it, `conflict` = the hearing changed
    * elsewhere, `stalled` = it kept failing on an error we cannot classify,
    * so it was set aside rather than left blocking the queue.
    */
-  reason: "dropped" | "conflict" | "stalled";
+  reason: "dropped" | "conflict" | "stalled" | "capacity";
   message: string;
   failedAt: string;
 };
@@ -137,7 +163,13 @@ export const rewriteJobIds = (jobs: OutboxJob[], fromId: string, toId: string): 
   jobs.map((job) => (job.id === fromId ? { ...job, id: toId } : job));
 
 export const hasPendingDocketWrites = (jobs: OutboxJob[]) =>
-  jobs.some((job) => job.kind === "create" || job.kind === "update" || job.kind === "matterPatch");
+  jobs.some(
+    (job) =>
+      job.kind === "create" ||
+      job.kind === "update" ||
+      job.kind === "matterPatch" ||
+      job.kind === "nextDate",
+  );
 
 export const pendingJobCount = (jobs: OutboxJob[]) => jobs.length;
 
@@ -249,8 +281,41 @@ export const enqueueMatterPatch = (
 /** Matters with queued board changes, for marking their row as pending. */
 export const pendingMatterIds = (jobs: OutboxJob[]) =>
   new Set(
-    jobs.filter((job): job is MatterPatchJob => job.kind === "matterPatch").map((j) => j.matterId),
+    jobs
+      .filter(
+        (job): job is MatterPatchJob | NextDateJob =>
+          job.kind === "matterPatch" || job.kind === "nextDate",
+      )
+      .map((j) => j.matterId),
   );
+
+/**
+ * Sets a matter's next date, replacing anything already queued for it.
+ * Last date wins: replaying every intermediate date would create and
+ * cancel a chain of appearances the court never sat on, and supersede
+ * semantics exist to keep real adjournment history honest.
+ */
+export const enqueueNextDate = (
+  jobs: OutboxJob[],
+  input: {
+    matterId: string;
+    scheduledDate: string;
+    categoryId: string | null;
+    caseNumber: string;
+    matterTitle: string;
+  },
+): OutboxJob[] => {
+  const id = nextDateJobId(input.matterId);
+  const job: NextDateJob = { kind: "nextDate", id, ...input };
+  return jobs.some((item) => item.kind === "nextDate" && item.id === id)
+    ? jobs.map((item) => (item.kind === "nextDate" && item.id === id ? job : item))
+    : [...jobs, job];
+};
+
+/** The queued next date for one matter, if any. */
+export const pendingNextDate = (jobs: OutboxJob[], matterId: string) =>
+  jobs.find((job): job is NextDateJob => job.kind === "nextDate" && job.matterId === matterId) ??
+  null;
 
 /** The queued board change for one matter, if any. */
 export const pendingMatterPatch = (jobs: OutboxJob[], matterId: string) =>
@@ -284,7 +349,8 @@ export const mergeCalendarRows = (
   for (const job of jobs) {
     // Only hearings appear on a calendar; a queued board change is not an
     // appearance and must not invent one.
-    if (job.kind === "googlePending" || job.kind === "matterPatch") continue;
+    if (job.kind === "googlePending" || job.kind === "matterPatch" || job.kind === "nextDate")
+      continue;
     if (job.kind === "create") {
       byId.set(job.id, {
         id: job.id,
@@ -340,7 +406,8 @@ export const mergeMatterEvents = (
   for (const event of events) byId.set(event.id, { ...event, pending: false });
   for (const job of jobs) {
     if (job.matterId !== matterId) continue;
-    if (job.kind === "googlePending" || job.kind === "matterPatch") continue;
+    if (job.kind === "googlePending" || job.kind === "matterPatch" || job.kind === "nextDate")
+      continue;
     const payload = job.payload;
     byId.set(job.id, {
       id: job.id,
@@ -363,6 +430,9 @@ export const mergeMatterEvents = (
  */
 export const describeFailedJob = (item: FailedOutboxJob): { title: string; detail: string } => {
   const who = `${item.job.caseNumber} · ${item.job.matterTitle}`;
+  if (item.job.kind === "nextDate") {
+    return { title: `${who} — next date ${item.job.scheduledDate}`, detail: item.message };
+  }
   if (item.job.kind === "matterPatch") {
     const columns = item.job.columns.map(columnLabel).join(", ");
     return {
