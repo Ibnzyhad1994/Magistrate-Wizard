@@ -43,6 +43,7 @@ import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog"
 import { Select } from "@/components/ui/select";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { EVENT_STAGES } from "@/lib/validations/docket";
+import { ageingSummary, matterAgeing } from "@/lib/matter-ageing";
 import { procedureStageLabel } from "@/lib/docket-procedure";
 import { matterProtocolStage } from "@/lib/docket-protocols";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
@@ -121,6 +122,10 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
 
   const progressEntries = useMemo(() => (data ?? []).filter(hasProgressData), [data]);
   const summary = useMemo(() => summarize(progressEntries), [progressEntries]);
+  // Every appearance, not just those with evidence recorded: how often a
+  // file has been listed is the question, and a mention counts.
+  const ageing = useMemo(() => matterAgeing(data ?? [], getLocalDateOnly()), [data]);
+  const ageingLine = ageingSummary(ageing, procedureStageLabel);
   const nextDate = useMemo(() => {
     const today = getLocalDateOnly();
     const upcoming = (data ?? [])
@@ -172,6 +177,20 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
           <InlineError error={error} onRetry={() => void refetch()} />
         ) : (
           <>
+            {/* Arithmetic over appearances already on the file -- how long
+                it has been running and whether it keeps coming back at the
+                same stage. Stated as a matter of record, never as advice. */}
+            {ageingLine && (
+              <p
+                className={
+                  ageing.sittingsAtCurrentStage >= 3
+                    ? "text-sm font-medium text-warning"
+                    : "text-sm text-muted-foreground"
+                }
+              >
+                {ageingLine}
+              </p>
+            )}
             {progressEntries.length > 0 && (
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-md border border-border p-3 text-sm sm:grid-cols-4">
                 <SummaryItem label="Hearings" value={String(summary.hearings)} />

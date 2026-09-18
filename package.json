@@ -29,6 +29,7 @@
     "test:offline-next-date": "node --import ./scripts/test-support/register.mjs scripts/tests/test-offline-next-date.mjs",
     "test:court-calendar": "node --import ./scripts/test-support/register.mjs scripts/tests/test-court-calendar.mjs",
     "test:court-calendar-db": "node --import ./scripts/test-support/register.mjs scripts/tests/test-court-calendar-db.mjs",
+    "test:matter-ageing": "node --import ./scripts/test-support/register.mjs scripts/tests/test-matter-ageing.mjs",
     "test:session-idle": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "test:session-lock": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-lock-security.mjs",
     "test:notifications-rls": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-rls.mjs",
