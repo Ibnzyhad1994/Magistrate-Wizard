@@ -9,6 +9,7 @@ export const docketCapacityKeys = {
   settings: ["docket-capacity-settings"] as const,
   /** Calendar tiles always count every court the caller sits (p_court_id unset). */
   snapshot: (date: string) => ["docket-capacity-snapshot", date] as const,
+  overrides: ["docket-capacity-overrides"] as const,
 };
 
 export type CapacitySnapshotRow =
@@ -28,6 +29,34 @@ export function useDocketMatterCategories() {
         .from("docket_matter_categories")
         .select("*")
         .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/**
+ * The caller's own record of deliberate over-capacity bookings, newest
+ * first. The table has been written on every acknowledged override since
+ * 0077 and never read back; RLS already limits a magistrate to their own
+ * rows (admins see all), so this is a plain select with no new RPC.
+ *
+ * Read-only by construction: the table carries no insert/update/delete
+ * policy at all, so its contents are as tamper-resistant as an audit
+ * trail and this hook cannot be turned into a write path.
+ */
+export function useMyCapacityOverrides(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: docketCapacityKeys.overrides,
+    enabled: options?.enabled ?? true,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("docket_capacity_overrides")
+        .select(
+          "id, scheduled_date, configured_capacity, scheduled_count_at_override, reason, created_at, docket_matter_id, docket_matter_categories(name), docket_matters(case_number, matter_title)",
+        )
+        .order("scheduled_date", { ascending: false })
+        .limit(50);
       if (error) throw error;
       return data;
     },

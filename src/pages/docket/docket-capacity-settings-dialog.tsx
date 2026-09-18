@@ -14,9 +14,11 @@ import { DetailsHint } from "@/components/common/details-hint";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils";
 import {
   useDocketMatterCategories,
   useDocketCapacitySettings,
+  useMyCapacityOverrides,
   useUpsertDocketCapacitySetting,
   useDeleteDocketCapacitySetting,
 } from "@/hooks/docket/use-docket-capacity";
@@ -198,6 +200,8 @@ export function DocketCapacitySettingsDialog({
             })}
           </div>
         )}
+
+        <OverrideHistory open={open} />
       </DialogContent>
       <AlertDialog
         open={!!pendingClear}
@@ -212,4 +216,73 @@ export function DocketCapacitySettingsDialog({
       />
     </Dialog>
   );
+}
+
+/**
+ * Every deliberate over-capacity booking this magistrate acknowledged,
+ * with the reason they gave. The rows have been recorded since 0077 and
+ * shown nowhere, so a magistrate could not see their own pattern of
+ * overloading a day -- which is the one thing a daily limit is supposed
+ * to help with.
+ *
+ * Read-only: `docket_capacity_overrides` has no write policy for any
+ * client role, so nothing here can edit or remove an entry.
+ */
+function OverrideHistory({ open }: { open: boolean }) {
+  // Only fetched while the dialog is open; it is otherwise unmounted work
+  // on a surface most sessions open to change a number and close.
+  const { data, isPending } = useMyCapacityOverrides({ enabled: open });
+  const rows = data ?? [];
+
+  return (
+    <section className="mt-6 border-t border-hairline pt-4 hc:border-border">
+      <div className="mb-2 flex items-center gap-1.5">
+        <h3 className="text-heading text-foreground">Times you went over</h3>
+        <DetailsHint
+          label="What this list shows"
+          details="Each time you scheduled past your own daily limit and confirmed it, the date, the classification, the limit, the count at that moment and your reason were recorded. This is your own record; it is not shown to other magistrates and cannot be edited."
+        />
+      </div>
+      {isPending ? (
+        <Skeleton className="h-16 w-full" />
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          You have not scheduled past a limit. Nothing to show.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row) => {
+            const matter = relOne(row.docket_matters);
+            const category = relOne(row.docket_matter_categories);
+            return (
+              <li key={row.id} className="rounded-md bg-surface-2 px-3 py-2 text-sm">
+                <p className="font-medium text-foreground">
+                  {formatDate(row.scheduled_date)}
+                  {category?.name ? ` · ${category.name}` : ""} ·{" "}
+                  <span className="tabular-nums">
+                    {row.scheduled_count_at_override} of {row.configured_capacity}
+                  </span>
+                </p>
+                {matter?.case_number ? (
+                  <p className="text-xs text-muted-foreground">
+                    {matter.case_number}
+                    {matter.matter_title ? ` · ${matter.matter_title}` : ""}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {row.reason?.trim() ? row.reason : "No reason recorded."}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** PostgREST returns an embedded row as an object or a one-element array. */
+function relOne<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
 }
