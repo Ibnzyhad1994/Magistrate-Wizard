@@ -181,7 +181,7 @@ Established invariants from `DEVELOPMENT_WORKFLOW.md` (owner-only quick codes, n
 
 ### 5.4 Navigation and IA
 
-- `[ ]` **M/M** Command palette is declared (`ui-store.ts:18,38,55,65`) but does not exist; 25 nav destinations sit behind a 5-item bar plus "More"; no breadcrumbs; no keyboard jump. Decide: build (cmdk over `NAV_ITEMS` + recent matters, Ctrl+K) or delete the dead state. Page titles are covered in §4.1.
+- `[ ]` **M/M** No command palette: 25 nav destinations sit behind a 5-item bar plus "More"; no breadcrumbs; no keyboard jump. The dead `commandPaletteOpen` store state this item originally cited has since been removed (see §5.3), so the only open question is whether to build one (cmdk over `NAV_ITEMS` + recent matters, Ctrl+K). Page titles are covered in §4.1.
 
 ### 5.5 Copy
 
@@ -279,7 +279,7 @@ Established invariants from `DEVELOPMENT_WORKFLOW.md` (owner-only quick codes, n
 - `[x]` **H/S** Idle lock wipes the outbox. **[verified]** `lockCurrentSession` → `clearOfflineForProfile` (`session-lock.ts:53`), which deletes `outbox` as well as cache and profile (`offline/store.ts:96-107`); `runtime.ts:146` calls it on auth expiry. The later unlock flush (commit `bc0fc84`) finds nothing left to send. Fix: clear cache and profile only; keep the outbox until explicit sign-out.
 - `[x]` **H/S** Replay failures for permission/validation errors are dropped silently (`flush.ts:55-70` returns `"drop"` with no toast or dead-letter). A magistrate whose sitting ended while offline loses the hearing unseen. Fix: failed list in the banner with reason and discard.
 - `[x]` **H/S** Last-write-wins on replayed updates: full-row `.update().eq("id")` with no `updated_at` guard (`runtime.ts:259-262`; `outbox.ts:105-113`), unlike matters. Fix: store the base `updated_at`, add `.eq("updated_at")`, surface conflicts.
-- `[ ]` **M/L** Only hearings are queueable; matter, cell, next-date, party, tag, share and bench-note writes throw offline; no service worker so a reload offline fails on web.
+- `[~]` **M/L** Partly closed: procedure-board cells, matter outcome and next dates are now queued and replayed (matterPatch and nextDate jobs), the store moved to per-profile IndexedDB records, and the day's board is cached so a sitting can be worked without a signal. Still open: party, tag, share and bench-note writes throw offline, and there is no service worker so a reload offline fails on web.
 
 ### 7.8 Admin operations
 

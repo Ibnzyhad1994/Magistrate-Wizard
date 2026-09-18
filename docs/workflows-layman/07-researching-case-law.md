@@ -46,6 +46,12 @@ Mark discoverable only if you want colleagues to read the card. They still will 
 
 Pin a passage and a note. Multiple notes per case are fine. The person who owns the library entry (even an admin) cannot see _your_ notes on it. If the parent card later becomes unreadable to you, your notes hide until you can read the parent again. They are not deleted.
 
+## Share one card with a colleague
+
+Your own research card has a **Sharing** tab, the same view-or-edit share the Docket uses: one named registered colleague, revocable, never passed on by them. Sharing the card does **not** share your annotations on it — those stay private to you, exactly as they do from an administrator.
+
+This is different from **Discoverable**, which opens the card to every magistrate rather than to one person you choose.
+
 ## Pin onto a docket matter
 
 Open the Case Law card → **Link to a Docket Matter**. Pick a matter you sit or have retained. A share-only copy of a file is not enough to create the pin — the save will fail.
@@ -56,4 +62,4 @@ You do **not** need to “own” a library case to cite it — citing is what th
 
 ## What is not here yet
 
-Sharing a personal card with one named colleague (the way docket shares work) is not built. Outlook does not ingest authorities. The library is not a web crawler — see the admin guide.
+Outlook does not ingest authorities. The library is not a web crawler — see the admin guide.
