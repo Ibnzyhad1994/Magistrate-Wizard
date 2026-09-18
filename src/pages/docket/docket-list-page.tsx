@@ -9,7 +9,11 @@ import { InlineError } from "@/components/common/inline-error";
 import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
 import { useIsDesktop } from "@/hooks/use-media-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useDocketMatterBoard, usePatchDocketProcedure } from "@/hooks/docket/use-docket-matters";
+import {
+  useDocketMatterBoard,
+  usePatchDocketProcedure,
+  useTakeBoardOffline,
+} from "@/hooks/docket/use-docket-matters";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
@@ -215,6 +219,7 @@ export default function DocketListPage() {
     { enabled: scopeReady },
   );
   const patch = usePatchDocketProcedure();
+  const offlineBoard = useTakeBoardOffline(selectedDate, courtId);
   const { data: coverUrls } = useSignedUrls((data ?? []).map((m) => m.cover_image_path));
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
 
@@ -272,6 +277,9 @@ export default function DocketListPage() {
         noCourts={noCourts}
         onOpenCapacity={() => setCapacityOpen(true)}
         onNewMatter={() => setCreateOpen(true)}
+        offlineReadyAt={offlineBoard.savedAt}
+        onTakeOffline={offlineBoard.takeOffline}
+        takingOffline={offlineBoard.isSaving}
       />
 
       {noCourts ? (

@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { Plus, Gauge, Trash2 } from "lucide-react";
+import { Plus, Gauge, Trash2, CloudDownload } from "lucide-react";
+import { LoadingSpinner } from "@/components/common/loading-spinner";
+import { formatTimeOnly } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { HintTooltip } from "@/components/ui/tooltip";
 import { ROUTES } from "@/routes/paths";
@@ -8,10 +10,17 @@ export function DocketToolbar({
   noCourts,
   onOpenCapacity,
   onNewMatter,
+  offlineReadyAt,
+  onTakeOffline,
+  takingOffline = false,
 }: {
   noCourts: boolean;
   onOpenCapacity: () => void;
   onNewMatter: () => void;
+  /** When this exact list was last saved for offline use, if ever. */
+  offlineReadyAt?: string | null;
+  onTakeOffline?: () => void;
+  takingOffline?: boolean;
 }) {
   const handleOpenCapacity = () => onOpenCapacity();
   const handleNewMatter = () => onNewMatter();
@@ -29,6 +38,34 @@ export function DocketToolbar({
           <Gauge className="h-4 w-4" />
           Docket Capacity
         </Button>
+        {onTakeOffline && (
+          // Deliberately explicit rather than automatic: on a metered
+          // Guyanese mobile connection, downloading a day's list is the
+          // magistrate's decision to make, not a background surprise.
+          <HintTooltip
+            label={
+              offlineReadyAt
+                ? `Saved for offline use at ${formatTimeOnly(offlineReadyAt)}. Save again to refresh it.`
+                : "Save this list so you can work it without a signal."
+            }
+          >
+            <Button
+              variant="secondary"
+              className="min-h-11 lg:min-h-9"
+              onClick={onTakeOffline}
+              disabled={takingOffline}
+            >
+              {takingOffline ? (
+                <LoadingSpinner className="text-current" size={14} />
+              ) : offlineReadyAt ? (
+                <CloudDownload className="h-4 w-4" />
+              ) : (
+                <CloudDownload className="h-4 w-4" />
+              )}
+              {offlineReadyAt ? "Offline ready" : "Take offline"}
+            </Button>
+          </HintTooltip>
+        )}
         {noCourts ? (
           <HintTooltip label="You have no current Court assignment.">
             <span className="inline-flex">

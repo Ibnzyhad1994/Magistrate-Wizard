@@ -6,6 +6,7 @@ import {
   cachedHearingFromDocketEvent,
   upsertHearings,
   upsertMatterAccess,
+  upsertBoard,
   upsertMatterShell,
   replaceMatterEvents,
 } from "@/lib/offline/docket-cache";
@@ -63,4 +64,14 @@ export const seedMatterAccess = async (
 ) => {
   const next = upsertMatterAccess(getProfileCache(profileId), matterId, access);
   await setProfileCache(profileId, next);
+};
+
+/**
+ * Saves a whole board for offline use before a sitting. Unlike
+ * seedMatterDetail this does NOT mark the matters as opened: a board row
+ * is a summary, not a file, so the detail page must still say the matter
+ * is unavailable rather than render half of it.
+ */
+export const seedBoard = async (profileId: string, key: string, rows: unknown[]) => {
+  await setProfileCache(profileId, upsertBoard(getProfileCache(profileId), key, rows));
 };

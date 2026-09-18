@@ -35,15 +35,45 @@ export type CachedMatter = {
   opened: boolean;
 };
 
+/**
+ * A whole board saved before a sitting. Keyed by the scope it was taken
+ * for, so "Georgetown 1 on 20 November" and "All my courts" are separate
+ * snapshots and one never silently stands in for the other.
+ */
+export type CachedBoard = {
+  /** Rows exactly as `list_docket_matters` returned them. */
+  rows: unknown[];
+  savedAt: string;
+};
+
 export type ProfileDocketCache = {
   matters: Record<string, CachedMatter>;
   events: Record<string, CachedHearing>;
+  /** Optional: absent on caches written before pre-sitting prefetch. */
+  boards?: Record<string, CachedBoard>;
 };
 
 export const emptyProfileCache = (): ProfileDocketCache => ({
   matters: {},
   events: {},
+  boards: {},
 });
+
+/** Identifies one saved board. `null` court means "all my courts". */
+export const boardCacheKey = (courtId: string | null, date: string | null) =>
+  `${courtId ?? "all"}:${date ?? "all"}`;
+
+export const upsertBoard = (
+  cache: ProfileDocketCache,
+  key: string,
+  rows: unknown[],
+): ProfileDocketCache => ({
+  ...cache,
+  boards: { ...(cache.boards ?? {}), [key]: { rows, savedAt: new Date().toISOString() } },
+});
+
+export const getCachedBoard = (cache: ProfileDocketCache, key: string): CachedBoard | null =>
+  cache.boards?.[key] ?? null;
 
 export const hearingFieldsFromEvent = (event: {
   scheduled_date: string;

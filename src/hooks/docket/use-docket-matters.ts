@@ -1,8 +1,15 @@
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/auth-store";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
-import { filtersToRpcArgs, type ProcedureFilters } from "@/lib/docket-procedure";
+import {
+  EMPTY_PROCEDURE_FILTERS,
+  filtersToRpcArgs,
+  hasActiveProcedureFilters,
+  type ProcedureFilters,
+} from "@/lib/docket-procedure";
 import { matterProtocolStage } from "@/lib/docket-protocols";
 import {
   isKnownOffline,
@@ -11,8 +18,9 @@ import {
 } from "@/lib/offline/is-queueable-error";
 import { enqueueQueuedMatterPatch } from "@/lib/offline/runtime";
 import { currentProfileId } from "@/lib/offline/runtime";
-import { getProfileCache } from "@/lib/offline/store";
-import { seedMatterDetail } from "@/lib/offline/seed";
+import { getProfileCache, subscribeOfflineStore } from "@/lib/offline/store";
+import { boardCacheKey, getCachedBoard } from "@/lib/offline/docket-cache";
+import { seedBoard, seedMatterDetail } from "@/lib/offline/seed";
 import { ConcurrentEditError } from "@/lib/concurrency";
 
 export const docketMattersKeys = {
@@ -200,15 +208,34 @@ export function useDocketMatterBoard(
     enabled: options?.enabled,
     queryFn: async () => {
       const args = filtersToRpcArgs(filters);
-      const { data, error } = await supabase.rpc("list_docket_matters", {
-        p_query: trimmed,
-        p_limit: 100,
-        p_exact_date: exactDate ?? undefined,
-        p_court_id: courtId ?? undefined,
-        ...args,
-      });
-      if (error) throw error;
-      return data;
+      // A board saved before the sitting is only used for the plain,
+      // unfiltered view of that scope: a cached list cannot honour a
+      // search or a stage filter, and quietly returning an unfiltered
+      // list under a filtered heading would misrepresent the docket.
+      const cacheable = !trimmed && !hasActiveProcedureFilters(filters);
+      try {
+        const { data, error } = await supabase.rpc("list_docket_matters", {
+          p_query: trimmed,
+          p_limit: 100,
+          p_exact_date: exactDate ?? undefined,
+          p_court_id: courtId ?? undefined,
+          ...args,
+        });
+        if (error) throw error;
+        if (cacheable && data) {
+          const profileId = await currentProfileId();
+          if (profileId) await seedBoard(profileId, boardCacheKey(courtId, exactDate), data);
+        }
+        return data;
+      } catch (error) {
+        if (!isQueueableError(error) || !cacheable) throw error;
+        const profileId = await currentProfileId();
+        const cached = profileId
+          ? getCachedBoard(getProfileCache(profileId), boardCacheKey(courtId, exactDate))
+          : null;
+        if (!cached) throw error;
+        return cached.rows as DocketMatterBoardRow[];
+      }
     },
     /**
      * Keeps the previous results on screen while a REFINEMENT (search
@@ -393,4 +420,53 @@ export function usePurgeDocketMatter(id?: string) {
       invalidateAfterBinChange(queryClient, id ?? matterId);
     },
   });
+}
+
+/**
+ * Saves the current, unfiltered board for offline use, and reports when
+ * that scope was last saved. The prefetch is one RPC call the magistrate
+ * asks for, not a background download: on a metered connection that is
+ * their decision.
+ *
+ * Board rows only. Documents, cover images and scanned bundles are
+ * deliberately excluded -- they would blow any storage budget, and a
+ * board row is what a sitting is actually worked from.
+ */
+export function useTakeBoardOffline(exactDate: string | null, courtId: string | null) {
+  const queryClient = useQueryClient();
+  const key = boardCacheKey(courtId, exactDate);
+  const savedAt = useSyncExternalStore(
+    subscribeOfflineStore,
+    () => {
+      const profileId = useAuthStore.getState().user?.id;
+      if (!profileId) return null;
+      return getCachedBoard(getProfileCache(profileId), key)?.savedAt ?? null;
+    },
+    () => null,
+  );
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const profileId = useAuthStore.getState().user?.id;
+      if (!profileId) throw new Error("You need to be signed in to save a list offline.");
+      const { data, error } = await supabase.rpc("list_docket_matters", {
+        p_query: "",
+        p_limit: 100,
+        p_exact_date: exactDate ?? undefined,
+        p_court_id: courtId ?? undefined,
+        ...filtersToRpcArgs(EMPTY_PROCEDURE_FILTERS),
+      });
+      if (error) throw error;
+      await seedBoard(profileId, key, data ?? []);
+      return (data ?? []).length;
+    },
+    onSuccess: (count) => {
+      toast.success(
+        count === 1 ? "1 file saved for offline use." : `${count} files saved for offline use.`,
+      );
+      void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
+    },
+  });
+
+  return { savedAt, takeOffline: () => mutation.mutate(), isSaving: mutation.isPending };
 }
