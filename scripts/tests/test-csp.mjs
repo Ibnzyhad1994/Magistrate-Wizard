@@ -30,7 +30,11 @@ const local = "http://127.0.0.1:56321";
 check("production URL origin has no trailing slash", supabaseCspOrigin(production), production);
 check("trailing slash is stripped to origin", supabaseCspOrigin(withSlash), production);
 check("local supabase origin is preserved", supabaseCspOrigin(local), local);
-check("https supabase maps to wss for realtime", supabaseCspWsOrigin(production), production.replace("https://", "wss://"));
+check(
+  "https supabase maps to wss for realtime",
+  supabaseCspWsOrigin(production),
+  production.replace("https://", "wss://"),
+);
 check("local docker maps to ws for realtime", supabaseCspWsOrigin(local), "ws://127.0.0.1:56321");
 check("production Vite builds inject the meta CSP", shouldInjectMetaCsp("production", {}), true);
 check("dev mode never injects the meta CSP", shouldInjectMetaCsp("development", {}), false);
@@ -122,7 +126,8 @@ check(
 // back -- nothing errors. So assert them against each other here, using the
 // real index.html rather than a fixture.
 
-const indexHtml = readFileSync("index.html", "utf8");
+// LF like the served build; a Windows checkout may hand us CRLF.
+const indexHtml = readFileSync("index.html", "utf8").replace(/\r\n/g, "\n");
 const inlineScripts = [
   ...indexHtml.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
 ].map((m) => m[1]);
