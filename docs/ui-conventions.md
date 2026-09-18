@@ -26,12 +26,36 @@ Short rules for anything user-facing. Primitives live in `src/components/ui`; if
   - **Autosave + indicator** (long editors: bench notes, judgments, legal library): `SaveIndicator` shows Saving/Saved/Unsaved; `useUnsavedChangesGuard` blocks navigation while dirty.
 - Destructive actions confirm through `AlertDialog`, or offer an undo toast; never neither.
 
+## Surfaces, elevation and type
+
+The visual language is Netflix's: a near-black canvas, content lifted off it by luminance and shadow rather than frames, one red commit action, tight-tracked display titles. The light palette is the same system on warm paper.
+
+- **Raise, don't frame.** A region that must stand off the canvas is `bg-card` (or `bg-surface-1`) with `shadow-elevation-1` and a `border-hairline` crease. Never `border-border` on a card or panel: that is the divider token. High contrast has no shadows, so add `hc:border-border` alongside the hairline — `Card` does this for you; use `Card` before reaching for a bespoke `div`.
+- **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. Selected segments are `bg-surface-1 shadow-elevation-1` inside a `bg-surface-2` track.
+- **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus and the hovered poster. Not `shadow-lg`, not a literal `rgba` shadow.
+- **Type scale**: `text-display-xl` (Billboard) · `text-display` (page title) · `text-title-lg` (empty-state / hero heading) · `text-title` (row and section headings) · `text-heading` (card titles). Each sets weight, tracking and leading; do not add `font-bold tracking-tight` on top. Small uppercase labels are the `eyebrow` utility (deliberately not `text-`-prefixed: tailwind-merge would treat it as a colour).
+- **Page headers** are `BrowseHeader` with the workspace `tone`; it draws the edge-to-edge band. Empty states on a browse page pass the same `tone` to `EmptyState`.
+- **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow.
+
+## Buttons
+
+One of each per surface:
+
+- `default` (red) — the commit action: create, save, finalise, connect.
+- `play` (white) — a Billboard's lead action only. Never on a list page or in a card.
+- `more` — translucent on cinematic art; the Billboard's second action and a detail page's Back.
+- `secondary` — quiet filled tools and refinement clears on plain canvas; `outline` is the same weight with an edge for use on a card.
+- `ghost` / `link` — icon buttons, inline controls, inline links.
+
+A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segmented control (`Tabs variant="segmented"` or a `role="group"` of ghost buttons on a `bg-surface-2` track), never a red button.
+
 ## Colour and tokens
 
 - Text colour comes from tokens: `text-foreground`, `text-muted-foreground`, `text-link`. Do not derive secondary text with opacity (`text-foreground/50`) — it bypasses the high-contrast palette and fails 4.5:1 in light mode below `/65`.
 - Control borders are `border-input` (≥3:1 in every palette); dividers and cards are `border-border`. Not `border-foreground/10`.
 - Status colours are registered tokens: `bg-notice-action`, `text-stage-progress`, `bg-capacity-full`, plus `warning` / `success` / `info` aliases. Never `bg-[hsl(var(--…))]`, never `amber-500`.
-- Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px.
+- Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards, posters and chips are `rounded-md`.
+- Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
 - Sizes: inputs and buttons are 44px / 16px on phones and 36px / 14px from `lg` up; the primitives do this, do not override heights.
 
 ## Z-index tiers

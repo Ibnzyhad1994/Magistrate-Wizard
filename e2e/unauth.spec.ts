@@ -5,16 +5,18 @@ test.describe("unauthenticated smokes", () => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   });
 
   test("bad credentials stay on login", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").click();
     await page.getByLabel("Email").pressSequentially("nobody@example.test", { delay: 15 });
-    await page.getByLabel("Password").click();
-    await page.getByLabel("Password").pressSequentially("wrong-password", { delay: 15 });
-    await page.getByRole("button", { name: "Sign In" }).click();
+    await page.getByLabel("Password", { exact: true }).click();
+    await page
+      .getByLabel("Password", { exact: true })
+      .pressSequentially("wrong-password", { delay: 15 });
+    await page.getByRole("button", { name: "Sign In", exact: true }).click();
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole("heading", { name: "Sign In" })).toBeVisible();
   });

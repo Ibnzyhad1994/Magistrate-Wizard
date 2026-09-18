@@ -39,7 +39,7 @@ test.describe("document PDF redaction", () => {
     await expect(page.getByLabel("Download", { exact: true })).toBeVisible();
 
     await redactButton.click();
-    const overlay = page.getByLabel(/Draw a redaction box on page 1/);
+    const overlay = page.getByLabel(/Add a redaction box to page 1/);
     await expect(overlay).toBeVisible();
     const box = await overlay.boundingBox();
     if (!box) throw new Error("redaction overlay had no box");

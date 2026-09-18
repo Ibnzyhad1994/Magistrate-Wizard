@@ -22,11 +22,13 @@ import { ROUTES } from "@/routes/paths";
 import { APP_NAME } from "@/lib/constants";
 import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
 import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 const fieldClassName =
   "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
 
 export default function LoginPage() {
+  usePageTitle("Sign In");
   const { signIn, isSigningIn } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

@@ -111,6 +111,16 @@ const TOKENS = [
   "sidebar-background",
   "sidebar-foreground",
   "sidebar-border",
+  // Visual-overhaul tokens: a surface that exists in one palette but not
+  // another renders as an empty custom property, i.e. transparent.
+  "surface-1",
+  "surface-2",
+  "surface-3",
+  "hairline",
+  "elevation-1",
+  "elevation-2",
+  "elevation-3",
+  "tone-alpha",
 ];
 check(
   "every token defined in dark is also defined in light",
@@ -157,6 +167,31 @@ check(
   lightness(tokenValue(hcDarkBlock, "muted-foreground")) >= 90,
   true,
 );
+// Surfaces must step in one direction from the canvas, or a "raised"
+// card reads as sunken in one palette and raised in another.
+check(
+  "dark surfaces step lighter from the canvas",
+  ["surface-1", "surface-2", "surface-3"].map((t) => lightness(tokenValue(darkBlock, t))),
+  [...["surface-1", "surface-2", "surface-3"].map((t) => lightness(tokenValue(darkBlock, t)))].sort(
+    (a, b) => a - b,
+  ),
+);
+check(
+  "dark surface-1 is above the canvas",
+  lightness(tokenValue(darkBlock, "surface-1")) > lightness(tokenValue(darkBlock, "background")),
+  true,
+);
+check(
+  "high contrast draws no elevation shadows (edges come from --border)",
+  [hcLightBlock, hcDarkBlock].every((b) => tokenValue(b, "elevation-1") === "none"),
+  true,
+);
+check(
+  "the eyebrow utility is not text-prefixed (tailwind-merge would read it as a colour)",
+  /\.text-eyebrow\s*\{/.test(css),
+  false,
+);
+
 check(
   "colourblind-safe does not use green for dismissed",
   tokenValue(cbDarkBlock, "stage-dismissed") !== tokenValue(darkBlock, "stage-dismissed"),

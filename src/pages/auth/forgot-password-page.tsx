@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { forgotPasswordSchema, type ForgotPasswordFormValues } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
 import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 const fieldClassName =
   "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
@@ -28,6 +29,7 @@ const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";
 const contentClassName = "px-8 pb-10 sm:px-16 sm:pb-12";
 
 export default function ForgotPasswordPage() {
+  usePageTitle("Forgot password");
   const { resetPassword, isResettingPassword } = useAuth();
   const [submitted, setSubmitted] = useState(false);
 
