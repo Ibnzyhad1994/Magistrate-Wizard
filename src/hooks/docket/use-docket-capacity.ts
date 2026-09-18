@@ -294,3 +294,58 @@ export function useSetDocketMatterNextDate() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 }
+
+/**
+ * Adjourns several matters to one date.
+ *
+ * A sequential loop over the existing per-matter RPC rather than a new
+ * bulk function: each call is already atomic inside set_docket_matter_next_date
+ * (supersede, insert and any override row in one transaction), and going
+ * through the same entry point means bulk adds no authority of its own --
+ * every row still passes that function's own can_edit_docket_matter guard.
+ *
+ * Partial success is the intended semantic. Rolling back eight successful
+ * adjournments because the ninth was refused is worse in a courtroom
+ * where the magistrate has already said "all of these to 3 November"
+ * aloud, so failures are returned for the caller to show and retry.
+ *
+ * Per-row toasts and invalidations are suppressed: thirty toasts and
+ * ninety invalidations is why this is not a loop over the single-matter
+ * hook.
+ */
+export function useBulkSetNextDate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      matterIds: string[];
+      scheduledDate: string;
+      categoryIdFor: (matterId: string) => string | null;
+      acknowledgeOverride: boolean;
+      overrideReason: string | null;
+    }) => {
+      const outcomes: Array<{ matterId: string; status: string; message?: string | null }> = [];
+      for (const matterId of input.matterIds) {
+        try {
+          const { data, error } = await supabase.rpc("set_docket_matter_next_date", {
+            p_docket_matter_id: matterId,
+            p_scheduled_date: input.scheduledDate,
+            p_category_id: input.categoryIdFor(matterId) ?? undefined,
+            p_acknowledge_override: input.acknowledgeOverride,
+            p_override_reason: input.overrideReason ?? undefined,
+          });
+          if (error) throw error;
+          outcomes.push({ matterId, status: data?.[0]?.status ?? "created" });
+        } catch (error) {
+          outcomes.push({ matterId, status: "failed", message: getErrorMessage(error) });
+        }
+      }
+      return outcomes;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
+      void queryClient.invalidateQueries({ queryKey: ["docket-events"] });
+      void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
+    },
+    meta: { silent: true },
+  });
+}

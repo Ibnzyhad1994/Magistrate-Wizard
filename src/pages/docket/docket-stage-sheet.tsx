@@ -1,4 +1,5 @@
 import { usePendingMatterIds } from "@/hooks/offline/use-pending-hearings";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -57,6 +58,7 @@ function DocketStageRow({
   onPatch,
   onLogAppearance,
   pending = false,
+  selection,
 }: {
   row: DocketMatterBoardRow;
   columns: BoardColumn[];
@@ -66,6 +68,8 @@ function DocketStageRow({
   isTourFirstMatter?: boolean;
   /** This file has board changes queued on this device. */
   pending?: boolean;
+  /** Absent when the list cannot be bulk-adjourned (no date, or a past one). */
+  selection?: { isSelected: boolean; onToggle: () => void };
   onPatch: (
     id: string,
     values: TablesUpdate<"docket_matters">,
@@ -122,6 +126,16 @@ function DocketStageRow({
     // layouts would be forty-odd places to keep in step, and what the
     // magistrate needs to know is that this FILE has unsent changes.
     <TableRow className={pending ? "bg-warning/10" : undefined}>
+      {selection && (
+        <TableCell className="w-9 px-2">
+          <Checkbox
+            checked={selection.isSelected}
+            onCheckedChange={selection.onToggle}
+            disabled={!row.can_edit}
+            aria-label={`Select ${row.case_number} ${row.matter_title}`}
+          />
+        </TableCell>
+      )}
       <TableCell className={`${caseColBase} z-20`}>
         <Link
           to={ROUTES.docketMatter(row.id)}
@@ -240,9 +254,17 @@ export function DocketStageSheet({
   showCourt = false,
   onPatch,
   onLogAppearance,
+  selection,
 }: {
   rows: DocketMatterBoardRow[];
   showCourt?: boolean;
+  /** Omitted entirely when bulk adjourn is not offered for this list. */
+  selection?: {
+    selected: ReadonlySet<string>;
+    onToggle: (id: string) => void;
+    onToggleAll: () => void;
+    allSelected: boolean;
+  };
   onPatch: (
     id: string,
     values: TablesUpdate<"docket_matters">,
@@ -264,6 +286,15 @@ export function DocketStageSheet({
         >
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              {selection && (
+                <TableHead className="w-9 px-2">
+                  <Checkbox
+                    checked={selection.allSelected}
+                    onCheckedChange={selection.onToggleAll}
+                    aria-label="Select every file you can edit"
+                  />
+                </TableHead>
+              )}
               <TableHead className={`${caseColBase} z-30`}>Case</TableHead>
               {columns.map((column) => (
                 <TableHead
@@ -301,6 +332,14 @@ export function DocketStageSheet({
                 onPatch={onPatch}
                 onLogAppearance={onLogAppearance}
                 pending={pendingMatters.has(row.id)}
+                selection={
+                  selection
+                    ? {
+                        isSelected: selection.selected.has(row.id),
+                        onToggle: () => selection.onToggle(row.id),
+                      }
+                    : undefined
+                }
               />
             ))}
           </TableBody>

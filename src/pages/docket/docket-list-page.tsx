@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search, Plus, ClipboardList, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,15 @@ import { DocketCapacityStrip } from "@/pages/docket/docket-capacity-strip";
 import { DailyProgressReportButton } from "@/pages/docket/daily-progress-report-button";
 import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, toTitleCase } from "@/lib/utils";
+import {
+  canBulkAdjourn,
+  pruneSelection,
+  selectAll,
+  selectableIds,
+  toggleSelection,
+} from "@/lib/docket-selection";
+import { DocketBulkAdjournDialog } from "@/pages/docket/docket-bulk-adjourn-dialog";
+import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
 import {
   EMPTY_PROCEDURE_FILTERS,
   hasActiveProcedureFilters,
@@ -220,6 +228,30 @@ export default function DocketListPage() {
   );
   const patch = usePatchDocketProcedure();
   const offlineBoard = useTakeBoardOffline(selectedDate, courtId);
+  // Bulk adjourn only for a specific day at or after today: the RPC
+  // supersedes the earliest appearance on or after today regardless of
+  // which day's list it was invoked from, so a past-date list would
+  // cancel a FUTURE appearance. See src/lib/docket-selection.ts.
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const bulkAllowed = canBulkAdjourn(selectedDate, getLocalDateOnly());
+  const selectableRows = useMemo(
+    () =>
+      (data ?? []).map((row) => ({
+        id: row.id,
+        can_edit: row.can_edit,
+        category_id: row.category_id,
+      })),
+    [data],
+  );
+  // The list re-queries on every change of date, court, search or filter,
+  // so anything no longer on screen leaves the selection with it.
+  useEffect(() => {
+    setSelected((current) => pruneSelection(current, selectableRows));
+  }, [selectableRows]);
+  useEffect(() => {
+    if (!bulkAllowed) setSelected(new Set());
+  }, [bulkAllowed]);
   const { data: coverUrls } = useSignedUrls((data ?? []).map((m) => m.cover_image_path));
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
 
@@ -386,6 +418,22 @@ export default function DocketListPage() {
 
       <DocketStageFilters filters={filters} onChange={setFilters} />
 
+      {bulkAllowed && selected.size > 0 && (
+        <div className="browse-bleed sticky bottom-0 z-30 mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-hairline bg-background/90 py-3 backdrop-blur-md hc:border-border hc:bg-background">
+          <p className="text-sm text-foreground">
+            {selected.size === 1 ? "1 file selected" : `${selected.size} files selected`}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+              Clear
+            </Button>
+            <Button size="sm" onClick={() => setBulkOpen(true)}>
+              Adjourn to…
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isPending ? (
         effectiveBrowseView === "list" ? (
           isDesktop ? (
@@ -489,6 +537,23 @@ export default function DocketListPage() {
           {effectiveBrowseView === "list" ? (
             isDesktop ? (
               <DocketStageSheet
+                selection={
+                  bulkAllowed
+                    ? {
+                        selected,
+                        onToggle: (id) => setSelected((cur) => toggleSelection(cur, id)),
+                        onToggleAll: () =>
+                          setSelected((cur) =>
+                            cur.size === selectableIds(selectableRows).length
+                              ? new Set()
+                              : selectAll(selectableRows),
+                          ),
+                        allSelected:
+                          selectableIds(selectableRows).length > 0 &&
+                          selected.size === selectableIds(selectableRows).length,
+                      }
+                    : undefined
+                }
                 rows={data}
                 showCourt={courtId === null}
                 onPatch={(id, values, expectedUpdatedAt) =>
@@ -540,6 +605,16 @@ export default function DocketListPage() {
         defaultCourtId={courtId}
       />
       <DocketCapacitySettingsDialog open={capacityOpen} onOpenChange={setCapacityOpen} />
+      {bulkOpen && (
+        <DocketBulkAdjournDialog
+          rows={selectableRows}
+          selected={selected}
+          courtId={courtId}
+          districtId={selectedCourt?.district_id ?? null}
+          onClose={() => setBulkOpen(false)}
+          onDone={(remaining) => setSelected(remaining)}
+        />
+      )}
       {logAppearance && (
         <DocketEventDialog
           matterId={logAppearance.matterId}
