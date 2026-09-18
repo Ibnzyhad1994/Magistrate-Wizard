@@ -16,6 +16,7 @@ export interface CourtAssignmentRow {
   id: string;
   court_id: string;
   assignment_type: string;
+  can_manage_clerks: boolean;
   started_at: string;
   ended_at: string | null;
   courts: { id: string; name: string; jurisdiction: string; is_active: boolean } | null;
@@ -133,7 +134,7 @@ export function useProfileCourtAssignments(profileId: string | undefined) {
       const { data, error } = await supabase
         .from("magistrate_courts")
         .select(
-          "id, court_id, assignment_type, started_at, ended_at, courts(id, name, jurisdiction, is_active)",
+          "id, court_id, assignment_type, can_manage_clerks, started_at, ended_at, courts(id, name, jurisdiction, is_active)",
         )
         .eq("profile_id", profileId as string)
         .order("started_at", { ascending: false });
@@ -260,6 +261,51 @@ export function useEndCourtAssignment(profileId: string) {
     },
     onSuccess: () => {
       toast.success("Court assignment ended.");
+      invalidateAfterAdminCourtChange(queryClient, profileId);
+    },
+    meta: { silent: true },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
+
+/**
+ * Names a seated magistrate as a clerk-access reviewer for their court.
+ *
+ * can_manage_clerk_access() already lets the sole magistrate at a court,
+ * or its sole REGULAR magistrate, review clerk requests -- which covers a
+ * covering or acting magistrate sitting alongside a regular. What it does
+ * not cover is two REGULARS current at one court: then neither is "sole",
+ * and without this flag nobody can approve a clerk there. The column has
+ * existed since 0086 with no way to set it, so that state could only be
+ * cleared with SQL.
+ *
+ * Administrator-only by policy (0052) and by trigger (0152): ordinary
+ * self-service cannot change this column, so a magistrate cannot grant
+ * themselves the power to admit clerks.
+ */
+export function useSetClerkReviewer(profileId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      assignmentId,
+      canManage,
+    }: {
+      assignmentId: string;
+      canManage: boolean;
+    }) => {
+      const { error } = await supabase
+        .from("magistrate_courts")
+        .update({ can_manage_clerks: canManage })
+        .eq("id", assignmentId)
+        .is("ended_at", null);
+      if (error) throw error;
+    },
+    onSuccess: (_result, variables) => {
+      toast.success(
+        variables.canManage
+          ? "This magistrate can now review clerk access for that court."
+          : "This magistrate no longer reviews clerk access for that court.",
+      );
       invalidateAfterAdminCourtChange(queryClient, profileId);
     },
     meta: { silent: true },

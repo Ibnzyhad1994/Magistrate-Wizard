@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Search, Landmark, Plus, X, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +22,7 @@ import {
   useProfileCourtAssignments,
   useCreateCourtAssignment,
   useEndCourtAssignment,
+  useSetClerkReviewer,
   useOccupiedPrimaryCourtIds,
   useUnassignedMagistrates,
   useProfileClerkCourts,
@@ -106,6 +109,7 @@ export default function CourtAssignmentsPage() {
   const { data: courts, isPending: courtsPending } = useCourts();
   const { data: occupiedIds } = useOccupiedPrimaryCourtIds();
   const createAssignment = useCreateCourtAssignment(selectedProfileId ?? "");
+  const setReviewer = useSetClerkReviewer(selectedProfileId ?? "");
   const endAssignment = useEndCourtAssignment(selectedProfileId ?? "");
 
   const isClerkProfile = selectedProfile?.role === "clerk";
@@ -408,18 +412,42 @@ export default function CourtAssignmentsPage() {
                                 </p>
                               </div>
                               {!isClerkProfile && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    setEndTarget({
-                                      id: a.id,
-                                      courtName: a.courts?.name ?? "this Court",
-                                    })
-                                  }
-                                >
-                                  End assignment
-                                </Button>
+                                <div className="flex shrink-0 items-center gap-2">
+                                  {/* Only needed when a court has two regular
+                                      magistrates: can_manage_clerk_access()
+                                      already covers a sole magistrate and a
+                                      sole regular sitting with a covering one. */}
+                                  {"can_manage_clerks" in a && (
+                                    <HintTooltip label="Lets this magistrate approve clerk access requests for this court. Needed when a court has two regular magistrates, because neither is then the sole reviewer.">
+                                      <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+                                        <Checkbox
+                                          checked={Boolean(a.can_manage_clerks)}
+                                          disabled={setReviewer.isPending}
+                                          onCheckedChange={(checked) =>
+                                            setReviewer.mutate({
+                                              assignmentId: a.id,
+                                              canManage: checked === true,
+                                            })
+                                          }
+                                          aria-label={`Can review clerk access at ${a.courts?.name ?? "this court"}`}
+                                        />
+                                        Clerk reviewer
+                                      </label>
+                                    </HintTooltip>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setEndTarget({
+                                        id: a.id,
+                                        courtName: a.courts?.name ?? "this Court",
+                                      })
+                                    }
+                                  >
+                                    End assignment
+                                  </Button>
+                                </div>
                               )}
                             </li>
                           );
