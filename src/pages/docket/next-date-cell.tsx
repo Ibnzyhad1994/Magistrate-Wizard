@@ -122,6 +122,7 @@ export function NextDateDialog({
   const [categoryId, setCategoryId] = useState("");
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [pendingOverride, setPendingOverride] = useState<SetNextDateResult | null>(null);
+  const isPastDate = Boolean(date) && date < getLocalDateOnly();
 
   // events loads asynchronously, so the category can't be known at the
   // very first render — fill it in once it arrives, but only if the
@@ -175,7 +176,20 @@ export function NextDateDialog({
             value={date}
             onChange={setDate}
             aria-label="Next date"
+            aria-describedby={isPastDate ? `${fieldId}-past` : undefined}
           />
+          {/* set_docket_matter_next_date() always supersedes the earliest
+              appearance on or after today, so a date in the past does not
+              rewrite history -- it cancels the NEXT hearing and files a
+              scheduled row behind today. Warn rather than block: a
+              magistrate correcting a mis-keyed year has a legitimate
+              reason to continue. */}
+          {isPastDate && (
+            <p id={`${fieldId}-past`} className="text-xs text-warning">
+              {formatDate(date)} has passed. Saving will cancel the next scheduled appearance and
+              leave this matter with no future date.
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">

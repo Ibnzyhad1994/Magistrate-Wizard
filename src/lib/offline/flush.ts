@@ -1,6 +1,7 @@
 import {
   hasPendingDocketWrites,
   isLocalEventId,
+  MAX_UNCLASSIFIED_ATTEMPTS,
   rewriteJobIds,
   type CreateOutboxJob,
   type FailedOutboxJob,
@@ -105,7 +106,16 @@ const handleJobError = (
     failed.push(failedJob(job, "dropped", errorMessage(error)));
     return "drop";
   }
-  remaining.push(job, ...queue);
+  // Anything else is assumed transient and the drain stops so the rest
+  // stay queued in order. Bounded, because an error we cannot classify
+  // would otherwise retry on every reconnect forever and keep every job
+  // behind it from ever reaching the server.
+  const attempts = (job.attempts ?? 0) + 1;
+  if (attempts >= MAX_UNCLASSIFIED_ATTEMPTS) {
+    failed.push(failedJob(job, "stalled", errorMessage(error)));
+    return "drop";
+  }
+  remaining.push({ ...job, attempts }, ...queue);
   return stoppedResult(remaining, insertedIds, updatedIds, failed);
 };
 

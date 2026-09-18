@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useFailedHearings, usePendingHearings } from "@/hooks/offline/use-pending-hearings";
+import {
+  useDeviceStorageFull,
+  useFailedHearings,
+  usePendingHearings,
+} from "@/hooks/offline/use-pending-hearings";
 import {
   discardFailedHearing,
   flushPendingHearings,
@@ -11,6 +15,7 @@ import { formatDate } from "@/lib/utils";
 export function OfflineSyncBanner() {
   const { count } = usePendingHearings();
   const failed = useFailedHearings();
+  const storageFull = useDeviceStorageFull();
   const [syncing, setSyncing] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
 
@@ -18,7 +23,7 @@ export function OfflineSyncBanner() {
     startOfflineFlushListeners();
   }, []);
 
-  if (count === 0 && failed.length === 0) return null;
+  if (count === 0 && failed.length === 0 && !storageFull) return null;
 
   const handleSync = async () => {
     setSyncing(true);
@@ -34,6 +39,12 @@ export function OfflineSyncBanner() {
       className="fixed inset-x-0 top-[calc(68px+env(safe-area-inset-top,0px))] z-40 border-b border-amber-500/30 bg-amber-950/80 px-4 py-2 text-sm text-amber-50 backdrop-blur-sm max-md:text-xs"
       role="status"
     >
+      {storageFull && (
+        <p className="mb-1 font-medium">
+          This device&apos;s storage is full, so queued work is only held in memory. Sync now, or it
+          will be lost if you close or reload the app.
+        </p>
+      )}
       <div className="flex items-center justify-between gap-3">
         <p>
           {count > 0 && (
@@ -90,7 +101,11 @@ export function OfflineSyncBanner() {
                   {formatDate(item.job.payload.scheduled_date)}
                 </p>
                 <p className="text-amber-100/80">
-                  {item.reason === "conflict" ? "Changed elsewhere: " : "Not accepted: "}
+                  {item.reason === "conflict"
+                    ? "Changed elsewhere: "
+                    : item.reason === "stalled"
+                      ? "Kept failing, so it was set aside to let the rest sync: "
+                      : "Not accepted: "}
                   {item.message}
                 </p>
               </div>

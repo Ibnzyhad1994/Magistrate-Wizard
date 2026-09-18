@@ -6,7 +6,12 @@ import {
   type FailedOutboxJob,
   type OutboxJob,
 } from "@/lib/offline/outbox";
-import { getFailedJobs, getOutboxJobs, subscribeOfflineStore } from "@/lib/offline/store";
+import {
+  getFailedJobs,
+  getOutboxJobs,
+  isDeviceStorageFull,
+  subscribeOfflineStore,
+} from "@/lib/offline/store";
 
 const EMPTY: OutboxJob[] = [];
 const EMPTY_FAILED: FailedOutboxJob[] = [];
@@ -19,6 +24,14 @@ export function useFailedHearings() {
     () => (profileId ? getFailedJobs(profileId) : EMPTY_FAILED),
     () => EMPTY_FAILED,
   );
+}
+
+/**
+ * True when the device store is full, so queued work is held in memory
+ * only. It still flushes in this session; it will not survive a reload.
+ */
+export function useDeviceStorageFull() {
+  return useSyncExternalStore(subscribeOfflineStore, isDeviceStorageFull, () => false);
 }
 
 export function useOutboxJobs() {

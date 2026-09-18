@@ -17,6 +17,14 @@ export type HearingFields = {
   event_status: string;
 };
 
+/**
+ * How many times a job may fail on an error the classifier does not
+ * recognise before it is dead-lettered instead of retried. Without a
+ * bound, one such job stops the whole drain on every reconnect and every
+ * job behind it stays queued indefinitely.
+ */
+export const MAX_UNCLASSIFIED_ATTEMPTS = 5;
+
 export type CreateOutboxJob = {
   kind: "create";
   id: string;
@@ -24,6 +32,8 @@ export type CreateOutboxJob = {
   payload: HearingFields;
   caseNumber: string;
   matterTitle: string;
+  /** Failed replays on an unrecognised error. Absent until the first one. */
+  attempts?: number;
 };
 
 export type UpdateOutboxJob = {
@@ -41,6 +51,8 @@ export type UpdateOutboxJob = {
    * jobs queued before this field existed, or when nothing was cached.
    */
   baseUpdatedAt?: string | null;
+  /** Failed replays on an unrecognised error. Absent until the first one. */
+  attempts?: number;
 };
 
 export type GooglePendingJob = {
@@ -58,7 +70,12 @@ export type OutboxJob = CreateOutboxJob | UpdateOutboxJob | GooglePendingJob;
  */
 export type FailedOutboxJob = {
   job: CreateOutboxJob | UpdateOutboxJob;
-  reason: "dropped" | "conflict";
+  /**
+   * `dropped` = the server refused it, `conflict` = the hearing changed
+   * elsewhere, `stalled` = it kept failing on an error we cannot classify,
+   * so it was set aside rather than left blocking the queue.
+   */
+  reason: "dropped" | "conflict" | "stalled";
   message: string;
   failedAt: string;
 };

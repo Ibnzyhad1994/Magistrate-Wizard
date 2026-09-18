@@ -5,6 +5,40 @@
 
 const memory = new Map<string, string | null>();
 
+/**
+ * A write that did not persist because the device store is full.
+ *
+ * Distinguished from "storage is unavailable" (private mode, blocked
+ * cookies) because the consequences differ: unavailable has always been
+ * expected and the in-memory map is the whole story, whereas full means
+ * the caller believed it saved something it did not. Queued offline work
+ * survives the current session either way, but not a reload.
+ */
+export class DeviceStorageQuotaError extends Error {
+  // Declared and assigned rather than a constructor parameter property:
+  // the test scripts run through Node's strip-only type removal, which
+  // rejects `constructor(readonly key: string)`.
+  key: string;
+
+  constructor(key: string) {
+    super(`Device storage is full; "${key}" was not persisted.`);
+    this.name = "DeviceStorageQuotaError";
+    this.key = key;
+  }
+}
+
+/**
+ * Browsers disagree on how a full store is reported: a modern
+ * `QuotaExceededError`, Firefox's legacy `NS_ERROR_DOM_QUOTA_REACHED`, or
+ * only a numeric code (22 standard, 1014 Firefox).
+ */
+const isQuotaExceeded = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false;
+  const { name, code } = error as { name?: unknown; code?: unknown };
+  if (name === "QuotaExceededError" || name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
+  return code === 22 || code === 1014;
+};
+
 type DevicePreferences = {
   get: (options: { key: string }) => Promise<{ value: string | null }>;
   set: (options: { key: string; value: string }) => Promise<void>;
@@ -52,8 +86,11 @@ export const saveDeviceValue = async (key: string, value: string): Promise<void>
   try {
     if (typeof localStorage === "undefined") return;
     localStorage.setItem(key, value);
-  } catch {
-    /* private mode */
+  } catch (error) {
+    // A full store is a real failure the caller has to know about: it
+    // believed this was saved. Anything else (private mode, blocked
+    // storage) keeps the long-standing silent fall back to `memory`.
+    if (isQuotaExceeded(error)) throw new DeviceStorageQuotaError(key);
   }
 };
 

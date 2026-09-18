@@ -1,4 +1,4 @@
-import { loadDeviceJson, saveDeviceJson } from "@/lib/device-storage";
+import { DeviceStorageQuotaError, loadDeviceJson, saveDeviceJson } from "@/lib/device-storage";
 import type { Profile } from "@/types";
 import { emptyProfileCache, type ProfileDocketCache } from "@/lib/offline/docket-cache";
 import type { FailedOutboxJob, OutboxJob } from "@/lib/offline/outbox";
@@ -22,6 +22,13 @@ const memory = {
   cache: {} as CacheFile,
   profiles: {} as ProfileFile,
   hydrated: false,
+  /**
+   * True once a write did not persist because the device store is full.
+   * Queued work is still in `memory` and still flushes this session; what
+   * it will not survive is a reload. Surfaced in the offline banner rather
+   * than thrown, because the enqueue that triggered it did succeed.
+   */
+  storageFull: false,
 };
 
 const listeners = new Set<() => void>();
@@ -52,21 +59,38 @@ export const hydrateOfflineStore = async () => {
   emit();
 };
 
-const persistOutbox = async () => {
-  await saveDeviceJson(OUTBOX_KEY, memory.outbox);
+/**
+ * Persist one slice, recording a full device store rather than letting it
+ * reject. The caller's write already landed in `memory`, so failing the
+ * mutation here would report a loss that has not happened yet; the banner
+ * tells the user their queued work will not survive a reload.
+ */
+const persist = async (key: string, value: unknown) => {
+  try {
+    await saveDeviceJson(key, value);
+    if (memory.storageFull) {
+      memory.storageFull = false;
+      emit();
+    }
+  } catch (error) {
+    if (!(error instanceof DeviceStorageQuotaError)) throw error;
+    if (!memory.storageFull) {
+      memory.storageFull = true;
+      emit();
+    }
+  }
 };
 
-const persistFailed = async () => {
-  await saveDeviceJson(FAILED_KEY, memory.failed);
-};
+const persistOutbox = () => persist(OUTBOX_KEY, memory.outbox);
 
-const persistCache = async () => {
-  await saveDeviceJson(CACHE_KEY, memory.cache);
-};
+const persistFailed = () => persist(FAILED_KEY, memory.failed);
 
-const persistProfiles = async () => {
-  await saveDeviceJson(PROFILE_KEY, memory.profiles);
-};
+const persistCache = () => persist(CACHE_KEY, memory.cache);
+
+const persistProfiles = () => persist(PROFILE_KEY, memory.profiles);
+
+/** True when queued work is held in memory only — see `memory.storageFull`. */
+export const isDeviceStorageFull = () => memory.storageFull;
 
 export const getOutboxJobs = (profileId: string | undefined): OutboxJob[] => {
   if (!profileId) return EMPTY_JOBS;

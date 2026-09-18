@@ -5,7 +5,23 @@
  * until the user re-enters their password.
  */
 
-const PERMISSION_CODES = new Set(["403", "42501", "PGRST116", "22P02", "23502", "23505", "23514"]);
+// P0001 is a bare `raise exception` in a Postgres function — how the
+// docket_events guard trigger and the scheduling RPCs refuse a caller who
+// may not write that matter. Without it here a permanent refusal falls to
+// the flush's retry-forever branch and blocks every job behind it.
+const PERMISSION_CODES = new Set([
+  "403",
+  "42501",
+  "P0001",
+  "PGRST116",
+  "22P02",
+  "23502",
+  "23505",
+  "23514",
+]);
+
+/** Refusals raised as plain messages rather than a recognisable SQLSTATE. */
+const PERMISSION_MESSAGE = /not authoriz|not authoris|permission denied|violates row-level/i;
 
 const AUTH_EXPIRED_CODES = new Set(["401", "PGRST301"]);
 
@@ -53,7 +69,7 @@ export const isPermissionOrValidationError = (error: unknown): boolean => {
   if (code && PERMISSION_CODES.has(code)) return true;
   const status = Number(code);
   if (status === 403 || status === 422) return true;
-  return false;
+  return PERMISSION_MESSAGE.test(readMessage(error));
 };
 
 export const isQueueableError = (

@@ -22,6 +22,7 @@
     "test:calendar-map": "node --import ./scripts/test-support/register.mjs scripts/tests/test-calendar-map.mjs",
     "test:calendar-sync": "node --import ./scripts/test-support/register.mjs scripts/tests/test-calendar-sync.mjs",
     "test:offline-outbox": "node --import ./scripts/test-support/register.mjs scripts/tests/test-offline-outbox.mjs",
+    "test:offline-error-classification": "node --import ./scripts/test-support/register.mjs scripts/tests/test-offline-error-classification.mjs",
     "test:session-idle": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "test:session-lock": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-lock-security.mjs",
     "test:notifications-rls": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-rls.mjs",
