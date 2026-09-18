@@ -3,6 +3,7 @@ import { useAuthStore } from "@/store/auth-store";
 import {
   pendingEventIds,
   pendingJobCount,
+  pendingMatterIds,
   type FailedOutboxJob,
   type OutboxJob,
 } from "@/lib/offline/outbox";
@@ -42,6 +43,12 @@ export function useOutboxJobs() {
     () => EMPTY,
   );
   return jobs;
+}
+
+/** Matter ids with queued board changes, for marking their row pending. */
+export function usePendingMatterIds() {
+  const jobs = useOutboxJobs();
+  return useMemo(() => pendingMatterIds(jobs), [jobs]);
 }
 
 export function usePendingHearings() {

@@ -4,7 +4,12 @@ import { toast } from "sonner";
 import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
 import { filtersToRpcArgs, type ProcedureFilters } from "@/lib/docket-procedure";
 import { matterProtocolStage } from "@/lib/docket-protocols";
-import { isQueueableError, MATTER_UNAVAILABLE_OFFLINE } from "@/lib/offline/is-queueable-error";
+import {
+  isKnownOffline,
+  isQueueableError,
+  MATTER_UNAVAILABLE_OFFLINE,
+} from "@/lib/offline/is-queueable-error";
+import { enqueueQueuedMatterPatch } from "@/lib/offline/runtime";
 import { currentProfileId } from "@/lib/offline/runtime";
 import { getProfileCache } from "@/lib/offline/store";
 import { seedMatterDetail } from "@/lib/offline/seed";
@@ -241,17 +246,45 @@ export function usePatchDocketProcedure() {
       values: TablesUpdate<"docket_matters">;
       expectedUpdatedAt?: string | null;
     }) => {
+      const queueChange = async () => {
+        const cached = queryClient
+          .getQueriesData<DocketMatterBoardRow[]>({ queryKey: ["docket-matters", "board"] })
+          .flatMap(([, rows]) => rows ?? [])
+          .find((row) => row.id === id);
+        await enqueueQueuedMatterPatch({
+          matterId: id,
+          patch: values,
+          caseNumber: cached?.case_number ?? "",
+          matterTitle: cached?.matter_title ?? "",
+          baseUpdatedAt: expectedUpdatedAt ?? null,
+        });
+        return { row: null, queued: true as const };
+      };
+
+      // Queue straight away when the device knows it is offline, rather
+      // than issuing a request the browser will simply hold until the
+      // network returns -- that leaves the magistrate with no feedback.
+      if (isKnownOffline()) return queueChange();
+
       let query = supabase.from("docket_matters").update(values).eq("id", id);
       if (expectedUpdatedAt) {
         query = query.eq("updated_at", expectedUpdatedAt);
       }
-      const { data, error } = await query.select().maybeSingle();
-      if (error) throw error;
-      if (!data) {
-        if (expectedUpdatedAt) throw new ConcurrentEditError();
-        throw new Error("This matter could not be found, or you no longer have access to it.");
+      try {
+        const { data, error } = await query.select().maybeSingle();
+        if (error) throw error;
+        if (!data) {
+          if (expectedUpdatedAt) throw new ConcurrentEditError();
+          throw new Error("This matter could not be found, or you no longer have access to it.");
+        }
+        return { row: data, queued: false as const };
+      } catch (error) {
+        // Offline, the board change is queued rather than lost. The
+        // optimistic paint from onMutate deliberately stays: resolving
+        // here means onError never runs, so nothing rolls it back.
+        if (!isQueueableError(error)) throw error;
+        return queueChange();
       }
-      return data;
     },
     onMutate: async ({ id, values }) => {
       await queryClient.cancelQueries({ queryKey: docketMattersKeys.all });
@@ -280,7 +313,11 @@ export function usePatchDocketProcedure() {
         queryClient.setQueryData(key, data);
       }
     },
-    onSettled: (_data, _error, variables) => {
+    onSettled: (data, _error, variables) => {
+      // A queued change has nothing to refetch: invalidating would send
+      // the board to a server it cannot reach and risk replacing the
+      // optimistic value with a stale one.
+      if (data?.queued) return;
       void queryClient.invalidateQueries({ queryKey: docketMattersKeys.all });
       void queryClient.invalidateQueries({
         queryKey: docketMattersKeys.detail(variables.id),

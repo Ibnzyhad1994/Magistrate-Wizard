@@ -89,3 +89,27 @@ export const isQueueableError = (
 
 export const MATTER_UNAVAILABLE_OFFLINE =
   "This matter is not available offline yet. Open it once while you are online.";
+
+/**
+ * True when a write should be queued WITHOUT attempting the network
+ * first.
+ *
+ * Waiting for the request to fail is not enough. A browser that knows it
+ * is offline does not always reject immediately: Chromium holds the
+ * request and sends it when connectivity returns, so the promise simply
+ * never settles. Verified in a real browser — a board change made offline
+ * left the mutation pending and only completed minutes later on
+ * reconnect, so nothing was ever queued and the magistrate got no
+ * feedback at all.
+ *
+ * On a courtroom device that is the difference between "saved on this
+ * device" appearing at once and a control that looks stuck.
+ *
+ * `navigator.onLine === false` is reliable in the negative direction: the
+ * browser is certain there is no network. `true` means only "an interface
+ * is up", so it is never treated as proof of reachability — that case
+ * still goes through the normal attempt-then-classify path.
+ */
+export const isKnownOffline = (
+  online = typeof navigator === "undefined" ? true : navigator.onLine,
+): boolean => online === false;

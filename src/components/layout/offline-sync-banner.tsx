@@ -10,7 +10,7 @@ import {
   flushPendingHearings,
   startOfflineFlushListeners,
 } from "@/lib/offline/runtime";
-import { formatDate } from "@/lib/utils";
+import { describeFailedJob } from "@/lib/offline/outbox";
 
 export function OfflineSyncBanner() {
   const { count } = usePendingHearings();
@@ -95,18 +95,14 @@ export function OfflineSyncBanner() {
               className="flex items-start justify-between gap-3"
             >
               <div className="min-w-0">
-                <p className="font-medium">
-                  {item.job.caseNumber} · {item.job.matterTitle} ·{" "}
-                  {item.job.kind === "create" ? "new hearing" : "hearing change"} for{" "}
-                  {formatDate(item.job.payload.scheduled_date)}
-                </p>
+                <p className="font-medium">{describeFailedJob(item).title}</p>
                 <p className="text-amber-100/80">
                   {item.reason === "conflict"
                     ? "Changed elsewhere: "
                     : item.reason === "stalled"
                       ? "Kept failing, so it was set aside to let the rest sync: "
                       : "Not accepted: "}
-                  {item.message}
+                  {describeFailedJob(item).detail}
                 </p>
               </div>
               <Button

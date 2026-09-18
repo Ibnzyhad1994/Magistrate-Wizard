@@ -7,9 +7,23 @@ export type ProcedureAppearanceHint = {
   notes: string;
 };
 
+/**
+ * The row version to guard an undo with.
+ *
+ * The board mutation resolves either the saved row, or `{ row, queued }`
+ * when the change was queued offline — so unwrap `row` when it is there.
+ * Reading the wrapper directly would always yield null, which would
+ * silently downgrade every undo to an UNGUARDED write.
+ *
+ * Null is the honest answer for a queued change: there is no server row
+ * version yet. The queued job keeps the FIRST baseUpdatedAt it was given,
+ * so the original guard still covers the coalesced result.
+ */
 export function patchedUpdatedAt(result: unknown): string | null {
-  if (!result || typeof result !== "object" || !("updated_at" in result)) return null;
-  const value = (result as { updated_at?: unknown }).updated_at;
+  if (!result || typeof result !== "object") return null;
+  const source = "row" in result ? (result as { row?: unknown }).row : result;
+  if (!source || typeof source !== "object" || !("updated_at" in source)) return null;
+  const value = (source as { updated_at?: unknown }).updated_at;
   return typeof value === "string" ? value : null;
 }
 

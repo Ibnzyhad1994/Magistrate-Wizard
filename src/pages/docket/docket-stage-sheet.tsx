@@ -1,3 +1,4 @@
+import { usePendingMatterIds } from "@/hooks/offline/use-pending-hearings";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -55,6 +56,7 @@ function DocketStageRow({
   isTourFirstMatter,
   onPatch,
   onLogAppearance,
+  pending = false,
 }: {
   row: DocketMatterBoardRow;
   columns: BoardColumn[];
@@ -62,6 +64,8 @@ function DocketStageRow({
   isTourNextDate?: boolean;
   isTourOutcome?: boolean;
   isTourFirstMatter?: boolean;
+  /** This file has board changes queued on this device. */
+  pending?: boolean;
   onPatch: (
     id: string,
     values: TablesUpdate<"docket_matters">,
@@ -114,7 +118,10 @@ function DocketStageRow({
   }
 
   return (
-    <TableRow>
+    // Marked at the row, not per cell: 14 procedure columns across three
+    // layouts would be forty-odd places to keep in step, and what the
+    // magistrate needs to know is that this FILE has unsent changes.
+    <TableRow className={pending ? "bg-warning/10" : undefined}>
       <TableCell className={`${caseColBase} z-20`}>
         <Link
           to={ROUTES.docketMatter(row.id)}
@@ -123,6 +130,11 @@ function DocketStageRow({
         >
           <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
           <p className="truncate text-sm text-foreground">{row.matter_title}</p>
+          {pending && (
+            <p className="truncate text-[11px] font-medium text-warning">
+              Saved on this device. Will sync when online.
+            </p>
+          )}
           {row.charge_or_issue && (
             <p className="hidden truncate text-xs text-muted-foreground sm:block">
               {row.charge_or_issue}
@@ -236,6 +248,7 @@ export function DocketStageSheet({
   ) => Promise<unknown>;
   onLogAppearance: (request: LogAppearanceRequest) => void;
 }) {
+  const pendingMatters = usePendingMatterIds();
   const caseColBase =
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
   const columns = visibleBoardColumns(rows);
@@ -285,6 +298,7 @@ export function DocketStageSheet({
                 isTourFirstMatter={index === 0}
                 onPatch={onPatch}
                 onLogAppearance={onLogAppearance}
+                pending={pendingMatters.has(row.id)}
               />
             ))}
           </TableBody>

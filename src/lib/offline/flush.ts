@@ -1,3 +1,4 @@
+import type { TablesUpdate } from "@/types";
 import {
   hasPendingDocketWrites,
   isLocalEventId,
@@ -6,6 +7,7 @@ import {
   type CreateOutboxJob,
   type FailedOutboxJob,
   type HearingFields,
+  type MatterPatchJob,
   type OutboxJob,
   type UpdateOutboxJob,
 } from "@/lib/offline/outbox";
@@ -23,6 +25,17 @@ export type FlushUpdateResult = void | { conflict?: boolean };
 
 export type FlushDeps = {
   insertEvent: (matterId: string, payload: HearingFields) => Promise<FlushInsertResult>;
+  /**
+   * Replays a coalesced board change. Same guarded UPDATE the online path
+   * uses, so a row changed elsewhere reports a conflict rather than being
+   * overwritten. Optional so an existing caller that only queues hearings
+   * keeps working unchanged.
+   */
+  patchMatter?: (
+    matterId: string,
+    patch: TablesUpdate<"docket_matters">,
+    baseUpdatedAt?: string | null,
+  ) => Promise<FlushUpdateResult>;
   updateEvent: (
     id: string,
     payload: HearingFields,
@@ -52,7 +65,7 @@ const errorMessage = (error: unknown): string => {
 };
 
 const failedJob = (
-  job: CreateOutboxJob | UpdateOutboxJob,
+  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob,
   reason: FailedOutboxJob["reason"],
   message: string,
 ): FailedOutboxJob => ({ job, reason, message, failedAt: new Date().toISOString() });
@@ -89,7 +102,7 @@ const stoppedResult = (
 
 const handleJobError = (
   error: unknown,
-  job: CreateOutboxJob | UpdateOutboxJob,
+  job: CreateOutboxJob | UpdateOutboxJob | MatterPatchJob,
   queue: OutboxJob[],
   remaining: OutboxJob[],
   insertedIds: string[],
@@ -127,8 +140,26 @@ const handleJobError = (
  * also moved to `failed`. Expired JWTs keep the job and stop so the user
  * can re-auth without losing the save.
  */
+/**
+ * Creates first, because rewriteJobIds has to turn `local:` ids into real
+ * ones before anything downstream references them. Board changes next, so
+ * a matter's stage is current before any scheduling call stamps
+ * stage_at_event from it. Google pushes last: they are a mirror, and must
+ * never delay a legal save. Stable within each kind, so two changes to
+ * the same record keep the order they were made in.
+ */
+const DRAIN_ORDER: Record<OutboxJob["kind"], number> = {
+  create: 0,
+  matterPatch: 1,
+  update: 2,
+  googlePending: 3,
+};
+
 export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<FlushResult> => {
-  let queue = jobs.map((job) => ({ ...job }));
+  let queue = jobs
+    .map((job, index) => ({ job: { ...job }, index }))
+    .sort((a, b) => DRAIN_ORDER[a.job.kind] - DRAIN_ORDER[b.job.kind] || a.index - b.index)
+    .map((entry) => entry.job);
   const insertedIds: string[] = [];
   const updatedIds: string[] = [];
   const remaining: OutboxJob[] = [];
@@ -143,6 +174,40 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
         queue = rewriteJobIds(queue, job.id, inserted.id);
         const google = await deps.pushGoogle(inserted.id);
         maybeGooglePending(remaining, inserted.id, job.matterId, google);
+      } catch (error) {
+        const handled = handleJobError(
+          error,
+          job,
+          queue,
+          remaining,
+          insertedIds,
+          updatedIds,
+          failed,
+        );
+        if (handled === "drop") continue;
+        return handled;
+      }
+      continue;
+    }
+
+    if (job.kind === "matterPatch") {
+      if (!deps.patchMatter) {
+        remaining.push(job);
+        continue;
+      }
+      try {
+        const outcome = await deps.patchMatter(job.matterId, job.patch, job.baseUpdatedAt ?? null);
+        if (outcome && outcome.conflict) {
+          failed.push(
+            failedJob(
+              job,
+              "conflict",
+              "This file was changed by someone else after you edited it offline, so your board changes were not applied.",
+            ),
+          );
+          continue;
+        }
+        updatedIds.push(job.id);
       } catch (error) {
         const handled = handleJobError(
           error,

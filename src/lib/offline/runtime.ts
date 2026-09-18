@@ -1,3 +1,4 @@
+import type { TablesUpdate } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth-store";
@@ -7,6 +8,7 @@ import { isGoogleConnected, loadGoogleCalendarState } from "@/lib/google-calenda
 import { flushOutbox } from "@/lib/offline/flush";
 import {
   enqueueCreate,
+  enqueueMatterPatch,
   enqueueGooglePending,
   enqueueUpdate,
   makeLocalEventId,
@@ -59,6 +61,22 @@ const liveFlushDeps = () => ({
     if (error) throw error;
     if ((data ?? []).length === 0) return { conflict: true };
   },
+  /**
+   * Same guarded UPDATE the online board uses. A zero-row match means the
+   * file changed elsewhere (or is no longer visible), which is a conflict
+   * to report, never a silent overwrite.
+   */
+  patchMatter: async (
+    matterId: string,
+    patch: TablesUpdate<"docket_matters">,
+    baseUpdatedAt?: string | null,
+  ) => {
+    let query = supabase.from("docket_matters").update(patch).eq("id", matterId);
+    if (baseUpdatedAt) query = query.eq("updated_at", baseUpdatedAt);
+    const { data, error } = await query.select("id");
+    if (error) throw error;
+    if ((data ?? []).length === 0) return { conflict: true };
+  },
   pushGoogle: async (eventId: string) => {
     try {
       const result = await syncDocketEventToGoogle(eventId);
@@ -90,6 +108,24 @@ export const enqueueQueuedCreate = async (input: {
   });
   await setOutboxJobs(profileId, jobs);
   return id;
+};
+
+/**
+ * Queues a board change for one matter, coalescing it with anything
+ * already queued for that file. Returns nothing: the caller has already
+ * painted the new value optimistically and must not roll it back.
+ */
+export const enqueueQueuedMatterPatch = async (input: {
+  matterId: string;
+  patch: TablesUpdate<"docket_matters">;
+  caseNumber: string;
+  matterTitle: string;
+  baseUpdatedAt?: string | null;
+}) => {
+  const profileId = await currentProfileId();
+  if (!profileId) throw new Error("You need to be signed in to save a change.");
+  const jobs = enqueueMatterPatch(getOutboxJobs(profileId), input);
+  await setOutboxJobs(profileId, jobs);
 };
 
 export const enqueueQueuedUpdate = async (input: {
