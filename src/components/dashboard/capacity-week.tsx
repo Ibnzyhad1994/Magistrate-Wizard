@@ -37,7 +37,12 @@ function DayCell({ date, today }: { date: string; today: string }) {
           "flex min-h-[5.75rem] flex-col items-center justify-center gap-1 bg-card px-1 py-3 text-center outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring",
           isToday && "ring-1 ring-inset ring-foreground/40",
         )}
-        style={{ backgroundColor: isPending ? undefined : style.bg }}
+        // Only paint a band colour; an unset day keeps the card surface
+        // rather than an inline "transparent" that would show the grid
+        // hairlines through it.
+        style={{
+          backgroundColor: isPending || style.band === "not_set" ? undefined : style.bg,
+        }}
       >
         <span className={`eyebrow ${style.textClass}`}>{weekday}</span>
         <span className={`text-2xl font-bold leading-none tracking-tight ${style.textClass}`}>
