@@ -23,6 +23,17 @@
    * same thing in both themes.
    */
   :root {
+    /* Tone hues shared by every palette (browse-tones.ts). A wash is
+       always drawn at --tone-alpha over the canvas, so the hue can stay
+       fixed while each palette decides how loud it is. */
+    --tone-docket: 347 74% 31%;
+    --tone-judgment: 210 55% 24%;
+    --tone-case-law: 149 56% 23%;
+    --tone-legislation: 30 4% 32%;
+    --tone-note: 30 85% 31%;
+    --tone-code: 243 56% 51%;
+    --tone-bookmark: 20 87% 40%;
+
     --background: 40 20% 97%;
     --foreground: 0 0% 10%;
 
@@ -78,6 +89,21 @@
     --capacity-filling: 38 92% 36%;
     --capacity-full: 0 72% 44%;
     --capacity-over: 0 63% 32%;
+
+    /* Surface scale (0 = canvas). Each step is a luminance lift, not a
+       border: the Netflix trick of tiles reading as raised because they
+       are lighter than the ground. --hairline is the one-pixel edge a
+       raised surface may draw; it is close to the surface so it reads as
+       a crease, not a frame. */
+    --surface-1: 0 0% 100%;
+    --surface-2: 40 14% 95%;
+    --surface-3: 40 12% 91%;
+    --hairline: 40 10% 88%;
+    --elevation-1: 0 1px 2px hsl(30 20% 10% / 0.06), 0 2px 8px hsl(30 20% 10% / 0.06);
+    --elevation-2: 0 4px 12px hsl(30 20% 10% / 0.1), 0 12px 32px hsl(30 20% 10% / 0.08);
+    --elevation-3: 0 12px 32px hsl(30 20% 10% / 0.16), 0 24px 64px hsl(30 20% 10% / 0.12);
+    /* Opacity of a tone wash behind a page header on this canvas. */
+    --tone-alpha: 0.18;
 
     --radius: 0.25rem;
 
@@ -155,6 +181,15 @@
     --capacity-full: 0 72% 51%;
     --capacity-over: 0 63% 31%;
 
+    --surface-1: 0 0% 11%; /* #1c1c1c */
+    --surface-2: 0 0% 14%; /* #242424 */
+    --surface-3: 0 0% 18%; /* #2e2e2e */
+    --hairline: 0 0% 16%;
+    --elevation-1: 0 2px 8px hsl(0 0% 0% / 0.45);
+    --elevation-2: 0 8px 24px hsl(0 0% 0% / 0.55);
+    --elevation-3: 0 16px 48px hsl(0 0% 0% / 0.7);
+    --tone-alpha: 0.5;
+
     --radius: 0.25rem;
 
     --sidebar-background: 0 0% 5%;
@@ -223,6 +258,15 @@
     --capacity-full: 0 100% 32%;
     --capacity-over: 0 100% 22%;
 
+    --surface-1: 0 0% 100%;
+    --surface-2: 0 0% 96%;
+    --surface-3: 0 0% 92%;
+    --hairline: 0 0% 0%;
+    --elevation-1: none;
+    --elevation-2: none;
+    --elevation-3: none;
+    --tone-alpha: 0.12;
+
     --radius: 0.25rem;
 
     --sidebar-background: 0 0% 100%;
@@ -287,6 +331,15 @@
     --capacity-filling: 38 100% 60%;
     --capacity-full: 0 100% 62%;
     --capacity-over: 0 80% 72%;
+
+    --surface-1: 0 0% 0%;
+    --surface-2: 0 0% 8%;
+    --surface-3: 0 0% 12%;
+    --hairline: 0 0% 100%;
+    --elevation-1: none;
+    --elevation-2: none;
+    --elevation-3: none;
+    --tone-alpha: 0.3;
 
     --radius: 0.25rem;
 
@@ -355,6 +408,15 @@
     --capacity-full: 26 100% 36%;
     --capacity-over: 26 100% 26%;
 
+    --surface-1: 0 0% 100%;
+    --surface-2: 40 14% 95%;
+    --surface-3: 40 12% 91%;
+    --hairline: 40 10% 88%;
+    --elevation-1: 0 1px 2px hsl(30 20% 10% / 0.06), 0 2px 8px hsl(30 20% 10% / 0.06);
+    --elevation-2: 0 4px 12px hsl(30 20% 10% / 0.1), 0 12px 32px hsl(30 20% 10% / 0.08);
+    --elevation-3: 0 12px 32px hsl(30 20% 10% / 0.16), 0 24px 64px hsl(30 20% 10% / 0.12);
+    --tone-alpha: 0.18;
+
     --radius: 0.25rem;
 
     --sidebar-background: 0 0% 100%;
@@ -418,6 +480,15 @@
     --capacity-filling: 41 100% 50%;
     --capacity-full: 26 100% 52%;
     --capacity-over: 26 90% 42%;
+
+    --surface-1: 0 0% 11%;
+    --surface-2: 0 0% 14%;
+    --surface-3: 0 0% 18%;
+    --hairline: 0 0% 16%;
+    --elevation-1: 0 2px 8px hsl(0 0% 0% / 0.45);
+    --elevation-2: 0 8px 24px hsl(0 0% 0% / 0.55);
+    --elevation-3: 0 16px 48px hsl(0 0% 0% / 0.7);
+    --tone-alpha: 0.5;
 
     --radius: 0.25rem;
 
@@ -574,6 +645,35 @@
   .browse-gutter {
     padding-left: 4vw;
     padding-right: 4vw;
+  }
+
+  /* A band that must run edge to edge inside a gutter (page header
+     washes, sticky bars) without the page giving up its gutter. */
+  .browse-bleed {
+    margin-left: -4vw;
+    margin-right: -4vw;
+    padding-left: 4vw;
+    padding-right: 4vw;
+  }
+
+  /* Page-header wash: a tone (set as --band on the element) fading into
+     the canvas. One radial from the top-left so the title sits in the
+     colour and the toolbar below it is already on plain ground. */
+  .tone-band {
+    background-image: radial-gradient(
+      120% 140% at 0% 0%,
+      hsl(var(--band) / var(--tone-alpha)) 0%,
+      hsl(var(--band) / calc(var(--tone-alpha) * 0.45)) 38%,
+      transparent 72%
+    );
+  }
+
+  /* Label style shared by eyebrows, kickers and column headings. */
+  .text-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
   @keyframes tour-ring-pulse {

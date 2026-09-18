@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
+import plugin from "tailwindcss/plugin";
 
 const config: Config = {
   darkMode: ["class"],
@@ -86,6 +87,16 @@ const config: Config = {
         warning: "hsl(var(--notice-action))",
         success: "hsl(var(--notice-granted))",
         info: "hsl(var(--notice-outcome))",
+        // Surface scale (index.css). 1 = raised card, 2 = nested / hover,
+        // 3 = pressed or the top of a stack. Prefer these over borders to
+        // separate a region from the canvas; `hairline` is the one-pixel
+        // crease a raised surface may draw.
+        surface: {
+          1: "hsl(var(--surface-1))",
+          2: "hsl(var(--surface-2))",
+          3: "hsl(var(--surface-3))",
+        },
+        hairline: "hsl(var(--hairline))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -104,6 +115,38 @@ const config: Config = {
         lg: "calc(var(--radius) + 2px)",
         md: "var(--radius)",
         sm: "calc(var(--radius) - 2px)",
+      },
+      // Elevation is a per-palette shadow string (none in high contrast,
+      // where edges are drawn by --border instead).
+      boxShadow: {
+        "elevation-1": "var(--elevation-1)",
+        "elevation-2": "var(--elevation-2)",
+        "elevation-3": "var(--elevation-3)",
+      },
+      // Display scale. Titles are set tight (Netflix Sans-style
+      // -0.02em) so a 60px heading reads as one shape; body text keeps
+      // normal tracking. Weights: 800 display, 700 title, 600 heading.
+      fontSize: {
+        "display-xl": [
+          "clamp(2.5rem, 1.5rem + 3.5vw, 4rem)",
+          { lineHeight: "1", letterSpacing: "-0.02em", fontWeight: "800" },
+        ],
+        display: [
+          "clamp(2rem, 1.4rem + 2vw, 2.75rem)",
+          { lineHeight: "1.05", letterSpacing: "-0.02em", fontWeight: "800" },
+        ],
+        "title-lg": ["1.5rem", { lineHeight: "1.2", letterSpacing: "-0.015em", fontWeight: "700" }],
+        title: ["1.125rem", { lineHeight: "1.3", letterSpacing: "-0.01em", fontWeight: "700" }],
+        heading: ["1rem", { lineHeight: "1.4", letterSpacing: "-0.005em", fontWeight: "600" }],
+      },
+      transitionTimingFunction: {
+        // Fast start, long settle — the ease every hover, sheet and page
+        // change shares so motion feels like one system.
+        "out-expo": "cubic-bezier(0.22, 1, 0.36, 1)",
+      },
+      transitionDuration: {
+        250: "250ms",
+        400: "400ms",
       },
       // Named stacking tiers. Use these instead of `z-[NN]` so the order is
       // decided once: page chrome < modal < floating menus < hints < skip
@@ -134,12 +177,31 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(8px) scale(0.98)" },
           to: { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        // Route change: content rises 6px and fades in. Short enough to
+        // read as a cut, not a slide.
+        "page-in": {
+          from: { opacity: "0", transform: "translateY(6px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        // Skeleton sheen sweeping left to right (background-position on a
+        // 200%-wide gradient, see Skeleton).
+        shimmer: {
+          from: { backgroundPosition: "200% 0" },
+          to: { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "spin-slow": "spin-slow 1.2s linear infinite",
         "card-in": "card-in 0.2s ease-out",
+        "page-in": "page-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in": "fade-in 0.25s ease-out both",
+        shimmer: "shimmer 1.8s linear infinite",
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
@@ -147,7 +209,15 @@ const config: Config = {
       },
     },
   },
-  plugins: [animate],
+  plugins: [
+    animate,
+    // `hc:` — only when the high-contrast palette is active (either
+    // scheme). Used to put a real border back on surfaces that otherwise
+    // rely on luminance and shadow to stand off the canvas.
+    plugin(({ addVariant }) => {
+      addVariant("hc", ".theme-high-contrast &");
+    }),
+  ],
 };
 
 export default config;
