@@ -55,7 +55,7 @@ export default function JudgmentListPage() {
       <BrowseHeader
         title="Judgments"
         tone="judgment"
-        description="Your draft and final judgments, plus judgments other magistrates have made discoverable."
+        description="Your judgments, and ones other magistrates have shared with everyone."
         showViewSelect
         action={
           <Button onClick={() => setCreateOpen(true)}>

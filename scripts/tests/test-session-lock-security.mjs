@@ -412,8 +412,8 @@ const authenticate = () => {
   );
   check(
     "lock dialog tells the user queued work saves then the page reloads",
-    dialog.replace(/\s+/g, " ").includes("Queued saves will sync") &&
-      dialog.replace(/\s+/g, " ").includes("this page reloads"),
+    dialog.replace(/\s+/g, " ").includes("Your saves will sync") &&
+      dialog.replace(/\s+/g, " ").includes("the page reloads"),
     true,
   );
   check(
@@ -433,7 +433,7 @@ const authenticate = () => {
   );
   check(
     "lock dialog tells the user to finish reset in another tab",
-    dialog.includes("Open the link in a new tab") && dialog.includes("Keep this window open"),
+    dialog.includes("open the link in a new tab") && dialog.includes("Keep this window open"),
     true,
   );
   const passwordInput = readFileSync(join(SRC, "components/auth/password-input.tsx"), "utf8");

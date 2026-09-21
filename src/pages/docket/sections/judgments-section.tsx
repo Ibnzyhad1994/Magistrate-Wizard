@@ -133,7 +133,7 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
         title="Unlink this judgment?"
         description={
           pendingUnlink
-            ? `"${pendingUnlink.title}" will no longer be listed as reference material for this matter. The judgment itself is not changed; you can link it again later.`
+            ? `"${pendingUnlink.title}" will be unlinked from this matter. The judgment itself isn't changed.`
             : undefined
         }
         confirmLabel="Unlink"

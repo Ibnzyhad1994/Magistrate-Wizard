@@ -325,7 +325,7 @@ export function RosterProfileRequests({
         description={`${returnTarget?.profiles?.full_name ?? "This person"} will be asked to request again. ${
           returnTarget?.courts?.name ?? "The court"
         } will not be assigned. This does not change their account type.`}
-        placeholder="Required — shown to the requester"
+        placeholder="Required, shown to the requester"
         value={returnReason}
         onValueChange={setReturnReason}
         confirmLabel="Return to requester"
@@ -349,7 +349,7 @@ export function RosterProfileRequests({
         onOpenChange={(open) => !open && setSendBackOpen(false)}
         title="Return this person to request again?"
         description="They stay signed in as a magistrate with no court. Any open request is closed, and they are notified to request again. This does not change their account type."
-        placeholder="Required — shown to them"
+        placeholder="Required, shown to them"
         value={sendBackReason}
         onValueChange={setSendBackReason}
         confirmLabel="Return to requester"
@@ -374,8 +374,8 @@ export function RosterProfileRequests({
           role === "magistrate" || role === "clerk" ? ROLE_LABELS[role] : "their current type"
         } to ${
           nextRole ? ROLE_LABELS[nextRole] : "the other staff type"
-        }. Open court or clerk-access requests are cancelled. They must refresh or sign in again, then request access on the correct page.`}
-        placeholder="Required — shown to them"
+        }. Their open requests are cancelled. They'll need to sign in again, then request access.`}
+        placeholder="Required, shown to them"
         value={correctReason}
         onValueChange={setCorrectReason}
         confirmLabel={nextRole ? `Correct to ${ROLE_LABELS[nextRole]}` : "Correct account type"}

@@ -112,10 +112,7 @@ export function DocketStageStrip({
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">
-          Where this file is. Click a cell to record the result. Outcome, Next date, and Hearing
-          progress sit on this Overview. Ruling and Judgment cells can also attach the actual
-          document, separate from the Judgments tab, which is for a magistrate's own written
-          judgments.
+          Click a cell to record a stage. Ruling and Judgment cells can also hold the document.
         </p>
         <ProcedureStageGrid
           layout="overview"

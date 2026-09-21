@@ -300,8 +300,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)] px-3 py-2 text-sm"
         >
           <p className="text-foreground">
-            <span className="font-medium">Board complete.</span> Every stage is done but no outcome
-            is recorded, so this matter still counts as active.
+            <span className="font-medium">Board complete.</span> Every stage is done, but
+            there&apos;s no outcome yet, so this matter is still active.
           </p>
           {liveEdit && (
             <div className="flex items-center gap-1.5">
@@ -389,8 +389,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                         <Textarea rows={3} {...field} />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        Dismissed, Completed, or Adjourned is set on Procedure above. These notes
-                        are extra narrative for the file.
+                        Set the outcome in Procedure above. Use these notes for anything extra.
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -446,9 +445,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             <DialogTitle>Retain this matter as part-heard</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This keeps this specific matter accessible to you even after your ordinary Court
-            assignment ends, since you already heard part of it. You can end the retention yourself
-            at any time.
+            Keep access to this part-heard matter after you leave this court. You can stop at any
+            time.
           </p>
           <div className="space-y-1.5">
             <label htmlFor={retainNotesId} className="text-sm font-medium text-foreground">
@@ -516,9 +514,8 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           pendingStatus && isClosedStatus(pendingStatus) ? (
             <div className="space-y-2">
               <p>
-                Every retained (part-heard) assignment on this matter ends immediately. Reopening
-                the matter later does not restore them; each magistrate would have to retain it
-                again while they still have court access.
+                All part-heard retentions on this matter end now. Reopening it won&apos;t restore
+                them.
               </p>
               {visibleActiveRetained.length > 0 ? (
                 <ul className="list-disc pl-5 text-foreground">
@@ -530,10 +527,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                   ))}
                 </ul>
               ) : (
-                <p>
-                  No retained assignment of yours is active. Other magistrates' retentions are not
-                  visible to you but end all the same.
-                </p>
+                <p>You haven&apos;t retained this matter. Anyone else&apos;s retention ends too.</p>
               )}
             </div>
           ) : pendingStatus ? (
@@ -543,8 +537,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
                 <span className="font-medium text-foreground">
                   {outcomeLabel(matter.outcome_status, matter.outcome_adjourned)}
                 </span>
-                . Setting an outcome closes a matter, so an active matter with an outcome reads as
-                contradictory.
+                . An active matter shouldn&apos;t have an outcome.
               </p>
               <label
                 htmlFor={clearOutcomeId}
@@ -569,7 +562,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
         open={!!pendingEnd}
         onOpenChange={(open) => !open && setPendingEnd(null)}
         title="End your retained assignment?"
-        description="You will lose access to this matter unless you have another current Court assignment or an active share on it."
+        description="You'll lose access unless you sit this court or it's shared with you."
         confirmLabel="End retention"
         isConfirming={endRetained.isPending}
         onConfirm={() => {
@@ -736,9 +729,8 @@ function ClassificationDialog({
                   {protocolLabel(nextProtocol)} board.
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  Its stage is recalculated for the new board, so it may appear to move backwards.
-                  Stages already recorded are kept, not deleted — switch the classification back and
-                  they reappear.
+                  The stage is worked out again for the new board, so it may look like it went back.
+                  Nothing is deleted: switch back and the old stages return.
                 </p>
               </div>
             )}

@@ -170,9 +170,8 @@ export default function CaseLawDetailPage() {
               Delete
             </Button>
             <p className="text-xs text-muted-foreground">
-              Edit reopens this record for review. It moves to the Review Queue, off the public
-              library, until you publish it again. Delete permanently removes it for every
-              magistrate, including any attached documents.
+              Editing sends this back to the Review Queue until you publish it again. Deleting
+              removes it for everyone.
             </p>
           </div>
         )}
@@ -224,7 +223,7 @@ export default function CaseLawDetailPage() {
           open={confirmDelete}
           onOpenChange={setConfirmDelete}
           title="Delete this research entry?"
-          description="This permanently deletes the entry and your annotations on it. This cannot be undone."
+          description="This deletes the entry and your notes on it. It can't be undone."
           confirmLabel="Delete"
           isConfirming={deleteCaseLaw.isPending}
           onConfirm={() =>
@@ -238,7 +237,7 @@ export default function CaseLawDetailPage() {
           open={confirmDeleteCanonical}
           onOpenChange={setConfirmDeleteCanonical}
           title="Delete this canonical Case Law record?"
-          description="This permanently removes it from the shared library for every magistrate, including its tags, links to Docket Matters, and any attached documents. This cannot be undone."
+          description="This removes it from the library for everyone, with its tags, docket links and documents. It can't be undone."
           confirmLabel="Delete"
           isConfirming={deleteCanonicalCaseLaw.isPending}
           onConfirm={() =>
@@ -541,8 +540,7 @@ function DiscoverabilityCard({ caseLaw }: { caseLaw: { id: string; is_discoverab
             <span className="font-medium text-foreground">Discoverable to other magistrates</span>
             <br />
             <span className="text-muted-foreground">
-              Other magistrates will be able to see this research entry (but never your private
-              annotations on it).
+              Other magistrates will see this entry, but never your private notes.
             </span>
           </span>
         </label>
@@ -695,9 +693,7 @@ function AnnotationsPanel({ caseLawId }: { caseLawId: string }) {
 
   return (
     <div className="mt-4 space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Private to you. No other user can see these, even on canonical or discoverable Case Law.
-      </p>
+      <p className="text-xs text-muted-foreground">Only you can see these.</p>
       <Card>
         <CardContent className="space-y-2 p-4">
           <Textarea

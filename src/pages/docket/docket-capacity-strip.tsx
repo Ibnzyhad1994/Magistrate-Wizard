@@ -27,8 +27,7 @@ const CAPACITY_VIEWS = [
 
 type CapacityView = (typeof CAPACITY_VIEWS)[number]["id"];
 
-const dayTotalHint = (count: number) =>
-  `${count} matter${count === 1 ? "" : "s"} listed that day, all classifications and stages`;
+const dayTotalHint = (count: number) => `${count} matter${count === 1 ? "" : "s"} listed that day`;
 
 const loadPillClass = (onDarkTile: boolean) =>
   `inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-semibold leading-none ${
@@ -433,8 +432,7 @@ export function DocketCapacityStrip({
           </>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Showing all matters at {courtLabel}. Capacity tiles count sittings you preside across
-            every court you sit. Select a date to list those files below.
+            Showing all matters at {courtLabel}. Pick a day to see its files.
           </p>
         )}
       </div>

@@ -271,7 +271,7 @@ export default function DocketMatterDetailPage() {
         open={purgeOpen}
         onOpenChange={setPurgeOpen}
         title="Permanently delete this matter?"
-        description="This cannot be undone. The file, its hearings, parties, tags, shares, and linked documents are removed. Judgments and case law themselves are kept."
+        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments and case law are kept."
         confirmLabel="Empty now"
         isConfirming={purgeMatter.isPending}
         onConfirm={() => {

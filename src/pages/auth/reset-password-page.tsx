@@ -89,8 +89,7 @@ export default function ResetPasswordPage() {
             Link expired
           </h1>
           <CardDescription className="text-foreground/70">
-            This password reset link is invalid or has already been used. Request a new one to
-            continue.
+            This link has expired or was already used. Request a new one.
           </CardDescription>
         </CardHeader>
         <CardContent className={contentClassName}>

@@ -236,7 +236,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                 icon={Gavel}
                 className="border-0 py-6"
                 title="No hearing history recorded yet"
-                description="Every date this matter is scheduled or heard builds a chronological hearing history here: witness numbers and sitting notes when entered, or just the date and status otherwise."
+                description="Each hearing date adds to this history."
                 action={
                   canEdit ? (
                     <Button size="sm" onClick={() => setDialogEntry("new")}>
@@ -459,8 +459,7 @@ function HearingProgressDialog({
         <DialogHeader>
           <DialogTitle>{entry ? "Edit hearing progress" : "Record hearing progress"}</DialogTitle>
           <DialogDescription>
-            Witness numbers, sitting notes and the outcome for this hearing date. Only the fields
-            you fill in are saved.
+            Record what happened at this hearing. Fill in what you know.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -559,8 +558,7 @@ function HearingProgressDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave any of the above blank if not known. A blank field is kept as "not recorded",
-              never assumed to be zero.
+              Leave blank if unknown. Blanks show as Not recorded, not as zero.
             </p>
 
             <FormField
@@ -597,10 +595,7 @@ function HearingProgressDialog({
 
             <div className="space-y-2 rounded-md border border-border p-3">
               <p className="text-xs font-medium text-foreground">Next date (optional)</p>
-              <p className="text-xs text-muted-foreground">
-                If the matter was adjourned to a new date, set it here, same as setting it from the
-                Docket board.
-              </p>
+              <p className="text-xs text-muted-foreground">If adjourned, set the next date here.</p>
               <div className="grid grid-cols-2 gap-3">
                 <DateOnlyInput
                   value={nextDateValue}

@@ -119,7 +119,7 @@ check(
 check(
   "the failure names the file and the date",
   describeFailedJob(full.failed[0]).title,
-  "GEO-2026-001 · Police v. Demo Defendant — next date 2026-11-10",
+  "GEO-2026-001 · Police v. Demo Defendant: next date 2026-11-10",
 );
 
 // --- drain order ----------------------------------------------------------

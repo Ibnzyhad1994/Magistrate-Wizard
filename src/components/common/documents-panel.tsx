@@ -173,7 +173,7 @@ export function DocumentsPanel({
           title="No documents attached"
           description={
             canUpload
-              ? "Upload PDFs, Word documents, Markdown, text files, or images relevant to this record."
+              ? "Upload PDFs, Word files, Markdown, text or images for this record."
               : "Nothing has been attached here."
           }
         />
@@ -264,7 +264,7 @@ export function DocumentsPanel({
         title="Delete this document?"
         description={
           pendingDelete
-            ? `"${pendingDelete.file_name}" will be permanently removed from storage. This cannot be undone.`
+            ? `"${pendingDelete.file_name}" will be deleted for good. This can't be undone.`
             : undefined
         }
         confirmLabel="Delete"

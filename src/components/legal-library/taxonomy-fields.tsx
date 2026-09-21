@@ -143,8 +143,7 @@ function AddJurisdictionDialog({
         <DialogHeader>
           <DialogTitle>Add a new Jurisdiction</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue, so every future Case Law/Legislation record can
-            select it too, not only this one.
+            Added to the shared list, so any case law or legislation record can use it.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -243,9 +242,8 @@ function AddCourtDialog({
         <DialogHeader>
           <DialogTitle>Add a new Court</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue, so every future Case Law record can select it
-            too, not only this one. Leave Jurisdiction unset for a regional/supranational court
-            (e.g. CCJ, Privy Council).
+            Added to the shared list, so any case law record can use it. For a regional court such
+            as the CCJ or Privy Council, leave Jurisdiction blank.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -341,8 +339,7 @@ function AddCategoryDialog({
         <DialogHeader>
           <DialogTitle>Add a new Category</DialogTitle>
           <DialogDescription>
-            Added to the shared canonical catalogue, so every future Case Law record can select it
-            too, not only this one.
+            Added to the shared list, so any case law record can use it.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

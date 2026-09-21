@@ -117,7 +117,7 @@ export function MagistrateCourtRequestReviewPanel() {
           <EmptyState
             icon={Gavel}
             title="No pending requests"
-            description="New magistrate court assignment requests will appear here. People who cancelled or were returned still appear on Roster under Waiting for assignment — select them there to assign a court, return them to request again, or correct the account type."
+            description="New court requests will show here. People who cancelled or were sent back are on the Roster under Waiting for assignment."
           />
         ) : (
           <div className="space-y-3">
@@ -272,7 +272,7 @@ export function MagistrateCourtRequestReviewPanel() {
               type.
             </p>
             <Textarea
-              placeholder="Reason (required — shown to the requester)"
+              placeholder="Reason (required, shown to the requester)"
               aria-label="Reason for returning (required, shown to the requester)"
               aria-required="true"
               value={rejectReason}
@@ -342,12 +342,10 @@ export function MagistrateCourtRequestReviewPanel() {
           <DialogHeader>
             <DialogTitle>Sole-administrator self-approval exception</DialogTitle>
             <DialogDescription>
-              You are the only active Court Assignment Administrator, so there is no other
-              administrator available to review your own request for{" "}
-              <strong>{bootstrapTarget?.courts?.name}</strong>. This exception is recorded in the
-              audit trail as a bootstrap self-approval, permanently distinguished from an ordinary
-              decision. Once a second administrator exists, this exception is no longer available to
-              anyone.
+              You&apos;re the only court assignment administrator, so no one else can review your
+              request for <strong>{bootstrapTarget?.courts?.name}</strong>. This is logged in the
+              audit trail as a self-approval. Once there&apos;s a second administrator, it&apos;s no
+              longer allowed.
             </DialogDescription>
           </DialogHeader>
 

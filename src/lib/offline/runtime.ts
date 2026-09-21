@@ -26,6 +26,7 @@ import {
 } from "@/lib/offline/store";
 import { hearingFieldsFromEvent } from "@/lib/offline/docket-cache";
 import { lockCurrentSession, notifyAuthExpiredSave } from "@/lib/auth/session-lock";
+import { flushQueuedJudgmentDrafts } from "@/lib/offline/judgment-drafts-runtime";
 
 let flushing = false;
 let sessionToastAt = 0;
@@ -308,6 +309,7 @@ export const startOfflineFlushListeners = () => {
   listenersStarted = true;
   const kick = () => {
     void flushPendingHearings();
+    void flushQueuedJudgmentDrafts();
   };
   window.addEventListener("online", kick);
   document.addEventListener("visibilitychange", () => {

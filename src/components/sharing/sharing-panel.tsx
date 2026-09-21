@@ -58,8 +58,8 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="max-w-lg text-sm text-muted-foreground">
           {itemType === "docket_matter"
-            ? "Anyone sitting this Court already has the file. Share only for another Court. Recipients cannot re-share; revoke to change view or edit."
-            : `Sharing grants another magistrate or clerk access to this ${noun}. Recipients cannot re-share it further. Permission is fixed when the share is created. To change view into edit (or the reverse), revoke it and share again.`}
+            ? "Everyone at this court already has the file. Share only with someone at another court. They can't share it on."
+            : `Give another magistrate or clerk access to this ${noun}. They can't share it on. To switch between view and edit, revoke and share again.`}
         </p>
         {canManage && activeShares.length > 0 && (
           <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -290,8 +290,8 @@ export function CreateShareDialog({
 
           {notFound && (
             <p className="text-sm text-destructive">
-              No eligible recipient found for that email. Double-check the address: they must be an
-              active user, and you must be allowed to share this {noun}.
+              No one found with that email. Check the address. They must be an active user, and you
+              must be able to share this {noun}.
             </p>
           )}
 

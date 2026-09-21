@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
 import { toast } from "sonner";
 import { clearOfflineForProfile } from "@/lib/offline/store";
+import { clearJudgmentDraftsForProfile } from "@/lib/offline/judgment-drafts-runtime";
 import { recordAuthEvent } from "@/lib/record-auth-event";
 import { setRememberMeFlag } from "@/lib/auth/session-storage";
 
@@ -155,7 +156,10 @@ export function useAuth() {
     },
     onSuccess: (profileId) => {
       queryClient.clear();
-      if (profileId) void clearOfflineForProfile(profileId);
+      if (profileId) {
+        void clearOfflineForProfile(profileId);
+        void clearJudgmentDraftsForProfile(profileId);
+      }
       navigate(ROUTES.login);
     },
   });
@@ -195,7 +199,7 @@ export function useAuth() {
       await supabase.auth.signOut({ scope: "global" });
     },
     onSuccess: () => {
-      toast.success("Password updated — sign in with your new password.");
+      toast.success("Password updated. Sign in with your new password.");
       navigate(ROUTES.login);
     },
   });

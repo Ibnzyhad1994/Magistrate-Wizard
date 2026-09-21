@@ -295,7 +295,15 @@ export default function DocketListPage() {
       <BrowseHeader
         title={docketScopeTitle(selectedCourt?.court_name ?? null)}
         tone="docket"
-        description="List is the working sheet. On a phone each file shows its stages. Tiles stay for cover-photo browse. Set Next date and record hearing progress on each file."
+        description="Your court's matters, and where each one stands."
+        details={
+          <>
+            <p>
+              List is the working sheet: record stages and next dates without opening each file.
+            </p>
+            <p>Tiles show cover photos. On a phone, each file shows as a card with its stages.</p>
+          </>
+        }
         showViewSelect
         viewSelectValue={effectiveBrowseView}
         onViewSelectChange={(view) => {
@@ -325,8 +333,8 @@ export default function DocketListPage() {
         // administrator" was telling them to contact themselves — point
         // them at the self-seating card in Settings instead.
         <p className="mb-6 text-sm text-muted-foreground">
-          You have no current Court seating, so you can&apos;t create a new matter. You can still
-          view and act on matters retained or shared with you below.{" "}
+          You don&apos;t have a court seat, so you can&apos;t add matters. You can still work on
+          files retained or shared with you.{" "}
           {isAdmin ? (
             <>
               Seat yourself at a court under{" "}
@@ -484,11 +492,11 @@ export default function DocketListPage() {
                 }
                 description={
                   emptyBecauseDateAndFilters
-                    ? `Nothing on this day at ${courtScopeLabel} matches the current search or stage filters. Clear the filters to see the rest of the day, or switch to All Matters.`
+                    ? `Nothing on this day matches your search or filters. Clear them, or switch to All Matters.`
                     : emptyBecauseFilters
                       ? "Nothing matches these filters. Clear them to see the rest of the list."
                       : emptyBecauseDate
-                        ? "No live matter at this court has an appearance on this day. Switch to All Matters to see the rest of the Docket."
+                        ? "Nothing is listed at this court on this day. Switch to All Matters to see everything."
                         : "Matters you create, are assigned, or are shared on will appear here."
                 }
                 action={

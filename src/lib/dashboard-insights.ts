@@ -348,7 +348,7 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
       id: "board-capped",
       severity: "nudge",
       title: `Showing the first ${BOARD_INSIGHT_CAP} files`,
-      why: "The board RPC stops at 100 rows, the same cap as the working sheet. Open Docket and filter by day or court for the rest.",
+      why: "Only the first 100 files are counted. Open the Docket and filter by day or court for the rest.",
       href: ROUTES.docket,
       cta: "Open docket",
     });
@@ -502,7 +502,7 @@ export const buildDashboardInsights = (input: DashboardInsightInput): DashboardI
       id: "callover-nudge",
       severity: "nudge",
       title: "A callover item still needs a next date or a close",
-      why: "Adjourned and part-heard sittings usually need a next date. Struck out, withdrawn, and concluded usually close the file — tick that only if it is true.",
+      why: "Adjourned and part-heard sittings usually need a next date. Struck out, withdrawn and concluded usually close the file. Only tick that if it's true.",
       href: ROUTES.callover(calloverNudge.id),
       cta: "Finish sheet",
     });

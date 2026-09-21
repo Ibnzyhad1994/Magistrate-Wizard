@@ -62,7 +62,7 @@ export function CapacityWeek({ dates, today }: { dates: string[]; today: string 
       <DashboardHeading
         id="capacity-week-heading"
         hintLabel="How sitting load is counted"
-        hint="Each day uses the same traffic-light bands as the docket week strip. The number is every matter listed that day. Colour follows the busiest classification against your personal limit, not the total."
+        hint="The number is every matter that day. The colour shows your busiest type against your own limit."
       >
         Sitting load
       </DashboardHeading>

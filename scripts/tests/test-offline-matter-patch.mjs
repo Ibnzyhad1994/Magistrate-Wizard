@@ -140,7 +140,7 @@ check("it is not left in the queue", conflicted.jobs.length, 0);
 check(
   "the failure names the file and the columns",
   describeFailedJob(conflicted.failed[0]).title,
-  "GEO-2026-001 · Police v. Demo Defendant — Trial",
+  "GEO-2026-001 · Police v. Demo Defendant: Trial",
 );
 
 // --- drain order ----------------------------------------------------------

@@ -19,7 +19,7 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
       <DashboardHeading
         id="timeline-heading"
         hintLabel="What this timeline shows"
-        hint="Overdue means still marked scheduled after the sitting date. Upcoming is the next fourteen days the caller can already see. Completing the appearance writes the paper trail."
+        hint="Overdue: still marked scheduled after the date. Upcoming: the next 14 days. Log an appearance to complete it."
       >
         Appearances
       </DashboardHeading>

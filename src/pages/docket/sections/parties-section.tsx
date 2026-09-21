@@ -97,7 +97,7 @@ export function PartiesSection({ matterId, frozen = false }: PartiesSectionProps
         <EmptyState
           icon={Users}
           title="No parties recorded"
-          description="Accused, complainants, and other parties to this matter will appear here."
+          description="Add the accused, complainants and others here."
           action={
             canEdit ? (
               <Button size="sm" onClick={() => setDialogParty("new")}>
@@ -329,7 +329,7 @@ function PartyDialog({
                 path={party.identification_photo_path}
                 alt={party.full_name}
                 label="Identification photo"
-                description="Used to recognize this party in court. If the matter has no cover yet, this photo becomes the Docket cover."
+                description="Helps you recognise this person in court. It also becomes the file's cover if there isn't one."
                 isPending={setPhoto.isPending || clearPhoto.isPending}
                 onUpload={(file) => setPhoto.mutate({ partyId: party.id, file })}
                 onClear={() => clearPhoto.mutate(party.id)}

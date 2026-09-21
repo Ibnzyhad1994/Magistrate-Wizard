@@ -59,8 +59,8 @@ export function AdminSelfCourtCard() {
           <CardTitle className="text-base">Court Assignments</CardTitle>
           <CardDescription>
             Platform role: <strong>{ROLE_LABELS[profile?.role as UserRole]}</strong>. Seat yourself
-            at a court here so you can create docket matters. This uses an Acting assignment — it
-            does not replace a sitting primary magistrate. For someone else, use{" "}
+            at a court to add docket matters. This is an Acting seat, so it doesn&apos;t replace the
+            court&apos;s magistrate. For someone else, use{" "}
             <Link to={ROUTES.adminCourtAssignments} className="underline underline-offset-2">
               Manage Court Assignments
             </Link>
@@ -138,8 +138,8 @@ export function AdminSelfCourtCard() {
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Acting seating unlocks New matter on the Docket for that court. It is recorded on your
-            profile like any other magistrate assignment.
+            An Acting seat lets you add matters at that court. It shows on your profile like any
+            other assignment.
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -160,7 +160,7 @@ export function AdminSelfCourtCard() {
         title="End this court seating?"
         description={
           endTarget
-            ? `This ends your assignment to ${endTarget.courtName}. The record is kept as history. You will not be able to add new docket matters at that court until you sit there again.`
+            ? `This ends your seat at ${endTarget.courtName}. It's kept in the history. You can't add matters there until you sit again.`
             : undefined
         }
         confirmLabel="End assignment"

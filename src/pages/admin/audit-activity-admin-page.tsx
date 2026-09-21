@@ -79,7 +79,7 @@ const AuditActivityAdminPage = () => {
     // indication. Now it says so explicitly, matching the on-screen notice.
     if (data?.truncated) {
       toast.message(
-        `Exporting the newest ${data.rows.length} of ${data.totalCount} events — older events aren't included.`,
+        `Exporting the newest ${data.rows.length} of ${data.totalCount} events. Older events aren't included.`,
       );
     }
     const csv = activityRowsToCsv(visible);
@@ -96,7 +96,7 @@ const AuditActivityAdminPage = () => {
     <BrowsePage>
       <BrowseHeader
         title="Activity"
-        description="Who changed court access, the legal library, docket identity and bin/purge events, or account privileges, and who signed in. Private judicial writing is not shown here."
+        description="Changes to court access, the legal library, docket files and account privileges, plus sign-ins. Private judicial writing isn't shown."
         action={
           canExport ? (
             <Button
@@ -122,8 +122,8 @@ const AuditActivityAdminPage = () => {
 
       {data?.truncated && (
         <p className="text-xs text-muted-foreground">
-          Showing the newest {data.rows.length} of {data.totalCount} events for this filter. Older
-          events aren&apos;t shown here or included in the export — narrow the filter to reach them.
+          Showing the newest {data.rows.length} of {data.totalCount} events for this filter. To see
+          older ones, narrow the filter.
         </p>
       )}
 

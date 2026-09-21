@@ -107,7 +107,7 @@ export const DocumentViewerDialog = ({
       } catch (err) {
         console.error("DOCX preview generation failed:", err);
         throw new Error(
-          "Could not generate a faithful preview of this document. The original file is unaffected. Download it to view it in Word.",
+          "Couldn't show a preview of this document. Download it to open in Word. The original is unchanged.",
         );
       } finally {
         setPreparing(false);
@@ -273,8 +273,8 @@ export const DocumentViewerDialog = ({
           <div className="rounded-md border border-border bg-background px-4 py-3">
             <p className="text-sm font-medium text-foreground">Close without downloading?</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Redaction boxes live only in this window. Download a redacted PDF first if you still
-              need a copy. The original file is unchanged.
+              Redaction boxes only last while this window is open. Download a redacted PDF to keep a
+              copy. The original is unchanged.
             </p>
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               <Button

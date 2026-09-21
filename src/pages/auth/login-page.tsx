@@ -125,8 +125,8 @@ export default function LoginPage() {
                     <div className="space-y-1">
                       <FormLabel className="text-foreground/80">Remember me</FormLabel>
                       <FormDescription className="text-muted-foreground">
-                        Stay signed in on this browser for 14 days. Still locks after 1 hour idle.
-                        Do not use on a shared bench computer.
+                        Stay signed in here for 14 days. It still locks after an hour away.
+                        Don&apos;t use on a shared computer.
                       </FormDescription>
                     </div>
                   </div>

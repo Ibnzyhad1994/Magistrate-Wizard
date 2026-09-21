@@ -158,7 +158,13 @@ export default function CaseLawListPage() {
       <BrowseHeader
         title="Case Law"
         tone="case-law"
-        description="Canonical authorities, your personal research, and research other magistrates have made discoverable."
+        description="Authorities, your own research, and research others have shared."
+        details={
+          <p>
+            Authorities are the shared library. Your research stays private until you share it. Your
+            notes are only ever yours.
+          </p>
+        }
         showViewSelect
         dataTour="page-case-law"
         action={

@@ -72,20 +72,35 @@ export function summariseCloseout(entries: CloseoutEntry[]): CloseoutSummary {
  * The line that answers the audit's actual complaint about
  * run_scheduled_maintenance: the 06:00 cron flips elapsed `scheduled`
  * appearances to `past` with no outcome, silently. Saying so beforehand
- * is the whole point of the panel.
+ * is the whole point of the panel — but only for the sitting that job
+ * will actually touch. A future day's list must not say "tomorrow", and
+ * a past day's list must not pretend the cron is still ahead.
+ *
+ * `today` is the viewer's local calendar date (YYYY-MM-DD), passed in so
+ * this stays a pure function of its arguments.
  */
-export function overnightWarning(summary: CloseoutSummary): string | null {
+export function overnightWarning(
+  summary: CloseoutSummary,
+  closingDate: string,
+  today: string,
+): string | null {
   if (summary.missingOutcome === 0) return null;
+  if (closingDate > today) return null;
   const n = summary.missingOutcome;
+  if (closingDate < today) {
+    return n === 1
+      ? "This sitting has passed. 1 hearing still has no outcome."
+      : `This sitting has passed. ${n} hearings still have no outcome.`;
+  }
   return n === 1
-    ? "At 6am tomorrow, 1 appearance still marked scheduled will be recorded as past with no outcome."
-    : `At 6am tomorrow, ${n} appearances still marked scheduled will be recorded as past with no outcome.`;
+    ? "1 hearing has no outcome. At 6am tomorrow it closes as past without one."
+    : `${n} hearings have no outcome. At 6am tomorrow they close as past without one.`;
 }
 
 /** What the Daily Progress Report would print for the same files. */
 export function reportWarning(summary: CloseoutSummary): string | null {
   if (summary.missingOutcome === 0) return null;
   return summary.missingOutcome === 1
-    ? "1 matter would print as \u201cNot recorded\u201d on the daily report."
-    : `${summary.missingOutcome} matters would print as \u201cNot recorded\u201d on the daily report.`;
+    ? "1 shows as Not recorded on the daily report."
+    : `${summary.missingOutcome} show as Not recorded on the daily report.`;
 }

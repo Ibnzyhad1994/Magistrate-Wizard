@@ -141,9 +141,8 @@ export default function RegisterPage() {
 
             {accountType === "clerk" && (
               <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
-                Court access must be approved by the magistrate assigned to each court you request.
-                You'll be able to sign in and check your request status once your email is verified,
-                even before approval.
+                The magistrate at each court you pick approves your access. Once your email is
+                verified you can sign in and check your request.
               </p>
             )}
 
@@ -224,9 +223,8 @@ export default function RegisterPage() {
 
             {accountType === "magistrate" && (
               <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
-                Selecting a court submits a request, not an immediate assignment. A Court Assignment
-                Administrator reviews each requested court independently. You'll be able to sign in
-                and check your request status once your email is verified, even before approval.
+                Picking a court sends a request. An administrator reviews each one. Once your email
+                is verified you can sign in and check on it.
               </p>
             )}
 
@@ -324,10 +322,8 @@ export default function RegisterPage() {
                       <>
                         {accountType === "magistrate" && assignedInDistrict.length > 0 && (
                           <p className="text-sm text-notice-action">
-                            Courts marked occupied already have a signed-in primary magistrate. You
-                            can still request one as a special exception. An administrator decides
-                            whether to replace that magistrate or seat two at that court. The
-                            request does not fill the court until you have signed in.
+                            Occupied courts already have a magistrate. You can still ask for one as
+                            an exception, and an administrator will decide.
                           </p>
                         )}
                         <div className="max-h-48 space-y-2 overflow-y-auto">
@@ -354,7 +350,7 @@ export default function RegisterPage() {
                                 </span>
                                 {isAssigned && (
                                   <span className="text-[11px] uppercase tracking-wide text-notice-action">
-                                    Occupied — exception
+                                    Occupied (exception)
                                   </span>
                                 )}
                               </label>

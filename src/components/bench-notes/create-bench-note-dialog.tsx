@@ -131,7 +131,7 @@ export function CreateBenchNoteDialog({
           <DialogDescription>
             {lockParent
               ? `Attach a note to ${defaultParent.label}.`
-              : "Attach a note to a Docket Matter, Judgment, Case Law entry, or Act you currently have access to."}
+              : "Attach a note to a matter, judgment, case or Act you can open."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

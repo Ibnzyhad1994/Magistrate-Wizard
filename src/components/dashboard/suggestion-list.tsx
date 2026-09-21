@@ -21,7 +21,7 @@ export function SuggestionList({
       <DashboardHeading
         id="suggestions-heading"
         hintLabel="How these suggestions are chosen"
-        hint="These are fixed rules over files you can already see: overdue sittings, missing next dates, delivered rulings without a file, un-synced offline hearings. Nothing here is a model guess."
+        hint="Fixed checks on files you can see: overdue sittings, missing next dates, rulings without a document, and hearings not yet synced."
       >
         Next logs
       </DashboardHeading>

@@ -256,7 +256,7 @@ export default function LegislationViewerPage() {
               <p className="max-w-sm text-sm text-muted-foreground">
                 {isAdmin
                   ? "This record has no PDF on file. Use Edit above to upload the original document."
-                  : "This record has no PDF on file yet. Contact an administrator to have it re-uploaded."}
+                  : "There's no PDF for this yet. Ask an administrator to upload it."}
               </p>
             </CardContent>
           </Card>

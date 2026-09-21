@@ -81,7 +81,7 @@ export function JudgmentVersionHistory({
         open={!!pending}
         onOpenChange={(open) => !open && setPendingId(null)}
         title="Restore this version?"
-        description="The current draft title, citation, court, date, and body will be replaced. A snapshot of what is on the page now is kept in history."
+        description="This replaces the current draft. What's on the page now is saved in the history first."
         confirmLabel="Restore"
         isConfirming={restore.isPending}
         onConfirm={() => {

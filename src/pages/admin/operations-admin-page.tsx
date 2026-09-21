@@ -382,9 +382,8 @@ const WebhooksPanel = () => {
         <CardHeader>
           <CardTitle className="text-base">Recent deliveries</CardTitle>
           <CardDescription>
-            Pending rows wait for pg_net or the webhook-dispatch function. Sent means handed to
-            pg_net with the HTTP result unknown; Delivered means a 2xx was seen. Failed rows keep
-            the last error and can be retried.
+            Pending: waiting to send. Sent: handed over, result unknown. Delivered: confirmed.
+            Failed rows keep the last error and can be retried.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">

@@ -156,7 +156,7 @@ check(
 );
 check(
   "signup no longer disables occupied courts",
-  registerPage.includes("Occupied — exception") && !registerPage.includes("disabled={isAssigned}"),
+  registerPage.includes("Occupied (exception)") && !registerPage.includes("disabled={isAssigned}"),
   true,
 );
 check(

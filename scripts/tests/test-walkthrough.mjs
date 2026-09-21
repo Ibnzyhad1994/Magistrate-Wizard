@@ -99,7 +99,7 @@ check(
 );
 check(
   "the board step teaches the not-found arraignment status",
-  magistrate.find((s) => s.id === "board")?.body.includes("Not Found, To Be Summoned"),
+  magistrate.find((s) => s.id === "board")?.body.includes("Not Found and To Be Summoned"),
   true,
 );
 check(

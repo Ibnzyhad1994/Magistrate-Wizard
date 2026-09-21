@@ -16,7 +16,7 @@ interface FullPageErrorProps {
  */
 export function FullPageError({
   title = "Something went wrong",
-  message = "An unexpected error occurred. You can try again, and if the problem persists, contact your system administrator.",
+  message = "Something went wrong. Try again, and if it keeps happening, contact your administrator.",
   onRetry,
   retryLabel = "Try again",
 }: FullPageErrorProps) {

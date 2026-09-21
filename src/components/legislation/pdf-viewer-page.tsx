@@ -367,8 +367,8 @@ export function PdfViewerPage({
       {redactMode && onRedactionBox ? (
         <>
           <p id={instructionsId} className="sr-only">
-            Arrow keys move the box, Shift with arrow keys resizes it, hold Ctrl for larger steps,
-            Delete removes it.
+            Arrows move the box. Shift and arrows resize it. Hold Ctrl for bigger steps. Delete
+            removes it.
           </p>
           <button
             ref={addButtonRef}

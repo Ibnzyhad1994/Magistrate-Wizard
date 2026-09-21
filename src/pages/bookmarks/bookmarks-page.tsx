@@ -78,7 +78,7 @@ export default function BookmarksPage() {
           tone="bookmark"
           icon={BookmarkIcon}
           title="No bookmarks yet"
-          description="Bookmark a Docket Matter, Judgment, Case Law entry, Quick Code, or Bench Note to see it here."
+          description="Bookmark a matter, judgment, case, quick code or bench note to see it here."
         />
       ) : (
         <TitleGallery>

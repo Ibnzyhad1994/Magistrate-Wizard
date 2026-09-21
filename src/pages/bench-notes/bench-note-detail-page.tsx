@@ -238,8 +238,7 @@ export default function BenchNoteDetailPage() {
                 <span className="font-medium text-foreground">Mark as private</span>
                 <br />
                 <span className="text-muted-foreground">
-                  For your own organization only. Bench Notes are always restricted to you
-                  regardless of this setting; no other user can ever see this note.
+                  Bench notes are always private to you. No one else can see them.
                 </span>
               </span>
             </label>

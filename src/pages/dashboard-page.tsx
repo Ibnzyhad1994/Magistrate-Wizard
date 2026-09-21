@@ -312,7 +312,7 @@ export default function DashboardPage() {
               Dashboard
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Load, paper trail, and the next log to make — from files you can already see.
+              Your load, gaps in the record, and what to log next.
             </p>
           </div>
           <Button asChild variant="link" className="h-auto justify-start px-0">

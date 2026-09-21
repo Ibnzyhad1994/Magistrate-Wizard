@@ -320,7 +320,7 @@ function ExtractionStatusPanel({
             // Falls back to the original generic wording only if no
             // specific reason was recorded (should not normally happen).
             envelope.warnings[0] ??
-              "This document requires OCR or manual text entry. The original file has been preserved, but reliable text could not be extracted automatically."
+              "This document needs OCR or typed text. The original file is kept, but its text couldn't be read."
           }
         </p>
       )}
@@ -350,7 +350,7 @@ function ExtractionStatusPanel({
             {caseNameConfidence && caseNameConfidence !== "high" && (
               <p className="text-warning">
                 {caseNameConfidence === "low"
-                  ? "Case name confidence: Low. The proposed case name was not confident enough to auto-fill. Please verify it against the document text before publishing."
+                  ? "Case name confidence: low. Check it against the document before publishing."
                   : "Case name confidence: None. No case name could be confidently identified. Please enter it manually."}
               </p>
             )}
@@ -833,9 +833,8 @@ function SourcesTab() {
           <div>
             <CardTitle className="text-base">Source registry</CardTitle>
             <CardDescription>
-              A record that a source is intended to be used, not an active crawler. Adding a source
-              here does not fetch anything; there is no automated connector wired up in this build
-              (source/URL ingestion here is manual paste-and-submit only, see New Import).
+              A note of a source you plan to use. Adding one doesn&apos;t fetch anything. To bring
+              in text, paste it under New Import.
             </CardDescription>
           </div>
           <Button size="sm" onClick={() => setOpen((o) => !o)}>
@@ -1021,7 +1020,7 @@ function SourcesTab() {
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
         title="Remove this source?"
-        description="This removes the source registry entry. Any Case Law/Legislation already imported referencing it keeps its own recorded provenance (source name/URL are stored on the record itself, not only via this reference)."
+        description="This removes the source from the list. Records already imported from it keep their own source details."
         confirmLabel="Remove"
         confirmVariant="destructive"
         isConfirming={deleteSource.isPending}
@@ -1218,13 +1217,13 @@ function SingleImportPanel() {
         });
         if (proposed.case_name && proposeName && !highFill) {
           toast.message(
-            `A possible case name was found ("${proposed.case_name}"). Please verify it against the original before publishing.`,
+            `Possible case name: "${proposed.case_name}". Check it against the original before publishing.`,
           );
         } else if (proposed.case_name && !proposeName) {
           toast.message(
             envelope.ocrUsed
-              ? `A possible case name was recognised ("${proposed.case_name}") but was not auto-filled because this text came from a scan. Please verify it against the original.`
-              : `A possible case name was found ("${proposed.case_name}") but was not confident enough to auto-fill. Please review the extracted text and enter the case name manually.`,
+              ? `Possible case name: "${proposed.case_name}". It wasn't filled in because the text came from a scan. Check it against the original.`
+              : `Possible case name: "${proposed.case_name}". It wasn't certain enough to fill in. Check the text and enter it yourself.`,
           );
         }
         // Only auto-select on "high"/"medium" confidence — a mention of
@@ -1256,14 +1255,14 @@ function SingleImportPanel() {
     if (envelope.status === "requires_ocr") {
       toast.message(
         envelope.warnings[0] ??
-          "This document requires OCR. The original file has been preserved, but reliable text could not be extracted automatically. Paste the text below to continue, or leave it for later.",
+          "This document needs OCR. The original file is kept, but its text couldn't be read. Paste the text below, or come back later.",
       );
       if (contentType === "case_law" && filenameCitation) {
         setCaseFields((prev) => ({ ...prev, citation: filenameCitation }));
       }
     } else if (envelope.status === "failed") {
       toast.warning(
-        "Automatic extraction produced text that failed quality checks (it looks like embedded PDF/font data rather than document content) and was discarded. The original file has been preserved. Paste the text below to continue.",
+        "The extracted text looked like PDF data, not the document, so it was discarded. The original file is kept. Paste the text below to continue.",
       );
     } else if (envelope.status === "pending") {
       toast.message(
@@ -1295,8 +1294,8 @@ function SingleImportPanel() {
           <CardHeader>
             <CardTitle className="text-base">Legislation: file-first PDF library</CardTitle>
             <CardDescription>
-              Legislation is stored as the original PDF, never re-extracted into ordinary content.
-              The PDF itself is the authoritative document. Publishes immediately once uploaded.
+              Legislation is kept as the original PDF, which is the official copy. It publishes as
+              soon as it&apos;s uploaded.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1327,12 +1326,8 @@ function SingleImportPanel() {
         <CardHeader>
           <CardTitle className="text-base">Deterministic ingestion, no AI</CardTitle>
           <CardDescription>
-            Hashing, citation/date/section-heading parsing, and canonical tag proposals run
-            automatically over the text below. Since you're entering this record's fields yourself,
-            it publishes immediately once created, unless it fails the same quality checks the
-            Review Queue's Publish button enforces (e.g. a missing field, or extracted text that
-            failed automated quality checks), in which case it's left as a draft in the Review Queue
-            for you to fix.
+            Citations, dates and tags are picked up from the text. It publishes straight away,
+            unless a check fails. Then it waits in the Review Queue.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1571,11 +1566,8 @@ function BulkImportPanel({ bulk }: { bulk: BulkImportState }) {
       <CardHeader>
         <CardTitle className="text-base">Bulk import: Case Law</CardTitle>
         <CardDescription>
-          Select many judgments at once, individual files or an entire folder. Each file is
-          preserved, hashed, and processed independently with bounded concurrency; one bad file
-          never stops the batch. Every file becomes its own draft in the Review Queue; nothing is
-          published automatically. Legislation bulk import isn&apos;t available yet; use Single
-          document for Acts.
+          Pick several judgments or a whole folder. Each file becomes a draft in the Review Queue.
+          For Acts, use Single document.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1884,8 +1876,8 @@ function ImportBatchesTab({ initialBatchId }: { initialBatchId?: string | null }
           <div>
             <CardTitle className="text-base">Import batches</CardTitle>
             <CardDescription>
-              Every bulk import you've run, with what happened to each file. Return to any batch
-              after navigating away or refreshing; nothing here is temporary.
+              Every bulk import you&apos;ve run, and what happened to each file. You can come back
+              to any batch.
             </CardDescription>
           </div>
           <Button size="sm" variant="outline" onClick={() => void refetch()}>
@@ -2138,7 +2130,7 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
                   values: {
                     status: "failed",
                     error_summary:
-                      "Marked failed by an administrator: the import never finished (the page was closed or refreshed mid-batch). Re-select the file to import it.",
+                      "Marked failed by an administrator because the import never finished. Select the file again to import it.",
                     completed_at: new Date().toISOString(),
                   },
                 })
@@ -2842,7 +2834,7 @@ function CaseLawReviewCard({
             </Field>
             <Field
               label="Full text"
-              hint="What machine extraction captured, if any. Paste or correct it here (e.g. after OCR required/low-quality extraction, or copying from the original file)."
+              hint="The text read from the file, if any. Paste or correct it here."
             >
               <Textarea
                 ref={fullTextRef}

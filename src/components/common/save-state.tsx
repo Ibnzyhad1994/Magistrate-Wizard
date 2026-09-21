@@ -26,10 +26,13 @@ import { playCue } from "@/lib/sound-cues";
 export function SaveState({
   isDirty,
   isSaving,
+  pendingLabel,
   className,
 }: {
   isDirty: boolean;
   isSaving?: boolean;
+  /** Replaces "Unsaved changes", e.g. when the change is held on this device for sync. */
+  pendingLabel?: string;
   className?: string;
 }) {
   const [justSaved, setJustSaved] = useState(false);
@@ -52,7 +55,13 @@ export function SaveState({
     wasDirty.current = isDirty;
   }, [isDirty, isSaving]);
 
-  const label = isSaving ? "Saving…" : isDirty ? "Unsaved changes" : justSaved ? "Saved" : null;
+  const label = isSaving
+    ? "Saving…"
+    : isDirty
+      ? (pendingLabel ?? "Unsaved changes")
+      : justSaved
+        ? "Saved"
+        : null;
 
   if (!label) return null;
 

@@ -1,6 +1,7 @@
 import { queryClient } from "@/lib/query-client";
 import { isAuthExpiredError } from "@/lib/offline/is-queueable-error";
 import { flushPendingHearings } from "@/lib/offline/runtime";
+import { flushQueuedJudgmentDrafts } from "@/lib/offline/judgment-drafts-runtime";
 import { bumpRememberUntil } from "@/lib/auth/session-storage";
 
 type ExecutableMutation = {
@@ -44,6 +45,7 @@ export async function recoverSessionWork(): Promise<void> {
   }
   await Promise.all(retries);
   await flushPendingHearings();
+  await flushQueuedJudgmentDrafts();
   await queryClient.invalidateQueries();
 }
 

@@ -177,10 +177,7 @@ export function NextDateDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{currentDate ? "Change next date" : "Set next date"}</DialogTitle>
-          <DialogDescription>
-            Schedules the next appearance. A matter category is checked against the court's daily
-            capacity.
-          </DialogDescription>
+          <DialogDescription>Set when this matter is next in court.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5">
@@ -205,8 +202,8 @@ export function NextDateDialog({
               reason to continue. */}
           {isPastDate && (
             <p id={`${fieldId}-past`} className="text-xs text-warning">
-              {formatDate(date)} has passed. Saving will cancel the next scheduled appearance and
-              leave this matter with no future date.
+              {formatDate(date)} is in the past. Saving would cancel the next hearing and leave no
+              future date.
             </p>
           )}
           {/* Advisory only. A magistrate may lawfully sit on a holiday --

@@ -431,18 +431,18 @@ export const mergeMatterEvents = (
 export const describeFailedJob = (item: FailedOutboxJob): { title: string; detail: string } => {
   const who = `${item.job.caseNumber} · ${item.job.matterTitle}`;
   if (item.job.kind === "nextDate") {
-    return { title: `${who} — next date ${item.job.scheduledDate}`, detail: item.message };
+    return { title: `${who}: next date ${item.job.scheduledDate}`, detail: item.message };
   }
   if (item.job.kind === "matterPatch") {
     const columns = item.job.columns.map(columnLabel).join(", ");
     return {
-      title: `${who} — ${columns || "board change"}`,
+      title: `${who}: ${columns || "board change"}`,
       detail: item.message,
     };
   }
   const what = item.job.kind === "create" ? "new hearing" : "hearing change";
   return {
-    title: `${who} — ${what} for ${item.job.payload.scheduled_date}`,
+    title: `${who}: ${what} for ${item.job.payload.scheduled_date}`,
     detail: item.message,
   };
 };

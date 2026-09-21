@@ -26,7 +26,7 @@ export function CaseLawSection({ matterId }: CaseLawSectionProps) {
         className="mt-4"
         icon={BookOpen}
         title="No linked case law"
-        description="Case law linked as authority for this matter will appear here. Link it from Case Law research."
+        description="Link case law to this matter from Case Law."
       />
     );
   }

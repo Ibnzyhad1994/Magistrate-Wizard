@@ -10,7 +10,7 @@ export function notifyAuthExpiredSave(): void {
   const now = Date.now();
   if (now - lastAuthToastAt < 4_000) return;
   lastAuthToastAt = now;
-  toast.error("Sign in to save — your work is still on this page.");
+  toast.error("Sign in to save. Your work is still on this page.");
 }
 
 const LOCAL_SIGNOUT_ATTEMPTS = 3;

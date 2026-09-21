@@ -16,7 +16,7 @@ export interface JudgmentPdfInput {
   generatedAtLabel: string;
 }
 
-export const DRAFT_WATERMARK = "DRAFT — not finalised";
+export const DRAFT_WATERMARK = "DRAFT: not finalised";
 
 /**
  * Diagonal, low-contrast watermark on every page of a draft export, so a

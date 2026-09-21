@@ -69,9 +69,14 @@ check(
   refreshesVersions(exportedFunction(judgmentHooks, "useUpdateJudgmentFields")),
   true,
 );
+// Content saves go through the draft store now (online and offline alike).
+const draftsRuntime = readFileSync(
+  join(__dirname, "../../src/lib/offline/judgment-drafts-runtime.ts"),
+  "utf8",
+);
 check(
   "content save invalidates version history",
-  refreshesVersions(exportedFunction(judgmentHooks, "useUpdateJudgmentContent")),
+  refreshesVersions(draftsRuntime.slice(draftsRuntime.indexOf("const invalidateJudgment"))),
   true,
 );
 check(

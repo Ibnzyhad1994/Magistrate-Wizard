@@ -66,8 +66,8 @@ export function SessionLockDialog() {
         <DialogHeader>
           <DialogTitle>Session locked</DialogTitle>
           <DialogDescription>
-            You have been inactive for an hour. Enter your password to continue. Queued saves will
-            sync, then this page reloads so you pick up the latest app.
+            You&apos;ve been away for an hour. Enter your password to carry on. Your saves will
+            sync, then the page reloads.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void handleContinue(event)} className="space-y-4">
@@ -110,8 +110,8 @@ export function SessionLockDialog() {
             />
             {resetSent ? (
               <p className="text-xs text-foreground/70">
-                Check your email. Open the link in a new tab, set a new password, then type it here.
-                Keep this window open so work still on the page is kept.
+                Check your email and open the link in a new tab. Set a new password, then enter it
+                here. Keep this window open so you don&apos;t lose your work.
               </p>
             ) : null}
           </div>

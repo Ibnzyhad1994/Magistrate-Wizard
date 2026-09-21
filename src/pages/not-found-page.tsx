@@ -24,8 +24,7 @@ export default function NotFoundPage() {
             Lost your way?
           </h1>
           <p className="max-w-md text-base text-foreground/70">
-            The page you&apos;re looking for doesn&apos;t exist or may have been moved. You&apos;ll
-            find plenty to explore on the home page.
+            That page doesn&apos;t exist or has moved. Try the home page.
           </p>
         </div>
         <Button asChild className="h-12 px-8 text-base font-semibold">

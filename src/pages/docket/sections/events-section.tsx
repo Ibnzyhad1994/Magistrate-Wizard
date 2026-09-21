@@ -89,7 +89,7 @@ export function EventsSection({ matterId }: EventsSectionProps) {
         <EmptyState
           icon={CalendarClock}
           title="No events yet"
-          description="Court appearances and other scheduled events for this matter will appear here."
+          description="Hearings and other dates for this matter will show here."
           action={
             canEdit ? (
               <Button size="sm" onClick={() => setDialogEvent("new")}>

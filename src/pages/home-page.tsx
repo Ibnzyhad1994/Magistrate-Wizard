@@ -136,7 +136,7 @@ export default function HomePage() {
           tone: "judgment" as const,
           eyebrow: APP_NAME,
           title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
-          description: `Your ${APP_NAME} workspace is ready. Access your docket, legal resources, case law, and judicial tools from one place.`,
+          description: `Your docket, library and tools, all in one place.`,
           primaryAction: { label: "New matter", href: `${ROUTES.docket}?new=1` },
           secondaryAction: { label: "Browse docket", href: ROUTES.docket },
           tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
@@ -163,7 +163,7 @@ export default function HomePage() {
               tone: "judgment" as const,
               eyebrow: APP_NAME,
               title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
-              description: `Your ${APP_NAME} docket is ready. Manage matters and hearings for your approved court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
+              description: `Your matters and hearings for your court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
               primaryAction: { label: "Open docket", href: ROUTES.docket },
             };
 

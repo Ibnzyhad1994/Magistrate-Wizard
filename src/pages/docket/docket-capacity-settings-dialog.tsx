@@ -149,11 +149,11 @@ export function DocketCapacitySettingsDialog({
             <DialogTitle>Docket Capacity Settings</DialogTitle>
             <DetailsHint
               label="More about capacity limits"
-              details="Limits apply to sittings you preside across every court you sit. The week strip uses that same personal count, not the court in the heading. This is personal to you and never affects another magistrate. You can still add extra matters to a full date using “Add Anyway”; your normal setting here doesn’t change."
+              details="Limits count the sittings you preside over, across all your courts. They're yours alone and don't affect other magistrates. You can still add to a full day with Add anyway."
             />
           </div>
           <DialogDescription>
-            Set a daily limit per classification, including Other. Leave blank for no limit.
+            Set a daily limit for each type of matter. Leave blank for no limit.
           </DialogDescription>
         </DialogHeader>
 
@@ -209,7 +209,7 @@ export function DocketCapacitySettingsDialog({
         title={
           pendingClear ? `Remove the daily limit for ${pendingClear.name}?` : "Remove this limit?"
         }
-        description="There will be no capacity limit for this classification until you set one again. Dates that are currently marked full may stop showing as full."
+        description="This type will have no limit until you set one. Full days may stop showing as full."
         confirmLabel="Remove limit"
         isConfirming={del.isPending}
         onConfirm={confirmClear}
@@ -240,7 +240,7 @@ function OverrideHistory({ open }: { open: boolean }) {
         <h3 className="text-heading text-foreground">Times you went over</h3>
         <DetailsHint
           label="What this list shows"
-          details="Each time you scheduled past your own daily limit and confirmed it, the date, the classification, the limit, the count at that moment and your reason were recorded. This is your own record; it is not shown to other magistrates and cannot be edited."
+          details="Each time you booked past your limit, the date, type, count and your reason were saved. Only you see this list, and it can't be edited."
         />
       </div>
       {isPending ? (

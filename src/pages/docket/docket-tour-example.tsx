@@ -151,13 +151,9 @@ export function DocketTourExample() {
   const isDesktop = useIsDesktop();
 
   return (
-    <section
-      aria-label="Example — not a file on your docket"
-      className="pointer-events-none select-none"
-    >
+    <section aria-label="Example only, not a real file" className="pointer-events-none select-none">
       <p className="mb-2 text-xs font-medium text-muted-foreground">
-        No docket matters yet. This example is not a file on your docket — it shows how a matter
-        reads on the working sheet.
+        No matters yet. This example shows how a file looks on the sheet. It isn&apos;t real.
       </p>
       {isDesktop ? <DesktopExampleSheet /> : <MobileExampleCard />}
     </section>

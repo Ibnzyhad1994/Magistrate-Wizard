@@ -158,8 +158,7 @@ export default function CalloverDetailPage() {
 
         {!editable && (
           <p className="rounded-md border border-border bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
-            This callover is completed and is now a record of the sitting. Reopen it to make further
-            changes.
+            This callover is complete. Reopen it to make changes.
           </p>
         )}
 
@@ -169,7 +168,7 @@ export default function CalloverDetailPage() {
           <EmptyState
             icon={Gavel}
             title="No matters on this callover yet"
-            description="Fill it from the matters already listed for this date, or add one that pre-dates the docket."
+            description="Fill it from this date's list, or add a matter by hand."
             action={
               editable && (
                 <Button
@@ -235,8 +234,8 @@ export default function CalloverDetailPage() {
         title="Mark this callover completed?"
         description={
           missingDates.length > 0
-            ? `${missingDates.length} matter${missingDates.length === 1 ? " was" : "s were"} given an outcome that usually fixes a return date, but ${missingDates.length === 1 ? "has" : "have"} none set. You can still complete the sitting, and reopen it later if needed.`
-            : "The sheet becomes a read-only record of the sitting. You can reopen it later if something needs correcting."
+            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. You can complete it now and reopen it later.`
+            : "The sheet becomes read-only. You can reopen it later."
         }
         confirmLabel="Mark completed"
         isConfirming={updateCallover.isPending}

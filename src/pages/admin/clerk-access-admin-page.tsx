@@ -32,7 +32,7 @@ export default function ClerkAccessAdminPage() {
     <BrowsePage>
       <BrowseHeader
         title="Clerk Access: Unresolved Requests"
-        description="Verified clerk access requests whose court currently has no magistrate authorized to review them. You can approve or reject here, or assign a magistrate on the roster."
+        description="Clerk requests for courts with no magistrate who can review them. Approve or reject here, or put a magistrate on the roster."
       />
 
       {isPending ? (
@@ -108,7 +108,7 @@ export default function ClerkAccessAdminPage() {
               .
             </p>
             <Textarea
-              placeholder="Reason (optional — shown to the clerk)"
+              placeholder="Reason (optional, shown to the clerk)"
               aria-label="Reason for rejecting (optional, shown to the clerk)"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}

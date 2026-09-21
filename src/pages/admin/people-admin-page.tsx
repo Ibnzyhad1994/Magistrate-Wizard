@@ -79,7 +79,7 @@ export default function PeopleAdminPage() {
     <BrowsePage>
       <BrowseHeader
         title="People"
-        description="Every account, the court they sit, last sign-in, and latest institutional activity. Reassign or transfer magistrates from a person. A court stays available until that person has signed in."
+        description="Every account, their court, last sign-in and latest activity. Open a person to reassign or transfer them."
       />
 
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

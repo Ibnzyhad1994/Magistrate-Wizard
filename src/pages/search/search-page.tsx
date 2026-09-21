@@ -130,7 +130,8 @@ export default function SearchPage() {
     <BrowsePage>
       <BrowseHeader
         title="Search"
-        description="Search across Docket Matters, Judgments, Case Law, Quick Codes, Bench Notes, Cases, and Legislation. Results are limited to what you're already allowed to see."
+        description="Search matters, judgments, case law, legislation, quick codes and bench notes."
+        details={<p>Results only include what you can already open.</p>}
         showViewSelect
         dataTour="page-search"
       />

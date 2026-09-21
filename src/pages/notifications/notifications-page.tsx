@@ -68,7 +68,7 @@ export default function NotificationsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Notifications"
-        description="In-app notices for shares, court assignments, clerk requests, and hearing reminders. Email is not sent from this list."
+        description="Shares, court assignments, clerk requests and hearing reminders."
         action={
           unreadTotal > 0 ? (
             <Button

@@ -94,7 +94,7 @@ export function EditDocketMatterDetailsDialog({
         <DialogHeader>
           <DialogTitle>Edit details</DialogTitle>
           <DialogDescription>
-            Case number, title, and charge can be corrected. Court and district stay with this file.
+            Correct the case number, title or charge. The court stays the same.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

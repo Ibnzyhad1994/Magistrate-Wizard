@@ -107,23 +107,38 @@ check("two are missing a next date", summary.missingNextDate, 2);
 
 check(
   "the overnight line says what the 6am job will do",
-  overnightWarning(summary),
-  "At 6am tomorrow, 2 appearances still marked scheduled will be recorded as past with no outcome.",
+  overnightWarning(summary, DAY, DAY),
+  "2 hearings have no outcome. At 6am tomorrow they close as past without one.",
 );
 check(
   "it is singular for one",
-  overnightWarning({ ...summary, missingOutcome: 1 }),
-  "At 6am tomorrow, 1 appearance still marked scheduled will be recorded as past with no outcome.",
+  overnightWarning({ ...summary, missingOutcome: 1 }, DAY, DAY),
+  "1 hearing has no outcome. At 6am tomorrow it closes as past without one.",
 );
 check(
   "and silent when nothing is missing",
-  overnightWarning({ ...summary, missingOutcome: 0 }),
+  overnightWarning({ ...summary, missingOutcome: 0 }, DAY, DAY),
   null,
+);
+check(
+  "a future day's list does not claim the cron runs tomorrow",
+  overnightWarning(summary, "2026-11-09", DAY),
+  null,
+);
+check(
+  "a past day's list says the sitting has already elapsed",
+  overnightWarning(summary, "2026-09-01", DAY),
+  "This sitting has passed. 2 hearings still have no outcome.",
+);
+check(
+  "the elapsed line is singular for one",
+  overnightWarning({ ...summary, missingOutcome: 1 }, "2026-09-01", DAY),
+  "This sitting has passed. 1 hearing still has no outcome.",
 );
 check(
   "the report line matches what the PDF would print",
   reportWarning(summary),
-  "2 matters would print as \u201cNot recorded\u201d on the daily report.",
+  "2 show as Not recorded on the daily report.",
 );
 check(
   "and is silent when there is nothing to print",

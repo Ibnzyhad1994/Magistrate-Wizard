@@ -23,9 +23,8 @@ export function GoogleCalendarCard() {
       <CardHeader>
         <CardTitle className="text-base">Google Calendar</CardTitle>
         <CardDescription>
-          Two-way sync of hearing date, time, and location with a dedicated “Magistrate Wizard”
-          calendar. Docket remains the legal source of truth. Disconnect leaves existing Google
-          events in place and stops further updates.
+          Syncs hearing dates, times and places with a “Magistrate Wizard” calendar. The Docket
+          stays the official record.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

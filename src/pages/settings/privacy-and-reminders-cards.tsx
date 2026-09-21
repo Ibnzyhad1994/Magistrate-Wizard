@@ -38,8 +38,8 @@ export function SoundCuesCard() {
       <CardHeader>
         <CardTitle className="text-base">Sound cues</CardTitle>
         <CardDescription>
-          A short tone when something saves or fails, for when your attention is on the bench rather
-          than the screen. On by default. This setting applies to this device only.
+          A short sound when something saves or fails, so you don&apos;t have to watch the screen.
+          On by default, for this device only.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -101,8 +101,7 @@ export function HearingRemindersCard() {
       <CardHeader>
         <CardTitle className="text-base">Sitting-day reminders</CardTitle>
         <CardDescription>
-          This device can show a browser notification before listed hearings. This is not an in-app
-          bell and it does not send email.
+          Get a browser notification on this device before your hearings.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { Json, TablesUpdate } from "@/types/database.types";
+import type { TablesUpdate } from "@/types/database.types";
 
 export const judgmentsKeys = {
   all: ["judgments"] as const,
@@ -104,23 +104,6 @@ export function useUpdateJudgmentFields(id: string) {
       toast.success("Judgment saved.");
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.all });
-      void queryClient.invalidateQueries({ queryKey: judgmentVersionsKeys.list(id) });
-    },
-  });
-}
-
-export function useUpdateJudgmentContent(id: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ content, content_text }: { content: Json; content_text: string }) => {
-      const { error } = await supabase
-        .from("judgments")
-        .update({ content, content_text })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: judgmentsKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: judgmentVersionsKeys.list(id) });
     },
   });

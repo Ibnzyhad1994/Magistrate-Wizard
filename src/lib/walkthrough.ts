@@ -94,7 +94,7 @@ export const walkthroughStepsFor = (
     {
       id: "week-strip",
       title: "Day load",
-      body: "The pill is every matter listed that day, any classification and stage. The fraction is the busiest classification against your personal limit. Green, amber, and red follow the limit, not the total.",
+      body: "The pill counts every matter that day. The fraction is your busiest type against your limit. The colour follows your limit, not the total.",
       target: "docket-week-strip",
       fallbackTarget: "docket-board",
       route: ROUTES.docket,
@@ -103,7 +103,7 @@ export const walkthroughStepsFor = (
     {
       id: "board",
       title: "Procedure board",
-      body: "Each column is one stage; click a cell on a real file to record it. Arraignment also takes Not Found, To Be Summoned, so a file where service failed reads as stalled rather than untouched.",
+      body: "Each column is a stage. Click a cell on a real file to record it. Arraignment also takes Not Found and To Be Summoned, so a failed service shows as stalled.",
       target: "docket-board",
       route: ROUTES.docket,
       chapter: "sitting",
@@ -287,7 +287,7 @@ export const walkthroughStepsFor = (
     {
       id: "callovers",
       title: "Callovers",
-      body: "For a batch sitting where matters are called over ahead of the usual flow. Build the running sheet, record each appearance, then export the report.",
+      body: "For a sitting where matters are called over together. Build the running sheet, record each appearance, then export the report.",
       target: "page-callovers",
       navTarget: "nav-callovers",
       fallbackTarget: "nav-more",
@@ -420,7 +420,7 @@ export const walkthroughStepsFor = (
     {
       id: "administration",
       title: "The rest of Administration",
-      body: "Court assignments, unresolved clerk access, issue reports, activity, and operations all live under More — grouped under Administration.",
+      body: "Court assignments, clerk access, issue reports, activity and operations are under More, in Administration.",
       target: "nav-more",
       navTarget: "nav-more",
       fallbackTarget: "nav-search",

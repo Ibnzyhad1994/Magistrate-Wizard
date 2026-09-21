@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   useDeviceStorageFull,
   useFailedHearings,
+  useJudgmentDraftSummary,
   usePendingHearings,
 } from "@/hooks/offline/use-pending-hearings";
+import { useAuthStore } from "@/store/auth-store";
+import { ROUTES } from "@/routes/paths";
+import {
+  flushQueuedJudgmentDrafts,
+  refreshJudgmentDraftSummary,
+} from "@/lib/offline/judgment-drafts-runtime";
 import {
   discardFailedHearing,
   flushPendingHearings,
@@ -14,22 +22,31 @@ import {
 import { describeFailedJob } from "@/lib/offline/outbox";
 
 export function OfflineSyncBanner() {
-  const { count } = usePendingHearings();
+  const { count: hearingCount } = usePendingHearings();
   const failed = useFailedHearings();
   const storageFull = useDeviceStorageFull();
+  const judgments = useJudgmentDraftSummary();
+  const profileId = useAuthStore((state) => state.user?.id);
   const [syncing, setSyncing] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
+  const count = hearingCount + judgments.queued.length;
 
   useEffect(() => {
     startOfflineFlushListeners();
   }, []);
 
-  if (count === 0 && failed.length === 0 && !storageFull) return null;
+  useEffect(() => {
+    void refreshJudgmentDraftSummary();
+  }, [profileId]);
+
+  if (count === 0 && failed.length === 0 && judgments.needsAttention.length === 0 && !storageFull)
+    return null;
 
   const handleSync = async () => {
     setSyncing(true);
     try {
       await flushPendingHearings();
+      await flushQueuedJudgmentDrafts();
     } finally {
       setSyncing(false);
     }
@@ -42,8 +59,8 @@ export function OfflineSyncBanner() {
     >
       {storageFull && (
         <p className="mb-1 font-medium">
-          This device&apos;s storage is full, so queued work is only held in memory. Sync now, or it
-          will be lost if you close or reload the app.
+          Storage on this device is full. Sync now, or unsynced work will be lost if you close or
+          reload the app.
         </p>
       )}
       <div className="flex items-center justify-between gap-3">
@@ -70,6 +87,22 @@ export function OfflineSyncBanner() {
               </button>
             </>
           )}
+          {judgments.needsAttention.length > 0 && (
+            <>
+              {count > 0 || failed.length > 0 ? " " : ""}
+              {judgments.needsAttention.length === 1
+                ? "1 judgment needs you to choose what to keep:"
+                : `${judgments.needsAttention.length} judgments need you to choose what to keep:`}{" "}
+              {judgments.needsAttention.map((id, index) => (
+                <span key={id}>
+                  {index > 0 && ", "}
+                  <Link to={ROUTES.judgmentDetail(id)} className="underline underline-offset-2">
+                    {judgments.needsAttention.length === 1 ? "open it" : `open ${index + 1}`}
+                  </Link>
+                </span>
+              ))}
+            </>
+          )}
         </p>
         {count > 0 && (
           <Button
@@ -78,7 +111,7 @@ export function OfflineSyncBanner() {
             variant="onDark"
             onClick={() => void handleSync()}
             disabled={syncing}
-            aria-label="Sync pending hearings"
+            aria-label="Sync pending changes"
           >
             {syncing ? "Syncing…" : "Sync pending"}
           </Button>

@@ -164,7 +164,7 @@ export default function CourtAssignmentsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Court Assignments"
-        description="Open requests are under Pending Requests. People who cancelled or were returned still appear on Roster so you can assign a court, return them to request again, or correct the account type."
+        description="Open requests are under Pending Requests. People who cancelled or were sent back stay on the Roster, so you can still assign them."
       />
 
       <Tabs defaultValue={rosterTab}>
@@ -241,9 +241,8 @@ export default function CourtAssignmentsPage() {
                 <div className="space-y-2 border-t border-border pt-3">
                   <p className="text-sm font-medium text-foreground">Waiting for assignment</p>
                   <p className="text-xs text-muted-foreground">
-                    Magistrates with no active court. Open requests are also listed under Pending
-                    Requests. Select someone here to assign a court, return them to request again,
-                    or correct the account type if they signed up as the wrong role.
+                    Magistrates with no court. Pick someone to assign a court, send them back to
+                    request again, or fix their account type.
                   </p>
                   {waitingPending ? (
                     <Skeleton className="h-16 w-full" />
@@ -303,7 +302,7 @@ export default function CourtAssignmentsPage() {
                   <EmptyState
                     icon={ShieldCheck}
                     title="No profile selected"
-                    description="Select someone waiting for assignment, or search by name or email. Pending Requests is only the open queue — cancelled or returned people are on this roster."
+                    description="Pick someone waiting, or search by name or email. People who cancelled or were sent back are listed here too."
                   />
                 </CardContent>
               </Card>
@@ -533,10 +532,9 @@ export default function CourtAssignmentsPage() {
                           />
                         )}
                         <p className="text-xs text-muted-foreground">
-                          Primary is the sitting magistrate for that court. Acting and Relief cover
-                          alongside them and do not replace the primary, or block that primary from
-                          reviewing clerk access. Occupied courts stay available until the seated
-                          magistrate has signed in.
+                          Primary is the court&apos;s own magistrate. Acting and Relief sit
+                          alongside them. An occupied court stays open until its magistrate signs
+                          in.
                         </p>
                       </div>
                     )}
@@ -588,7 +586,7 @@ export default function CourtAssignmentsPage() {
         title="End Court assignment?"
         description={
           endTarget
-            ? `This ends the current assignment to ${endTarget.courtName}. The record is preserved as history, not deleted, and this profile can be re-assigned later if needed.`
+            ? `This ends the assignment to ${endTarget.courtName}. It's kept in the history, and you can assign them again later.`
             : undefined
         }
         confirmLabel="End assignment"

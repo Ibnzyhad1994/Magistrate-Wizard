@@ -65,8 +65,7 @@ export function LinkDocketMatterDialog({
         <DialogHeader>
           <DialogTitle>Link to Docket Matter</DialogTitle>
           <DialogDescription>
-            Select a Docket Matter you have access to. This authority will appear in its Case Law
-            tab.
+            Pick a matter. This case will show in its Case Law tab.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,7 +100,7 @@ export function LinkDocketMatterDialog({
               description={
                 search
                   ? "Try a different case number, title, or issue."
-                  : "You need current Court, retained, or shared access to a Docket Matter to link it."
+                  : "You need access to a matter to link it: your court, a retained file or a share."
               }
             />
           ) : (

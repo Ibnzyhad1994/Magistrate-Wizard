@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { BrowseViewSelect } from "@/components/browse/browse-view-select";
+import { LearnMore } from "@/components/common/learn-more";
 import { usePageTitle } from "@/hooks/use-page-title";
 import type { BrowseView } from "@/lib/browse-prefs";
 import { TONE_HSL_VAR, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
@@ -8,6 +9,12 @@ import { cn } from "@/lib/utils";
 interface BrowseHeaderProps {
   title: string;
   description?: string;
+  /**
+   * Longer guidance, shown behind a "Learn more" link under the
+   * description. Keep `description` to one short line and put the how and
+   * why here.
+   */
+  details?: ReactNode;
   /** Small uppercase line above the title (a workspace name, a court). */
   eyebrow?: string;
   action?: ReactNode;
@@ -32,6 +39,7 @@ interface BrowseHeaderProps {
 export function BrowseHeader({
   title,
   description,
+  details,
   eyebrow,
   action,
   showViewSelect = false,
@@ -68,6 +76,7 @@ export function BrowseHeader({
               {description}
             </p>
           )}
+          {details && <LearnMore className="mt-2">{details}</LearnMore>}
         </div>
         {(showViewSelect || action) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">

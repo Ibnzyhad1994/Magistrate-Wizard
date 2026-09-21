@@ -82,7 +82,7 @@ export function ReportIssueButton({ className }: { className?: string }) {
           <DialogHeader>
             <DialogTitle>Report an issue</DialogTitle>
             <DialogDescription>
-              Found a bug, or have an idea? Tell us what happened. This goes straight to the team.
+              Found a bug or have an idea? Tell us what happened.
             </DialogDescription>
           </DialogHeader>
 

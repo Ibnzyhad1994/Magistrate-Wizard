@@ -10,7 +10,7 @@ export function StageLedger({ counts }: { counts: Record<string, number> }) {
       <DashboardHeading
         id="stage-ledger-heading"
         hintLabel="How stage mix is counted"
-        hint="Each bar is files on the current board (first 100) at that procedure stage. It is a snapshot of what you can see, not a court-wide census."
+        hint="Files on the board (first 100) at each stage. Only what you can see, not the whole court."
       >
         Stage mix
       </DashboardHeading>
@@ -57,7 +57,7 @@ export function Sparkline({ points }: { points: Array<{ date: string; count: num
       <DashboardHeading
         id="sparkline-heading"
         hintLabel="What this tally shows"
-        hint="Each peak is appearances already on the files you can see, day by day for the next fourteen days. It is a pulse, not a forecast."
+        hint="Hearings on your files for each of the next 14 days. What's booked, not a forecast."
       >
         Next fourteen days
       </DashboardHeading>

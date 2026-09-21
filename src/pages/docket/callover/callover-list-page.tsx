@@ -74,7 +74,13 @@ export default function CalloverListPage() {
       <BrowseHeader
         title="Callovers"
         tone="docket"
-        description="Run a list of matters in one sitting: record an outcome and a next date for each without opening every file. Matters that pre-date this docket can be entered here at their true stage."
+        description="Work through a sitting's list in one place: an outcome and a next date for each matter."
+        details={
+          <p>
+            Matters that started before you used the app can be added here at the stage they have
+            really reached.
+          </p>
+        }
         action={
           <Button onClick={() => setCreateOpen(true)} disabled={noCourts}>
             <Plus className="h-4 w-4" />
@@ -180,8 +186,7 @@ export default function CalloverListPage() {
           <DialogHeader>
             <DialogTitle>New callover</DialogTitle>
             <DialogDescription>
-              Pick the sitting date. You can fill the list from that day&apos;s matters once it is
-              created.
+              Pick the sitting date. You can fill it from that day&apos;s list next.
             </DialogDescription>
           </DialogHeader>
 

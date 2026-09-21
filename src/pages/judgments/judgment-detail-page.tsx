@@ -12,7 +12,6 @@ import {
   FileDown,
   StickyNote,
 } from "lucide-react";
-import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,9 +46,9 @@ import {
   useSetJudgmentCategory,
   useSetJudgmentDiscoverable,
   useUnlockJudgment,
-  useUpdateJudgmentContent,
   useUpdateJudgmentFields,
 } from "@/hooks/judgments/use-judgments";
+import { useJudgmentDraft } from "@/hooks/judgments/use-judgment-draft";
 import {
   useAddJudgmentTag,
   useJudgmentTags,
@@ -107,7 +106,7 @@ function useAutoClassifyJudgment(judgmentId: string, currentCategoryId: string |
       const envelope = await ingestDocument(file);
       if (!envelope.text?.trim()) {
         toast.message(
-          "Couldn't extract text from this document to generate tags. Paste the text into Content, or add tags manually.",
+          "Couldn't read this document to suggest tags. Paste the text into Content, or add tags yourself.",
         );
         return;
       }
@@ -131,9 +130,7 @@ function useAutoClassifyJudgment(judgmentId: string, currentCategoryId: string |
       }
 
       if (newTags.length === 0 && !categoryName) {
-        toast.message(
-          "No confident tags or category found in this document. Add them manually if needed.",
-        );
+        toast.message("No tags or category found. Add them yourself if needed.");
       } else {
         toast.success(
           [
@@ -269,7 +266,7 @@ export default function JudgmentDetailPage() {
         ) : (
           <p className="rounded-md border border-hairline bg-surface-1 px-3 py-2 text-xs text-muted-foreground hc:border-border">
             {isDraft
-              ? "This is another magistrate's draft, shared with you to read. Only its author can edit, finalise or delete it."
+              ? "Another magistrate's draft, shared for you to read. Only they can edit, finalise or delete it."
               : "Read-only: this judgment belongs to another magistrate."}
           </p>
         )}
@@ -374,8 +371,8 @@ function LifecycleBar({
           </Button>
           <p className="text-xs text-muted-foreground">
             {contentDirty
-              ? 'You have unsaved Content changes. Click "Save content" below before finalising, or they\'ll be lost.'
-              : "Draft: all fields are editable. Finalising locks the substantive fields until you Unlock the judgment to make corrections."}
+              ? 'You have unsaved changes. Click "Save content" before finalising, or they\'ll be lost.'
+              : "Draft: you can edit everything. Finalising locks the main fields."}
           </p>
         </>
       ) : (
@@ -390,8 +387,7 @@ function LifecycleBar({
             Unlock
           </Button>
           <p className="text-xs text-muted-foreground">
-            Final: substantive fields are locked. Unlock returns this judgment to an editable draft
-            so you can make corrections, then finalise it again when ready.
+            Final: the main fields are locked. Unlock to make corrections, then finalise again.
           </p>
         </>
       )}
@@ -400,7 +396,7 @@ function LifecycleBar({
         open={confirmFinalize}
         onOpenChange={setConfirmFinalize}
         title="Finalise this judgment?"
-        description="Title, case number, court, date, citation, and content will be locked until you Unlock the judgment to make corrections."
+        description="The title, case number, court, date, citation and content will be locked. You can unlock it later to correct them."
         confirmLabel="Finalise"
         confirmVariant="default"
         isConfirming={finalize.isPending}
@@ -410,7 +406,7 @@ function LifecycleBar({
         open={confirmUnlock}
         onOpenChange={setConfirmUnlock}
         title="Unlock this judgment?"
-        description="It returns to a draft: the substantive fields become editable again and it no longer reads as final to anyone it is shared with or discoverable by. A new version is recorded when you finalise it again."
+        description="It goes back to a draft you can edit, and no longer shows as final to others. A new version is saved when you finalise again."
         confirmLabel="Unlock"
         confirmVariant="default"
         isConfirming={unlock.isPending}
@@ -658,9 +654,9 @@ function DiscoverabilityCard({
         description={
           pending
             ? isDraft
-              ? "This is still a draft. Every magistrate will be able to open and read it as it stands, including in search results, until you turn this off. Consider finalising it first."
-              : "Every magistrate will be able to open and read it, including in search results, until you turn this off."
-            : "It will no longer appear for other magistrates. Existing shares are not affected; revoke those on the Sharing tab."
+              ? "This is still a draft. Every magistrate will be able to read it, including in search. Consider finalising it first."
+              : "Every magistrate will be able to read it, including in search."
+            : "Other magistrates won't see it any more. Existing shares stay; revoke them on the Sharing tab."
         }
         onConfirm={() => {
           if (pending === null) return;
@@ -825,33 +821,31 @@ function ContentCard({
   isDraft,
   onDirtyChange,
 }: {
-  judgment: { id: string; content: unknown; content_text: string | null };
+  judgment: { id: string; content: unknown; content_text: string | null; updated_at: string };
   isDraft: boolean;
   onDirtyChange: (dirty: boolean) => void;
 }) {
-  const updateContent = useUpdateJudgmentContent(judgment.id);
-  const [pending, setPending] = useState<{ json: JSONContent; text: string } | null>(null);
-  const [dirty, setDirty] = useState(false);
+  // Text is kept on this device as it is typed, and a Save made offline
+  // syncs on reconnect. See src/lib/offline/judgment-drafts.ts.
+  const draft = useJudgmentDraft(judgment, isDraft);
+  const { dirty } = draft;
 
   useEffect(() => {
-    setDirty(false);
-    setPending(null);
-    onDirtyChange(false);
+    onDirtyChange(dirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onDirtyChange is a stable setState wrapper from the parent, not a reactive dependency
-  }, [judgment.id, isDraft]);
+  }, [dirty]);
 
-  // Covers BOTH exit routes now. The beforeunload half (previously the
-  // only half) never fired for in-app navigation, so clicking any nav
-  // item mid-edit discarded the draft silently.
+  // Covers BOTH exit routes. Leaving no longer loses the text when it is
+  // kept on the device, but it is still not saved, so still ask. A queued
+  // save needs no warning: it syncs on its own.
   useUnsavedChangesGuard(
-    dirty,
-    "This judgment has unsaved content. Leave the page and discard it?",
+    dirty && !draft.queued,
+    draft.kept === "device"
+      ? "Your text is kept on this device but not saved yet. Leave anyway?"
+      : "This judgment has unsaved content. Leave the page and discard it?",
   );
 
-  function markDirty(next: boolean) {
-    setDirty(next);
-    onDirtyChange(next);
-  }
+  const notice = draft.notice;
 
   return (
     <Card>
@@ -863,20 +857,14 @@ function ContentCard({
                 indicator, so this card and Details read identically and
                 a completed save is confirmed rather than just going
                 quiet. */}
-            <SaveState isDirty={dirty} isSaving={updateContent.isPending} />
-            {dirty && (
-              <Button
-                size="sm"
-                disabled={updateContent.isPending}
-                onClick={() => {
-                  if (!pending) return;
-                  updateContent.mutate(
-                    { content: pending.json, content_text: pending.text },
-                    { onSuccess: () => markDirty(false) },
-                  );
-                }}
-              >
-                {updateContent.isPending && <LoadingSpinner className="text-current" size={14} />}
+            <SaveState
+              isDirty={dirty}
+              isSaving={draft.isSaving}
+              pendingLabel={draft.queued ? "Saved on this device" : undefined}
+            />
+            {dirty && !draft.locked && (
+              <Button size="sm" disabled={draft.isSaving} onClick={() => void draft.save()}>
+                {draft.isSaving && <LoadingSpinner className="text-current" size={14} />}
                 <CheckCircle2 className="h-4 w-4" />
                 Save content
               </Button>
@@ -884,18 +872,85 @@ function ContentCard({
           </div>
         )}
       </CardHeader>
-      <CardContent>
-        <RichTextEditor
-          key={judgment.id + String(isDraft)}
-          content={(judgment.content as JSONContent | null) ?? null}
-          editable={isDraft}
-          placeholder="Write the judgment…"
-          onChange={(json, text) => {
-            setPending({ json, text });
-            markDirty(true);
-          }}
-          toolbarExtra={({ insertText }) => <QuickCodeInsert onInsert={insertText} />}
-        />
+      <CardContent className="space-y-3">
+        {notice && (
+          <div
+            role="status"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-hairline bg-surface-1 px-3 py-2 text-sm hc:border-border"
+          >
+            <p className="min-w-0">
+              {notice.kind === "restored" &&
+                `Restored text you wrote on this device ${formatDateTime(notice.editedAt)}. It is not saved yet.`}
+              {notice.kind === "changed" &&
+                `${notice.message} This is your version. Choose which to keep.`}
+              {notice.kind === "readOnly" &&
+                `You have text on this device from ${formatDateTime(notice.draft.editedAt)} that was not saved, and this judgment can no longer be edited here.`}
+              {notice.kind === "problem" && notice.message}
+            </p>
+            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+              {notice.kind === "changed" && (
+                <>
+                  <Button size="sm" disabled={draft.isSaving} onClick={() => void draft.keepMine()}>
+                    Save mine over it
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void draft.discard()}>
+                    Use the saved version
+                  </Button>
+                </>
+              )}
+              {(notice.kind === "changed" || notice.kind === "problem") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => void draft.copyText(draft.currentText())}
+                >
+                  Copy my text
+                </Button>
+              )}
+              {notice.kind === "readOnly" && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void draft.copyText(notice.draft.contentText)}
+                  >
+                    Copy my text
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => void draft.discard()}>
+                    Discard
+                  </Button>
+                </>
+              )}
+              {notice.kind === "problem" && (
+                <Button size="sm" variant="ghost" onClick={() => void draft.discard()}>
+                  Discard
+                </Button>
+              )}
+              {notice.kind === "restored" && (
+                <Button size="sm" variant="ghost" onClick={draft.dismissNotice}>
+                  OK
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {draft.kept === "session" && dirty && (
+          <p className="text-xs text-muted-foreground">
+            This device could not keep a copy. Save before you close the app.
+          </p>
+        )}
+        {draft.ready ? (
+          <RichTextEditor
+            key={`${judgment.id}-${String(isDraft)}-${draft.editorKey}`}
+            content={draft.initial}
+            editable={isDraft && !draft.locked}
+            placeholder="Write the judgment…"
+            onChange={draft.onChange}
+            toolbarExtra={({ insertText }) => <QuickCodeInsert onInsert={insertText} />}
+          />
+        ) : (
+          <Skeleton className="h-[200px] w-full" />
+        )}
         {!isDraft && !judgment.content_text?.trim() && (
           <p className="text-sm italic text-muted-foreground">No content on record.</p>
         )}

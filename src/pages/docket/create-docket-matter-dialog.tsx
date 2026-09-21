@@ -279,8 +279,7 @@ export function CreateDocketMatterDialog({
         <DialogHeader>
           <DialogTitle>New docket matter</DialogTitle>
           <DialogDescription>
-            Create a new matter on your docket. You can add events, parties, and other details
-            afterward.
+            Add a matter to your docket. You can add parties and hearings after.
           </DialogDescription>
         </DialogHeader>
 
@@ -295,8 +294,8 @@ export function CreateDocketMatterDialog({
             title="No current Court seating"
             description={
               isAdmin
-                ? "You're not currently seated at a Court, so you can't create a Docket Matter yet. Seat yourself under Settings, or manage the roster under Court Assignments."
-                : "You're not currently seated at a Court, so you can't create a Docket Matter yet. Request a court under Court Assignments."
+                ? "You need a court seat to add a matter. Seat yourself in Settings, or manage the roster in Court Assignments."
+                : "You need a court seat to add a matter. Request one in Court Assignments."
             }
             action={
               <Button size="sm" asChild>
@@ -403,8 +402,8 @@ export function CreateDocketMatterDialog({
                       </p>
                     ) : submitDuplicate ? (
                       <p role="status" className="text-xs text-muted-foreground">
-                        The existing matter is not visible to you. Ask a magistrate at that court,
-                        or use a different case number.
+                        That matter exists, but you can&apos;t see it. Ask a magistrate at that
+                        court, or use another case number.
                       </p>
                     ) : null}
                     <FormMessage />
@@ -512,9 +511,8 @@ export function CreateDocketMatterDialog({
                 {broughtForward && (
                   <div className="space-y-4 border-t border-input px-3 py-3">
                     <p className="text-xs text-muted-foreground">
-                      For a matter inherited from a predecessor, transferred in, or pre-dating this
-                      docket. Record where it actually stands so it appears at the right stage
-                      instead of at the start of the board.
+                      For a matter already under way. Set the stage it has reached so it starts in
+                      the right place.
                     </p>
 
                     <div className="grid grid-cols-2 gap-3">

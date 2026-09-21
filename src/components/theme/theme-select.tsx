@@ -7,7 +7,7 @@ import { useTheme } from "@/providers/use-theme";
 
 const THEME_SUMMARY = "Dark is the default.";
 const THEME_DETAILS =
-  "System follows this device, including high contrast when the OS asks for it. Also available from the account menu.";
+  "System matches this device, including high contrast. Also in the account menu.";
 
 interface ThemeSelectProps {
   id: string;

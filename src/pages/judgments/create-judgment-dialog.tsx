@@ -61,9 +61,7 @@ export function CreateJudgmentDialog({ open, onOpenChange }: CreateJudgmentDialo
       <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New draft judgment</DialogTitle>
-          <DialogDescription>
-            Start a draft. All fields except title are optional and can be filled in afterward.
-          </DialogDescription>
+          <DialogDescription>Start a draft. Only the title is needed now.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

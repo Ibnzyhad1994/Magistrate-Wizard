@@ -103,8 +103,7 @@ export function DocketBulkAdjournDialog({
             Adjourn {ids.length === 1 ? "1 matter" : `${ids.length} matters`}
           </DialogTitle>
           <DialogDescription>
-            Sets the next date on each file through the same capacity-checked path as adjourning one
-            at a time. Nothing else on the board changes.
+            Sets the same next date on each file. Nothing else changes.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,8 +181,7 @@ export function DocketBulkAdjournDialog({
           <div className="space-y-1 rounded-md border border-hairline bg-surface-2 p-3 text-sm hc:border-border">
             <p className="font-medium">{summary.sentence}</p>
             <p className="text-xs text-muted-foreground">
-              The ones that did not go through are still selected. Adjust the date, or give a reason
-              to go over your limit, and try those again.
+              The rest are still selected. Change the date or add a reason, then try again.
             </p>
           </div>
         )}

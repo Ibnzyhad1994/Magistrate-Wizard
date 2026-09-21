@@ -133,13 +133,13 @@ export function PortablePackPanel({
           <div>
             <CardTitle className="text-base">Dispatch</CardTitle>
             <CardDescription className="mt-1.5 max-w-2xl">
-              Take a file off this platform, or bring one on. A portable pack is a projection, not
-              the live docket. Court assignment, shares, and other people&apos;s writing stay here.
+              Take a file with you, or bring one in. A pack is a copy, not the live docket. Shares
+              and other people&apos;s notes stay here.
             </CardDescription>
           </div>
           <DetailsHint
             label="What a matter pack contains"
-            details="Export only files on a court you sit, or retained to you — a view share is not enough. The zip holds identity, parties (no contact details), and hearing logistics. Stage cells are not auto-filled on import: log them on the board so the paper trail is yours. Google Calendar already mirrors when and where; it is not a case file."
+            details="You can export files from a court you sit, or ones retained to you. A view share isn't enough. The zip has the file details, parties (no contact details) and hearings. Stages aren't filled in on import, so log them on the board yourself."
           />
         </div>
       </CardHeader>

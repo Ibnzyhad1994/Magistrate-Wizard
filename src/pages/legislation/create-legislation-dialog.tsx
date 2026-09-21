@@ -34,8 +34,8 @@ export function CreateLegislationDialog({ open, onOpenChange }: CreateLegislatio
         <DialogHeader>
           <DialogTitle>Add legislation</DialogTitle>
           <DialogDescription>
-            Fill in the required details and upload the official PDF. It publishes immediately to
-            the shared library.
+            Fill in the details and upload the official PDF. It goes straight into the shared
+            library.
           </DialogDescription>
         </DialogHeader>
         {open ? <LegislationPdfUploadPanel onSuccess={handleSuccess} /> : null}

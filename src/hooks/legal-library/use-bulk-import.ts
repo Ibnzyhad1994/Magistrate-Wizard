@@ -262,8 +262,8 @@ export function useBulkImportCaseLaw() {
             // extra "we also kept your file" behavior is at risk here.
           }
           const reason = attachedAsAlternateSource
-            ? `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported as a new record; this file was attached to the existing authority as an alternate source for curator review.`
-            : `A canonical case with citation "${finalCitation}" already exists: ${citationConflict.label}. Not re-imported. Review the existing record if this is a different source for the same case.`;
+            ? `A case with citation "${finalCitation}" already exists: ${citationConflict.label}. This file was added to it as another source for review.`
+            : `A case with citation "${finalCitation}" already exists: ${citationConflict.label}. It wasn't imported again. Check that record if this is a different source.`;
           patchItem(item.id, { status: "duplicate", isDuplicate: true, duplicateReason: reason });
           await persistNonDraft("duplicate", reason, { duplicateOfId: citationConflict.id });
           return;
@@ -491,7 +491,7 @@ export function useBulkImportCaseLaw() {
       // above is still accurate for this session; only the PERSISTED
       // record is short by this many outcomes.
       toast.warning(
-        `${persistenceFailures} outcome${persistenceFailures === 1 ? "" : "s"} in this batch could not be saved to the persistent record. They're shown above, but won't appear in Import Batches. Try refreshing the batch later; if this recurs, check your connection.`,
+        `${persistenceFailures} result${persistenceFailures === 1 ? "" : "s"} couldn't be saved. They're shown above but won't appear in Import Batches. Refresh later, and check your connection if it keeps happening.`,
       );
     }
   }
@@ -535,7 +535,7 @@ export function useBulkImportCaseLaw() {
     await processOneItem(item, lastBatchIdRef.current, opts, persistenceFailureCounter);
     if (persistenceFailureCounter.count > 0) {
       toast.warning(
-        "This outcome could not be saved to the persistent batch record. It's shown above, but won't appear in Import Batches.",
+        "This result couldn't be saved. It's shown above but won't appear in Import Batches.",
       );
     }
   }

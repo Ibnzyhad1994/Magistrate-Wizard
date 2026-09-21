@@ -195,7 +195,7 @@ export default function QuickCodesPage() {
               description={
                 data && data.length > 0
                   ? "Try a different search term."
-                  : "Create reusable snippets you can quickly copy into judgments, notes, or anywhere else you write."
+                  : "Save text you use often, then copy it into judgments or notes."
               }
               action={
                 (!data || data.length === 0) && (

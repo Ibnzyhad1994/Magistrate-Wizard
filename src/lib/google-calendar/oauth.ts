@@ -28,7 +28,7 @@ const googleTokenUrl = () => {
 const googleTokenError = (json: Record<string, unknown>, fallback: string) => {
   const description = String(json.error_description ?? json.error ?? fallback);
   if (/client_secret is missing/i.test(description)) {
-    return "Google still needs a client secret for this OAuth client. Restart the Vite server after adding GOOGLE_OAUTH_CLIENT_SECRET_* to .env.local, then click Connect again.";
+    return "Google needs a client secret. Add GOOGLE_OAUTH_CLIENT_SECRET_* to .env.local, restart Vite, then click Connect again.";
   }
   return description;
 };

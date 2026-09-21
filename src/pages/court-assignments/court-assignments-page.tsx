@@ -106,7 +106,7 @@ export default function CourtAssignmentsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Court Assignments"
-        description="Your active primary court assignments and requests. The Docket belongs to the court, not to you personally, so relinquishing a court preserves its entire history for your successor."
+        description="Your courts and requests. The docket belongs to the court, so if you give one up, its history stays for the next magistrate."
       />
 
       {profile?.role === "magistrate" && !isPending && (assignments ?? []).length === 0 && (
@@ -128,12 +128,12 @@ export default function CourtAssignmentsPage() {
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {pendingRequests.length > 0
-                  ? "Your request is awaiting review by a Court Assignment Administrator. Once approved, you'll get full access to that court's Docket and the rest of the application."
+                  ? "Your request is waiting for review. Once approved, you'll have full access to that court's docket."
                   : latestReturned
                     ? COURT_REQUEST_RETURN_NEXT_STEP
                     : latestCancelled
                       ? "You cancelled this request. Request again when you are sure of the court."
-                      : "Request a court below to get started. A Court Assignment Administrator will review your request. This page is all you can access until then."}
+                      : "Request a court below to get started. You'll have access to the rest of the app once it's approved."}
               </p>
               {latestReturned?.rejection_reason && pendingRequests.length === 0 && (
                 <p className="mt-2 text-sm text-foreground">
@@ -153,7 +153,7 @@ export default function CourtAssignmentsPage() {
         <EmptyState
           icon={Landmark}
           title="No active court assignment"
-          description="Request a court below. A Court Assignment Administrator reviews each request."
+          description="Request a court below. An administrator reviews each one."
         />
       ) : (
         <div className="max-w-2xl space-y-3">
@@ -281,9 +281,8 @@ export default function CourtAssignmentsPage() {
           <CardHeader>
             <CardTitle className="text-base">Request a court assignment</CardTitle>
             <CardDescription>
-              A Court Assignment Administrator reviews each request. Occupied courts are a special
-              exception: they decide whether to replace the current magistrate or seat two. The
-              request does not fill the court until you have signed in.
+              An administrator reviews each request. For an occupied court, they decide whether to
+              replace the magistrate there or seat you both.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -334,9 +333,8 @@ export default function CourtAssignmentsPage() {
             </div>
             {requestingOccupied && (
               <p className="text-xs text-notice-action">
-                This court already has a signed-in primary magistrate. Submitting asks an
-                administrator to replace them or seat you alongside them. Your request does not
-                occupy the court.
+                This court already has a magistrate. An administrator will decide whether to replace
+                them or seat you both.
               </p>
             )}
             <div className="flex justify-end gap-2">
@@ -387,9 +385,8 @@ export default function CourtAssignmentsPage() {
                 </p>
               </div>
               <p className="rounded-sm border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-notice-action">
-                Relinquishing this court will end your whole-court Docket access. The court's Docket
-                and history will remain with the court and will become available to the successor
-                magistrate.
+                You&apos;ll lose access to this court&apos;s docket. Its files and history stay with
+                the court for the next magistrate.
               </p>
               <Textarea
                 placeholder="Reason (optional)"

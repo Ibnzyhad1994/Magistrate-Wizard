@@ -13,6 +13,19 @@ import {
   isDeviceStorageFull,
   subscribeOfflineStore,
 } from "@/lib/offline/store";
+import {
+  getJudgmentDraftSummary,
+  subscribeJudgmentDrafts,
+} from "@/lib/offline/judgment-drafts-runtime";
+
+/** Judgment text held on this device: waiting to sync, or needing a choice. */
+export function useJudgmentDraftSummary() {
+  return useSyncExternalStore(
+    subscribeJudgmentDrafts,
+    getJudgmentDraftSummary,
+    getJudgmentDraftSummary,
+  );
+}
 
 const EMPTY: OutboxJob[] = [];
 const EMPTY_FAILED: FailedOutboxJob[] = [];

@@ -161,7 +161,7 @@ export default function LegislationEditPage() {
         variant="detail"
         eyebrow="Edit Legislation"
         title={statute.title}
-        description="Metadata and file management -- changes here affect the shared Legislation library for every magistrate."
+        description="Changes here apply to the shared library for everyone."
         badges={["Edit mode", "Admin only"]}
         tone="legislation"
         primaryAction={{ label: "Cancel", onClick: handleCancel }}
@@ -171,8 +171,7 @@ export default function LegislationEditPage() {
           <CardHeader>
             <CardTitle className="text-base">Metadata</CardTitle>
             <CardDescription>
-              Title, identifying numbers, jurisdiction, and dates shown in the Legislation library
-              and detail page.
+              The title, numbers, jurisdiction and dates shown in the library.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -269,8 +268,7 @@ export default function LegislationEditPage() {
           {replaceOpen && (
             <CardContent className="border-t border-border pt-4">
               <p className="mb-3 text-xs text-muted-foreground">
-                Uploading here publishes a new version. The current version is preserved and remains
-                reachable, never deleted or overwritten.
+                Uploading publishes a new version. The current one is kept.
               </p>
               <LegislationPdfUploadPanel
                 supersede={{
@@ -296,8 +294,8 @@ export default function LegislationEditPage() {
           <CardHeader>
             <CardTitle className="text-base text-destructive">Delete this record</CardTitle>
             <CardDescription>
-              Permanently removes it from the shared library for every magistrate, including its
-              provisions and any attached documents. This cannot be undone.
+              Removes it from the library for everyone, with its sections and documents. It
+              can&apos;t be undone.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -326,7 +324,7 @@ export default function LegislationEditPage() {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="Delete this Legislation record?"
-        description="This permanently removes it from the shared library for every magistrate, including its provisions and any attached documents. This cannot be undone."
+        description="This removes it from the library for everyone, with its sections and documents. It can't be undone."
         confirmLabel="Delete"
         isConfirming={deleteStatute.isPending}
         onConfirm={() =>

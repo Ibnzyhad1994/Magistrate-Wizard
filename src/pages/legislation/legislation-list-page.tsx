@@ -98,7 +98,7 @@ export default function LegislationListPage() {
       <BrowseHeader
         title="Legislation"
         tone="legislation"
-        description="Acts, regulations, and other legal instruments, maintained centrally and available to every magistrate."
+        description="Acts, regulations and other laws, kept up to date for every magistrate."
         showViewSelect
         dataTour="page-legislation"
         action={

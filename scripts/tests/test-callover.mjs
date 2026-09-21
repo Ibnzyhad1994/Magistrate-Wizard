@@ -200,7 +200,7 @@ check(
 );
 check(
   "a valid date yields a dated title",
-  defaultCalloverTitle("2026-09-11").startsWith("Callover — "),
+  defaultCalloverTitle("2026-09-11").startsWith("Callover, "),
   true,
 );
 

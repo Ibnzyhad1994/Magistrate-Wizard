@@ -9,12 +9,12 @@ import {
   summariseCloseout,
   type CloseoutRow,
 } from "@/lib/docket-closeout";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const STATE_LABEL = {
   no_outcome: "No outcome recorded",
-  no_next_date: "No date after today",
+  no_next_date: "No next date",
   both: "No outcome, no next date",
   ready: "",
 } as const;
@@ -48,7 +48,7 @@ export function DocketCloseoutPanel({
   if (summary.total === 0) return null;
 
   const outstanding = entries.filter((entry) => entry.state !== "ready");
-  const overnight = overnightWarning(summary);
+  const overnight = overnightWarning(summary, closingDate, getLocalDateOnly());
   const report = reportWarning(summary);
 
   return (
@@ -67,13 +67,13 @@ export function DocketCloseoutPanel({
           )}
           <span className="text-heading text-foreground">
             {summary.needingAttention === 0
-              ? `Close out ${formatDate(closingDate)} — all ${summary.total} recorded`
-              : `Close out ${formatDate(closingDate)} — ${summary.needingAttention} of ${summary.total} ${summary.needingAttention === 1 ? "needs" : "need"} attention`}
+              ? `Close out ${formatDate(closingDate)}: all done`
+              : `Close out ${formatDate(closingDate)}: ${summary.needingAttention} of ${summary.total} ${summary.needingAttention === 1 ? "needs" : "need"} attention`}
           </span>
         </button>
         <DetailsHint
           label="What this checks"
-          details="Every matter listed on this date, from the same list shown below. A file needs attention when its appearance is still marked scheduled with no outcome recorded, or when nothing is scheduled after this day. It reads the outcome of the appearance, not the matter's overall outcome."
+          details="A file needs attention if the hearing has no outcome, or there's no next date."
         />
       </div>
 
@@ -84,7 +84,7 @@ export function DocketCloseoutPanel({
 
           {outstanding.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Every matter listed on this date has an outcome and a date after today.
+              Every matter has an outcome and a next date.
             </p>
           ) : (
             <ul className="divide-y divide-hairline">

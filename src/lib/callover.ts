@@ -143,11 +143,11 @@ export function itemsMissingExpectedNextDate<T extends CalloverItemLike>(items: 
   );
 }
 
-/** Default title for a new sitting, e.g. "Callover — 11 September 2026". */
+/** Default title for a new sitting, e.g. "Callover, 11 September 2026". */
 export function defaultCalloverTitle(isoDate: string): string {
   const parsed = new Date(`${isoDate}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return "Callover";
-  return `Callover — ${parsed.toLocaleDateString(undefined, {
+  return `Callover, ${parsed.toLocaleDateString(undefined, {
     day: "numeric",
     month: "long",
     year: "numeric",

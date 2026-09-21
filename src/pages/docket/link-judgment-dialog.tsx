@@ -82,10 +82,7 @@ export function LinkJudgmentDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Link Judgment</DialogTitle>
-          <DialogDescription>
-            Select one of your own Judgments to link as reference material for this matter. Only
-            Judgments you own can be linked.
-          </DialogDescription>
+          <DialogDescription>Pick one of your judgments to link to this matter.</DialogDescription>
         </DialogHeader>
 
         <div className="relative">

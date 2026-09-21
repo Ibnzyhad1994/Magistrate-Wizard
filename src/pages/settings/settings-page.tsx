@@ -188,10 +188,9 @@ export default function SettingsPage() {
                 still described the old admin-only model, and named Court
                 Assignments without linking to it. */}
                     <CardDescription>
-                      Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>.
-                      Docket access is separate from your platform role. It follows the active court
-                      seatings below, which you request and relinquish yourself under Court
-                      Assignments; an administrator approves each request.
+                      Platform role: <strong>{ROLE_LABELS[profile.role as UserRole]}</strong>. Your
+                      docket access comes from your court seats below. Request or give them up under
+                      Court Assignments.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">

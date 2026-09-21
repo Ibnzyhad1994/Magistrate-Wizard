@@ -311,7 +311,7 @@ export function useDeleteDocument(entityType: string, entityId: string) {
         // the UI imply nothing happened. This is a genuine partial
         // failure, not a full success or a full no-op.
         throw new Error(
-          `The file was removed from storage, but its record couldn't be cleaned up (${getErrorMessage(error)}). Refresh the page; if it still appears, it's now a broken link and can be safely deleted again.`,
+          `The file was removed, but its record couldn't be cleared (${getErrorMessage(error)}). Refresh. If it's still listed, delete it again.`,
         );
       }
     },

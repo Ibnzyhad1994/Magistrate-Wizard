@@ -380,7 +380,7 @@ export function useRejectCanonicalStatute() {
           // ever see (Section 38: no raw internals in user-facing errors).
           console.error("Storage cleanup failed during legislation rejection:", removeError);
           throw new Error(
-            `Could not remove ${docs.length} attached file(s) from storage. The draft was left in place so nothing is silently lost -- retry rejection once storage cleanup succeeds.`,
+            `Couldn't remove ${docs.length} attached file(s), so the draft was kept. Try rejecting it again.`,
           );
         }
       }
@@ -437,7 +437,7 @@ export function useDeleteCanonicalStatute() {
             removeError,
           );
           throw new Error(
-            `Could not remove ${docs.length} attached file(s) from storage. The record was left in place so nothing is silently lost -- retry deletion once storage cleanup succeeds.`,
+            `Couldn't remove ${docs.length} attached file(s), so the record was kept. Try deleting it again.`,
           );
         }
       }

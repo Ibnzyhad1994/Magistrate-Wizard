@@ -24,8 +24,7 @@ export default function UnauthorizedPage() {
             You don&apos;t have access
           </h1>
           <p className="max-w-md text-base text-foreground/70">
-            Your account role doesn&apos;t have permission to view this resource. Contact your
-            administrator if you believe this is a mistake.
+            Your account can&apos;t open this page. Ask your administrator if you think it should.
           </p>
         </div>
         <Button asChild className="h-12 px-8 text-base font-semibold">
