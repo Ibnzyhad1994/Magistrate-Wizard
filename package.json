@@ -139,7 +139,7 @@
     "test:safe-links": "node --import ./scripts/test-support/register.mjs scripts/tests/test-safe-links.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.1",
+    "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.1",
     "@capacitor/ios": "^6.2.1",
