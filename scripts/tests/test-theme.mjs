@@ -492,6 +492,11 @@ check(
   titleCard.includes("text-primary-foreground"),
   true,
 );
+check(
+  "poster flag and type label share one row, not two colliding corners",
+  titleCard.includes("absolute left-2 top-2") || titleCard.includes("absolute right-2 top-2"),
+  false,
+);
 check("calendar out-of-month cells are not a black wash", calendar.includes("bg-black/20"), false);
 check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);
 check("header search field uses canvas tokens", navSearch.includes("bg-secondary"), true);
