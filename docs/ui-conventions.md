@@ -54,6 +54,7 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Text colour comes from tokens: `text-foreground`, `text-muted-foreground`, `text-link`. Do not derive secondary text with opacity (`text-foreground/50`) — it bypasses the high-contrast palette and fails 4.5:1 in light mode below `/65`.
 - Control borders are `border-input` (≥3:1 in every palette); dividers and cards are `border-border`. Not `border-foreground/10`.
 - Status colours are registered tokens: `bg-notice-action`, `text-stage-progress`, `bg-capacity-full`, plus `warning` / `success` / `info` aliases. Never `bg-[hsl(var(--…))]`, never `amber-500`.
+- Text on a capacity fill uses the fill's paired ink, `text-capacity-full-foreground` and its siblings, never `text-white` or `text-neutral-900`: each pair is at least 4.5:1 in every palette, and `npm run test:theme` enforces it.
 - Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards, posters and chips are `rounded-md`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
 - Sizes: inputs and buttons are 44px / 16px on phones and 36px / 14px from `lg` up; the primitives do this, do not override heights.

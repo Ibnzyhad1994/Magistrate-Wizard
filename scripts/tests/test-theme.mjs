@@ -108,6 +108,10 @@ const TOKENS = [
   "capacity-filling",
   "capacity-full",
   "capacity-over",
+  "capacity-available-foreground",
+  "capacity-filling-foreground",
+  "capacity-full-foreground",
+  "capacity-over-foreground",
   "sidebar-background",
   "sidebar-foreground",
   "sidebar-border",
@@ -223,11 +227,12 @@ function luminance(rgb) {
   const [r, g, b] = rgb.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
-function contrast(a, b) {
-  const la = luminance(hslToRgb(a));
-  const lb = luminance(hslToRgb(b));
+function contrastRgb(a, b) {
+  const la = luminance(a);
+  const lb = luminance(b);
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
+const contrast = (a, b) => contrastRgb(hslToRgb(a), hslToRgb(b));
 
 const CONTRAST_PAIRS = [
   ["foreground", "background", 4.5],
@@ -242,6 +247,11 @@ const CONTRAST_PAIRS = [
   // Amber is read as text in the docket stage cell and notification list.
   ["stage-progress", "background", 4.5],
   ["notice-action", "background", 4.5],
+  // Capacity tiles and chips print their counts on the fill itself.
+  ["capacity-available-foreground", "capacity-available", 4.5],
+  ["capacity-filling-foreground", "capacity-filling", 4.5],
+  ["capacity-full-foreground", "capacity-full", 4.5],
+  ["capacity-over-foreground", "capacity-over", 4.5],
 ];
 
 for (const [label, block] of [
@@ -260,6 +270,27 @@ for (const [label, block] of [
     return ratio >= min ? null : `${fg}/${bg}: ${ratio.toFixed(2)} < ${min}`;
   }).filter(Boolean);
   check(`${label}: every token pair meets its contrast minimum`, failing, []);
+
+  // The docket strip's load pill is the tile's ink at 15% over the fill.
+  const pillFailing = ["available", "filling", "full", "over"]
+    .map((band) => {
+      const inkValue = tokenValue(block, `capacity-${band}-foreground`);
+      const fillValue = tokenValue(block, `capacity-${band}`);
+      if (!inkValue || !fillValue) return `${band}: missing token`;
+      const ink = hslToRgb(inkValue);
+      const fill = hslToRgb(fillValue);
+      const pill = fill.map((v, i) => 0.15 * ink[i] + 0.85 * v);
+      const ratio = contrastRgb(ink, pill);
+      return ratio >= 4.5 ? null : `${band}: ${ratio.toFixed(2)} < 4.5`;
+    })
+    .filter(Boolean);
+  check(`${label}: capacity load pill text meets 4.5:1`, pillFailing, []);
+  check(
+    `${label}: over capacity is darker than full`,
+    luminance(hslToRgb(tokenValue(block, "capacity-over"))) <
+      luminance(hslToRgb(tokenValue(block, "capacity-full"))),
+    true,
+  );
 }
 
 // The brand red doubles as the input ring, and --link must be at least as
@@ -339,11 +370,6 @@ const offenders = tsxFiles("src").filter((file) => LITERAL.test(readFileSync(fil
 
 const ALLOWED = [
   "src/components/legislation/pdf-viewer-page.tsx", // a PDF page is real paper
-  // Translucent chips laid over capacity fills: the fill colour is a token
-  // (--capacity-*) and the chip must tint whatever fill it sits on, so it is
-  // white/25 on the dark fills and neutral-900/10 on the light ones — not a
-  // theme colour in its own right.
-  "src/pages/docket/docket-capacity-strip.tsx",
 ];
 check(
   "no component hardcodes a theme colour outside the documented exceptions",

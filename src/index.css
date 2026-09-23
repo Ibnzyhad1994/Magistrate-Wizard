@@ -72,7 +72,7 @@
     --match: 137 50% 30%;
 
     /* Amber is read as text (stage cell, "waiting on you" notices), so it
-       sits at 4.8:1 here; --capacity-filling keeps the brighter 36% because
+       sits at 4.8:1 here; --capacity-filling keeps the brighter 42% because
        it is only ever a fill under dark ink. */
     --stage-progress: 38 92% 31%;
     --stage-done: 160 84% 26%;
@@ -85,10 +85,17 @@
     --notice-revoked: 357 80% 44%;
     --notice-outcome: 210 90% 40%;
 
-    --capacity-available: 142 65% 30%;
-    --capacity-filling: 38 92% 36%;
+    /* Each capacity fill carries its own ink. Every pair clears 4.5:1 in
+       every palette, including under the strip's 15% load pill, and
+       "over" is always the darker of the two reds. */
+    --capacity-available: 142 65% 41%;
+    --capacity-filling: 38 92% 42%;
     --capacity-full: 0 72% 44%;
     --capacity-over: 0 63% 32%;
+    --capacity-available-foreground: 0 0% 9%;
+    --capacity-filling-foreground: 0 0% 9%;
+    --capacity-full-foreground: 0 0% 100%;
+    --capacity-over-foreground: 0 0% 100%;
 
     /* Surface scale (0 = canvas). Each step is a luminance lift, not a
        border: the Netflix trick of tiles reading as raised because they
@@ -178,8 +185,12 @@
 
     --capacity-available: 142 71% 45%;
     --capacity-filling: 38 92% 50%;
-    --capacity-full: 0 72% 51%;
+    --capacity-full: 0 72% 45%;
     --capacity-over: 0 63% 31%;
+    --capacity-available-foreground: 0 0% 9%;
+    --capacity-filling-foreground: 0 0% 9%;
+    --capacity-full-foreground: 0 0% 100%;
+    --capacity-over-foreground: 0 0% 100%;
 
     --surface-1: 0 0% 11%; /* #1c1c1c */
     --surface-2: 0 0% 14%; /* #242424 */
@@ -257,6 +268,10 @@
     --capacity-filling: 38 100% 24%;
     --capacity-full: 0 100% 32%;
     --capacity-over: 0 100% 22%;
+    --capacity-available-foreground: 0 0% 100%;
+    --capacity-filling-foreground: 0 0% 100%;
+    --capacity-full-foreground: 0 0% 100%;
+    --capacity-over-foreground: 0 0% 100%;
 
     --surface-1: 0 0% 100%;
     --surface-2: 0 0% 96%;
@@ -329,8 +344,12 @@
 
     --capacity-available: 142 100% 58%;
     --capacity-filling: 38 100% 60%;
-    --capacity-full: 0 100% 62%;
-    --capacity-over: 0 80% 72%;
+    --capacity-full: 0 100% 69%;
+    --capacity-over: 0 100% 35%;
+    --capacity-available-foreground: 0 0% 0%;
+    --capacity-filling-foreground: 0 0% 0%;
+    --capacity-full-foreground: 0 0% 0%;
+    --capacity-over-foreground: 0 0% 100%;
 
     --surface-1: 0 0% 0%;
     --surface-2: 0 0% 8%;
@@ -403,10 +422,14 @@
     --notice-revoked: 26 100% 36%;
     --notice-outcome: 202 100% 32%;
 
-    --capacity-available: 163 100% 24%;
-    --capacity-filling: 41 100% 32%;
-    --capacity-full: 26 100% 36%;
-    --capacity-over: 26 100% 26%;
+    --capacity-available: 163 100% 34%;
+    --capacity-filling: 41 100% 39%;
+    --capacity-full: 26 100% 31%;
+    --capacity-over: 26 100% 21%;
+    --capacity-available-foreground: 0 0% 9%;
+    --capacity-filling-foreground: 0 0% 9%;
+    --capacity-full-foreground: 0 0% 100%;
+    --capacity-over-foreground: 0 0% 100%;
 
     --surface-1: 0 0% 100%;
     --surface-2: 40 14% 95%;
@@ -479,7 +502,11 @@
     --capacity-available: 163 80% 48%;
     --capacity-filling: 41 100% 50%;
     --capacity-full: 26 100% 52%;
-    --capacity-over: 26 90% 42%;
+    --capacity-over: 26 90% 31%;
+    --capacity-available-foreground: 0 0% 9%;
+    --capacity-filling-foreground: 0 0% 9%;
+    --capacity-full-foreground: 0 0% 9%;
+    --capacity-over-foreground: 0 0% 100%;
 
     --surface-1: 0 0% 11%;
     --surface-2: 0 0% 14%;
