@@ -316,7 +316,7 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Details</CardTitle>
+          <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           {categoryName && (
@@ -364,7 +364,7 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base">Details</CardTitle>
+        <CardTitle>Details</CardTitle>
         {/* Same mixed model as the Judgment page: this card needs an
             explicit Save, while Discoverability and Tags below commit
             the moment they change. */}
@@ -527,7 +527,7 @@ function DiscoverabilityCard({ caseLaw }: { caseLaw: { id: string; is_discoverab
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Discoverability</CardTitle>
+        <CardTitle>Discoverability</CardTitle>
       </CardHeader>
       <CardContent>
         <label className="flex cursor-pointer items-start gap-2 text-sm">
@@ -555,7 +555,7 @@ function TagsCard({ caseLawId }: { caseLawId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Tags</CardTitle>
+        <CardTitle>Tags</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         {data.map((row) =>
@@ -598,7 +598,7 @@ function LinkedMattersCard({ caseLawId }: { caseLawId: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <Gavel className="h-4 w-4" />
           Linked Docket Matters
         </CardTitle>

@@ -104,7 +104,7 @@ export default function SettingsPage() {
           <SettingsSection id="display">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Display</CardTitle>
+                <CardTitle>Display</CardTitle>
                 <CardDescription>
                   Compact is the default tile size. List view is a denser row layout of the same
                   records.
@@ -160,7 +160,7 @@ export default function SettingsPage() {
             <SettingsSection id="help">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Help</CardTitle>
+                  <CardTitle>Help</CardTitle>
                   <CardDescription>
                     Magistrates see this once after they are assigned to a court. Start it again any
                     time from here or the account menu.
@@ -182,7 +182,7 @@ export default function SettingsPage() {
               {profile && profile.role !== "clerk" && profile.role !== "admin" && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Court Assignments</CardTitle>
+                    <CardTitle>Court Assignments</CardTitle>
                     {/* Court assignment became self-service (request / relinquish,
                 with a Court Assignment Administrator approving) — this card
                 still described the old admin-only model, and named Court
@@ -224,7 +224,7 @@ export default function SettingsPage() {
               {profile?.role === "clerk" && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Court Access</CardTitle>
+                    <CardTitle>Court Access</CardTitle>
                     <CardDescription>
                       View your access requests, or request another court.
                     </CardDescription>
@@ -264,7 +264,7 @@ export default function SettingsPage() {
           <SettingsSection id="about">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">About</CardTitle>
+                <CardTitle>About</CardTitle>
                 <CardDescription>
                   Native shells (Android, iOS, Windows) share this version.
                 </CardDescription>

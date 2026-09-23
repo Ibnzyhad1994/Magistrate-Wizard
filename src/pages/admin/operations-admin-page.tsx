@@ -100,7 +100,7 @@ const FlagsPanel = () => {
         <Card key={flag.key}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <CardTitle className="text-base">{flag.key}</CardTitle>
+              <CardTitle>{flag.key}</CardTitle>
               <CardDescription>
                 {flag.description && <>{flag.description}. </>}
                 Rollout {flag.rolloutPercentage}%. Empty court and role lists apply to everyone.
@@ -135,7 +135,7 @@ const RetentionPanel = () => {
       {(data ?? []).map((policy) => (
         <Card key={policy.table_name}>
           <CardHeader>
-            <CardTitle className="text-base">{policy.table_name}</CardTitle>
+            <CardTitle>{policy.table_name}</CardTitle>
             <CardDescription>{policy.notes}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
@@ -274,7 +274,7 @@ const WebhooksPanel = () => {
     <div className="max-w-3xl space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add endpoint</CardTitle>
+          <CardTitle>Add endpoint</CardTitle>
           <CardDescription>
             HTTPS URLs only (localhost is allowed for development). Bodies are HMAC-SHA256 signed.
           </CardDescription>
@@ -358,7 +358,7 @@ const WebhooksPanel = () => {
             <Card key={endpoint.id}>
               <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <div>
-                  <CardTitle className="break-all text-base">{endpoint.url}</CardTitle>
+                  <CardTitle className="break-all">{endpoint.url}</CardTitle>
                   <CardDescription>{endpoint.events.join(", ") || "No events"}</CardDescription>
                 </div>
                 <Button
@@ -380,7 +380,7 @@ const WebhooksPanel = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent deliveries</CardTitle>
+          <CardTitle>Recent deliveries</CardTitle>
           <CardDescription>
             Pending: waiting to send. Sent: handed over, result unknown. Delivered: confirmed.
             Failed rows keep the last error and can be retried.

@@ -169,7 +169,7 @@ export default function LegislationEditPage() {
       <div className="browse-gutter relative z-10 -mt-6 space-y-6 pb-20">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Metadata</CardTitle>
+            <CardTitle>Metadata</CardTitle>
             <CardDescription>
               The title, numbers, jurisdiction and dates shown in the library.
             </CardDescription>
@@ -247,7 +247,7 @@ export default function LegislationEditPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Current PDF</CardTitle>
+            <CardTitle>Current PDF</CardTitle>
             <CardDescription>
               {statute.primary_document_id
                 ? "The document every magistrate currently sees when viewing this Act."
@@ -292,7 +292,7 @@ export default function LegislationEditPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-destructive">Delete this record</CardTitle>
+            <CardTitle className="text-destructive">Delete this record</CardTitle>
             <CardDescription>
               Removes it from the library for everyone, with its sections and documents. It
               can&apos;t be undone.

@@ -190,7 +190,7 @@ export default function BenchNoteDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Details</CardTitle>
+            <CardTitle>Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -247,7 +247,7 @@ export default function BenchNoteDetailPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Content</CardTitle>
+            <CardTitle>Content</CardTitle>
             <SaveIndicator state={saveState} onRetry={persist} />
           </CardHeader>
           <CardContent>
