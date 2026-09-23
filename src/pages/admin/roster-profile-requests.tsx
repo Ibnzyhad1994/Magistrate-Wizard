@@ -281,7 +281,7 @@ export function RosterProfileRequests({
                 ? ` · ${request.rejection_reason}`
                 : ""}
             </p>
-            <Badge variant={request.status === "approved" ? "default" : "secondary"}>
+            <Badge variant={request.status === "approved" ? "success" : "secondary"}>
               {courtRequestStatusLabel(request.status)}
             </Badge>
           </div>

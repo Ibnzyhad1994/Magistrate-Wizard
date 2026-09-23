@@ -13,6 +13,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -248,7 +249,9 @@ export default function JudgmentDetailPage() {
       />
       <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={isDraft ? "secondary" : "default"}>{toTitleCase(judgment.status)}</Badge>
+          <Badge variant={statusBadgeVariant(judgment.status)}>
+            {toTitleCase(judgment.status)}
+          </Badge>
           {categoryName && <Badge variant="outline">{categoryName}</Badge>}
           <BookmarkToggle entityType="judgment" entityId={judgment.id} />
           <Button size="sm" variant="outline" onClick={() => setNoteOpen(true)}>

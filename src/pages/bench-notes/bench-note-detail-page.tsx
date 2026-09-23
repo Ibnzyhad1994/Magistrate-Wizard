@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Trash2, FileDown } from "lucide-react";
 import type { JSONContent } from "@tiptap/react";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -151,9 +152,7 @@ export default function BenchNoteDetailPage() {
       />
       <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={note.status === "published" ? "default" : "secondary"}>
-            {toTitleCase(note.status)}
-          </Badge>
+          <Badge variant={statusBadgeVariant(note.status)}>{toTitleCase(note.status)}</Badge>
           <BookmarkToggle entityType="bench_note" entityId={note.id} />
           <Button
             size="sm"

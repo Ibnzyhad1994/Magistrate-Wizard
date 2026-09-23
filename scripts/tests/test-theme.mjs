@@ -509,5 +509,28 @@ const offlineBanner = readFileSync("src/components/layout/offline-sync-banner.ts
 check("idle warning action is the on-dark chip", idleWarning.includes('variant="onDark"'), true);
 check("offline sync action is the on-dark chip", offlineBanner.includes('variant="onDark"'), true);
 
+// Brand red is the one commit action. A status badge that paints a live
+// record red reads the same as a dismissed one, so live states come from
+// the shared status map and are never the `default` (brand red) badge.
+const liveStatusOnBrandRed = tsxFiles("src").filter((file) =>
+  /\b(active|approved|final|scheduled|in_progress):\s*"default"|<Badge[^>]*variant=\{[^}]*"default"|<Badge>/.test(
+    readFileSync(file, "utf8"),
+  ),
+);
+check("no status badge sends a live state to brand red", liveStatusOnBrandRed, []);
+const statusBadgeMap = readFileSync("src/components/common/status-badge-variant.ts", "utf8");
+check(
+  "shared status map keeps live states green and refusals red",
+  [
+    /active: "success"/.test(statusBadgeMap),
+    /approved: "success"/.test(statusBadgeMap),
+    /final: "success"/.test(statusBadgeMap),
+    /dismissed: "destructive"/.test(statusBadgeMap),
+    /rejected: "destructive"/.test(statusBadgeMap),
+    /"default"/.test(statusBadgeMap),
+  ],
+  [true, true, true, true, true, false],
+);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

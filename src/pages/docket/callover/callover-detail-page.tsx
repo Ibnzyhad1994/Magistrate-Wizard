@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { CheckCircle2, Gavel, ListPlus, Plus, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog } from "@/components/ui/alert-dialog";
@@ -102,9 +103,7 @@ export default function CalloverDetailPage() {
 
       <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={status === "completed" ? "outline" : "default"}>
-            {CALLOVER_STATUS_LABELS[status]}
-          </Badge>
+          <Badge variant={statusBadgeVariant(status)}>{CALLOVER_STATUS_LABELS[status]}</Badge>
 
           {editable && (
             <>
