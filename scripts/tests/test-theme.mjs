@@ -13,6 +13,8 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { badgeVariants } from "@/components/ui/badge-variants";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -305,22 +307,35 @@ check(
   true,
 );
 check("Input has a 44px touch target on phones", inputSrc.includes("min-h-11"), true);
-const FOCUS_RING = "focus-visible:ring-2 focus-visible:ring-ring";
-const focusPrimitives = [
-  "src/components/ui/button-variants.ts",
-  "src/components/ui/input.tsx",
-  "src/components/ui/textarea.tsx",
-  "src/components/ui/select.tsx",
-  "src/components/ui/checkbox.tsx",
-  "src/components/ui/tabs.tsx",
+// Buttons and badges share the one focus ring in every variant: 2px of
+// --ring with no offset (an offset paints Tailwind's default white halo).
+const BUTTON_VARIANTS = [
+  "default",
+  "destructive",
+  "outline",
+  "onDark",
+  "secondary",
+  "ghost",
+  "link",
+  "play",
+  "more",
 ];
+const BADGE_VARIANTS = ["default", "secondary", "destructive", "outline"];
+const focusClasses = (classes) =>
+  classes
+    .split(/\s+/)
+    .filter((c) => /^focus-visible:ring|ring-offset/.test(c))
+    .sort();
 check(
-  "controls share one focus ring: 2px, --ring, no offset",
-  focusPrimitives.filter((file) => {
-    // TabsContent is a panel, not a control; only the trigger is checked.
-    const src = readFileSync(file, "utf8").split("const TabsContent")[0];
-    return !src.includes(FOCUS_RING) || /focus-visible:ring-(1|offset)\b|ring-offset-/.test(src);
-  }),
+  "every Button and Badge variant draws the one focus ring",
+  [
+    ...BUTTON_VARIANTS.map((variant) => buttonVariants({ variant })),
+    ...BADGE_VARIANTS.map((variant) => badgeVariants({ variant })),
+  ].filter(
+    (classes) =>
+      JSON.stringify(focusClasses(classes)) !==
+      JSON.stringify(["focus-visible:ring-2", "focus-visible:ring-ring"]),
+  ),
   [],
 );
 check("rich-text links use the --link token", css.includes("@apply text-link"), true);
