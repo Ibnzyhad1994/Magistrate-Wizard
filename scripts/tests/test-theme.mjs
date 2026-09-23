@@ -305,6 +305,24 @@ check(
   true,
 );
 check("Input has a 44px touch target on phones", inputSrc.includes("min-h-11"), true);
+const FOCUS_RING = "focus-visible:ring-2 focus-visible:ring-ring";
+const focusPrimitives = [
+  "src/components/ui/button-variants.ts",
+  "src/components/ui/input.tsx",
+  "src/components/ui/textarea.tsx",
+  "src/components/ui/select.tsx",
+  "src/components/ui/checkbox.tsx",
+  "src/components/ui/tabs.tsx",
+];
+check(
+  "controls share one focus ring: 2px, --ring, no offset",
+  focusPrimitives.filter((file) => {
+    // TabsContent is a panel, not a control; only the trigger is checked.
+    const src = readFileSync(file, "utf8").split("const TabsContent")[0];
+    return !src.includes(FOCUS_RING) || /focus-visible:ring-(1|offset)\b|ring-offset-/.test(src);
+  }),
+  [],
+);
 check("rich-text links use the --link token", css.includes("@apply text-link"), true);
 check("every palette has keyboard focus visible", /^\s*:focus-visible\s*\{/m.test(css), true);
 check(
