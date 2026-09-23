@@ -1,0 +1,32 @@
+settings dark 1440x900 | h3 "Display" | 400 16px/24px normal
+settings dark 1440x900 | h3 "Help" | 400 16px/24px normal
+settings dark 1440x900 | h3 "Court Assignments" | 400 16px/24px normal
+settings dark 1440x900 | h3 "Google Calendar" | 400 16px/24px normal
+settings dark 1440x900 | h3 "Sound cues" | 400 16px/24px normal
+settings dark 1440x900 | h3 "About" | 400 16px/24px normal
+settings light 1440x900 | h3 "Display" | 400 16px/24px normal
+settings light 1440x900 | h3 "Help" | 400 16px/24px normal
+settings light 1440x900 | h3 "Court Assignments" | 400 16px/24px normal
+settings light 1440x900 | h3 "Google Calendar" | 400 16px/24px normal
+settings light 1440x900 | h3 "Sound cues" | 400 16px/24px normal
+settings light 1440x900 | h3 "About" | 400 16px/24px normal
+judgment dark 1440x900 | h3 "Content" | 400 16px/24px normal
+judgment dark 1440x900 | h3 "Details" | 400 16px/24px normal
+judgment dark 1440x900 | h3 "Classification" | 400 16px/24px normal
+judgment dark 1440x900 | h3 "Version history" | 400 16px/24px normal
+judgment dark 1440x900 | h3 "Linked Docket Matters" | 400 16px/24px normal
+judgment dark 1440x900 | h3 "My Quick Codes" | 400 16px/24px normal
+judgment light 1440x900 | h3 "Content" | 400 16px/24px normal
+judgment light 1440x900 | h3 "Details" | 400 16px/24px normal
+judgment light 1440x900 | h3 "Classification" | 400 16px/24px normal
+judgment light 1440x900 | h3 "Version history" | 400 16px/24px normal
+judgment light 1440x900 | h3 "Linked Docket Matters" | 400 16px/24px normal
+judgment light 1440x900 | h3 "My Quick Codes" | 400 16px/24px normal
+admin-operations dark 1440x900 | h3 "example_flag_one" | 400 16px/24px normal
+admin-operations dark 1440x900 | h3 "example_flag_two" | 400 16px/24px normal
+settings dark 390x844 | h3 "Display" | 400 16px/24px normal
+settings dark 390x844 | h3 "Help" | 400 16px/24px normal
+settings dark 390x844 | h3 "Court Assignments" | 400 16px/24px normal
+settings dark 390x844 | h3 "Google Calendar" | 400 16px/24px normal
+settings dark 390x844 | h3 "Sound cues" | 400 16px/24px normal
+settings dark 390x844 | h3 "About" | 400 16px/24px normal

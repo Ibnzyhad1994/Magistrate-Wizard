@@ -1,0 +1,32 @@
+settings dark 1440x900 | h3 "Display" | 600 16px/22.4px -0.08px
+settings dark 1440x900 | h3 "Help" | 600 16px/22.4px -0.08px
+settings dark 1440x900 | h3 "Court Assignments" | 600 16px/22.4px -0.08px
+settings dark 1440x900 | h3 "Google Calendar" | 600 16px/22.4px -0.08px
+settings dark 1440x900 | h3 "Sound cues" | 600 16px/22.4px -0.08px
+settings dark 1440x900 | h3 "About" | 600 16px/22.4px -0.08px
+settings light 1440x900 | h3 "Display" | 600 16px/22.4px -0.08px
+settings light 1440x900 | h3 "Help" | 600 16px/22.4px -0.08px
+settings light 1440x900 | h3 "Court Assignments" | 600 16px/22.4px -0.08px
+settings light 1440x900 | h3 "Google Calendar" | 600 16px/22.4px -0.08px
+settings light 1440x900 | h3 "Sound cues" | 600 16px/22.4px -0.08px
+settings light 1440x900 | h3 "About" | 600 16px/22.4px -0.08px
+judgment dark 1440x900 | h3 "Content" | 600 16px/22.4px -0.08px
+judgment dark 1440x900 | h3 "Details" | 600 16px/22.4px -0.08px
+judgment dark 1440x900 | h3 "Classification" | 600 16px/22.4px -0.08px
+judgment dark 1440x900 | h3 "Version history" | 600 16px/22.4px -0.08px
+judgment dark 1440x900 | h3 "Linked Docket Matters" | 600 16px/22.4px -0.08px
+judgment dark 1440x900 | h3 "My Quick Codes" | 600 16px/22.4px -0.08px
+judgment light 1440x900 | h3 "Content" | 600 16px/22.4px -0.08px
+judgment light 1440x900 | h3 "Details" | 600 16px/22.4px -0.08px
+judgment light 1440x900 | h3 "Classification" | 600 16px/22.4px -0.08px
+judgment light 1440x900 | h3 "Version history" | 600 16px/22.4px -0.08px
+judgment light 1440x900 | h3 "Linked Docket Matters" | 600 16px/22.4px -0.08px
+judgment light 1440x900 | h3 "My Quick Codes" | 600 16px/22.4px -0.08px
+admin-operations dark 1440x900 | h3 "example_flag_one" | 600 16px/22.4px -0.08px
+admin-operations dark 1440x900 | h3 "example_flag_two" | 600 16px/22.4px -0.08px
+settings dark 390x844 | h3 "Display" | 600 16px/22.4px -0.08px
+settings dark 390x844 | h3 "Help" | 600 16px/22.4px -0.08px
+settings dark 390x844 | h3 "Court Assignments" | 600 16px/22.4px -0.08px
+settings dark 390x844 | h3 "Google Calendar" | 600 16px/22.4px -0.08px
+settings dark 390x844 | h3 "Sound cues" | 600 16px/22.4px -0.08px
+settings dark 390x844 | h3 "About" | 600 16px/22.4px -0.08px
