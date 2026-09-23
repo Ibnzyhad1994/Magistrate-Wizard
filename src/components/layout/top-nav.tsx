@@ -137,7 +137,7 @@ export function TopNav() {
       <Link
         to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.home}
         className={cn(
-          "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           hideActionCluster ? "shrink-0" : "min-w-0 shrink",
         )}
       >
@@ -178,7 +178,7 @@ export function TopNav() {
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                "rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 overlay
                   ? "text-primary-foreground/80 hover:text-primary-foreground"
                   : "text-foreground/80 hover:text-foreground",

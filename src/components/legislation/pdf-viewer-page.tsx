@@ -333,7 +333,7 @@ export function PdfViewerPage({
             key={`redact-${index}`}
             type="button"
             data-redaction-box
-            className="pointer-events-none absolute bg-black outline outline-1 outline-offset-1 outline-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="pointer-events-none absolute bg-black outline outline-1 outline-offset-1 outline-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             style={style}
             aria-label={`Redaction box ${i + 1} of ${redactionBoxes.length} on page ${pageNumber}`}
             aria-describedby={instructionsId}
