@@ -201,7 +201,7 @@ check(
 // --- contrast ratios (WCAG 2.2 AA) -----------------------------------------
 // Computed from the real token values, per palette, so a "small tweak" to
 // a colour cannot quietly drop a pair below the line. 4.5:1 for text pairs,
-// 3:1 for the input border (non-text UI boundary, 1.4.11).
+// 3:1 for the input border and the focus ring (non-text UI, 1.4.11).
 
 function hslToRgb(hsl) {
   const [h, s, l] = hsl.split(/\s+/).map((v) => parseFloat(v));
@@ -235,6 +235,8 @@ const CONTRAST_PAIRS = [
   ["muted-foreground", "card", 4.5],
   ["input", "background", 3],
   ["input", "card", 3],
+  ["ring", "background", 3],
+  ["ring", "card", 3],
   ["primary-foreground", "primary", 4.5],
   ["destructive-foreground", "destructive", 4.5],
   ["link", "background", 4.5],
@@ -244,14 +246,16 @@ const CONTRAST_PAIRS = [
   ["notice-action", "background", 4.5],
 ];
 
-for (const [label, block] of [
+const PALETTES = [
   ["light", rootBlock],
   ["dark", darkBlock],
   ["high-contrast light", hcLightBlock],
   ["high-contrast dark", hcDarkBlock],
   ["colourblind-safe light", cbLightBlock],
   ["colourblind-safe dark", cbDarkBlock],
-]) {
+];
+
+for (const [label, block] of PALETTES) {
   const failing = CONTRAST_PAIRS.map(([fg, bg, min]) => {
     const a = tokenValue(block, fg);
     const b = tokenValue(block, bg);
@@ -262,8 +266,19 @@ for (const [label, block] of [
   check(`${label}: every token pair meets its contrast minimum`, failing, []);
 }
 
-// The brand red doubles as the input ring, and --link must be at least as
-// legible as the primary it replaces for body links in the dark palettes.
+// A focus ring in the error colour makes every focused field look invalid.
+for (const [label, block] of PALETTES) {
+  check(
+    `${label}: the focus ring is neither the destructive nor the primary colour`,
+    [tokenValue(block, "destructive"), tokenValue(block, "primary")].includes(
+      tokenValue(block, "ring"),
+    ),
+    false,
+  );
+}
+
+// --link must be at least as legible as the primary it replaces for body
+// links in the dark palettes.
 check(
   "dark link is more legible than dark primary as text",
   contrast(tokenValue(darkBlock, "link"), tokenValue(darkBlock, "background")) >
