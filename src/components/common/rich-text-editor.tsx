@@ -94,7 +94,7 @@ export function RichTextEditor({
         "aria-multiline": "true",
         ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
         ...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {}),
-        class: cn("richtext-content max-w-none focus:outline-none min-h-[200px] px-3 py-2"),
+        class: cn("richtext-content focus:outline-none min-h-[200px] px-3 py-2"),
       },
     },
   });
@@ -134,6 +134,8 @@ export function RichTextEditor({
     <div
       className={cn(
         "rounded-md border border-input bg-surface-2/60 transition-shadow focus-within:ring-1 focus-within:ring-ring hc:bg-transparent",
+        // Read-only text sits in a reading column; the editor keeps its width.
+        !editable && "max-w-measure",
         className,
       )}
     >

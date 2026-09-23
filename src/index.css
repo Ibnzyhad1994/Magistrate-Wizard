@@ -563,7 +563,7 @@
 
 @layer components {
   .richtext-content {
-    @apply text-sm leading-relaxed text-foreground;
+    @apply text-base leading-relaxed text-foreground;
   }
 
   .richtext-content > * + * {

@@ -344,13 +344,17 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
           {caseLaw.summary && (
             <div>
               <p className="mb-1 font-medium text-foreground">Summary</p>
-              <p className="whitespace-pre-wrap text-muted-foreground">{caseLaw.summary}</p>
+              <p className="max-w-measure whitespace-pre-wrap text-base leading-relaxed text-muted-foreground">
+                {caseLaw.summary}
+              </p>
             </div>
           )}
           {caseLaw.full_text && (
             <div>
               <p className="mb-1 font-medium text-foreground">Full text</p>
-              <p className="whitespace-pre-wrap text-muted-foreground">{caseLaw.full_text}</p>
+              <p className="max-w-measure whitespace-pre-wrap text-base leading-relaxed text-muted-foreground">
+                {caseLaw.full_text}
+              </p>
             </div>
           )}
           {!caseLaw.summary && !caseLaw.full_text && (

@@ -116,6 +116,12 @@ const config: Config = {
         md: "var(--radius)",
         sm: "calc(var(--radius) - 2px)",
       },
+      // Reading measure for long legal text (judgments, case law): 65-75
+      // characters per line at body size. Inter's `ch` (the width of "0")
+      // is wider than its average letter, so 56ch reads as about 70.
+      maxWidth: {
+        measure: "56ch",
+      },
       // Elevation is a per-palette shadow string (none in high contrast,
       // where edges are drawn by --border instead).
       boxShadow: {
