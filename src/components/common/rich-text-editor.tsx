@@ -133,9 +133,11 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "rounded-md border border-input bg-surface-2/60 transition-shadow focus-within:ring-1 focus-within:ring-ring hc:bg-transparent",
-        // Read-only text sits in a reading column; the editor keeps its width.
-        !editable && "max-w-measure",
+        // Read-only text sits unframed on its card in a reading column; the
+        // editor keeps its frame and full width.
+        editable
+          ? "rounded-md border border-input bg-surface-2/60 transition-shadow focus-within:ring-1 focus-within:ring-ring hc:bg-transparent"
+          : "max-w-measure",
         className,
       )}
     >
