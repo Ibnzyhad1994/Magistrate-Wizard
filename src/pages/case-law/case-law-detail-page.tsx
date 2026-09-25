@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ExternalLink, Trash2, StickyNote, Pencil, Gavel, Link2, Unlink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -574,13 +575,6 @@ function TagsCard({ caseLawId }: { caseLawId: string }) {
   );
 }
 
-const MATTER_STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  active: "default",
-  stayed: "secondary",
-  completed: "outline",
-  archived: "outline",
-};
-
 /**
  * "Link to Docket Matter" — the Case-Law-initiated side of the existing
  * `docket_matter_case_law` association (0030). Available to any caller
@@ -642,7 +636,7 @@ function LinkedMattersCard({ caseLawId }: { caseLawId: string }) {
                       {link.docket_matters.case_number}
                       {link.docket_matters.status && (
                         <Badge
-                          variant={MATTER_STATUS_VARIANT[link.docket_matters.status] ?? "outline"}
+                          variant={statusBadgeVariant(link.docket_matters.status)}
                           className="text-[10px]"
                         >
                           {toTitleCase(link.docket_matters.status)}

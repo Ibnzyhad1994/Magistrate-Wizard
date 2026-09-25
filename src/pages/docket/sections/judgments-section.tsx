@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Scale, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { HintTooltip } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,7 +88,7 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={judgment.status === "final" ? "default" : "secondary"}>
+                  <Badge variant={statusBadgeVariant(judgment.status)}>
                     {toTitleCase(judgment.status)}
                   </Badge>
                   {canManage && (

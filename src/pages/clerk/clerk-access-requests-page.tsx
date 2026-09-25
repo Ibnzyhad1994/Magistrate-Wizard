@@ -172,7 +172,7 @@ export default function ClerkAccessRequestsPage() {
                         <p className="mt-1 text-xs text-muted-foreground">{r.rejection_reason}</p>
                       )}
                     </div>
-                    <Badge variant={r.status === "approved" ? "default" : "secondary"}>
+                    <Badge variant={r.status === "approved" ? "success" : "secondary"}>
                       {r.status === "approved"
                         ? "Approved"
                         : r.status === "rejected"

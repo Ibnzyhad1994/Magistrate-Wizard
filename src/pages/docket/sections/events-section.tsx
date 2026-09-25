@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CalendarClock, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
@@ -44,14 +45,6 @@ function EventCategoryChip({
     />
   );
 }
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  scheduled: "default",
-  completed: "secondary",
-  cancelled: "outline",
-  entered_in_error: "destructive",
-  past: "secondary",
-};
 
 interface EventsSectionProps {
   matterId: string;
@@ -147,7 +140,7 @@ export function EventsSection({ matterId }: EventsSectionProps) {
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {pending ? <Badge variant="outline">On this device</Badge> : null}
-                    <Badge variant={STATUS_VARIANT[event.event_status] ?? "outline"}>
+                    <Badge variant={statusBadgeVariant(event.event_status)}>
                       {toTitleCase(event.event_status)}
                     </Badge>
                   </div>

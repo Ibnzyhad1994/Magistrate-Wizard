@@ -136,7 +136,7 @@ export function RichTextEditor({
         // Read-only text sits unframed on its card in a reading column; the
         // editor keeps its frame and full width.
         editable
-          ? "rounded-md border border-input bg-surface-2/60 transition-shadow focus-within:ring-1 focus-within:ring-ring hc:bg-transparent"
+          ? "rounded-md border border-input bg-surface-2/60 transition-shadow focus-within:ring-2 focus-within:ring-ring hc:bg-transparent"
           : "max-w-measure",
         className,
       )}
