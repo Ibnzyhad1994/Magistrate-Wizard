@@ -23,7 +23,7 @@ import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 import { usePageTitle } from "@/hooks/use-page-title";
 
 const fieldClassName =
-  "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-primary";
+  "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring";
 
 const panelClassName = AUTH_PANEL_CLASS;
 const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";

@@ -4,6 +4,7 @@ import { Gavel, Landmark, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
@@ -164,7 +165,7 @@ export default function CalloverListPage() {
                   <span className="text-sm font-medium text-foreground">
                     {co.title || defaultCalloverTitle(co.callover_date)}
                   </span>
-                  <Badge variant={status === "completed" ? "outline" : "default"}>
+                  <Badge variant={statusBadgeVariant(status)}>
                     {CALLOVER_STATUS_LABELS[status]}
                   </Badge>
                 </div>

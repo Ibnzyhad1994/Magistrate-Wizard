@@ -333,7 +333,7 @@ export default function CourtAssignmentsPage() {
                           <Badge variant="outline">
                             {ROLE_LABELS[selectedProfile.role as UserRole] ?? selectedProfile.role}
                           </Badge>
-                          <Badge variant={selectedProfile.is_active ? "default" : "outline"}>
+                          <Badge variant={selectedProfile.is_active ? "success" : "outline"}>
                             {selectedProfile.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </>

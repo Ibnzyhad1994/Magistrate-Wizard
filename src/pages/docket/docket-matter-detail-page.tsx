@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom"
 import { toast } from "sonner";
 import { Pencil, Trash2, RotateCcw, StickyNote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,15 +33,6 @@ import { ROUTES } from "@/routes/paths";
 import { useBackNav } from "@/hooks/use-back-nav";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  active: "default",
-  stayed: "secondary",
-  completed: "outline",
-  archived: "outline",
-  // 0131: matches the board's Outcome cell (red for dismissed).
-  dismissed: "destructive",
-};
 
 const MATTER_TABS = [
   "overview",
@@ -182,9 +174,7 @@ export default function DocketMatterDetailPage() {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={STATUS_VARIANT[matter.status] ?? "outline"}>
-            {toTitleCase(matter.status)}
-          </Badge>
+          <Badge variant={statusBadgeVariant(matter.status)}>{toTitleCase(matter.status)}</Badge>
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
           <Button size="sm" variant="ghost" onClick={() => setNoteOpen(true)}>
             <StickyNote className="h-3.5 w-3.5" />

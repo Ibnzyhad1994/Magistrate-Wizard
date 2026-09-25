@@ -132,15 +132,17 @@ export function TitleCard({
           {artwork}
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/45 to-transparent" />
 
-          <span className="absolute right-2 top-2 text-[9px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">
-            {TONE_LABEL[tone]}
-          </span>
-
-          {badge && (
-            <span className="absolute left-2 top-2 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-              {badge}
+          <div className="absolute inset-x-2 top-2 flex flex-row-reverse flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">
+              {TONE_LABEL[tone]}
             </span>
-          )}
+
+            {badge && (
+              <span className="mr-auto shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                {badge}
+              </span>
+            )}
+          </div>
 
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-2">
             {eyebrow && (

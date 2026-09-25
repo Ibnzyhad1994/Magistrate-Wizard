@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Pencil, Pin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -211,7 +212,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
             ))}
           </Select>
         ) : (
-          <Badge>{toTitleCase(matter.status)}</Badge>
+          <Badge variant={statusBadgeVariant(matter.status)}>{toTitleCase(matter.status)}</Badge>
         )}
         <Badge variant="outline">{procedureStageLabel(stage)}</Badge>
         {protocol !== "civil_summons" && matter.custody_status !== "unset" && (

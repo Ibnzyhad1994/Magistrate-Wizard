@@ -54,6 +54,7 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Text colour comes from tokens: `text-foreground`, `text-muted-foreground`, `text-link`. Do not derive secondary text with opacity (`text-foreground/50`) — it bypasses the high-contrast palette and fails 4.5:1 in light mode below `/65`.
 - Control borders are `border-input` (≥3:1 in every palette); dividers and cards are `border-border`. Not `border-foreground/10`.
 - Status colours are registered tokens: `bg-notice-action`, `text-stage-progress`, `bg-capacity-full`, plus `warning` / `success` / `info` aliases. Never `bg-[hsl(var(--…))]`, never `amber-500`.
+- Status badges take their variant from `statusBadgeVariant` (`src/components/common/status-badge-variant.ts`): `success` (green) for a live or in-force record, `secondary` / `outline` for not yet or no longer live, `destructive` for refused, dismissed or in error. A status is never the `default` (red) badge; red belongs to the commit action.
 - Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards, posters and chips are `rounded-md`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
 - Sizes: inputs and buttons are 44px / 16px on phones and 36px / 14px from `lg` up; the primitives do this, do not override heights.
@@ -65,4 +66,6 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 ## Motion and focus
 
 - Never `outline-none` without a `focus-visible:ring-*` replacement; the global `:focus-visible` rule is the floor.
+- Focus colour is the `--ring` token (`ring-ring`): blue in every palette except high-contrast dark, which is yellow. It never equals `--destructive` or `--primary`, so a focused field cannot read as an error, and it clears 3:1 against both the canvas and the card.
+- Primitives draw focus as `focus-visible:ring-2 focus-visible:ring-ring` with no offset: one width, no gap, the same on every surface.
 - Every animation and transition is collapsed under `prefers-reduced-motion`; do not add `motion-safe:` variants by hand.
