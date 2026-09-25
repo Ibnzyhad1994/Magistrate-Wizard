@@ -568,7 +568,15 @@
 
 @layer components {
   .richtext-content {
-    @apply text-sm leading-relaxed text-foreground;
+    @apply text-base leading-relaxed text-foreground;
+  }
+
+  /* Read-only text drops the editor's inset and minimum height so it lines
+     up with the card's own content. The attribute selector outranks the
+     utilities set on the element, and ProseMirror updates the attribute on
+     lock and unlock. */
+  .richtext-content[contenteditable="false"] {
+    @apply min-h-0 p-0;
   }
 
   .richtext-content > * + * {
