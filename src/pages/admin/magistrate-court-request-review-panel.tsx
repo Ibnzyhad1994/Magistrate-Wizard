@@ -250,7 +250,7 @@ export function MagistrateCourtRequestReviewPanel() {
                       </p>
                     )}
                   </div>
-                  <Badge variant={r.status === "approved" ? "default" : "secondary"}>
+                  <Badge variant={r.status === "approved" ? "success" : "secondary"}>
                     {courtRequestStatusLabel(r.status)}
                   </Badge>
                 </CardContent>

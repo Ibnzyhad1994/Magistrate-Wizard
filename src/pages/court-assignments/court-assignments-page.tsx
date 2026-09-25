@@ -3,6 +3,7 @@ import { Landmark, ShieldAlert, X } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,14 +29,6 @@ import {
 } from "@/lib/court-assignment-roster";
 import { OCCUPIED_COURT_EXCEPTION_LABEL } from "@/lib/occupied-court-exception";
 import { formatDate } from "@/lib/utils";
-
-const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  approved: "default",
-  rejected: "destructive",
-  cancelled: "secondary",
-  expired: "secondary",
-};
 
 const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
   regular: "Primary",
@@ -233,7 +226,9 @@ export default function CourtAssignmentsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
+                  <Badge variant={statusBadgeVariant(r.status)}>
+                    {courtRequestStatusLabel(r.status)}
+                  </Badge>
                   <Button
                     size="icon"
                     variant="ghost"
@@ -263,7 +258,9 @@ export default function CourtAssignmentsPage() {
                       : formatDate(r.requested_at)}
                   </p>
                 </div>
-                <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
+                <Badge variant={statusBadgeVariant(r.status)}>
+                  {courtRequestStatusLabel(r.status)}
+                </Badge>
               </CardContent>
             </Card>
           ))}
