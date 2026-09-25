@@ -7,7 +7,7 @@ import {
 } from "@/hooks/docket/use-docket-capacity";
 import { CapacityIndicator } from "@/pages/docket/capacity-indicator";
 import { HintTooltip } from "@/components/ui/tooltip";
-import { getCapacityStyle } from "@/lib/docket-capacity";
+import { getCapacityStyle, type CapacityBand } from "@/lib/docket-capacity";
 import {
   daysOfWeek,
   weekOfLabel,
@@ -29,10 +29,18 @@ type CapacityView = (typeof CAPACITY_VIEWS)[number]["id"];
 
 const dayTotalHint = (count: number) => `${count} matter${count === 1 ? "" : "s"} listed that day`;
 
-const loadPillClass = (onDarkTile: boolean) =>
-  `inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-semibold leading-none ${
-    onDarkTile ? "bg-white/25" : "bg-neutral-900/15"
-  }`;
+// The pill tints its tile with the tile's own ink, so it stays legible on
+// every band; each palette's capacity tokens are tuned to keep 4.5:1 under it.
+const LOAD_PILL_TINT: Record<CapacityBand, string> = {
+  not_set: "bg-neutral-900/15",
+  green: "bg-capacity-available-foreground/15",
+  amber: "bg-capacity-filling-foreground/15",
+  full: "bg-capacity-full-foreground/15",
+  over_capacity: "bg-capacity-over-foreground/15",
+};
+
+const loadPillClass = (band: CapacityBand) =>
+  `inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-semibold leading-none ${LOAD_PILL_TINT[band]}`;
 
 function WeekdayRow() {
   return (
@@ -117,7 +125,6 @@ function DayTile({
   const style = worst
     ? getCapacityStyle(worst.scheduled_count, worst.daily_capacity)
     : getCapacityStyle(0, null);
-  const onDarkTile = style.textClass === "text-white";
   const totalHint = dayTotalHint(totalMatters);
   const capacityHint = worst
     ? `Capacity: ${worst.category_name} ${worst.scheduled_count} of ${worst.daily_capacity}`
@@ -138,7 +145,7 @@ function DayTile({
       style={{ backgroundColor: style.bg }}
     >
       <span className="text-sm font-bold leading-none">{day}</span>
-      <span className={loadPillClass(onDarkTile)}>
+      <span className={loadPillClass(style.band)}>
         {totalMatters}
         {size === "day" ? ` matter${totalMatters === 1 ? "" : "s"}` : ""}
       </span>
