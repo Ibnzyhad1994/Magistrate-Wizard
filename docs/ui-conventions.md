@@ -66,4 +66,6 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 ## Motion and focus
 
 - Never `outline-none` without a `focus-visible:ring-*` replacement; the global `:focus-visible` rule is the floor.
+- Focus colour is the `--ring` token (`ring-ring`): blue in every palette except high-contrast dark, which is yellow. It never equals `--destructive` or `--primary`, so a focused field cannot read as an error, and it clears 3:1 against both the canvas and the card.
+- Primitives draw focus as `focus-visible:ring-2 focus-visible:ring-ring` with no offset: one width, no gap, the same on every surface.
 - Every animation and transition is collapsed under `prefers-reduced-motion`; do not add `motion-safe:` variants by hand.

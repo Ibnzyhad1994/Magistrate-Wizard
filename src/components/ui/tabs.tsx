@@ -83,7 +83,7 @@ const TabsTrigger = React.forwardRef<
       onClick={handleClick}
       onFocus={handleFocus}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex shrink-0 items-center justify-center whitespace-nowrap text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         variant === "underline"
           ? // -mb-px drops the trigger's 2px rule onto the list's own 1px
             // border so the active rule covers it rather than stacking.
@@ -104,7 +104,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       className,
     )}
     {...props}
