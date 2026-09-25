@@ -12,7 +12,7 @@ export default function UnauthorizedPage() {
       <header className="relative z-10 px-6 py-5 sm:px-12 sm:py-6">
         <Link
           to={ROUTES.home}
-          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <AppLogo size="lg" />
         </Link>

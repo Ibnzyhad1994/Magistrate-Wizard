@@ -764,10 +764,10 @@ export default function LegalLibraryAdminPage() {
 // Sources
 // ---------------------------------------------------------------------------
 
-const SOURCE_STATUS_VARIANT: Record<string, "outline" | "default" | "secondary" | "destructive"> = {
+const SOURCE_STATUS_VARIANT: Record<string, "outline" | "success" | "secondary" | "destructive"> = {
   proposed: "outline",
   testing: "secondary",
-  approved: "default",
+  approved: "success",
   disabled: "outline",
   failed: "destructive",
 };

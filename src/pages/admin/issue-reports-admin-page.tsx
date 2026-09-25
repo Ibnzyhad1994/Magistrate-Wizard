@@ -89,7 +89,7 @@ export default function IssueReportsAdminPage() {
                     )}
                     <p className="font-medium text-foreground">{r.title}</p>
                   </div>
-                  <Badge variant={r.status === "open" ? "default" : "secondary"}>
+                  <Badge variant={r.status === "open" ? "outline" : "secondary"}>
                     {STATUS_LABELS[r.status]}
                   </Badge>
                 </div>

@@ -13,6 +13,8 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { badgeVariants } from "@/components/ui/badge-variants";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -205,7 +207,7 @@ check(
 // --- contrast ratios (WCAG 2.2 AA) -----------------------------------------
 // Computed from the real token values, per palette, so a "small tweak" to
 // a colour cannot quietly drop a pair below the line. 4.5:1 for text pairs,
-// 3:1 for the input border (non-text UI boundary, 1.4.11).
+// 3:1 for the input border and the focus ring (non-text UI, 1.4.11).
 
 function hslToRgb(hsl) {
   const [h, s, l] = hsl.split(/\s+/).map((v) => parseFloat(v));
@@ -240,6 +242,8 @@ const CONTRAST_PAIRS = [
   ["muted-foreground", "card", 4.5],
   ["input", "background", 3],
   ["input", "card", 3],
+  ["ring", "background", 3],
+  ["ring", "card", 3],
   ["primary-foreground", "primary", 4.5],
   ["destructive-foreground", "destructive", 4.5],
   ["link", "background", 4.5],
@@ -254,14 +258,16 @@ const CONTRAST_PAIRS = [
   ["capacity-over-foreground", "capacity-over", 4.5],
 ];
 
-for (const [label, block] of [
+const PALETTES = [
   ["light", rootBlock],
   ["dark", darkBlock],
   ["high-contrast light", hcLightBlock],
   ["high-contrast dark", hcDarkBlock],
   ["colourblind-safe light", cbLightBlock],
   ["colourblind-safe dark", cbDarkBlock],
-]) {
+];
+
+for (const [label, block] of PALETTES) {
   const failing = CONTRAST_PAIRS.map(([fg, bg, min]) => {
     const a = tokenValue(block, fg);
     const b = tokenValue(block, bg);
@@ -293,8 +299,19 @@ for (const [label, block] of [
   );
 }
 
-// The brand red doubles as the input ring, and --link must be at least as
-// legible as the primary it replaces for body links in the dark palettes.
+// A focus ring in the error colour makes every focused field look invalid.
+for (const [label, block] of PALETTES) {
+  check(
+    `${label}: the focus ring is neither the destructive nor the primary colour`,
+    [tokenValue(block, "destructive"), tokenValue(block, "primary")].includes(
+      tokenValue(block, "ring"),
+    ),
+    false,
+  );
+}
+
+// --link must be at least as legible as the primary it replaces for body
+// links in the dark palettes.
 check(
   "dark link is more legible than dark primary as text",
   contrast(tokenValue(darkBlock, "link"), tokenValue(darkBlock, "background")) >
@@ -321,6 +338,37 @@ check(
   true,
 );
 check("Input has a 44px touch target on phones", inputSrc.includes("min-h-11"), true);
+// Buttons and badges share the one focus ring in every variant: 2px of
+// --ring with no offset (an offset paints Tailwind's default white halo).
+const BUTTON_VARIANTS = [
+  "default",
+  "destructive",
+  "outline",
+  "onDark",
+  "secondary",
+  "ghost",
+  "link",
+  "play",
+  "more",
+];
+const BADGE_VARIANTS = ["default", "secondary", "destructive", "outline"];
+const focusClasses = (classes) =>
+  classes
+    .split(/\s+/)
+    .filter((c) => /^focus-visible:ring|ring-offset/.test(c))
+    .sort();
+check(
+  "every Button and Badge variant draws the one focus ring",
+  [
+    ...BUTTON_VARIANTS.map((variant) => buttonVariants({ variant })),
+    ...BADGE_VARIANTS.map((variant) => badgeVariants({ variant })),
+  ].filter(
+    (classes) =>
+      JSON.stringify(focusClasses(classes)) !==
+      JSON.stringify(["focus-visible:ring-2", "focus-visible:ring-ring"]),
+  ),
+  [],
+);
 check("rich-text links use the --link token", css.includes("@apply text-link"), true);
 check("every palette has keyboard focus visible", /^\s*:focus-visible\s*\{/m.test(css), true);
 check(
@@ -518,6 +566,11 @@ check(
   titleCard.includes("text-primary-foreground"),
   true,
 );
+check(
+  "poster flag and type label share one row, not two colliding corners",
+  titleCard.includes("absolute left-2 top-2") || titleCard.includes("absolute right-2 top-2"),
+  false,
+);
 check("calendar out-of-month cells are not a black wash", calendar.includes("bg-black/20"), false);
 check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);
 check("header search field uses canvas tokens", navSearch.includes("bg-secondary"), true);
@@ -534,6 +587,29 @@ const idleWarning = readFileSync("src/components/auth/session-idle-warning.tsx",
 const offlineBanner = readFileSync("src/components/layout/offline-sync-banner.tsx", "utf8");
 check("idle warning action is the on-dark chip", idleWarning.includes('variant="onDark"'), true);
 check("offline sync action is the on-dark chip", offlineBanner.includes('variant="onDark"'), true);
+
+// Brand red is the one commit action. A status badge that paints a live
+// record red reads the same as a dismissed one, so live states come from
+// the shared status map and are never the `default` (brand red) badge.
+const liveStatusOnBrandRed = tsxFiles("src").filter((file) =>
+  /\b(active|approved|final|scheduled|in_progress):\s*"default"|<Badge[^>]*variant=\{[^}]*"default"|<Badge>/.test(
+    readFileSync(file, "utf8"),
+  ),
+);
+check("no status badge sends a live state to brand red", liveStatusOnBrandRed, []);
+const statusBadgeMap = readFileSync("src/components/common/status-badge-variant.ts", "utf8");
+check(
+  "shared status map keeps live states green and refusals red",
+  [
+    /active: "success"/.test(statusBadgeMap),
+    /approved: "success"/.test(statusBadgeMap),
+    /final: "success"/.test(statusBadgeMap),
+    /dismissed: "destructive"/.test(statusBadgeMap),
+    /rejected: "destructive"/.test(statusBadgeMap),
+    /"default"/.test(statusBadgeMap),
+  ],
+  [true, true, true, true, true, false],
+);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

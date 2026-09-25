@@ -63,7 +63,9 @@
        both the canvas and a white card. */
     --border: 40 10% 85%;
     --input: 40 8% 54%;
-    --ring: 357 80% 42%;
+    /* Focus is blue, never the brand red: a red ring on a field reads as
+       a validation error. Clears 3:1 against the canvas and the card. */
+    --ring: 214 90% 36%;
     --link: 357 80% 42%;
 
     --brass: 42 60% 34%;
@@ -156,7 +158,7 @@
 
     --border: 0 0% 18%;
     --input: 0 0% 42%;
-    --ring: 357 92% 47%;
+    --ring: 214 90% 56%;
     /* Brand red is 3.9:1 on the canvas — fine for a button fill, not for
        body links. Links get a lifted red that clears 4.5:1. */
     --link: 357 92% 62%;
@@ -245,7 +247,7 @@
 
     --border: 0 0% 0%;
     --input: 0 0% 0%;
-    --ring: 357 100% 32%;
+    --ring: 214 100% 26%;
     --link: 357 100% 32%;
 
     --brass: 42 100% 22%;
@@ -403,7 +405,9 @@
 
     --border: 40 10% 85%;
     --input: 40 8% 54%;
-    --ring: 357 80% 42%;
+    /* Okabe–Ito blue: apart from the orange destructive and the red
+       commit action for every kind of colour vision. */
+    --ring: 202 100% 35%;
     --link: 357 80% 42%;
 
     --brass: 41 100% 32%;
@@ -480,7 +484,8 @@
 
     --border: 0 0% 18%;
     --input: 0 0% 42%;
-    --ring: 357 92% 47%;
+    /* Okabe–Ito sky blue. */
+    --ring: 202 77% 63%;
     --link: 357 92% 62%;
 
     --brass: 41 100% 55%;

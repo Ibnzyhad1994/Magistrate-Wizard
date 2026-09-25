@@ -3,6 +3,7 @@ import { Gavel, X } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,14 +25,6 @@ import {
   courtRequestStatusLabel,
 } from "@/lib/court-assignment-roster";
 import { formatDate } from "@/lib/utils";
-
-const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  approved: "default",
-  rejected: "destructive",
-  cancelled: "secondary",
-  expired: "secondary",
-};
 
 /**
  * Self-service surface for a clerk's own court-access requests. A clerk
@@ -159,7 +152,9 @@ export default function ClerkAccessPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={STATUS_TONE[r.status]}>{courtRequestStatusLabel(r.status)}</Badge>
+                  <Badge variant={statusBadgeVariant(r.status)}>
+                    {courtRequestStatusLabel(r.status)}
+                  </Badge>
                   {r.status === "pending" && (
                     <Button
                       size="icon"
