@@ -179,7 +179,7 @@ export default function ClerkAccessPage() {
       ) : (
         <Card className="max-w-lg border-border bg-foreground/5">
           <CardHeader>
-            <CardTitle className="text-base">Request court access</CardTitle>
+            <CardTitle>Request court access</CardTitle>
             <CardDescription>
               Your request goes to that court's assigned magistrate for approval.
             </CardDescription>

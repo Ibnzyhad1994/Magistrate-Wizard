@@ -177,7 +177,7 @@ export default function CourtAssignmentsPage() {
           <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
             <Card className="h-fit">
               <CardHeader>
-                <CardTitle className="text-base">Find a profile</CardTitle>
+                <CardTitle>Find a profile</CardTitle>
                 <CardDescription>Search by name or email.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -318,7 +318,7 @@ export default function CourtAssignmentsPage() {
                         </>
                       ) : (
                         <>
-                          <CardTitle className="truncate text-base">
+                          <CardTitle className="truncate">
                             {selectedProfile?.full_name ?? "(no name)"}
                           </CardTitle>
                           <CardDescription className="truncate">
@@ -372,7 +372,7 @@ export default function CourtAssignmentsPage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
+                    <CardTitle className="flex items-center gap-2">
                       <Landmark className="h-4 w-4" />
                       Current Court assignments
                     </CardTitle>
@@ -543,7 +543,7 @@ export default function CourtAssignmentsPage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">History</CardTitle>
+                    <CardTitle>History</CardTitle>
                     <CardDescription>
                       Ended Court assignments: preserved, never deleted.
                     </CardDescription>

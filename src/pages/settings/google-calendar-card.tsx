@@ -21,7 +21,7 @@ export function GoogleCalendarCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Google Calendar</CardTitle>
+        <CardTitle>Google Calendar</CardTitle>
         <CardDescription>
           Syncs hearing dates, times and places with a “Magistrate Wizard” calendar. The Docket
           stays the official record.
