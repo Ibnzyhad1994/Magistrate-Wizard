@@ -14,7 +14,7 @@ interface AppLogoProps {
 }
 
 /**
- * Brand lockup: crimson MW seal + Cinzel wordmark.
+ * Brand lockup: Sealing Wax MW seal + Cinzel wordmark.
  * The seal is the same artwork as `/favicon.svg`.
  */
 export function AppLogo({ size = "md", markOnly = false, className }: AppLogoProps) {
@@ -23,10 +23,10 @@ export function AppLogo({ size = "md", markOnly = false, className }: AppLogoPro
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)} aria-label={APP_NAME}>
       <img
-        src="/favicon.svg?v=2"
+        src="/favicon.svg?v=3"
         alt=""
         className={cn(
-          "shrink-0 rounded-[0.4rem] shadow-[0_1px_8px_rgba(229,9,20,0.35)]",
+          "shrink-0 rounded-[0.4rem] shadow-[0_1px_8px_hsl(var(--primary)/0.35)]",
           scale.mark,
         )}
         width={32}

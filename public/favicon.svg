@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Magistrate Wizard">
   <defs>
     <linearGradient id="mw-tile" x1="16" y1="0" x2="16" y2="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#F21824"/>
-      <stop offset="100%" stop-color="#B30710"/>
+      <stop offset="0%" stop-color="#CF4A2C"/>
+      <stop offset="100%" stop-color="#8C2A14"/>
     </linearGradient>
   </defs>
   <rect width="32" height="32" rx="7" fill="url(#mw-tile)"/>
