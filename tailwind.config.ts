@@ -155,6 +155,8 @@ const config: Config = {
         "out-expo": "cubic-bezier(0.22, 1, 0.36, 1)",
       },
       transitionDuration: {
+        // A still's hover surface step.
+        120: "120ms",
         250: "250ms",
         400: "400ms",
       },
@@ -226,6 +228,12 @@ const config: Config = {
     // rely on luminance and shadow to stand off the canvas.
     plugin(({ addVariant }) => {
       addVariant("hc", ".theme-high-contrast &");
+    }),
+    // `hover-fine:` — only where the primary pointer can hover precisely
+    // (a mouse or trackpad), so a tap on a touch screen never leaves a
+    // sticky hover state behind.
+    plugin(({ addVariant }) => {
+      addVariant("hover-fine", "@media (hover: hover) and (pointer: fine)");
     }),
   ],
 };

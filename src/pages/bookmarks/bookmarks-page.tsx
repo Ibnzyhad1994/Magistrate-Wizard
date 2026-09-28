@@ -92,7 +92,9 @@ export default function BookmarksPage() {
                 : TYPE_ROUTE[b.entity_type]?.(b.entity_id);
             const canOpen = Boolean(resolved && route);
             return (
-              <div key={b.id} className="relative w-full min-w-0">
+              // A one-cell grid, so the card fills the gallery cell and stills in
+              // a row share a height; the remove button sits over it.
+              <div key={b.id} className="relative grid w-full min-w-0">
                 <TitleCard
                   tone={TYPE_TONE[b.entity_type] ?? "bookmark"}
                   eyebrow={TYPE_LABELS[b.entity_type]}

@@ -696,6 +696,60 @@
     padding-right: 4vw;
   }
 
+  /* 16:9 stills. The column count per breakpoint comes from TILE_COLUMNS
+     (src/lib/browse-prefs.ts), set on the container by stillColumnVars as
+     --still-cols-<breakpoint>; these media queries are Tailwind's sm, md,
+     lg and 2xl and must match STILL_BREAKPOINTS (test-still-scale.mjs). */
+  .still-grid,
+  .still-rail {
+    --still-cols: var(--still-cols-base);
+    gap: var(--still-gap);
+  }
+  @media (min-width: 640px) {
+    .still-grid,
+    .still-rail {
+      --still-cols: var(--still-cols-sm);
+    }
+  }
+  @media (min-width: 768px) {
+    .still-grid,
+    .still-rail {
+      --still-cols: var(--still-cols-md);
+    }
+  }
+  @media (min-width: 1024px) {
+    .still-grid,
+    .still-rail {
+      --still-cols: var(--still-cols-lg);
+    }
+  }
+  @media (min-width: 1536px) {
+    .still-grid,
+    .still-rail {
+      --still-cols: var(--still-cols-2xl);
+    }
+  }
+
+  /* A gallery: equal columns; stills in one row share a height. */
+  .still-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--still-cols), minmax(0, 1fr));
+  }
+
+  /* A rail: each still is a share of the gallery column at that width, so
+     the next one peeks, and never narrower than the floor. Set as the flex
+     basis, which wins over the still's own w-full. */
+  .still-rail > * {
+    flex: 0 0
+      max(
+        var(--still-min),
+        calc(
+          (100% - (var(--still-cols) - 1) * var(--still-gap)) / var(--still-cols) *
+            var(--still-rail-share)
+        )
+      );
+  }
+
   /* Page-header wash: a tone (set as --band on the element) fading into
      the canvas. One radial from the top-left so the title sits in the
      colour and the toolbar below it is already on plain ground. */

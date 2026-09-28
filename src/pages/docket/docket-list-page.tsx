@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowsePage, BrowseHeader, TitleCard, TitleCardSkeletonGallery } from "@/components/browse";
+import {
+  BrowsePage,
+  BrowseHeader,
+  TitleCard,
+  TitleCardSkeletonGallery,
+  TitleGallery,
+} from "@/components/browse";
 import { useIsDesktop } from "@/hooks/use-media-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -466,7 +472,7 @@ export default function DocketListPage() {
             </div>
           )
         ) : (
-          <TitleCardSkeletonGallery />
+          <TitleCardSkeletonGallery layout="tiles" />
         )
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} className="border-0" />
@@ -600,7 +606,7 @@ export default function DocketListPage() {
               </div>
             )
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <TitleGallery layout="tiles">
               {data.map((matter, index) => (
                 <TitleCard
                   key={matter.id}
@@ -614,7 +620,7 @@ export default function DocketListPage() {
                   {...docketCover(matter)}
                 />
               ))}
-            </div>
+            </TitleGallery>
           )}
         </div>
       )}
