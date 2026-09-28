@@ -439,7 +439,7 @@ export default function DocketListPage() {
       <DocketStageFilters filters={filters} onChange={setFilters} />
 
       {bulkAllowed && selected.size > 0 && (
-        <div className="browse-bleed sticky bottom-0 z-30 mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-hairline bg-background/90 py-3 backdrop-blur-md hc:border-border hc:bg-background">
+        <div className="browse-bleed sticky bottom-0 z-30 mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-hairline bg-background/90 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 backdrop-blur-md hc:border-border hc:bg-background">
           <p className="text-sm text-foreground">
             {selected.size === 1 ? "1 file selected" : `${selected.size} files selected`}
           </p>
