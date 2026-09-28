@@ -28,7 +28,7 @@ Short rules for anything user-facing. Primitives live in `src/components/ui`; if
 
 ## Surfaces, elevation and type
 
-The visual language is Netflix's: a near-black canvas, content lifted off it by luminance and shadow rather than frames, one red commit action, tight-tracked display titles. The light palette is the same system on warm paper.
+The visual language is Netflix's: a near-black canvas, content lifted off it by luminance and shadow rather than frames, one Sealing Wax (warm red) commit action, tight-tracked display titles. The light palette is the same system on warm paper.
 
 - **Raise, don't frame.** A region that must stand off the canvas is `bg-card` (or `bg-surface-1`) with `shadow-elevation-1` and a `border-hairline` crease. Never `border-border` on a card or panel: that is the divider token. High contrast has no shadows, so add `hc:border-border` alongside the hairline — `Card` does this for you; use `Card` before reaching for a bespoke `div`.
 - **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. Selected segments are `bg-surface-1 shadow-elevation-1` inside a `bg-surface-2` track.
@@ -52,7 +52,9 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 
 ## Colour and tokens
 
-- Text colour comes from tokens: `text-foreground`, `text-muted-foreground`, `text-link`. Do not derive secondary text with opacity (`text-foreground/50`) — it bypasses the high-contrast palette and fails 4.5:1 in light mode below `/65`.
+- Text colour comes from tokens: `text-foreground`, `text-muted-foreground`, `text-link`, `text-destructive-text`. Do not derive secondary text with opacity (`text-foreground/50`) — it bypasses the high-contrast palette and fails 4.5:1 in light mode below `/65`.
+- **Accent and destructive are two reds.** The accent (`primary`) is Sealing Wax (`#BF3C22` in dark, `#A7321B` light, `#CC2200` high-contrast dark, `#8F1800` high-contrast light) and marks the commit button, the active rule, the wordmark and the seal. It is never Netflix's `#E50914`: `npm run test:theme` keeps every palette more than ΔE<sub>OK</sub> 0.05 from it. `destructive` is its own red (orange in the colourblind palettes) for fills: a destructive button, an invalid field's border. Red words and icons are `text-destructive-text`, never `text-destructive`: it clears 4.5:1 on the canvas, a card, a menu and a ghost button's hover in every palette, where the fill red is under 4.5:1 in dark.
+- The seal (`public/favicon.svg`) and its glows follow the accent: a glow is `hsl(var(--primary)/…)`, never a literal `rgba`. When the seal's artwork changes, bump the `?v=` on every reference (`index.html`, `app-logo.tsx`, `auth-splash.tsx`).
 - Control borders are `border-input` (≥3:1 in every palette); dividers and cards are `border-border`. Not `border-foreground/10`.
 - Status colours are registered tokens: `bg-notice-action`, `text-stage-progress`, `bg-capacity-full`, plus `warning` / `success` / `info` aliases. Never `bg-[hsl(var(--…))]`, never `amber-500`.
 - Text on a capacity fill uses the fill's paired ink, `text-capacity-full-foreground` and its siblings, never `text-white` or `text-neutral-900`: each pair is at least 4.5:1 in every palette, and `npm run test:theme` enforces it.
