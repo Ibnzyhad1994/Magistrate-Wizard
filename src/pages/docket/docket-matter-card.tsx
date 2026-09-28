@@ -127,7 +127,7 @@ export function DocketMatterCard({
       <div className="mb-3 flex items-start justify-between gap-3">
         <Link
           to={ROUTES.docketMatter(row.id)}
-          className="min-w-0 hover:underline"
+          className="min-h-11 min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
           <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
