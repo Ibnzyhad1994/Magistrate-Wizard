@@ -1,0 +1,18 @@
+# P2-3 phone captures: h1 computed values logged in the same run as each screenshot
+# build: after = fm/mw-d2-05-header bfaa80d (fresh vite build), before = origin/develop 1274e9b
+after--matter--dark--390x844.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 22px | line-height 24.2px | lines 4 | header 390px | back 135x44
+after--judgment--dark--390x844.png | /judgments/00000000-0000-4000-8000-0000000000a2 | font-size 22px | line-height 24.2px | lines 3 | header 365px | back 157x44
+after--caselaw--dark--390x844.png | /case-law/00000000-0000-4000-8000-0000000000c9 | font-size 22px | line-height 24.2px | lines 4 | header 390px | back 150x44
+after--matter-cover--dark--390x844.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 22px | line-height 24.2px | lines 4 | header 390px | back 135x44
+after--matter--dark--430x932.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 22px | line-height 24.2px | lines 3 | header 365px | back 135x44
+after--judgment--dark--430x932.png | /judgments/00000000-0000-4000-8000-0000000000a2 | font-size 22px | line-height 24.2px | lines 3 | header 365px | back 157x44
+after--caselaw--dark--430x932.png | /case-law/00000000-0000-4000-8000-0000000000c9 | font-size 22px | line-height 24.2px | lines 3 | header 365px | back 150x44
+after--matter-cover--dark--430x932.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 22px | line-height 24.2px | lines 4 | header 390px | back 135x44
+before--matter--dark--390x844.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 24px | line-height 32px | lines 4 | header 394px | back 159x44
+before--judgment--dark--390x844.png | /judgments/00000000-0000-4000-8000-0000000000a2 | font-size 24px | line-height 32px | lines 3 | header 362px | back 189x44
+before--caselaw--dark--390x844.png | /case-law/00000000-0000-4000-8000-0000000000c9 | font-size 24px | line-height 32px | lines 4 | header 394px | back 177x44
+before--matter-cover--dark--390x844.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 24px | line-height 32px | lines 4 | header 394px | back 159x44
+before--matter--dark--430x932.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 24px | line-height 32px | lines 3 | header 362px | back 159x44
+before--judgment--dark--430x932.png | /judgments/00000000-0000-4000-8000-0000000000a2 | font-size 24px | line-height 32px | lines 3 | header 362px | back 189x44
+before--caselaw--dark--430x932.png | /case-law/00000000-0000-4000-8000-0000000000c9 | font-size 24px | line-height 32px | lines 4 | header 394px | back 177x44
+before--matter-cover--dark--430x932.png | /docket/00000000-0000-4000-8000-0000000000f1 | font-size 24px | line-height 32px | lines 3 | header 362px | back 159x44
