@@ -53,7 +53,7 @@ export function DocketCloseoutPanel({
 
   return (
     <section className="mb-4 rounded-md border border-hairline bg-card shadow-elevation-1 hc:border-border">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
