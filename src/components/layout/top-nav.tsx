@@ -137,7 +137,9 @@ export function TopNav() {
       <Link
         to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.home}
         className={cn(
-          "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          // 44px tall below lg so the home link is a full touch target; lg
+          // keeps the plain link box it always had.
+          "flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:block lg:min-h-0",
           hideActionCluster ? "shrink-0" : "min-w-0 shrink",
         )}
       >

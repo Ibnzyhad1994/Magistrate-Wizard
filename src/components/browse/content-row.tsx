@@ -34,7 +34,7 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
         {href ? (
           <Link
             to={href}
-            className="inline-flex items-baseline gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex min-h-11 items-center gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-0 lg:items-baseline"
           >
             {title}
             {/* Netflix's "Explore all": slides in beside the title on

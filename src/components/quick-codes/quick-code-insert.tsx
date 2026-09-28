@@ -55,7 +55,7 @@ export function QuickCodeInsert({ onInsert }: { onInsert: (text: string) => void
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-11 w-11 lg:h-7 lg:w-7"
             aria-label="Insert a Quick Code"
           >
             <Braces className="h-4 w-4" />

@@ -28,7 +28,7 @@ export function LearnMore({
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="inline-flex items-center gap-1 rounded-sm text-xs font-medium text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 items-center gap-1 rounded-sm text-xs font-medium text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-0"
       >
         {open ? "Show less" : label}
         <ChevronDown
