@@ -366,7 +366,7 @@ function LifecycleBar({
           <Button
             size="sm"
             variant="outline"
-            className="text-destructive hover:text-destructive"
+            className="text-destructive-text hover:text-destructive-text"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="h-4 w-4" />

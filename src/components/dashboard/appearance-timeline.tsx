@@ -31,7 +31,7 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
                 to={ROUTES.docketMatterEvents(event.docket_matter_id)}
                 className="block outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <p className="eyebrow text-destructive">
+                <p className="eyebrow text-destructive-text">
                   Overdue · {formatDate(event.scheduled_date)}
                 </p>
                 <p className="mt-1 text-sm text-foreground">

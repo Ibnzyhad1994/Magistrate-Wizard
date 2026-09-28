@@ -96,7 +96,7 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive-text"
                         aria-label={`Unlink judgment ${judgment.title}`}
                         disabled={deleteLink.isPending}
                         onClick={() =>

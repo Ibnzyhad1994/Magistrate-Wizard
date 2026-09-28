@@ -288,7 +288,7 @@ export default function QuickCodesPage() {
                         aria-label={`Delete ${qc.code_word}`}
                         onClick={() => setPendingDelete(qc)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-destructive-text" />
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -1008,7 +1008,7 @@ function SourcesTab() {
                   aria-label="Remove source"
                   onClick={() => setDeleteTarget(s.id)}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4 text-destructive-text" />
                 </Button>
               </CardContent>
             </Card>
@@ -1675,7 +1675,10 @@ function BulkImportPanel({ bulk }: { bulk: BulkImportState }) {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {item.error && (
-                      <span className="max-w-[16rem] truncate text-destructive" title={item.error}>
+                      <span
+                        className="max-w-[16rem] truncate text-destructive-text"
+                        title={item.error}
+                      >
                         {item.error}
                       </span>
                     )}
@@ -2107,7 +2110,7 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
           <p className="mt-0.5 max-w-xl text-xs text-warning">{row.duplicate_warning}</p>
         )}
         {row.error_summary && (
-          <p className="mt-0.5 max-w-xl text-xs text-destructive">{row.error_summary}</p>
+          <p className="mt-0.5 max-w-xl text-xs text-destructive-text">{row.error_summary}</p>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -2115,7 +2118,9 @@ function BatchJobRow({ row, batchId }: { row: ImportBatchJobRow; batchId: string
         {row.contentQualityStatus === "failed" && (
           <span className="inline-flex flex-wrap items-center gap-1.5">
             <Badge variant="destructive">Quality: Failed</Badge>
-            <span className="max-w-xs text-xs text-destructive">{batchRowQualityReason(row)}</span>
+            <span className="max-w-xs text-xs text-destructive-text">
+              {batchRowQualityReason(row)}
+            </span>
           </span>
         )}
         {stuck && (
@@ -2868,7 +2873,7 @@ function CaseLawReviewCard({
           caseNameSource={readCaseNameSource(row.extracted_metadata)}
         />
         {row.job_error_summary && (
-          <p className="text-xs text-destructive">Import job error: {row.job_error_summary}</p>
+          <p className="text-xs text-destructive-text">Import job error: {row.job_error_summary}</p>
         )}
 
         {/* PROVENANCE */}
@@ -2919,7 +2924,7 @@ function CaseLawReviewCard({
           <Button
             size="sm"
             variant="outline"
-            className="text-destructive hover:text-destructive"
+            className="text-destructive-text hover:text-destructive-text"
             onClick={() => setConfirmReject(true)}
           >
             <XCircle className="h-4 w-4" />
@@ -2935,7 +2940,7 @@ function CaseLawReviewCard({
               Publish
             </Button>
             {validationErrors.length > 0 && (
-              <p className="max-w-xs text-right text-[11px] text-destructive">
+              <p className="max-w-xs text-right text-[11px] text-destructive-text">
                 Cannot publish: {validationErrors.join(" ")}
               </p>
             )}
@@ -3085,7 +3090,7 @@ function StatuteReviewCard({
 
         <ExtractionStatusPanel envelope={readExtractionEnvelope(row.extracted_metadata)} />
         {row.job_error_summary && (
-          <p className="text-xs text-destructive">Import job error: {row.job_error_summary}</p>
+          <p className="text-xs text-destructive-text">Import job error: {row.job_error_summary}</p>
         )}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -3249,7 +3254,7 @@ function StatuteReviewCard({
           <Button
             size="sm"
             variant="outline"
-            className="text-destructive hover:text-destructive"
+            className="text-destructive-text hover:text-destructive-text"
             onClick={() => setConfirmReject(true)}
           >
             <XCircle className="h-4 w-4" />
@@ -3267,7 +3272,7 @@ function StatuteReviewCard({
               Publish
             </Button>
             {statuteValidationErrors.length > 0 && (
-              <p className="max-w-xs text-right text-[11px] text-destructive">
+              <p className="max-w-xs text-right text-[11px] text-destructive-text">
                 Cannot publish: {statuteValidationErrors.join(" ")}
               </p>
             )}

@@ -27,7 +27,7 @@ export function InlineError({ error, onRetry, className }: InlineErrorProps) {
         className,
       )}
     >
-      <AlertTriangle className="h-6 w-6 text-destructive" aria-hidden="true" />
+      <AlertTriangle className="h-6 w-6 text-destructive-text" aria-hidden="true" />
       <p className="text-sm font-medium text-foreground">
         {rateLimited ? "Too many requests" : "Couldn't load this data"}
       </p>

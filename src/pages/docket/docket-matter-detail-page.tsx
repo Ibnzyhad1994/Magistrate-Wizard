@@ -189,7 +189,7 @@ export default function DocketMatterDetailPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-destructive hover:text-destructive"
+                className="text-destructive-text hover:text-destructive-text"
                 onClick={handleMoveToBin}
                 disabled={binMatter.isPending}
               >

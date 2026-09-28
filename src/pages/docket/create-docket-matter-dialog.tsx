@@ -352,7 +352,7 @@ export function CreateDocketMatterDialog({
                       {selectedCourt.district_name}
                     </span>
                   ) : (
-                    <span className="text-destructive">
+                    <span className="text-destructive-text">
                       Not set. Contact an administrator before creating a matter here.
                     </span>
                   )}

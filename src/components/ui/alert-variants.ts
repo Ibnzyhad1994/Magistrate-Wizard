@@ -9,7 +9,7 @@ export const alertVariants = cva(
         info: "border-l-info bg-info/10 [&>svg]:text-info",
         warning: "border-l-warning bg-warning/10 [&>svg]:text-warning",
         success: "border-l-success bg-success/10 [&>svg]:text-success",
-        destructive: "border-l-destructive bg-destructive/10 [&>svg]:text-destructive",
+        destructive: "border-l-destructive bg-destructive/10 [&>svg]:text-destructive-text",
       },
     },
     defaultVariants: {

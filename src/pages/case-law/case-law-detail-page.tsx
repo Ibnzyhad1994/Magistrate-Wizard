@@ -127,7 +127,7 @@ export default function CaseLawDetailPage() {
             <Button
               size="sm"
               variant="outline"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-text hover:text-destructive-text"
               onClick={() => setConfirmDelete(true)}
             >
               <Trash2 className="h-4 w-4" />
@@ -164,7 +164,7 @@ export default function CaseLawDetailPage() {
             <Button
               size="sm"
               variant="outline"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-text hover:text-destructive-text"
               onClick={() => setConfirmDeleteCanonical(true)}
             >
               <Trash2 className="h-4 w-4" />
@@ -788,7 +788,7 @@ function AnnotationsPanel({ caseLawId }: { caseLawId: string }) {
                         aria-label="Delete annotation"
                         onClick={() => setPendingDelete(a.id)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-destructive-text" />
                       </Button>
                     </div>
                   </div>

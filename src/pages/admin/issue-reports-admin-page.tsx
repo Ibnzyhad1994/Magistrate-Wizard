@@ -83,7 +83,7 @@ export default function IssueReportsAdminPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     {r.type === "bug" ? (
-                      <Bug className="h-4 w-4 shrink-0 text-destructive" />
+                      <Bug className="h-4 w-4 shrink-0 text-destructive-text" />
                     ) : (
                       <Lightbulb className="h-4 w-4 shrink-0 text-notice-action" />
                     )}

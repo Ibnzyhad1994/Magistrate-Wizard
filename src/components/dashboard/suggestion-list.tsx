@@ -4,7 +4,7 @@ import type { DashboardInsight, InsightSeverity } from "@/lib/dashboard-insights
 import { cn } from "@/lib/utils";
 
 const MARK: Record<InsightSeverity, { label: string; className: string }> = {
-  urgent: { label: "Now", className: "text-destructive" },
+  urgent: { label: "Now", className: "text-destructive-text" },
   attention: { label: "Soon", className: "text-notice-action" },
   nudge: { label: "Next", className: "text-muted-foreground" },
 };

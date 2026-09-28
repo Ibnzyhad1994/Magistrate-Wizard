@@ -264,7 +264,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-destructive hover:text-destructive"
+                className="h-7 text-destructive-text hover:text-destructive-text"
                 onClick={() => setPendingEnd(myActiveRetained.id)}
               >
                 End my retention

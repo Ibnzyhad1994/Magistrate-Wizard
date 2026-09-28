@@ -91,7 +91,7 @@ export function LinkDialog({
               aria-describedby={error ? errorId : undefined}
             />
             {error ? (
-              <p id={errorId} role="alert" className="text-xs text-destructive">
+              <p id={errorId} role="alert" className="text-xs text-destructive-text">
                 {error}
               </p>
             ) : null}

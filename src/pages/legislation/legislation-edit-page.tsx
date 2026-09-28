@@ -292,7 +292,7 @@ export default function LegislationEditPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-destructive">Delete this record</CardTitle>
+            <CardTitle className="text-destructive-text">Delete this record</CardTitle>
             <CardDescription>
               Removes it from the library for everyone, with its sections and documents. It
               can&apos;t be undone.
@@ -301,7 +301,7 @@ export default function LegislationEditPage() {
           <CardContent>
             <Button
               variant="outline"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-text hover:text-destructive-text"
               onClick={() => setConfirmDelete(true)}
             >
               <Trash2 className="h-4 w-4" />

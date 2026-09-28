@@ -116,7 +116,7 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive-text hover:text-destructive-text"
                       onClick={() => setPendingRevoke(share)}
                     >
                       {share.recipient_id === user?.id && !canManage
@@ -289,7 +289,7 @@ export function CreateShareDialog({
           )}
 
           {notFound && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-destructive-text">
               No one found with that email. Check the address. They must be an active user, and you
               must be able to share this {noun}.
             </p>

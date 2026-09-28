@@ -80,7 +80,7 @@ export function Field({
       <label htmlFor={controlId} className="block text-xs font-medium text-muted-foreground">
         {label}
         {required && (
-          <span className="ml-0.5 text-destructive" aria-hidden="true">
+          <span className="ml-0.5 text-destructive-text" aria-hidden="true">
             *
           </span>
         )}

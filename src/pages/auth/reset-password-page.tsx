@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
     return (
       <Card className={panelClassName}>
         <CardHeader className={headerClassName}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive-text">
             <AlertTriangle className="h-5 w-5" aria-hidden="true" />
           </div>
           <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">
