@@ -18,6 +18,9 @@ import { signInAsSeedAdmin } from "./helpers";
  *
  * A native checkbox or radio is measured together with its label, because
  * tapping the label toggles it.
+ *
+ * The TanStack Query devtools toggle is skipped: it only exists in a dev
+ * build (`import.meta.env.DEV`), which is what the CI job serves.
  */
 const PHONE = { width: 390, height: 844 };
 const MIN = 44;
@@ -77,6 +80,8 @@ async function undersizedTargets(page: Page): Promise<Target[]> {
       .filter((el) => {
         if (el.matches(":disabled, [aria-disabled='true']")) return false;
         if (el.closest("[aria-hidden='true'], [inert]")) return false;
+        if (el.closest(".tsqd-parent-container")) return false;
+        if (el.getAttribute("aria-label") === "Open Tanstack query devtools") return false;
         const style = getComputedStyle(el);
         if (style.visibility === "hidden" || style.display === "none") return false;
         const rect = el.getBoundingClientRect();
