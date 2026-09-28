@@ -211,11 +211,12 @@ function DetailBillboard({
             {eyebrow}
           </p>
         )}
-        {/* Phones step the display size down to 26px so a long case
-            title stays at three or four lines. */}
+        {/* Phones step the display size down to 22px: a long case title
+            then takes three lines, four at most, and never more than the
+            old 24px detail title did. */}
         <h1
           data-tour-focus=""
-          className="w-fit max-w-5xl text-display text-foreground max-sm:text-[1.625rem] max-sm:leading-[1.1]"
+          className="w-fit max-w-5xl text-display text-foreground max-sm:text-[1.375rem] max-sm:leading-[1.1]"
         >
           {title}
         </h1>
