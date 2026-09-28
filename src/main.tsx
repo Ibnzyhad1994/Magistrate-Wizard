@@ -7,13 +7,16 @@ import { initSentry } from "@/lib/sentry";
 // Fonts; Cinzel only at 600, the wordmark's one weight). Imported before
 // index.css so the @font-face rules precede the theme's font-family
 // declarations; Vite emits the woff2 files as same-origin assets, which is
-// what lets the CSP drop the Google origins.
+// what lets the CSP drop the Google origins. IBM Plex Mono, for the
+// `identifier` utility, is the Latin subset only: identifiers are ASCII.
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 import "@fontsource/cinzel/600.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@/index.css";
 
 initSentry();

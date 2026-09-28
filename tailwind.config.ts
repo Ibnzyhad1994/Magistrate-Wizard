@@ -216,6 +216,8 @@ const config: Config = {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
         brand: ["Cinzel", "Palatino Linotype", "Palatino", "ui-serif", "Georgia", "serif"],
+        // Identifiers (the `identifier` utility) and code: one mono face everywhere.
+        mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
     },
   },
