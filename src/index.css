@@ -167,7 +167,7 @@
     --border: 0 0% 18%;
     --input: 0 0% 42%;
     --ring: 214 90% 56%;
-    /* The accent is 3.4:1 on the canvas — fine for a button fill and a
+    /* The accent is 3.4:1 on the canvas: fine for a button fill and a
        rule, not for body links. Links get a lifted wax that clears 7:1. */
     --link: 12 80% 68%;
 
