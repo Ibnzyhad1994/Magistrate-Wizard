@@ -1,16 +1,20 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn, toTitleCase } from "@/lib/utils";
 import { TONE_GRADIENT, TONE_ICON, TONE_LABEL, type TitleCardTone } from "@/lib/browse-tones";
 import { LIST_THUMB_CLASS, TILE_WIDTH_CLASS, type BrowseView } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
+import { statusDotClass } from "@/components/common/status-badge-variant";
 
 interface TitleCardProps {
   title: string;
   eyebrow?: string;
   subtitle?: string;
   meta?: string[];
+  /** Flag label; defaults to the title-cased `status`. */
   badge?: string;
+  /** Raw record status (`active`, `draft`): colours the flag's dot from the shared status map. */
+  status?: string | null;
   tone?: TitleCardTone;
   imageUrl?: string | null;
   href?: string;
@@ -32,6 +36,7 @@ export function TitleCard({
   subtitle,
   meta,
   badge,
+  status,
   tone = "docket",
   imageUrl,
   href,
@@ -46,6 +51,7 @@ export function TitleCard({
   const layout = layoutOverride ?? storedView;
   const Icon = TONE_ICON[tone];
   const hasPhoto = Boolean(imageUrl);
+  const flagLabel = badge ?? (status ? toTitleCase(status) : undefined);
 
   const artwork = hasPhoto ? (
     <img
@@ -99,11 +105,7 @@ export function TitleCard({
                 {title}
               </h3>
             </div>
-            {badge && (
-              <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-                {badge}
-              </span>
-            )}
+            {flagLabel && <StatusFlag label={flagLabel} status={status} />}
           </div>
           {subtitle && (
             <p className="line-clamp-2 text-[12px] leading-snug text-foreground/75">{subtitle}</p>
@@ -137,11 +139,7 @@ export function TitleCard({
               {TONE_LABEL[tone]}
             </span>
 
-            {badge && (
-              <span className="mr-auto shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-                {badge}
-              </span>
-            )}
+            {flagLabel && <StatusFlag label={flagLabel} status={status} className="mr-auto" />}
           </div>
 
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-2">
@@ -184,5 +182,38 @@ export function TitleCard({
     <button type="button" onClick={onClick} className={cn(wrapClass, "text-left")}>
       {body}
     </button>
+  );
+}
+
+/**
+ * An opaque chip on the card surface, so the word reads over any art in
+ * every palette. The status hue rides on the dot, never on the chip: a
+ * status is never the accent, and colour is never the only signal.
+ */
+function StatusFlag({
+  label,
+  status,
+  className,
+}: {
+  label: string;
+  status?: string | null;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-sm bg-card px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground ring-1 ring-inset ring-border",
+        status && "pl-1",
+        className,
+      )}
+    >
+      {status && (
+        <span
+          aria-hidden="true"
+          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", statusDotClass(status))}
+        />
+      )}
+      {label}
+    </span>
   );
 }

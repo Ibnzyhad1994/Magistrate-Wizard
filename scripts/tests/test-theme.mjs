@@ -291,6 +291,24 @@ for (const [label, block] of PALETTES) {
     })
     .filter(Boolean);
   check(`${label}: capacity load pill text meets 4.5:1`, pillFailing, []);
+
+  // The browse tile's status flag is a card chip with a status dot, on art
+  // and on list rows alike: the word at 15:1, each dot at 3:1 against it.
+  const flagFailing = [
+    ["foreground", 15],
+    ["notice-granted", 3],
+    ["destructive", 3],
+    ["muted-foreground", 3],
+  ]
+    .map(([fg, min]) => {
+      const a = tokenValue(block, fg);
+      const b = tokenValue(block, "card");
+      if (!a || !b) return `${fg}/card: missing token`;
+      const ratio = contrast(a, b);
+      return ratio >= min ? null : `${fg}/card: ${ratio.toFixed(2)} < ${min}`;
+    })
+    .filter(Boolean);
+  check(`${label}: tile status flag text and dots meet their contrast minimum`, flagFailing, []);
   check(
     `${label}: over capacity is darker than full`,
     luminance(hslToRgb(tokenValue(block, "capacity-over"))) <
@@ -570,6 +588,12 @@ check(
   "poster flag and type label share one row, not two colliding corners",
   titleCard.includes("absolute left-2 top-2") || titleCard.includes("absolute right-2 top-2"),
   false,
+);
+check("tile status flag is never the accent", /\bbg-primary(?![\w-])/.test(titleCard), false);
+check(
+  "tile status flag dot comes from the shared status map",
+  titleCard.includes("statusDotClass(status)"),
+  true,
 );
 check("calendar out-of-month cells are not a black wash", calendar.includes("bg-black/20"), false);
 check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);

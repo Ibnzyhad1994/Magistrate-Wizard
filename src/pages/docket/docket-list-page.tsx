@@ -35,7 +35,7 @@ import {
 } from "@/lib/docket-selection";
 import { DocketBulkAdjournDialog } from "@/pages/docket/docket-bulk-adjourn-dialog";
 import { DocketCloseoutPanel } from "@/pages/docket/docket-closeout-panel";
-import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
+import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import {
   EMPTY_PROCEDURE_FILTERS,
   hasActiveProcedureFilters,
@@ -72,7 +72,7 @@ function docketCover(matter: {
     eyebrow: matter.case_number,
     title: matter.matter_title,
     subtitle: charge || undefined,
-    badge: matter.status ? toTitleCase(matter.status) : undefined,
+    status: matter.status,
     meta: [matter.court_name, matter.updated_at ? formatDate(matter.updated_at) : null].filter(
       (v): v is string => Boolean(v),
     ),

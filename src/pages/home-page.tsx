@@ -197,7 +197,7 @@ export default function HomePage() {
                     eyebrow={m.case_number}
                     title={m.matter_title}
                     subtitle={issueOf(m)}
-                    badge={toTitleCase(m.status)}
+                    status={m.status}
                     meta={
                       "courts" in m
                         ? [rel(m.courts)?.name].filter((v): v is string => Boolean(v))
@@ -253,7 +253,7 @@ export default function HomePage() {
                     eyebrow={j.case_number ?? undefined}
                     title={j.title}
                     subtitle={j.court_name ?? j.citation ?? undefined}
-                    badge="Draft"
+                    status="draft"
                     href={ROUTES.judgmentDetail(j.id)}
                   />
                 ))}
@@ -274,7 +274,7 @@ export default function HomePage() {
                     eyebrow={j.case_number ?? undefined}
                     title={j.title}
                     subtitle={j.court_name ?? j.citation ?? undefined}
-                    badge="Final"
+                    status="final"
                     href={ROUTES.judgmentDetail(j.id)}
                   />
                 ))}
@@ -293,7 +293,8 @@ export default function HomePage() {
                       eyebrow={matter?.case_number}
                       title={matter?.matter_title ?? "Retained matter"}
                       subtitle={matter?.charge_or_issue ?? undefined}
-                      badge={matter?.status ? toTitleCase(matter.status) : "Retained"}
+                      badge={matter?.status ? undefined : "Retained"}
+                      status={matter?.status}
                       imageUrl={coverUrl(matter?.cover_image_path)}
                       href={ROUTES.docketMatter(row.docket_matter_id)}
                     />
@@ -315,7 +316,7 @@ export default function HomePage() {
                     tone="note"
                     eyebrow={entityLabel(note.entity_type)}
                     title={note.title}
-                    badge={toTitleCase(note.status)}
+                    status={note.status}
                     href={ROUTES.benchNoteDetail(note.id)}
                   />
                 ))}
