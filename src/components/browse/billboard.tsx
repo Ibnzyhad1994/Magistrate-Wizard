@@ -15,6 +15,8 @@ interface BillboardAction {
 
 interface BillboardProps {
   eyebrow?: string;
+  /** Case number, citation or code: takes the eyebrow slot in the identifier style. */
+  identifier?: string;
   title: string;
   description?: string;
   badges?: string[];
@@ -43,6 +45,7 @@ type BillboardButtonVariant = "play" | "more" | "default" | "outline";
  */
 export function Billboard({
   eyebrow,
+  identifier,
   title,
   description,
   badges,
@@ -106,9 +109,14 @@ export function Billboard({
               : "min-h-[78vh] pb-24 pt-32",
         )}
       >
-        {eyebrow && (
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground/70 dark:text-primary-foreground/70">
-            {eyebrow}
+        {(identifier || eyebrow) && (
+          <p
+            className={cn(
+              "mb-2 text-sm font-semibold text-foreground/70 dark:text-primary-foreground/70",
+              identifier ? "identifier" : "uppercase tracking-[0.22em]",
+            )}
+          >
+            {identifier || eyebrow}
           </p>
         )}
         <h1

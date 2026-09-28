@@ -130,7 +130,9 @@ export function DocketMatterCard({
           className="min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
+          <p className="identifier truncate text-xs font-semibold text-muted-foreground">
+            {row.case_number}
+          </p>
           <p className="text-sm text-foreground">{row.matter_title}</p>
           {classification && (
             <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">

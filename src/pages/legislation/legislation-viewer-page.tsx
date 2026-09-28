@@ -143,7 +143,7 @@ export default function LegislationViewerPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={statute.code}
+        identifier={statute.code}
         title={statute.title}
         description={
           [

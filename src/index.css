@@ -716,6 +716,15 @@
     text-transform: uppercase;
   }
 
+  /* Case numbers, citations and codes are identifiers, not labels: normal
+     tracking so they never wrap mid-number, tabular figures so digits line
+     up down a column, and the text's own case. */
+  .identifier {
+    letter-spacing: normal;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+
   @keyframes tour-ring-pulse {
     0%,
     100% {

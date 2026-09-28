@@ -119,7 +119,7 @@ export default function DocketMatterDetailPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={matter.case_number}
+        identifier={matter.case_number}
         title={matter.matter_title}
         description={
           [matter.courts?.name, matter.magisterial_districts?.name].filter(Boolean).join(" · ") ||

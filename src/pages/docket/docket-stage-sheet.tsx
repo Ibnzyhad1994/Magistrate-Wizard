@@ -142,7 +142,9 @@ function DocketStageRow({
           className="block min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
+          <p className="identifier truncate text-xs font-semibold text-muted-foreground">
+            {row.case_number}
+          </p>
           <p className="truncate text-sm text-foreground">{row.matter_title}</p>
           {pending && (
             <p className="truncate text-[11px] font-medium text-warning">

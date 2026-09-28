@@ -343,7 +343,7 @@ function CaseLawTable({
         <TitleCard
           key={row.id}
           tone="case-law"
-          eyebrow={row.citation}
+          identifier={row.citation}
           title={row.case_name}
           subtitle={[row.court, row.jurisdiction, row.category_name].filter(Boolean).join(" · ")}
           badge={row.owner_id === null ? "Canonical" : undefined}

@@ -231,7 +231,7 @@ export default function JudgmentDetailPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={judgment.case_number ?? undefined}
+        identifier={judgment.case_number ?? undefined}
         title={judgment.title}
         description={
           [
@@ -494,7 +494,9 @@ function FieldsCard({
         <CardContent className="space-y-3 text-sm">
           <p>
             <span className="font-medium text-foreground">Case number: </span>
-            <span className="text-muted-foreground">{judgment.case_number || NOT_SET}</span>
+            <span className="identifier text-muted-foreground">
+              {judgment.case_number || NOT_SET}
+            </span>
           </p>
           <p>
             <span className="font-medium text-foreground">Court: </span>
@@ -508,7 +510,7 @@ function FieldsCard({
           </p>
           <p>
             <span className="font-medium text-foreground">Citation: </span>
-            <span className="text-muted-foreground">{judgment.citation || NOT_SET}</span>
+            <span className="identifier text-muted-foreground">{judgment.citation || NOT_SET}</span>
           </p>
         </CardContent>
       </Card>

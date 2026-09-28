@@ -97,7 +97,7 @@ export function CalloverRow({
             to={ROUTES.docketMatter(row.docket_matter_id)}
             className="block min-w-0 hover:underline"
           >
-            <p className="truncate text-xs font-semibold text-muted-foreground">
+            <p className="identifier truncate text-xs font-semibold text-muted-foreground">
               {matter?.case_number ?? "—"}
             </p>
             <p className="truncate text-sm text-foreground">{matter?.matter_title ?? "Matter"}</p>

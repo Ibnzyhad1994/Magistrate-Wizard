@@ -8,6 +8,8 @@ import { useUiStore } from "@/store/ui-store";
 interface TitleCardProps {
   title: string;
   eyebrow?: string;
+  /** Case number, citation or code: takes the eyebrow slot in the identifier style. */
+  identifier?: string;
   subtitle?: string;
   meta?: string[];
   badge?: string;
@@ -29,6 +31,7 @@ interface TitleCardProps {
 export function TitleCard({
   title,
   eyebrow,
+  identifier,
   subtitle,
   meta,
   badge,
@@ -46,6 +49,8 @@ export function TitleCard({
   const layout = layoutOverride ?? storedView;
   const Icon = TONE_ICON[tone];
   const hasPhoto = Boolean(imageUrl);
+  const kicker = identifier || eyebrow;
+  const kickerClass = identifier ? "identifier" : "uppercase tracking-[0.12em]";
 
   const artwork = hasPhoto ? (
     <img
@@ -90,9 +95,14 @@ export function TitleCard({
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              {eyebrow && (
-                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70">
-                  {eyebrow}
+              {kicker && (
+                <p
+                  className={cn(
+                    "truncate text-[11px] font-semibold text-foreground/70",
+                    kickerClass,
+                  )}
+                >
+                  {kicker}
                 </p>
               )}
               <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground">
@@ -145,9 +155,11 @@ export function TitleCard({
           </div>
 
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-2">
-            {eyebrow && (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/80">
-                {eyebrow}
+            {kicker && (
+              <p
+                className={cn("text-[10px] font-semibold text-primary-foreground/80", kickerClass)}
+              >
+                {kicker}
               </p>
             )}
             <h3 className="line-clamp-3 text-[13px] font-bold leading-snug text-primary-foreground">
