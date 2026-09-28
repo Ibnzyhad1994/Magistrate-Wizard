@@ -2,7 +2,7 @@
 <html lang="en" class="dark" style="color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="theme-color" content="#141414" />
+    <meta name="theme-color" content="#0d0e11" />
     <script>
       // Resolve the theme BEFORE first paint. Without this the document
       // ships with class="dark" (above) and React only corrects it after
@@ -39,7 +39,7 @@
         var themeColor =
           palette === "high-contrast" ? "#000000"
           : palette === "high-contrast-light" ? "#ffffff"
-          : dark ? "#141414"
+          : dark ? "#0d0e11"
           : "#f6f3ee";
         if (meta) meta.setAttribute("content", themeColor);
       } catch (e) {
