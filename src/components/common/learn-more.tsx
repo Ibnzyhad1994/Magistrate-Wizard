@@ -23,12 +23,14 @@ export function LearnMore({
   const panelId = useId();
   return (
     <div className={className}>
+      {/* A 44px target below lg; the negative margins keep the line where it
+          sat, so only the tappable area grows. */}
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="inline-flex min-h-11 items-center gap-1 rounded-sm text-xs font-medium text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-0"
+        className="-my-3.5 inline-flex min-h-11 items-center gap-1 rounded-sm text-xs font-medium text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:my-0 lg:min-h-0"
       >
         {open ? "Show less" : label}
         <ChevronDown
