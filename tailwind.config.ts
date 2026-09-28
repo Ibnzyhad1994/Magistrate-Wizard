@@ -80,6 +80,10 @@ const config: Config = {
           filling: "hsl(var(--capacity-filling))",
           full: "hsl(var(--capacity-full))",
           over: "hsl(var(--capacity-over))",
+          "available-foreground": "hsl(var(--capacity-available-foreground))",
+          "filling-foreground": "hsl(var(--capacity-filling-foreground))",
+          "full-foreground": "hsl(var(--capacity-full-foreground))",
+          "over-foreground": "hsl(var(--capacity-over-foreground))",
         },
         // Semantic aliases so generic UI (alerts, toasts) never hardcodes
         // amber/green and stays in step with the colourblind and

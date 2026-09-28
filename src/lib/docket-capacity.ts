@@ -14,7 +14,7 @@ interface CapacityStyle {
   band: CapacityBand;
   /** Inline background color — deterministic, not a dynamic Tailwind class. */
   bg: string;
-  /** Static Tailwind text-color class, chosen per band for guaranteed contrast against `bg`. */
+  /** The band's paired `--capacity-*-foreground` token, at least 4.5:1 against `bg` in every palette. */
   textClass: string;
   /** Suffix shown next to "X of Y" — only FULL and OVER CAPACITY get one, per spec. */
   label: string | null;
@@ -52,7 +52,7 @@ export function getCapacityStyle(
     return {
       band: "over_capacity",
       bg: "hsl(var(--capacity-over))",
-      textClass: "text-white",
+      textClass: "text-capacity-over-foreground",
       label: "OVER CAPACITY",
       bold: true,
     };
@@ -61,7 +61,7 @@ export function getCapacityStyle(
     return {
       band: "full",
       bg: "hsl(var(--capacity-full))",
-      textClass: "text-white",
+      textClass: "text-capacity-full-foreground",
       label: "FULL",
       bold: true,
     };
@@ -70,7 +70,7 @@ export function getCapacityStyle(
     return {
       band: "amber",
       bg: "hsl(var(--capacity-filling))",
-      textClass: "text-neutral-900",
+      textClass: "text-capacity-filling-foreground",
       label: null,
       bold: false,
     };
@@ -78,7 +78,7 @@ export function getCapacityStyle(
   return {
     band: "green",
     bg: "hsl(var(--capacity-available))",
-    textClass: "text-neutral-900",
+    textClass: "text-capacity-available-foreground",
     label: null,
     bold: false,
   };
