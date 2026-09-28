@@ -32,11 +32,22 @@ The visual language is Netflix's: a near-black canvas, content lifted off it by 
 
 - **Raise, don't frame.** A region that must stand off the canvas is `bg-card` (or `bg-surface-1`) with `shadow-elevation-1` and a `border-hairline` crease. Never `border-border` on a card or panel: that is the divider token. High contrast has no shadows, so add `hc:border-border` alongside the hairline — `Card` does this for you; use `Card` before reaching for a bespoke `div`.
 - **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. Selected segments are `bg-surface-1 shadow-elevation-1` inside a `bg-surface-2` track.
-- **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus and the hovered poster. Not `shadow-lg`, not a literal `rgba` shadow.
+- **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus. Not `shadow-lg`, not a literal `rgba` shadow.
 - **Type scale**: `text-display-xl` (Billboard) · `text-display` (page title) · `text-title-lg` (empty-state / hero heading) · `text-title` (row and section headings) · `text-heading` (card titles). Each sets weight, tracking and leading; do not add `font-bold tracking-tight` on top. Small uppercase labels are the `eyebrow` utility (deliberately not `text-`-prefixed: tailwind-merge would treat it as a colour).
 - **Reading measure**: long legal text read in place (a judgment's body, case law's summary and full text) is `text-base leading-relaxed` in a `max-w-measure` column, about 70 characters per line, sitting unframed on its card. An editor keeps its frame and full width.
 - **Page headers** are `BrowseHeader` with the workspace `tone`; it draws the edge-to-edge band. Empty states on a browse page pass the same `tone` to `EmptyState`.
 - **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow.
+
+## Stills (browse tiles)
+
+Every browse page (docket Tiles, judgments, case law, legislation, bench notes, bookmarks, search) and the Home rails show `TitleCard` as a 16:9 still.
+
+- **Words below the art, never on it.** The art is the tone gradient and icon with the status flag and type label in one row across its top; the case number, title, subtitle and meta sit below on `bg-card`, so their contrast is the card's, not a photo's.
+- **Identification photos are never the still.** A matter's cover is shown only as a small documentary inset on the tone art, never full-bleed and never hero art.
+- **Columns, not widths.** The container sets the size: `TitleGallery` is a grid and `ContentRow` a rail, both fed by `TILE_COLUMNS` in `src/lib/browse-prefs.ts` through `stillColumnVars`, and the `.still-grid` / `.still-rail` rules in `index.css`. `TitleCard` fills whatever it is given; do not give a still its own width. Put new tiles in one of the two containers.
+- **The column table** (Compact / Regular / Large): under 640px 2 / 2 / 1, 640-767 3 / 2 / 1, 768-1023 4 / 3 / 2, 1024-1535 5 / 4 / 3, 1536 and up 6 / 5 / 4, 12px gaps. Compact stays the default. At no width may a size show fewer columns than the next larger size, and no still may be narrower than 136px, the width a 16-character case number needs on one line; `npm run test:still-scale` checks both from 360 to 1920px. A rail still is 90% of a gallery column so the next one peeks.
+- **Text**: case number never truncated (it may wrap at a hyphen, never an ellipsis); title `text-sm font-semibold`, at most four lines; subtitle at most two; court and date wrap to a second line rather than an ellipsis. Stills in one row share a height.
+- **Hover** is a surface step (`bg-surface-2`, 120ms), never a scale, and only for a fine pointer: use the `hover-fine:` variant so a tap on a touch screen never leaves a hover state behind. Focus is the wrapper's ring; a rail keeps `py-1` so its overflow does not clip it.
 
 ## Buttons
 
@@ -57,7 +68,7 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Status colours are registered tokens: `bg-notice-action`, `text-stage-progress`, `bg-capacity-full`, plus `warning` / `success` / `info` aliases. Never `bg-[hsl(var(--…))]`, never `amber-500`.
 - Text on a capacity fill uses the fill's paired ink, `text-capacity-full-foreground` and its siblings, never `text-white` or `text-neutral-900`: each pair is at least 4.5:1 in every palette, and `npm run test:theme` enforces it.
 - Status badges take their variant from `statusBadgeVariant` (`src/components/common/status-badge-variant.ts`): `success` (green) for a live or in-force record, `secondary` / `outline` for not yet or no longer live, `destructive` for refused, dismissed or in error. A status is never the `default` (red) badge; red belongs to the commit action.
-- Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards, posters and chips are `rounded-md`.
+- Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards and chips are `rounded-md`; a still is `rounded-lg`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
 - Sizes: inputs and buttons are 44px / 16px on phones and 36px / 14px from `lg` up; the primitives do this, do not override heights.
 
