@@ -137,7 +137,7 @@ function DayTile({
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={hint}
-      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-md border text-xs transition-[background-color,box-shadow,transform] duration-150 ease-out-expo hover:-translate-y-px hover:shadow-elevation-1 ${
+      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-md border text-xs transition-[background-color,box-shadow] duration-150 ease-out-expo hover:shadow-elevation-1 ${
         size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20"
       } ${style.textClass} ${
         today ? "border-2 border-stage-outcome-complete" : "border-hairline hc:border-border"
