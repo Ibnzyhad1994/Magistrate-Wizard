@@ -377,6 +377,28 @@ check(
   true,
 );
 check(
+  "reduced motion forces both animation and transition durations",
+  /prefers-reduced-motion: reduce\)\s*\{\s*\*,[^}]*animation-duration: 0\.01ms !important;[^}]*transition-duration: 0\.01ms !important;/.test(
+    css,
+  ),
+  true,
+);
+for (const file of ["src/components/ui/sheet.tsx", "src/components/ui/dialog.tsx"]) {
+  const source = readFileSync(file, "utf8");
+  const timed = source.match(/"[^"]*animate-in[^"]*"/g) ?? [];
+  check(
+    `${file}: overlay and panel open in 240ms and close in 180ms on ease-out-expo`,
+    timed.length === 2 &&
+      timed.every(
+        (classes) =>
+          classes.includes("ease-out-expo") &&
+          classes.includes("data-[state=open]:duration-240") &&
+          classes.includes("data-[state=closed]:duration-180"),
+      ),
+    true,
+  );
+}
+check(
   "Skeleton is hidden from assistive tech",
   readFileSync("src/components/ui/skeleton.tsx", "utf8").includes('aria-hidden="true"'),
   true,
