@@ -1,0 +1,169 @@
+{
+  "label": "after",
+  "frameAt": 120,
+  "dialog": [
+    {
+      "t": 0,
+      "translateX": -256,
+      "translateY": -337.4,
+      "scale": 0.95,
+      "panelOpacity": 0,
+      "scrimOpacity": 0,
+      "width": 486.4000244140625,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 0
+    },
+    {
+      "t": 40,
+      "translateX": -256,
+      "translateY": -345.8,
+      "scale": 0.9799,
+      "panelOpacity": 0.598,
+      "scrimOpacity": 0.598,
+      "width": 501.6967468261719,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 59.6
+    },
+    {
+      "t": 80,
+      "translateX": -256,
+      "translateY": -349.6,
+      "scale": 0.9933,
+      "panelOpacity": 0.867,
+      "scrimOpacity": 0.867,
+      "width": 508.5880126953125,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 86.5
+    },
+    {
+      "t": 120,
+      "translateX": -256,
+      "translateY": -351,
+      "scale": 0.9981,
+      "panelOpacity": 0.961,
+      "scrimOpacity": 0.961,
+      "width": 511.0113525390625,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 96.5
+    },
+    {
+      "t": 160,
+      "translateX": -256,
+      "translateY": -351.4,
+      "scale": 0.9996,
+      "panelOpacity": 0.992,
+      "scrimOpacity": 0.992,
+      "width": 511.7846374511719,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 99.3
+    },
+    {
+      "t": 180,
+      "translateX": -256,
+      "translateY": -351.5,
+      "scale": 0.9998,
+      "panelOpacity": 0.997,
+      "scrimOpacity": 0.997,
+      "width": 511.9205322265625,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 100
+    },
+    {
+      "t": 200,
+      "translateX": -256,
+      "translateY": -351.5,
+      "scale": 1,
+      "panelOpacity": 0.999,
+      "scrimOpacity": 0.999,
+      "width": 511.9791259765625,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 100
+    },
+    {
+      "t": 240,
+      "translateX": -256,
+      "translateY": -351.5,
+      "scale": 1,
+      "panelOpacity": 1,
+      "scrimOpacity": 1,
+      "width": 512,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 100
+    },
+    {
+      "t": 300,
+      "translateX": -256,
+      "translateY": -351.5,
+      "scale": 1,
+      "panelOpacity": 1,
+      "scrimOpacity": 1,
+      "width": 512,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 100
+    },
+    {
+      "t": 400,
+      "translateX": -256,
+      "translateY": -351.5,
+      "scale": 1,
+      "panelOpacity": 1,
+      "scrimOpacity": 1,
+      "width": 512,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 100
+    },
+    {
+      "t": 500,
+      "translateX": -256,
+      "translateY": -351.5,
+      "scale": 1,
+      "panelOpacity": 1,
+      "scrimOpacity": 1,
+      "width": 512,
+      "duration": 240,
+      "easing": "linear",
+      "travelDone": 100
+    }
+  ],
+  "still": {
+    "restBackground": "rgb(24, 24, 24)",
+    "hovered": {
+      "backgroundColor": "rgb(36, 36, 36)",
+      "borderColor": "rgb(46, 46, 46)",
+      "transform": "none",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transitionDuration": "0.12s",
+      "transitionTimingFunction": "cubic-bezier(0.22, 1, 0.36, 1)"
+    }
+  },
+  "reduced": {
+    "dialog": {
+      "matches": true,
+      "panel": {
+        "animationDuration": "1e-05s",
+        "animationTimingFunction": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "transitionDuration": "1e-05s"
+      },
+      "scrim": {
+        "animationDuration": "1e-05s",
+        "animationTimingFunction": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "transitionDuration": "1e-05s"
+      }
+    },
+    "still": {
+      "transitionDuration": "1e-05s",
+      "transitionProperty": "color, background-color, border-color, text-decoration-color, fill, stroke",
+      "transform": "none"
+    }
+  }
+}
