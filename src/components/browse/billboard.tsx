@@ -41,7 +41,7 @@ interface BillboardProps {
   tourId?: string;
 }
 
-type BillboardButtonVariant = "play" | "more" | "default" | "outline" | "secondary";
+type BillboardButtonVariant = "play" | "more" | "default" | "outline" | "ghost";
 
 export function Billboard(props: BillboardProps) {
   return props.variant === "detail" ? <DetailBillboard {...props} /> : <HeroBillboard {...props} />;
@@ -211,11 +211,11 @@ function DetailBillboard({
             {eyebrow}
           </p>
         )}
-        {/* Phones step the display size down (about 28px at 390 wide),
-            so a long case title does not run to five lines. */}
+        {/* Phones step the display size down to 26px so a long case
+            title stays at three or four lines. */}
         <h1
           data-tour-focus=""
-          className="w-fit max-w-5xl text-display text-foreground max-sm:text-[length:clamp(1.625rem,1.2rem+2.2vw,2.75rem)] max-sm:leading-[1.1]"
+          className="w-fit max-w-5xl text-display text-foreground max-sm:text-[1.625rem] max-sm:leading-[1.1]"
         >
           {title}
         </h1>
@@ -238,13 +238,13 @@ function DetailBillboard({
         )}
         <div data-tour-focus="" className="mt-4 flex flex-wrap gap-3">
           {primaryAction && (
-            <BillboardButton action={primaryAction} variant="secondary" icon="back" compact />
+            <BillboardButton action={primaryAction} variant="ghost" icon="back" tool />
           )}
           {secondaryAction && (
-            <BillboardButton action={secondaryAction} variant="secondary" icon="info" compact />
+            <BillboardButton action={secondaryAction} variant="ghost" icon="info" tool />
           )}
           {tertiaryAction && (
-            <BillboardButton action={tertiaryAction} variant="secondary" icon="info" compact />
+            <BillboardButton action={tertiaryAction} variant="ghost" icon="info" tool />
           )}
         </div>
       </div>
@@ -256,14 +256,17 @@ function BillboardButton({
   action,
   variant,
   icon,
-  compact = false,
+  tool = false,
 }: {
   action: BillboardAction;
   variant: BillboardButtonVariant;
   icon: "play" | "info" | "back";
-  compact?: boolean;
+  /** The page's tool size (as in a detail page's action row), kept at 44px below lg. */
+  tool?: boolean;
 }) {
-  const iconClass = compact ? "h-4 w-4" : "h-5 w-5";
+  const iconClass = tool ? "h-4 w-4" : "h-5 w-5";
+  const size = tool ? "sm" : "billboard";
+  const sizeClass = tool ? "max-lg:min-h-11" : undefined;
   const inner = (
     <>
       {icon === "back" ? (
@@ -279,7 +282,7 @@ function BillboardButton({
 
   if (action.href) {
     return (
-      <Button asChild variant={variant} size={compact ? "default" : "billboard"}>
+      <Button asChild variant={variant} size={size} className={sizeClass}>
         <Link to={action.href} onClick={action.onClick}>
           {inner}
         </Link>
@@ -288,7 +291,7 @@ function BillboardButton({
   }
 
   return (
-    <Button variant={variant} size={compact ? "default" : "billboard"} onClick={action.onClick}>
+    <Button variant={variant} size={size} className={sizeClass} onClick={action.onClick}>
       {inner}
     </Button>
   );
