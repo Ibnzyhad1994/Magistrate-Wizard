@@ -2,6 +2,7 @@ import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";
 import { hScrollMask, useHScroll } from "@/hooks/use-h-scroll";
+import { SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
 
 /**
  * `underline` (default) is the browse-page rail: text on the canvas with
@@ -45,7 +46,7 @@ const TabsList = React.forwardRef<
         "scrollbar-none flex h-auto w-full max-w-full items-center justify-start overflow-x-auto overscroll-x-contain scroll-smooth text-muted-foreground",
         variant === "underline"
           ? "min-h-11 gap-6 border-b border-hairline hc:border-border"
-          : "min-h-10 gap-0.5 rounded-md bg-surface-2 p-0.5 hc:border hc:border-border",
+          : cn("min-h-10 gap-0.5", SEGMENT_TRACK_CLASS),
         className,
       )}
       {...props}
@@ -88,7 +89,8 @@ const TabsTrigger = React.forwardRef<
           ? // -mb-px drops the trigger's 2px rule onto the list's own 1px
             // border so the active rule covers it rather than stacking.
             "-mb-px min-h-11 rounded-sm border-b-2 border-transparent px-0.5 py-2 hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
-          : "min-h-9 rounded-sm px-3 py-1.5 hover:text-foreground data-[state=active]:bg-surface-1 data-[state=active]:text-foreground data-[state=active]:shadow-elevation-1 hc:data-[state=active]:bg-foreground hc:data-[state=active]:text-background",
+          : // Selected mirrors SEGMENT_ON_CLASS: one surface step above the track.
+            "min-h-9 rounded-sm px-3 py-1.5 hover:text-foreground data-[state=active]:bg-surface-1 data-[state=active]:text-foreground data-[state=active]:shadow-elevation-1 hc:data-[state=active]:bg-foreground hc:data-[state=active]:text-background dim:data-[state=active]:bg-surface-3",
         className,
       )}
       {...props}
