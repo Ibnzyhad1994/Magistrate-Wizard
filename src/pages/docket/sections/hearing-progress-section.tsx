@@ -162,7 +162,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
   return (
     <Card className="lg:col-span-3" data-tour="hearing-progress">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Hearing / Trial Progress</CardTitle>
+        <CardTitle>Hearing / Trial Progress</CardTitle>
         {canEdit && (
           <Button size="sm" onClick={() => setDialogEntry("new")}>
             <Plus className="h-4 w-4" />

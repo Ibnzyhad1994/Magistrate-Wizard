@@ -276,7 +276,7 @@ export default function CourtAssignmentsPage() {
       ) : (
         <Card className="max-w-lg border-border bg-foreground/5">
           <CardHeader>
-            <CardTitle className="text-base">Request a court assignment</CardTitle>
+            <CardTitle>Request a court assignment</CardTitle>
             <CardDescription>
               An administrator reviews each request. For an occupied court, they decide whether to
               replace the magistrate there or seat you both.

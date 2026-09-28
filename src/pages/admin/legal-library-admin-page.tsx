@@ -831,7 +831,7 @@ function SourcesTab() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base">Source registry</CardTitle>
+            <CardTitle>Source registry</CardTitle>
             <CardDescription>
               A note of a source you plan to use. Adding one doesn&apos;t fetch anything. To bring
               in text, paste it under New Import.
@@ -1292,7 +1292,7 @@ function SingleImportPanel() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Legislation: file-first PDF library</CardTitle>
+            <CardTitle>Legislation: file-first PDF library</CardTitle>
             <CardDescription>
               Legislation is kept as the original PDF, which is the official copy. It publishes as
               soon as it&apos;s uploaded.
@@ -1324,7 +1324,7 @@ function SingleImportPanel() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Deterministic ingestion, no AI</CardTitle>
+          <CardTitle>Deterministic ingestion, no AI</CardTitle>
           <CardDescription>
             Citations, dates and tags are picked up from the text. It publishes straight away,
             unless a check fails. Then it waits in the Review Queue.
@@ -1564,7 +1564,7 @@ function BulkImportPanel({ bulk }: { bulk: BulkImportState }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Bulk import: Case Law</CardTitle>
+        <CardTitle>Bulk import: Case Law</CardTitle>
         <CardDescription>
           Pick several judgments or a whole folder. Each file becomes a draft in the Review Queue.
           For Acts, use Single document.
@@ -1874,7 +1874,7 @@ function ImportBatchesTab({ initialBatchId }: { initialBatchId?: string | null }
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base">Import batches</CardTitle>
+            <CardTitle>Import batches</CardTitle>
             <CardDescription>
               Every bulk import you&apos;ve run, and what happened to each file. You can come back
               to any batch.
@@ -1992,7 +1992,7 @@ function BatchDetailView({ batchId, onBack }: { batchId: string; onBack: () => v
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <div>
-                <CardTitle className="text-base">{data.batch.label}</CardTitle>
+                <CardTitle>{data.batch.label}</CardTitle>
                 <CardDescription>
                   {formatDateTime(data.batch.created_at)} ·{" "}
                   <BatchCountSummary
@@ -2718,7 +2718,7 @@ function CaseLawReviewCard({
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-base">{row.case_name}</CardTitle>
+            <CardTitle>{row.case_name}</CardTitle>
             <Badge variant="outline">Case Law</Badge>
             {row.job_status && (
               <Badge variant="secondary">
@@ -3042,7 +3042,7 @@ function StatuteReviewCard({
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-base">{row.title}</CardTitle>
+            <CardTitle>{row.title}</CardTitle>
             <Badge variant="outline">Legislation</Badge>
             {row.job_status && (
               <Badge variant="secondary">

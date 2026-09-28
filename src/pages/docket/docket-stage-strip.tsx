@@ -108,7 +108,7 @@ export function DocketStageStrip({
   return (
     <Card className="lg:col-span-3">
       <CardHeader>
-        <CardTitle className="text-base">Procedure</CardTitle>
+        <CardTitle>Procedure</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">

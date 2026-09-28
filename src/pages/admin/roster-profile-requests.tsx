@@ -190,7 +190,7 @@ export function RosterProfileRequests({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Court requests</CardTitle>
+          <CardTitle>Court requests</CardTitle>
           <CardDescription>Loading this profile&apos;s court requests…</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -205,7 +205,7 @@ export function RosterProfileRequests({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Court requests</CardTitle>
+          <CardTitle>Court requests</CardTitle>
           <CardDescription>
             Their court requests could not be loaded, so returning them or correcting their account
             type is unavailable until this succeeds.
@@ -221,7 +221,7 @@ export function RosterProfileRequests({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Court requests</CardTitle>
+        <CardTitle>Court requests</CardTitle>
         <CardDescription>
           {pending.length > 0
             ? "Approve an open request, or return it so they can request again. This does not change account type."

@@ -31,13 +31,16 @@ type CardTitleTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "div";
 
 /**
  * Defaults to an h3. Pass `as="h1"` when the card IS the page (auth
- * screens) so the document keeps a single top-level heading.
+ * screens) so the document keeps a single top-level heading. The weight is
+ * repeated as `font-semibold` because a size override such as `text-sm`
+ * replaces `text-heading` whole, weight included. Line height comes from
+ * `text-heading` (or the override), so a title that wraps stays legible.
  */
 const CardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement> & { as?: CardTitleTag }
 >(({ className, as: Tag = "h3", ...props }, ref) => (
-  <Tag ref={ref} className={cn("text-heading leading-none", className)} {...props} />
+  <Tag ref={ref} className={cn("text-heading font-semibold", className)} {...props} />
 ));
 CardTitle.displayName = "CardTitle";
 

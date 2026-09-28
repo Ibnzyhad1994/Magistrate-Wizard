@@ -56,7 +56,7 @@ export function AdminSelfCourtCard() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Court Assignments</CardTitle>
+          <CardTitle>Court Assignments</CardTitle>
           <CardDescription>
             Platform role: <strong>{ROLE_LABELS[profile?.role as UserRole]}</strong>. Seat yourself
             at a court to add docket matters. This is an Acting seat, so it doesn&apos;t replace the

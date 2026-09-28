@@ -36,7 +36,7 @@ export function SoundCuesCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Sound cues</CardTitle>
+        <CardTitle>Sound cues</CardTitle>
         <CardDescription>
           A short sound when something saves or fails, so you don&apos;t have to watch the screen.
           On by default, for this device only.
@@ -99,7 +99,7 @@ export function HearingRemindersCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Sitting-day reminders</CardTitle>
+        <CardTitle>Sitting-day reminders</CardTitle>
         <CardDescription>
           Get a browser notification on this device before your hearings.
         </CardDescription>
@@ -156,7 +156,7 @@ export function DownloadMyDataCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Download my data</CardTitle>
+        <CardTitle>Download my data</CardTitle>
         <CardDescription>
           A JSON file of records you own (profile, judgments, notes, shares, notices). It does not
           include other people&apos;s files.

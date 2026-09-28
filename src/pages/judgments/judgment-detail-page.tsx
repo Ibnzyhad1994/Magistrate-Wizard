@@ -489,7 +489,7 @@ function FieldsCard({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Details</CardTitle>
+          <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>
@@ -518,7 +518,7 @@ function FieldsCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base">Details</CardTitle>
+        <CardTitle>Details</CardTitle>
         {/* This card commits on an explicit Save, while Classification
             and the discoverable toggle on the same screen commit
             instantly — say which this one is rather than leaving it to
@@ -713,7 +713,7 @@ function ClassificationCard({
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-base">Classification</CardTitle>
+          <CardTitle>Classification</CardTitle>
           <Button type="button" size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
             <Pencil className="h-3.5 w-3.5" />
             Edit
@@ -740,7 +740,7 @@ function ClassificationCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base">Classification</CardTitle>
+        <CardTitle>Classification</CardTitle>
         <div className="flex items-center gap-1">
           <Button
             type="button"
@@ -853,7 +853,7 @@ function ContentCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base">Content</CardTitle>
+        <CardTitle>Content</CardTitle>
         {isDraft && (
           <div className="flex items-center gap-2">
             {/* Was a bespoke "Unsaved changes" line here; now the shared
@@ -970,7 +970,7 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
     <div className="mt-4 grid gap-4 sm:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Linked Docket Matters</CardTitle>
+          <CardTitle>Linked Docket Matters</CardTitle>
         </CardHeader>
         <CardContent>
           {mattersPending ? (
@@ -1013,7 +1013,7 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">My Quick Codes</CardTitle>
+          <CardTitle>My Quick Codes</CardTitle>
         </CardHeader>
         <CardContent>
           {qcPending ? (

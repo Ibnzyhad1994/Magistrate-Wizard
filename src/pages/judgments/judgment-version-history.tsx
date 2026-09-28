@@ -29,7 +29,7 @@ export function JudgmentVersionHistory({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Version history</CardTitle>
+        <CardTitle>Version history</CardTitle>
       </CardHeader>
       <CardContent>
         {isPending ? (

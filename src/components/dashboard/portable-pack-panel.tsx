@@ -131,7 +131,7 @@ export function PortablePackPanel({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Dispatch</CardTitle>
+            <CardTitle>Dispatch</CardTitle>
             <CardDescription className="mt-1.5 max-w-2xl">
               Take a file with you, or bring one in. A pack is a copy, not the live docket. Shares
               and other people&apos;s notes stay here.

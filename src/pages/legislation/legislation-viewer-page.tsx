@@ -275,7 +275,7 @@ export default function LegislationViewerPage() {
                   {selected ? (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">
+                        <CardTitle>
                           {LEVEL_LABELS[selected.level] ?? selected.level}
                           {selected.number ? ` ${selected.number}` : ""}
                           {selected.heading ? ` · ${selected.heading}` : ""}
@@ -296,7 +296,7 @@ export default function LegislationViewerPage() {
                   ) : (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Overview</CardTitle>
+                        <CardTitle>Overview</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {statute.summary && (
@@ -317,7 +317,7 @@ export default function LegislationViewerPage() {
                 {statute.summary && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Summary</CardTitle>
+                      <CardTitle>Summary</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="whitespace-pre-wrap text-sm text-foreground">
@@ -328,7 +328,7 @@ export default function LegislationViewerPage() {
                 )}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Text</CardTitle>
+                    <CardTitle>Text</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {statute.full_text ? (
@@ -350,7 +350,7 @@ export default function LegislationViewerPage() {
         {hasPdf && statute.summary && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Summary</CardTitle>
+              <CardTitle>Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap text-sm text-foreground">{statute.summary}</p>
@@ -360,7 +360,7 @@ export default function LegislationViewerPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Documents</CardTitle>
+            <CardTitle>Documents</CardTitle>
           </CardHeader>
           <CardContent>
             {/* canUpload is unconditionally false here, even for an admin --
