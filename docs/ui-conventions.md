@@ -31,9 +31,10 @@ Short rules for anything user-facing. Primitives live in `src/components/ui`; if
 The visual language is Netflix's: a near-black canvas, content lifted off it by luminance and shadow rather than frames, one red commit action, tight-tracked display titles. The light palette is the same system on warm paper.
 
 - **Raise, don't frame.** A region that must stand off the canvas is `bg-card` (or `bg-surface-1`) with `shadow-elevation-1` and a `border-hairline` crease. Never `border-border` on a card or panel: that is the divider token. High contrast has no shadows, so add `hc:border-border` alongside the hairline — `Card` does this for you; use `Card` before reaching for a bespoke `div`.
-- **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. Selected segments are `bg-surface-1 shadow-elevation-1` inside a `bg-surface-2` track.
+- **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. A selected segment sits one surface step above its `bg-surface-2` track: `SEGMENT_ON_CLASS` in `components/ui/segmented.ts` (surface-1 in light, surface-3 in dark and colourblind dark through the `dim:` variant, inverted to foreground in high contrast, hover included).
 - **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus and the hovered poster. Not `shadow-lg`, not a literal `rgba` shadow.
 - **Type scale**: `text-display-xl` (Billboard) · `text-display` (page title) · `text-title-lg` (empty-state / hero heading) · `text-title` (row and section headings) · `text-heading` (card titles). Each sets weight, tracking and leading; do not add `font-bold tracking-tight` on top. Small uppercase labels are the `eyebrow` utility (deliberately not `text-`-prefixed: tailwind-merge would treat it as a colour).
+- **Identifiers** (case numbers, citations, statute codes, quick-code words) are not labels: they carry the `identifier` utility (normal tracking, the text's own case, tabular figures), never `uppercase` or wide `tracking-[…]`, so a case number never wraps mid-number and digits line up down a column. `TitleCard` and `Billboard` take one through their `identifier` prop, never `eyebrow`. Inter's tabular figures also set the hyphen to figure width. `npm run test:identifiers` guards this.
 - **Reading measure**: long legal text read in place (a judgment's body, case law's summary and full text) is `text-base leading-relaxed` in a `max-w-measure` column, about 70 characters per line, sitting unframed on its card. An editor keeps its frame and full width.
 - **Page headers** are `BrowseHeader` with the workspace `tone`; it draws the edge-to-edge band. Empty states on a browse page pass the same `tone` to `EmptyState`.
 - **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow.
@@ -48,7 +49,7 @@ One of each per surface:
 - `secondary` — quiet filled tools and refinement clears on plain canvas; `outline` is the same weight with an edge for use on a card.
 - `ghost` / `link` — icon buttons, inline controls, inline links.
 
-A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segmented control (`Tabs variant="segmented"` or a `role="group"` of ghost buttons on a `bg-surface-2` track), never a red button.
+A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segmented control (`Tabs variant="segmented"`, or a `role="group"` of ghost buttons with `aria-pressed` on a `SEGMENT_TRACK_CLASS` track, the selected one `SEGMENT_ON_CLASS`), never a red button.
 
 ## Colour and tokens
 
