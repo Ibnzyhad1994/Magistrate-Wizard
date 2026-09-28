@@ -34,6 +34,7 @@ The visual language is Netflix's: a near-black canvas, content lifted off it by 
 - **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. Selected segments are `bg-surface-1 shadow-elevation-1` inside a `bg-surface-2` track.
 - **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus and the hovered poster. Not `shadow-lg`, not a literal `rgba` shadow.
 - **Type scale**: `text-display-xl` (Billboard) · `text-display` (page title) · `text-title-lg` (empty-state / hero heading) · `text-title` (row and section headings) · `text-heading` (card titles). Each sets weight, tracking and leading; do not add `font-bold tracking-tight` on top. Small uppercase labels are the `eyebrow` utility (deliberately not `text-`-prefixed: tailwind-merge would treat it as a colour).
+- **Reading measure**: long legal text read in place (a judgment's body, case law's summary and full text) is `text-base leading-relaxed` in a `max-w-measure` column, about 70 characters per line, sitting unframed on its card. An editor keeps its frame and full width.
 - **Page headers** are `BrowseHeader` with the workspace `tone`; it draws the edge-to-edge band. Empty states on a browse page pass the same `tone` to `EmptyState`.
 - **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow.
 
