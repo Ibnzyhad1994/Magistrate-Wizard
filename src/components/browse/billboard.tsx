@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Play, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -5,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useRegisterCinematicNav } from "@/components/layout/use-cinematic-nav";
 import { useTheme } from "@/providers/use-theme";
 import { isDarkPalette } from "@/lib/theme";
-import { TONE_GRADIENT_HERO, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
+import {
+  TONE_GRADIENT_HERO,
+  TONE_HSL_VAR,
+  TONE_ICON,
+  type TitleCardTone,
+} from "@/lib/browse-tones";
 
 interface BillboardAction {
   label: string;
@@ -27,21 +33,25 @@ interface BillboardProps {
   caption?: string;
   className?: string;
   /**
-   * `hero` is the cinematic dashboard splash. `detail` is compact so
-   * work chrome (tabs, editors) is reachable without scrolling past
-   * a full-viewport billboard.
+   * `hero` is the cinematic dashboard splash. `detail` is a record's page
+   * header: the browse pages' tone band, so work chrome (tabs, editors)
+   * is reachable without scrolling past a full-viewport billboard.
    */
   variant?: "hero" | "detail";
   tourId?: string;
 }
 
-type BillboardButtonVariant = "play" | "more" | "default" | "outline";
+type BillboardButtonVariant = "play" | "more" | "default" | "outline" | "ghost";
+
+export function Billboard(props: BillboardProps) {
+  return props.variant === "detail" ? <DetailBillboard {...props} /> : <HeroBillboard {...props} />;
+}
 
 /**
  * Full-bleed homepage hero. Dark keeps the cinematic gradient; light is a
  * chambers wash so Welcome copy is ink on paper, not white on navy.
  */
-export function Billboard({
+function HeroBillboard({
   eyebrow,
   title,
   description,
@@ -53,21 +63,18 @@ export function Billboard({
   tertiaryAction,
   caption,
   className,
-  variant = "hero",
   tourId,
 }: BillboardProps) {
   const { resolvedTheme } = useTheme();
   const cinematic = isDarkPalette(resolvedTheme);
   useRegisterCinematicNav();
   const Icon = TONE_ICON[tone];
-  const isDetail = variant === "detail";
 
   return (
     <section
-      data-tour={tourId ?? (isDetail ? undefined : "home-billboard")}
+      data-tour={tourId ?? "home-billboard"}
       className={cn(
-        "relative isolate w-full overflow-hidden bg-gradient-to-br",
-        isDetail ? "min-h-0" : "min-h-[78vh]",
+        "relative isolate min-h-[78vh] w-full overflow-hidden bg-gradient-to-br",
         TONE_GRADIENT_HERO[tone],
         className,
       )}
@@ -84,10 +91,7 @@ export function Billboard({
         <>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--primary)/0.08),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--foreground)/0.14),transparent_55%)]" />
           <Icon
-            className={cn(
-              "absolute right-[6%] top-[18%] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10",
-              isDetail ? "h-[18vh] w-[18vh] max-w-[32vw]" : "h-[55vh] w-[55vh] max-w-[46vw]",
-            )}
+            className="absolute right-[6%] top-[18%] h-[55vh] w-[55vh] max-w-[46vw] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10"
             strokeWidth={1}
             aria-hidden="true"
           />
@@ -98,12 +102,8 @@ export function Billboard({
 
       <div
         className={cn(
-          "browse-gutter relative flex max-w-3xl flex-col justify-end",
-          isDetail
-            ? "min-h-0 pb-10 pt-20"
-            : caption
-              ? "min-h-[78vh] pb-32 pt-32"
-              : "min-h-[78vh] pb-24 pt-32",
+          "browse-gutter relative flex min-h-[78vh] max-w-3xl flex-col justify-end pt-32",
+          caption ? "pb-32" : "pb-24",
         )}
       >
         {eyebrow && (
@@ -111,17 +111,11 @@ export function Billboard({
             {eyebrow}
           </p>
         )}
-        <h1
-          data-tour-focus={isDetail ? "" : undefined}
-          className={cn(
-            "w-fit font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg",
-            isDetail ? "text-2xl sm:text-3xl lg:text-4xl" : "text-4xl sm:text-5xl lg:text-6xl",
-          )}
-        >
+        <h1 className="w-fit text-4xl font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg sm:text-5xl lg:text-6xl">
           {title}
         </h1>
         {badges && badges.length > 0 && (
-          <div className={cn("flex flex-wrap gap-2", isDetail ? "mt-2" : "mt-4")}>
+          <div className="mt-4 flex flex-wrap gap-2">
             {badges.map((badge) => (
               <span
                 key={badge}
@@ -133,25 +127,16 @@ export function Billboard({
           </div>
         )}
         {description && (
-          <p
-            className={cn(
-              "max-w-xl leading-relaxed text-foreground/80 dark:text-primary-foreground/85",
-              isDetail ? "mt-2 line-clamp-2 text-sm" : "mt-4 line-clamp-3 text-sm sm:text-base",
-            )}
-          >
+          <p className="mt-4 line-clamp-3 max-w-xl text-sm leading-relaxed text-foreground/80 dark:text-primary-foreground/85 sm:text-base">
             {description}
           </p>
         )}
-        <div data-tour-focus="" className={cn("flex flex-wrap gap-3", isDetail ? "mt-4" : "mt-6")}>
+        <div data-tour-focus="" className="mt-6 flex flex-wrap gap-3">
           {primaryAction && (
             <BillboardButton
               action={primaryAction}
-              // A detail page's lead action is "back", which is navigation,
-              // not a commitment — it gets the translucent secondary, and
-              // the white Play stays the Home billboard's alone.
-              variant={isDetail ? (cinematic ? "more" : "outline") : cinematic ? "play" : "default"}
-              icon={isDetail ? "back" : "play"}
-              compact={isDetail}
+              variant={cinematic ? "play" : "default"}
+              icon="play"
             />
           )}
           {secondaryAction && (
@@ -159,7 +144,6 @@ export function Billboard({
               action={secondaryAction}
               variant={cinematic ? "more" : "outline"}
               icon="info"
-              compact={isDetail}
             />
           )}
           {tertiaryAction && (
@@ -167,7 +151,6 @@ export function Billboard({
               action={tertiaryAction}
               variant={cinematic ? "more" : "outline"}
               icon="info"
-              compact={isDetail}
             />
           )}
         </div>
@@ -181,18 +164,110 @@ export function Billboard({
   );
 }
 
+/**
+ * A record's page header, drawn with the same tone band as `BrowseHeader`
+ * so a detail page opens the way the list it came from does: no art, no
+ * set-dressing icon, the title on the display scale. It sits on plain
+ * canvas, so the nav keeps its resting fade and the actions are quiet
+ * tools. A cover photo is a party's identification photo, shown only as
+ * a small documentary inset, never as the backdrop.
+ */
+function DetailBillboard({
+  eyebrow,
+  title,
+  description,
+  badges,
+  tone = "docket",
+  imageUrl,
+  primaryAction,
+  secondaryAction,
+  tertiaryAction,
+  className,
+  tourId,
+}: BillboardProps) {
+  return (
+    <section
+      data-tour={tourId}
+      className={cn(
+        "tone-band relative isolate w-full overflow-hidden pb-10 pt-[calc(6rem+env(safe-area-inset-top))]",
+        className,
+      )}
+      style={{ "--band": TONE_HSL_VAR[tone] } as CSSProperties}
+    >
+      <div className="browse-gutter relative flow-root">
+        {/* Floats so only the first lines of a long title wrap beside it. */}
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt=""
+            decoding="async"
+            className="float-right mb-2 ml-4 h-16 w-14 rounded-md border border-hairline object-cover object-[center_20%] shadow-elevation-1 hc:border-border sm:ml-6 sm:h-28 sm:w-24"
+          />
+        )}
+        {eyebrow && (
+          // Full ink, not muted: the eyebrow sits where the band is
+          // strongest, and muted ink there falls under 4.5:1 in light.
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground">
+            {eyebrow}
+          </p>
+        )}
+        {/* Phones step the display size down to 22px: a long case title
+            then takes three lines, four at most, and never more than the
+            old 24px detail title did. */}
+        <h1
+          data-tour-focus=""
+          className="w-fit max-w-5xl text-display text-foreground max-sm:text-[1.375rem] max-sm:leading-[1.1]"
+        >
+          {title}
+        </h1>
+        {badges && badges.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {badges.map((badge) => (
+              <span
+                key={badge}
+                className="rounded-sm border border-input px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-foreground"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+        {description && (
+          <p className="mt-3 line-clamp-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        )}
+        <div data-tour-focus="" className="mt-4 flex flex-wrap gap-3">
+          {primaryAction && (
+            <BillboardButton action={primaryAction} variant="ghost" icon="back" tool />
+          )}
+          {secondaryAction && (
+            <BillboardButton action={secondaryAction} variant="ghost" icon="info" tool />
+          )}
+          {tertiaryAction && (
+            <BillboardButton action={tertiaryAction} variant="ghost" icon="info" tool />
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function BillboardButton({
   action,
   variant,
   icon,
-  compact = false,
+  tool = false,
 }: {
   action: BillboardAction;
   variant: BillboardButtonVariant;
   icon: "play" | "info" | "back";
-  compact?: boolean;
+  /** The page's tool size (as in a detail page's action row), kept at 44px below lg. */
+  tool?: boolean;
 }) {
-  const iconClass = compact ? "h-4 w-4" : "h-5 w-5";
+  const iconClass = tool ? "h-4 w-4" : "h-5 w-5";
+  const size = tool ? "sm" : "billboard";
+  const sizeClass = tool ? "max-lg:min-h-11" : undefined;
   const inner = (
     <>
       {icon === "back" ? (
@@ -208,7 +283,7 @@ function BillboardButton({
 
   if (action.href) {
     return (
-      <Button asChild variant={variant} size={compact ? "default" : "billboard"}>
+      <Button asChild variant={variant} size={size} className={sizeClass}>
         <Link to={action.href} onClick={action.onClick}>
           {inner}
         </Link>
@@ -217,7 +292,7 @@ function BillboardButton({
   }
 
   return (
-    <Button variant={variant} size={compact ? "default" : "billboard"} onClick={action.onClick}>
+    <Button variant={variant} size={size} className={sizeClass} onClick={action.onClick}>
       {inner}
     </Button>
   );

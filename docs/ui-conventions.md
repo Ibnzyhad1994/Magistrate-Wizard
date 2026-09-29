@@ -39,6 +39,8 @@ The visual language is Netflix's: a near-black canvas, content lifted off it by 
 - **Type scale**: `text-display-xl` (Billboard) · `text-display` (page title) · `text-title-lg` (empty-state / hero heading) · `text-title` (row and section headings) · `text-heading` (card titles). Each sets weight, tracking and leading; do not add `font-bold tracking-tight` on top. Small uppercase labels are the `eyebrow` utility (deliberately not `text-`-prefixed: tailwind-merge would treat it as a colour).
 - **Reading measure**: long legal text read in place (a judgment's body, case law's summary and full text) is `text-base leading-relaxed` in a `max-w-measure` column, about 70 characters per line, sitting unframed on its card. An editor keeps its frame and full width.
 - **Page headers** are `BrowseHeader` with the workspace `tone`; it draws the edge-to-edge band. Empty states on a browse page pass the same `tone` to `EmptyState`.
+- **Detail headers** (a docket matter, judgment, case-law authority, statute, bench note or callover) are `Billboard variant="detail"`, which draws the same tone band as `BrowseHeader`: no art, no set-dressing icon, the title in `text-display`, stepping down to 22px below `sm` so a long case title stays at three or four lines on a phone. Its actions (Back first) are quiet `ghost` tools at the page's tool size (`size="sm"`), kept at 44px below `lg`. The eyebrow (case number, citation) is full `text-foreground`, because it sits where the band is strongest. The nav keeps its resting fade over it; only Home's hero billboard turns the nav cinematic.
+- **Identification photos** are a party's photo, never art. On a detail header a cover shows only as a small documentary inset (floated top right, `rounded-md` with a hairline), never as the backdrop.
 - **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow. A tile in a dense grid, such as a capacity day, never moves on hover: its hover is a shadow step with no translate, so the strip does not twitch under the pointer.
 
 ## Stills (browse tiles)
@@ -58,9 +60,9 @@ One of each per surface:
 
 - `default` (red) — the commit action: create, save, finalise, connect.
 - `play` (white) — a Billboard's lead action only. Never on a list page or in a card.
-- `more` — translucent on cinematic art; the Billboard's second action and a detail page's Back.
+- `more` — translucent on cinematic art; the Home billboard's second action only.
 - `secondary` — quiet filled tools and refinement clears on plain canvas; `outline` is the same weight with an edge for use on a card.
-- `ghost` / `link` — icon buttons, inline controls, inline links.
+- `ghost` / `link` — icon buttons, inline controls, inline links, and a detail header's Back and other header actions.
 
 A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segmented control (`Tabs variant="segmented"` or a `role="group"` of ghost buttons on a `bg-surface-2` track), never a red button.
 
