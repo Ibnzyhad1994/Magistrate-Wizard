@@ -6,7 +6,14 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ThemeSelect } from "@/components/theme/theme-select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BROWSE_VIEW_LABELS, TILE_SIZE_LABELS, isBrowseView, isTileSize } from "@/lib/browse-prefs";
+import {
+  BROWSE_VIEW_LABELS,
+  TILE_SIZE_LABELS,
+  TILE_STYLE_LABELS,
+  isBrowseView,
+  isTileSize,
+  isTileStyle,
+} from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
@@ -74,6 +81,8 @@ export default function SettingsPage() {
   const setBrowseView = useUiStore((s) => s.setBrowseView);
   const tileSize = useUiStore((s) => s.tileSize);
   const setTileSize = useUiStore((s) => s.setTileSize);
+  const tileStyle = useUiStore((s) => s.tileStyle);
+  const setTileStyle = useUiStore((s) => s.setTileStyle);
   const { profile } = useAuth();
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const { canWalkthrough, startWalkthrough } = useTour();
@@ -95,7 +104,7 @@ export default function SettingsPage() {
     <BrowsePage>
       <BrowseHeader
         title="Settings"
-        description="Display preferences for this device. Tile size and list or tile view apply across Docket, Case Law, and the other browse pages."
+        description="Display preferences for this device. Tile style, tile size and list or tile view apply across Docket, Case Law, and the other browse pages."
       />
 
       <div className="grid gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
@@ -106,8 +115,8 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle>Display</CardTitle>
                 <CardDescription>
-                  Compact is the default tile size. List view is a denser row layout of the same
-                  records.
+                  Wide stills and Compact are the defaults. List view is a denser row layout of the
+                  same records.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -131,6 +140,26 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label htmlFor="tile-style">Tile style</Label>
+                  <Select
+                    id="tile-style"
+                    className="max-w-xs"
+                    value={tileStyle}
+                    onChange={(e) => {
+                      if (isTileStyle(e.target.value)) setTileStyle(e.target.value);
+                    }}
+                    aria-label="Tile style"
+                  >
+                    <option value="stills">{TILE_STYLE_LABELS.stills}</option>
+                    <option value="posters">{TILE_STYLE_LABELS.posters}</option>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Wide stills are 16:9 with the words below the art. Posters are the earlier tall
+                    2:3 tiles with the words on the art. Applies to tile view and Home rows.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
                   <Label htmlFor="tile-size">Tile size</Label>
                   <Select
                     id="tile-size"
@@ -146,8 +175,8 @@ export default function SettingsPage() {
                     <option value="large">{TILE_SIZE_LABELS.large}</option>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
-                    Compact is slightly smaller than the original posters. Applies to tile view and
-                    Home rows.
+                    Compact fits the most tiles in a row, Large the fewest. On a phone, posters are
+                    two to a row at every size. Applies to tile view and Home rows.
                   </p>
                 </div>
 

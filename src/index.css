@@ -717,10 +717,11 @@
     padding-right: 4vw;
   }
 
-  /* 16:9 stills. The column count per breakpoint comes from TILE_COLUMNS
+  /* Browse tiles, 16:9 stills or 2:3 posters. The column count per
+     breakpoint comes from TILE_COLUMNS or POSTER_COLUMNS
      (src/lib/browse-prefs.ts), set on the container by stillColumnVars as
      --still-cols-<breakpoint>; these media queries are Tailwind's sm, md,
-     lg and 2xl and must match STILL_BREAKPOINTS (test-still-scale.mjs). */
+     lg, xl and 2xl and must match STILL_BREAKPOINTS (test-still-scale.mjs). */
   .still-grid,
   .still-rail {
     --still-cols: var(--still-cols-base);
@@ -742,6 +743,12 @@
     .still-grid,
     .still-rail {
       --still-cols: var(--still-cols-lg);
+    }
+  }
+  @media (min-width: 1280px) {
+    .still-grid,
+    .still-rail {
+      --still-cols: var(--still-cols-xl);
     }
   }
   @media (min-width: 1536px) {

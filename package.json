@@ -38,6 +38,7 @@
     "test:notifications-rls": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-rls.mjs",
     "test:theme": "node --import ./scripts/test-support/register.mjs scripts/tests/test-theme.mjs",
     "test:still-scale": "node --import ./scripts/test-support/register.mjs scripts/tests/test-still-scale.mjs",
+    "test:tile-style": "node --import ./scripts/test-support/register.mjs scripts/tests/test-tile-style.mjs",
     "test:identifiers": "node --import ./scripts/test-support/register.mjs scripts/tests/test-identifiers.mjs",
     "test:schema-alignment": "node scripts/tests/test-schema-alignment.mjs",
     "test:notifications-ui": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-ui.mjs",

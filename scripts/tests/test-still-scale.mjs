@@ -44,6 +44,11 @@ function check(label, actual, expected) {
 check("tile sizes keep their three steps", TILE_SIZES, ["compact", "regular", "large"]);
 check("Compact stays the default", DEFAULT_TILE_SIZE, "compact");
 check(
+  "stills take no step at xl (the posters' breakpoint): 1024-1535px is one column count",
+  TILE_SIZES.map((s) => TILE_COLUMNS[s][3] === TILE_COLUMNS[s][4]),
+  [true, true, true],
+);
+check(
   "the table has one column count per breakpoint for every size",
   TILE_SIZES.map((s) => TILE_COLUMNS[s].length),
   TILE_SIZES.map(() => STILL_BREAKPOINTS.length),
