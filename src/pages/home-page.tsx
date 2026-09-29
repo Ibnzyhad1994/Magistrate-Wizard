@@ -194,7 +194,7 @@ export default function HomePage() {
                     layout="tiles"
                     key={m.id}
                     tone="docket"
-                    eyebrow={m.case_number}
+                    identifier={m.case_number}
                     title={m.matter_title}
                     subtitle={issueOf(m)}
                     status={m.status}
@@ -223,7 +223,7 @@ export default function HomePage() {
                       layout="tiles"
                       key={event.id}
                       tone="docket"
-                      eyebrow={matter?.case_number}
+                      identifier={matter?.case_number}
                       title={matter?.matter_title ?? eventLabel(event.event_type)}
                       subtitle={matter?.charge_or_issue ?? undefined}
                       badge={eventLabel(event.event_type)}
@@ -250,7 +250,7 @@ export default function HomePage() {
                     layout="tiles"
                     key={j.id}
                     tone="judgment"
-                    eyebrow={j.case_number ?? undefined}
+                    identifier={j.case_number ?? undefined}
                     title={j.title}
                     subtitle={j.court_name ?? j.citation ?? undefined}
                     status="draft"
@@ -271,7 +271,7 @@ export default function HomePage() {
                     layout="tiles"
                     key={j.id}
                     tone="judgment"
-                    eyebrow={j.case_number ?? undefined}
+                    identifier={j.case_number ?? undefined}
                     title={j.title}
                     subtitle={j.court_name ?? j.citation ?? undefined}
                     status="final"
@@ -290,7 +290,7 @@ export default function HomePage() {
                       layout="tiles"
                       key={row.id}
                       tone="docket"
-                      eyebrow={matter?.case_number}
+                      identifier={matter?.case_number}
                       title={matter?.matter_title ?? "Retained matter"}
                       subtitle={matter?.charge_or_issue ?? undefined}
                       badge={matter?.status ? undefined : "Retained"}
@@ -334,7 +334,7 @@ export default function HomePage() {
                     layout="tiles"
                     key={code.id}
                     tone="code"
-                    eyebrow={code.code_word}
+                    identifier={code.code_word}
                     title={code.title ?? code.code_word}
                     subtitle={code.category ?? undefined}
                     href={`${ROUTES.quickCodes}?qc=${code.id}`}

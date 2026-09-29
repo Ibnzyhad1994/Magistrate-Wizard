@@ -212,7 +212,7 @@ export default function LegislationListPage() {
             <TitleCard
               key={s.id}
               tone="legislation"
-              eyebrow={s.code}
+              identifier={s.code}
               title={s.title}
               subtitle={s.jurisdiction}
               badge={s.instrument_type ?? undefined}

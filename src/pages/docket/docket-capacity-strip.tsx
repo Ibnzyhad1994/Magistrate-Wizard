@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SEGMENT_ON_CLASS, SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
 import {
   useDocketMatterCategories,
   useDocketCapacitySnapshot,
@@ -316,7 +317,7 @@ export function DocketCapacityStrip({
         <div
           role="group"
           aria-label="Capacity calendar view"
-          className="grid w-full grid-cols-3 rounded-md bg-surface-2 p-0.5 hc:border hc:border-border"
+          className={cn("grid w-full grid-cols-3", SEGMENT_TRACK_CLASS)}
         >
           {CAPACITY_VIEWS.map((view) => {
             const selected = calendarView === view.id;
@@ -330,8 +331,7 @@ export function DocketCapacityStrip({
                 variant="ghost"
                 className={cn(
                   "min-h-11 w-full px-1 text-xs sm:text-sm",
-                  selected &&
-                    "bg-surface-1 text-foreground shadow-elevation-1 hover:bg-surface-1 hc:bg-foreground hc:text-background",
+                  selected && SEGMENT_ON_CLASS,
                 )}
                 onClick={handleSelectView}
               >

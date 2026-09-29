@@ -21,6 +21,8 @@ interface BillboardAction {
 
 interface BillboardProps {
   eyebrow?: string;
+  /** Case number, citation or code: takes the eyebrow slot in the identifier style. */
+  identifier?: string;
   title: string;
   description?: string;
   badges?: string[];
@@ -53,6 +55,7 @@ export function Billboard(props: BillboardProps) {
  */
 function HeroBillboard({
   eyebrow,
+  identifier,
   title,
   description,
   badges,
@@ -106,9 +109,14 @@ function HeroBillboard({
           caption ? "pb-32" : "pb-24",
         )}
       >
-        {eyebrow && (
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground/70 dark:text-primary-foreground/70">
-            {eyebrow}
+        {(identifier || eyebrow) && (
+          <p
+            className={cn(
+              "mb-2 text-sm font-semibold text-foreground/70 dark:text-primary-foreground/70",
+              identifier ? "identifier" : "uppercase tracking-[0.22em]",
+            )}
+          >
+            {identifier || eyebrow}
           </p>
         )}
         <h1 className="w-fit text-4xl font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg sm:text-5xl lg:text-6xl">
@@ -174,6 +182,7 @@ function HeroBillboard({
  */
 function DetailBillboard({
   eyebrow,
+  identifier,
   title,
   description,
   badges,
@@ -204,11 +213,16 @@ function DetailBillboard({
             className="float-right mb-2 ml-4 h-16 w-14 rounded-md border border-hairline object-cover object-[center_20%] shadow-elevation-1 hc:border-border sm:ml-6 sm:h-28 sm:w-24"
           />
         )}
-        {eyebrow && (
+        {(identifier || eyebrow) && (
           // Full ink, not muted: the eyebrow sits where the band is
           // strongest, and muted ink there falls under 4.5:1 in light.
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.22em] text-foreground">
-            {eyebrow}
+          <p
+            className={cn(
+              "mb-2 text-sm font-semibold text-foreground",
+              identifier ? "identifier" : "uppercase tracking-[0.22em]",
+            )}
+          >
+            {identifier || eyebrow}
           </p>
         )}
         {/* Phones step the display size down to 22px: a long case title

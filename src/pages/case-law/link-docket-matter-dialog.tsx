@@ -120,7 +120,7 @@ export function LinkDocketMatterDialog({
                       <span className="block truncate font-medium text-foreground">
                         {m.matter_title}
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="identifier block truncate text-xs text-muted-foreground">
                         {m.case_number}
                       </span>
                     </span>

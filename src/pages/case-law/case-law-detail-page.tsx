@@ -102,7 +102,7 @@ export default function CaseLawDetailPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={caseLaw.citation}
+        identifier={caseLaw.citation}
         title={caseLaw.case_name}
         description={[caseLaw.court, caseLaw.jurisdiction].filter(Boolean).join(" · ") || undefined}
         badges={[isCanonical ? "Canonical" : isOwner ? "My Research" : "Discoverable"]}

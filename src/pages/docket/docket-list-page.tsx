@@ -75,7 +75,7 @@ function docketCover(matter: {
     matter.charge_or_issue ??
     (matter.headline ? matter.headline.replace(/<\/?b>/gi, "") : undefined);
   return {
-    eyebrow: matter.case_number,
+    identifier: matter.case_number,
     title: matter.matter_title,
     subtitle: charge || undefined,
     status: matter.status,
