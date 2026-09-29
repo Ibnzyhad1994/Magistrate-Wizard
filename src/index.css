@@ -13,9 +13,10 @@
    * needing heavy borders — the same figure/ground trick the dark theme
    * plays with #181818 tiles on a #141414 canvas, inverted.
    *
-   * The brand red is darkened a little here (47% -> 42% lightness). The
-   * dark theme's #E50914 is tuned to glow against near-black; unchanged on
-   * white it reads as hot and fails contrast on small text.
+   * The accent is Sealing Wax, a warm vermilion red, darkened a little here
+   * (44% -> 38% lightness). The dark theme's #BF3C22 is tuned to glow
+   * against near-black; unchanged on white it reads as hot and weak on
+   * small text.
    *
    * Every status hue (stage/capacity/notice) is darkened for the same
    * reason: amber and green tuned for a black canvas are close to
@@ -43,7 +44,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    --primary: 357 80% 42%;
+    --primary: 10 72% 38%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 40 12% 92%;
@@ -55,8 +56,14 @@
     --accent: 40 12% 90%;
     --accent-foreground: 0 0% 12%;
 
-    --destructive: 357 80% 42%;
+    /* Destructive is its own red, split from the accent (hue 356 against
+       the accent's 10) so a delete never borrows the commit colour.
+       --destructive is the fill under a white label; --destructive-text
+       is red words and icons on the canvas, lifted in the dark palettes
+       where the fill red is under 4.5:1. */
+    --destructive: 356 78% 40%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 356 78% 40%;
 
     /* --border is the quiet divider between cards and rows; --input is the
        boundary of a control and must clear 3:1 (WCAG 1.4.11) against
@@ -66,7 +73,7 @@
     /* Focus is blue, never the brand red: a red ring on a field reads as
        a validation error. Clears 3:1 against the canvas and the card. */
     --ring: 214 90% 36%;
-    --link: 357 80% 42%;
+    --link: 10 72% 36%;
 
     --brass: 42 60% 34%;
     --brass-foreground: 42 70% 24%;
@@ -118,12 +125,12 @@
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 12%;
-    --sidebar-primary: 357 80% 42%;
+    --sidebar-primary: 10 72% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 40 12% 92%;
     --sidebar-accent-foreground: 0 0% 12%;
     --sidebar-border: 40 10% 85%;
-    --sidebar-ring: 357 80% 42%;
+    --sidebar-ring: 10 72% 38%;
   }
 
   /*
@@ -141,7 +148,7 @@
     --popover: 0 0% 9.4%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 357 92% 47%; /* #E50914 */
+    --primary: 10 70% 44%; /* #BF3C22 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 18%;
@@ -153,15 +160,16 @@
     --accent: 0 0% 20%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 357 92% 47%;
+    --destructive: 356 74% 48%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 356 85% 68%;
 
     --border: 0 0% 18%;
     --input: 0 0% 42%;
     --ring: 214 90% 56%;
-    /* Brand red is 3.9:1 on the canvas — fine for a button fill, not for
-       body links. Links get a lifted red that clears 4.5:1. */
-    --link: 357 92% 62%;
+    /* The accent is 3.4:1 on the canvas: fine for a button fill and a
+       rule, not for body links. Links get a lifted wax that clears 7:1. */
+    --link: 12 80% 68%;
 
     --brass: 42 55% 58%;
     --brass-foreground: 42 70% 78%;
@@ -207,12 +215,12 @@
 
     --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 357 92% 47%;
+    --sidebar-primary: 10 70% 44%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 357 92% 47%;
+    --sidebar-ring: 10 70% 44%;
   }
 
   /*
@@ -230,7 +238,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
 
-    --primary: 357 100% 32%;
+    --primary: 10 100% 28%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 94%;
@@ -242,13 +250,14 @@
     --accent: 0 0% 92%;
     --accent-foreground: 0 0% 0%;
 
-    --destructive: 357 100% 32%;
+    --destructive: 356 100% 32%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 356 100% 32%;
 
     --border: 0 0% 0%;
     --input: 0 0% 0%;
     --ring: 214 100% 26%;
-    --link: 357 100% 32%;
+    --link: 10 100% 28%;
 
     --brass: 42 100% 22%;
     --brass-foreground: 42 100% 16%;
@@ -288,12 +297,12 @@
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 0%;
-    --sidebar-primary: 357 100% 32%;
+    --sidebar-primary: 10 100% 28%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 94%;
     --sidebar-accent-foreground: 0 0% 0%;
     --sidebar-border: 0 0% 0%;
-    --sidebar-ring: 357 100% 32%;
+    --sidebar-ring: 10 100% 28%;
   }
 
   .dark.theme-high-contrast {
@@ -306,9 +315,9 @@
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 100%;
 
-    /* 45% rather than 52%: white ink on the brighter red was only 3.96:1,
-       which fails the very palette that promises 4.5:1 everywhere. */
-    --primary: 357 100% 45%;
+    /* 40%: white ink on it is 5.5:1; from 46% it drops under 4.5:1, which
+       fails the very palette that promises 4.5:1 everywhere. */
+    --primary: 10 100% 40%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 12%;
@@ -320,13 +329,14 @@
     --accent: 0 0% 14%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 357 100% 45%;
+    --destructive: 356 100% 40%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 2 100% 70%;
 
     --border: 0 0% 100%;
     --input: 0 0% 100%;
     --ring: 55 100% 50%;
-    --link: 357 100% 65%;
+    --link: 12 100% 72%;
 
     --brass: 42 100% 70%;
     --brass-foreground: 42 100% 85%;
@@ -366,7 +376,7 @@
 
     --sidebar-background: 0 0% 0%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 357 100% 45%;
+    --sidebar-primary: 10 100% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 100%;
@@ -388,7 +398,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    --primary: 357 80% 42%;
+    --primary: 10 72% 38%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 40 12% 92%;
@@ -402,13 +412,16 @@
 
     --destructive: 26 100% 36%;
     --destructive-foreground: 0 0% 100%;
+    /* Orange words sit a step darker than the fill so they keep 4.5:1 on
+       a ghost button's hover wash. */
+    --destructive-text: 26 100% 31%;
 
     --border: 40 10% 85%;
     --input: 40 8% 54%;
     /* Okabe–Ito blue: apart from the orange destructive and the red
        commit action for every kind of colour vision. */
     --ring: 202 100% 35%;
-    --link: 357 80% 42%;
+    --link: 10 72% 36%;
 
     --brass: 41 100% 32%;
     --brass-foreground: 41 100% 24%;
@@ -448,12 +461,12 @@
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 12%;
-    --sidebar-primary: 357 80% 42%;
+    --sidebar-primary: 10 72% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 40 12% 92%;
     --sidebar-accent-foreground: 0 0% 12%;
     --sidebar-border: 40 10% 85%;
-    --sidebar-ring: 357 80% 42%;
+    --sidebar-ring: 10 72% 38%;
   }
 
   .dark.theme-colourblind {
@@ -466,7 +479,7 @@
     --popover: 0 0% 9.4%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 357 92% 47%;
+    --primary: 10 70% 44%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 18%;
@@ -481,12 +494,13 @@
     /* Okabe–Ito orange carries dark ink: white on it is only 2.7:1. */
     --destructive: 26 100% 52%;
     --destructive-foreground: 0 0% 0%;
+    --destructive-text: 26 100% 52%;
 
     --border: 0 0% 18%;
     --input: 0 0% 42%;
     /* Okabe–Ito sky blue. */
     --ring: 202 77% 63%;
-    --link: 357 92% 62%;
+    --link: 12 80% 68%;
 
     --brass: 41 100% 55%;
     --brass-foreground: 41 100% 72%;
@@ -526,12 +540,12 @@
 
     --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 357 92% 47%;
+    --sidebar-primary: 10 70% 44%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 357 92% 47%;
+    --sidebar-ring: 10 70% 44%;
   }
 }
 

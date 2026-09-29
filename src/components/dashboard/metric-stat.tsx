@@ -20,7 +20,7 @@ export function MetricStat({
 }) {
   const numberClass = cn(
     "text-4xl font-extrabold tabular-nums leading-none tracking-tight",
-    tone === "warn" && "text-destructive",
+    tone === "warn" && "text-destructive-text",
     tone === "ok" && "text-foreground",
     tone === "ink" && "text-foreground",
   );

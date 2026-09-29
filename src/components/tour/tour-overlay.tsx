@@ -281,7 +281,7 @@ export function TourOverlay({
                 style={{ borderRadius: spot.radius }}
               />
               <span
-                className="absolute inset-[5px] border-[3px] border-[hsl(var(--primary))] shadow-[0_0_18px_rgba(229,9,20,0.55)]"
+                className="absolute inset-[5px] border-[3px] border-[hsl(var(--primary))] shadow-[0_0_18px_hsl(var(--primary)/0.55)]"
                 // The inner ring is inset 5px, so its radius has to shrink by
                 // the same amount or the two rings stop being concentric on a
                 // rounded rectangle.

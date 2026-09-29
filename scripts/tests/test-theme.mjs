@@ -91,6 +91,7 @@ const TOKENS = [
   "accent-foreground",
   "destructive",
   "destructive-foreground",
+  "destructive-text",
   "border",
   "input",
   "ring",
@@ -245,7 +246,17 @@ const CONTRAST_PAIRS = [
   ["ring", "background", 3],
   ["ring", "card", 3],
   ["primary-foreground", "primary", 4.5],
+  // The accent's rule (active nav item, tab rail) is non-text UI.
+  ["primary", "background", 3],
+  ["primary", "card", 3],
   ["destructive-foreground", "destructive", 4.5],
+  // The destructive fill doubles as an invalid field's border.
+  ["destructive", "background", 3],
+  ["destructive", "card", 3],
+  // Red words ("Move to bin", form errors) and icons.
+  ["destructive-text", "background", 4.5],
+  ["destructive-text", "card", 4.5],
+  ["destructive-text", "popover", 4.5],
   ["link", "background", 4.5],
   ["link", "card", 4.5],
   // Amber is read as text in the docket stage cell and notification list.
@@ -291,6 +302,20 @@ for (const [label, block] of PALETTES) {
     })
     .filter(Boolean);
   check(`${label}: capacity load pill text meets 4.5:1`, pillFailing, []);
+
+  // "Move to bin" is a ghost button: its hover wash is the ink at 10% over
+  // the canvas, or --accent in high contrast.
+  const redWords = hslToRgb(tokenValue(block, "destructive-text"));
+  const canvas = hslToRgb(tokenValue(block, "background"));
+  const ink = hslToRgb(tokenValue(block, "foreground"));
+  const hover = label.startsWith("high-contrast")
+    ? hslToRgb(tokenValue(block, "accent"))
+    : canvas.map((v, i) => 0.1 * ink[i] + 0.9 * v);
+  check(
+    `${label}: destructive words keep 4.5:1 on a ghost button's hover`,
+    contrastRgb(redWords, hover) >= 4.5,
+    true,
+  );
   check(
     `${label}: over capacity is darker than full`,
     luminance(hslToRgb(tokenValue(block, "capacity-over"))) <
@@ -309,6 +334,49 @@ for (const [label, block] of PALETTES) {
     false,
   );
 }
+
+// The accent is Sealing Wax in every palette, never Netflix's #E50914, and
+// destructive is its own token rather than a second name for the accent.
+function oklab(rgb) {
+  const [r, g, b] = rgb.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+const NETFLIX_RED = [0xe5, 0x09, 0x14].map((v) => v / 255);
+const deltaEOk = (a, b) => Math.hypot(...oklab(a).map((v, i) => v - oklab(b)[i]));
+for (const [label, block] of PALETTES) {
+  const accent = tokenValue(block, "primary");
+  check(
+    `${label}: the accent is more than deltaE_OK 0.05 from Netflix red`,
+    deltaEOk(hslToRgb(accent), NETFLIX_RED) > 0.05,
+    true,
+  );
+  check(
+    `${label}: destructive and destructive text are split from the accent`,
+    [tokenValue(block, "destructive"), tokenValue(block, "destructive-text")].includes(accent),
+    false,
+  );
+}
+check(
+  "no literal Netflix red is left in the seal, its glows or the palettes",
+  ["src/index.css", "public/favicon.svg", "index.html", ...tsxFiles("src")].filter((file) =>
+    /#?e50914|#f21824|#b30710|rgba\(229,\s*9,\s*20/i.test(readFileSync(file, "utf8")),
+  ),
+  [],
+);
+check(
+  "red words use --destructive-text, not the destructive fill",
+  [...tsxFiles("src"), "src/components/ui/alert-variants.ts"].filter((file) =>
+    /text-destructive(?![-\w])/.test(readFileSync(file, "utf8")),
+  ),
+  [],
+);
 
 // --link must be at least as legible as the primary it replaces for body
 // links in the dark palettes.

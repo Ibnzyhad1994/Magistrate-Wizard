@@ -167,7 +167,7 @@ export function DateOnlyInput({
         </button>
       </div>
       {invalid && (
-        <p className="mt-1 text-xs text-destructive">Enter a valid date as DD/MM/YYYY.</p>
+        <p className="mt-1 text-xs text-destructive-text">Enter a valid date as DD/MM/YYYY.</p>
       )}
 
       {open && !disabled && (

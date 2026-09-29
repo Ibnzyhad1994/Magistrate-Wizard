@@ -404,7 +404,9 @@ const WebhooksPanel = () => {
                     Queued {formatDateTime(row.created_at)}
                     {row.delivered_at ? ` · delivered ${formatDateTime(row.delivered_at)}` : ""}
                   </p>
-                  {row.last_error && <p className="text-xs text-destructive">{row.last_error}</p>}
+                  {row.last_error && (
+                    <p className="text-xs text-destructive-text">{row.last_error}</p>
+                  )}
                 </div>
                 {row.status === "failed" && (
                   <Button

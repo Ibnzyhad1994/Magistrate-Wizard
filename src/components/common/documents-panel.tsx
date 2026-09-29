@@ -247,7 +247,7 @@ export function DocumentsPanel({
                         aria-label={`Delete ${doc.file_name}`}
                         onClick={() => setPendingDelete(doc)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-destructive-text" />
                       </Button>
                     </HintTooltip>
                   )}

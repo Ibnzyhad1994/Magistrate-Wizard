@@ -42,7 +42,7 @@ export function SaveIndicator({ state, onRetry, className }: SaveIndicatorProps)
   }
 
   return (
-    <span className={`flex items-center gap-1.5 text-xs text-destructive ${className ?? ""}`}>
+    <span className={`flex items-center gap-1.5 text-xs text-destructive-text ${className ?? ""}`}>
       <AlertCircle className="h-3.5 w-3.5" />
       Save failed
       {onRetry && (
@@ -50,7 +50,7 @@ export function SaveIndicator({ state, onRetry, className }: SaveIndicatorProps)
           type="button"
           variant="link"
           size="sm"
-          className="h-auto p-0 text-xs text-destructive underline"
+          className="h-auto p-0 text-xs text-destructive-text underline"
           onClick={onRetry}
         >
           Retry

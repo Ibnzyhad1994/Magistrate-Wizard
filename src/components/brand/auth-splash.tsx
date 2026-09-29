@@ -56,7 +56,7 @@ export function AuthSplash({ continueLabel, onDismissed }: AuthSplashProps) {
         <span className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsl(var(--muted))_0%,_hsl(var(--background))_55%,_hsl(var(--background))_100%)]" />
       </span>
       <img
-        src="/favicon.svg?v=2"
+        src="/favicon.svg?v=3"
         alt=""
         width={80}
         height={80}
