@@ -68,7 +68,7 @@ export function TitleCard({
     layout === "list" ? (
       <article
         className={cn(
-          "group relative flex w-full min-w-0 items-stretch overflow-hidden rounded-sm bg-foreground/[0.04] transition-colors hover:bg-foreground/[0.09]",
+          "group relative flex w-full min-w-0 items-stretch overflow-hidden rounded-sm bg-foreground/[0.04] transition-colors duration-120 ease-out-expo hover-fine:hover:bg-foreground/[0.09]",
           className,
         )}
       >

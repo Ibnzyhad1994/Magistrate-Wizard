@@ -158,6 +158,9 @@ const config: Config = {
       transitionDuration: {
         // A still's hover surface step.
         120: "120ms",
+        // Sheets and dialogs: close in 180ms, open in 240ms.
+        180: "180ms",
+        240: "240ms",
         250: "250ms",
         400: "400ms",
       },
