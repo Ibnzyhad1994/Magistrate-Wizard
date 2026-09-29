@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog } from "@/components/ui/alert-dialog";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Field, JurisdictionField } from "@/components/legal-library/taxonomy-fields";
 import { DateOnlyInput } from "@/components/common/date-only-input";
@@ -109,15 +109,15 @@ export default function LegislationEditPage() {
       </div>
     );
   }
-  if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
+  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
   if (!statute) {
     return (
-      <InlineError error={new Error("This item doesn't exist, or you don't have access to it.")} />
+      <PageError error={new Error("This item doesn't exist, or you don't have access to it.")} />
     );
   }
   if (!isAdmin) {
     return (
-      <InlineError
+      <PageError
         error={new Error("You are not authorized to edit Legislation. Contact an administrator.")}
       />
     );
