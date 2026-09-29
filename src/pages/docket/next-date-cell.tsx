@@ -19,7 +19,7 @@ import {
 import { useDocketEvents } from "@/hooks/docket/use-docket-events";
 import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog";
 import { HintTooltip } from "@/components/ui/tooltip";
-import { formatDate, getLocalDateOnly } from "@/lib/utils";
+import { cn, formatDate, getLocalDateOnly } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
 import { sittingDayVerdict, nextSittingDay } from "@/lib/court-calendar";
 import { useNonSittingDays } from "@/hooks/docket/use-court-calendar";
@@ -54,7 +54,9 @@ export function NextDateCell({
 
   if (!canEdit) {
     return (
-      <span className="whitespace-nowrap text-xs text-foreground/70">
+      <span
+        className={cn("whitespace-nowrap text-xs text-foreground/70", nextDate && "identifier")}
+      >
         {nextDate ? formatDate(nextDate) : NOT_SET}
       </span>
     );
@@ -72,7 +74,10 @@ export function NextDateCell({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground lg:min-h-0"
+          className={cn(
+            "inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground lg:min-h-0",
+            nextDate && "identifier",
+          )}
           aria-label={
             nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"
           }

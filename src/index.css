@@ -791,10 +791,15 @@
     text-transform: uppercase;
   }
 
-  /* Case numbers, citations and codes are identifiers, not labels: normal
+  /* Case numbers, citations, codes and hearing dates are identifiers, not
+     labels: set in IBM Plex Mono so they read as references, at normal
      tracking so they never wrap mid-number, tabular figures so digits line
-     up down a column, and the text's own case. */
+     up down a column, and the text's own case. Only Plex Mono 400 and 500
+     ship, so a semibold call site renders the 500 face rather than a
+     smeared synthetic bold. */
   .identifier {
+    font-family: theme("fontFamily.mono");
+    font-synthesis: none;
     letter-spacing: normal;
     text-transform: none;
     font-variant-numeric: tabular-nums;
