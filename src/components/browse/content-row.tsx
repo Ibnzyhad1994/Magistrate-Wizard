@@ -37,9 +37,11 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
     <section className={cn("group/row relative space-y-3", className)}>
       <div className="browse-gutter flex items-baseline justify-between">
         {href ? (
+          // A 44px target below lg; the negative margins keep the row's
+          // height, so only the tappable area grows.
           <Link
             to={href}
-            className="inline-flex items-baseline gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-my-2.5 inline-flex min-h-11 items-center gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:my-0 lg:min-h-0 lg:items-baseline"
           >
             {title}
             {/* Netflix's "Explore all": slides in beside the title on

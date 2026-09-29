@@ -28,14 +28,17 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 const sheetVariants = cva(
   "fixed z-dialog gap-4 bg-card p-6 text-foreground shadow-none ease-out-expo data-[state=closed]:duration-180 data-[state=open]:duration-240 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
+    // Each side keeps its content clear of the notch, the home indicator
+    // and a landscape phone's rounded corners on the edges it touches
+    // (env() is 0 everywhere else, so desktop padding is unchanged).
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b border-border data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        top: "inset-x-0 top-0 border-b border-border pt-[calc(1.5rem+env(safe-area-inset-top,0px))] data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
         bottom:
-          "inset-x-0 bottom-0 border-t border-border data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r border-border data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+          "inset-x-0 bottom-0 border-t border-border pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r border-border pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pl-[calc(1.5rem+env(safe-area-inset-left,0px))] pt-[calc(1.5rem+env(safe-area-inset-top,0px))] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
         right:
-          "inset-y-0 right-0 h-full w-3/4 border-l border-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+          "inset-y-0 right-0 h-full w-3/4 border-l border-border pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pt-[calc(1.5rem+env(safe-area-inset-top,0px))] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
       },
     },
     defaultVariants: {
@@ -84,7 +87,18 @@ const SheetContent = React.forwardRef<
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
+        {/* A 44px target below lg with the icon where it always sat (24px
+            from the corner), pushed below the notch; lg keeps the icon-sized
+            button. */}
+        <SheetPrimitive.Close
+          className={cn(
+            "absolute flex h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none lg:right-4 lg:top-4 lg:block lg:h-auto lg:w-auto",
+            side === "bottom" ? "top-0.5" : "top-[calc(0.125rem+env(safe-area-inset-top,0px))]",
+            side === "right"
+              ? "right-[calc(0.125rem+env(safe-area-inset-right,0px))]"
+              : "right-0.5",
+          )}
+        >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>

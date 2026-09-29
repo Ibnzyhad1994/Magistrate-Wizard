@@ -415,11 +415,16 @@ export function DocketCapacityStrip({
             </p>
             <div className="flex flex-wrap gap-2">
               <HintTooltip label={captionTotalHint}>
+                {/* The button is the 44px touch target below lg; the pill inside
+                    keeps its size and carries the focus ring. From lg the pill
+                    stretches to the row, as it did when it was the button. */}
                 <button
                   type="button"
-                  className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group inline-flex min-h-11 items-center rounded-full focus-visible:outline-none lg:min-h-0 lg:items-stretch"
                 >
-                  All: {selectedTotal}
+                  <span className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground group-focus-visible:ring-2 group-focus-visible:ring-ring">
+                    All: {selectedTotal}
+                  </span>
                 </button>
               </HintTooltip>
               {(categories ?? []).map((cat) => {

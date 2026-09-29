@@ -214,7 +214,7 @@ export default function LegislationViewerPage() {
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="w-72 overflow-y-auto p-3"
+                className="w-72 overflow-y-auto p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pl-[calc(0.75rem+env(safe-area-inset-left,0px))] pt-[calc(0.75rem+env(safe-area-inset-top,0px))]"
                 aria-describedby={undefined}
               >
                 <SheetTitle className="sr-only">Contents</SheetTitle>

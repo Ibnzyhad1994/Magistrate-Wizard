@@ -72,7 +72,7 @@ export function NextDateCell({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground"
+          className="inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2 hover:bg-foreground/10 hover:text-foreground lg:min-h-0"
           aria-label={
             nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"
           }

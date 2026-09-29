@@ -541,7 +541,7 @@ function FieldsCard({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="case_number"
@@ -575,7 +575,7 @@ function FieldsCard({
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="court_name"
@@ -630,7 +630,10 @@ function DiscoverabilityCard({
   return (
     <Card>
       <CardContent className="p-3">
-        <label htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2 text-sm">
+        <label
+          htmlFor={checkboxId}
+          className="flex min-h-11 cursor-pointer items-center gap-2 text-sm lg:min-h-0"
+        >
           <Checkbox
             id={checkboxId}
             checked={judgment.is_discoverable}
@@ -852,7 +855,9 @@ function ContentCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      {/* 16px sides on phones leave the reading column about 42 characters
+          wide at 390px; the desktop measure is set by max-w-measure. */}
+      <CardHeader className="flex flex-row items-center justify-between gap-2 px-4 sm:px-6">
         <CardTitle>Content</CardTitle>
         {isDraft && (
           <div className="flex items-center gap-2">
@@ -875,7 +880,7 @@ function ContentCard({
           </div>
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 px-4 sm:px-6">
         {notice && (
           <div
             role="status"

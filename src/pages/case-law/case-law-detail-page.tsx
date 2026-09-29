@@ -316,10 +316,11 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
   if (!isEditable) {
     return (
       <Card>
-        <CardHeader>
+        {/* The reading card: 16px sides on phones, as on judgment Content. */}
+        <CardHeader className="px-4 sm:px-6">
           <CardTitle>Details</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm">
+        <CardContent className="space-y-4 px-4 text-sm sm:px-6">
           {categoryName && (
             <p>
               <span className="font-medium text-foreground">Category: </span>
@@ -336,7 +337,7 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
             <p>
               <SafeExternalLink
                 href={caseLaw.source_url}
-                className="inline-flex items-center gap-1 text-primary hover:underline"
+                className="inline-flex min-h-11 items-center gap-1 text-primary hover:underline lg:min-h-0"
               >
                 Source <ExternalLink className="h-3.5 w-3.5" />
               </SafeExternalLink>
@@ -391,7 +392,7 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="citation"
@@ -424,7 +425,7 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="court"
@@ -535,7 +536,7 @@ function DiscoverabilityCard({ caseLaw }: { caseLaw: { id: string; is_discoverab
         <CardTitle>Discoverability</CardTitle>
       </CardHeader>
       <CardContent>
-        <label className="flex cursor-pointer items-start gap-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm lg:min-h-0">
           <Checkbox
             checked={caseLaw.is_discoverable}
             onCheckedChange={(checked) => setDiscoverable.mutate(checked)}

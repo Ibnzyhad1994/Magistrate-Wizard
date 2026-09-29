@@ -78,7 +78,19 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - A browse tile's status flag (`TitleCard` `status`, on the art and on list rows alike) is a `bg-card` chip with an inset `ring-border` edge, a 2px `rounded-sm` tag, and a dot from `statusDotClass`, the same map as a fill: green live, red refused, neutral otherwise. The chip never takes the accent or a status fill, so its word stays at 15:1 over any art in every palette, and each dot clears 3:1 against it; `npm run test:theme` enforces both. A flag that is not a status (`Canonical`, an appearance type, an instrument type) passes `badge` alone and has no dot.
 - Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards and chips are `rounded-md`; a still is `rounded-lg`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
-- Sizes: inputs and buttons are 44px / 16px on phones and 36px / 14px from `lg` up; the primitives do this, do not override heights.
+- Sizes: inputs and buttons are 44px / 16px below `lg` (phones and tablets) and 36px / 14px from `lg` up (`Button size="sm"` is 44px below `lg`, 32px from it); the primitives do this, do not override heights. See "Phones and tablets".
+
+## Phones and tablets
+
+Below `lg` (1024px) the app is used by touch; from `lg` up every size stays the compact desktop one.
+
+- **Touch targets**: every tappable control is at least 44px tall below `lg`. Write it mobile-first as `min-h-11 … lg:min-h-<desktop>` (or `lg:min-h-0`), never `max-lg:`, so the desktop box stays exactly what it was. `min-h`, not `h`, so a wrapped label never clips and a caller's `h-8` still yields 44px on a phone.
+- **Keep the visual small, grow the target**: a pill, chip or badge that is a control keeps its size and sits inside a 44px button (`inline-flex min-h-11 items-center`); the pill carries the focus ring through `group-focus-visible:`. An icon inside a field (the date input's calendar) gets a full-height, 44px-wide button and the field's end padding makes room for it.
+- **The one exception** is a link or button inside a sentence, such as "5 matters in all" in the capacity caption (WCAG 2.5.8 inline exception). A native checkbox counts together with its `label`, so the label row is `min-h-11` below `lg`.
+- **Guarded in CI**: `e2e/touch-targets.spec.ts` signs in at 390 × 844 and fails on any visible, enabled control under 44px on Home, the docket list and a matter, judgments and case law. It runs in the authenticated Playwright job in CI only.
+- **Stacked details**: a details grid of fields is one column below `sm` (`grid-cols-1 sm:grid-cols-2`), so a value such as a court name is never cut inside its input on a phone.
+- **Reading on a phone**: the card that holds long legal text (a judgment's Content, case law's read-only Details) has 16px sides below `sm` (`px-4 sm:px-6` on its header and content), about 42 characters a line at 390px. The 65-75 character measure is the desktop rule and `max-w-measure` still sets it.
+- **Safe areas**: anything fixed or sticky against a screen edge pads that edge with `env(safe-area-inset-*, 0px)` added to its normal padding: the top bar, sticky toolbars, the docket's sticky selection bar (bottom), and sheets on every edge they touch (the `Sheet` primitive does this per side, and moves its close button below the notch). A sheet that overrides the padding (`p-0`, `p-3`) must add the insets back itself, as `MobileNav` does.
 
 ## Z-index tiers
 
