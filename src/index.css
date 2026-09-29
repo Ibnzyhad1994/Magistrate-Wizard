@@ -11,7 +11,7 @@
    * pure white while still reading as a document surface. Cards sit at
    * true white ON that warm ground, which is what gives them edge without
    * needing heavy borders — the same figure/ground trick the dark theme
-   * plays with #181818 tiles on a #141414 canvas, inverted.
+   * plays with its lifted tiles on a cool near-black canvas, inverted.
    *
    * The accent is Sealing Wax, a warm vermilion red, darkened a little here
    * (44% -> 38% lightness). The dark theme's #BF3C22 is tuned to glow
@@ -137,35 +137,42 @@
    * Cinematic "theater" palette — Netflix web app translation.
    * Canvas is near-black so content tiles read as luminous. Brand red is
    * reserved for the wordmark and primary CTAs, never a page wash.
+   *
+   * Night Sitting ladder: a cool near-black canvas (224 14% 6%) and a
+   * four-step surface ladder (card and surface-1 at 9%, surface-2 at 12.5%,
+   * surface-3 at 17%). Surfaces separate by a hairline, not a heavy shadow:
+   * the hairline and the divider border sit at 19%, at least 1.3:1 against
+   * the canvas and the card, and elevation is a small shadow with a 1px
+   * inner top highlight. The colourblind dark palette shares the ladder.
    */
   .dark {
-    --background: 0 0% 8%; /* #141414 */
+    --background: 224 14% 6%; /* #0D0E11 */
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 9.4%; /* #181818 */
+    --card: 224 11% 9%; /* #141619 */
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 9.4%;
+    --popover: 224 11% 10%;
     --popover-foreground: 0 0% 100%;
 
     --primary: 10 70% 44%; /* #BF3C22 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 18%;
+    --secondary: 224 9% 16%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 224 9% 12%;
+    --muted-foreground: 224 10% 72%;
 
-    --accent: 0 0% 20%;
+    --accent: 224 9% 17%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 356 74% 48%;
     --destructive-foreground: 0 0% 100%;
     --destructive-text: 356 85% 68%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 42%;
+    --border: 224 9% 19%;
+    --input: 224 7% 44%;
     --ring: 214 90% 56%;
     /* The accent is 3.4:1 on the canvas: fine for a button fill and a
        rule, not for body links. Links get a lifted wax that clears 7:1. */
@@ -202,14 +209,14 @@
     --capacity-full-foreground: 0 0% 100%;
     --capacity-over-foreground: 0 0% 100%;
 
-    --surface-1: 0 0% 11%; /* #1c1c1c */
-    --surface-2: 0 0% 14%; /* #242424 */
-    --surface-3: 0 0% 18%; /* #2e2e2e */
-    --hairline: 0 0% 16%;
-    --elevation-1: 0 2px 8px hsl(0 0% 0% / 0.45);
-    --elevation-2: 0 8px 24px hsl(0 0% 0% / 0.55);
-    --elevation-3: 0 16px 48px hsl(0 0% 0% / 0.7);
-    --tone-alpha: 0.5;
+    --surface-1: 224 11% 9%;
+    --surface-2: 224 10% 12.5%;
+    --surface-3: 224 9% 17%;
+    --hairline: 224 9% 19%;
+    --elevation-1: inset 0 1px 0 hsl(0 0% 100% / 0.035), 0 1px 2px hsl(0 0% 0% / 0.5);
+    --elevation-2: inset 0 1px 0 hsl(0 0% 100% / 0.035), 0 6px 16px hsl(0 0% 0% / 0.5);
+    --elevation-3: inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 16px 40px hsl(0 0% 0% / 0.6);
+    --tone-alpha: 0.34;
 
     --radius: 0.25rem;
 
@@ -470,25 +477,25 @@
   }
 
   .dark.theme-colourblind {
-    --background: 0 0% 8%;
+    --background: 224 14% 6%; /* #0D0E11 */
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 9.4%;
+    --card: 224 11% 9%; /* #141619 */
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 9.4%;
+    --popover: 224 11% 10%;
     --popover-foreground: 0 0% 100%;
 
     --primary: 10 70% 44%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 18%;
+    --secondary: 224 9% 16%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 224 9% 12%;
+    --muted-foreground: 224 10% 72%;
 
-    --accent: 0 0% 20%;
+    --accent: 224 9% 17%;
     --accent-foreground: 0 0% 100%;
 
     /* Okabe–Ito orange carries dark ink: white on it is only 2.7:1. */
@@ -496,8 +503,8 @@
     --destructive-foreground: 0 0% 0%;
     --destructive-text: 26 100% 52%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 42%;
+    --border: 224 9% 19%;
+    --input: 224 7% 44%;
     /* Okabe–Ito sky blue. */
     --ring: 202 77% 63%;
     --link: 12 80% 68%;
@@ -527,14 +534,14 @@
     --capacity-full-foreground: 0 0% 9%;
     --capacity-over-foreground: 0 0% 100%;
 
-    --surface-1: 0 0% 11%;
-    --surface-2: 0 0% 14%;
-    --surface-3: 0 0% 18%;
-    --hairline: 0 0% 16%;
-    --elevation-1: 0 2px 8px hsl(0 0% 0% / 0.45);
-    --elevation-2: 0 8px 24px hsl(0 0% 0% / 0.55);
-    --elevation-3: 0 16px 48px hsl(0 0% 0% / 0.7);
-    --tone-alpha: 0.5;
+    --surface-1: 224 11% 9%;
+    --surface-2: 224 10% 12.5%;
+    --surface-3: 224 9% 17%;
+    --hairline: 224 9% 19%;
+    --elevation-1: inset 0 1px 0 hsl(0 0% 100% / 0.035), 0 1px 2px hsl(0 0% 0% / 0.5);
+    --elevation-2: inset 0 1px 0 hsl(0 0% 100% / 0.035), 0 6px 16px hsl(0 0% 0% / 0.5);
+    --elevation-3: inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 16px 40px hsl(0 0% 0% / 0.6);
+    --tone-alpha: 0.34;
 
     --radius: 0.25rem;
 

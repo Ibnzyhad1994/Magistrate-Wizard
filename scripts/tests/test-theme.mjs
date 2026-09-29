@@ -66,11 +66,16 @@ check("light foreground is dark ink", lightness(tokenValue(rootBlock, "foregroun
 check("dark background is dark", lightness(tokenValue(darkBlock, "background")) < 20, true);
 check("dark foreground is light ink", lightness(tokenValue(darkBlock, "foreground")) > 80, true);
 
-// The dark palette must keep its exact original values — the retrofit was
-// supposed to be invisible in dark mode, not a redesign of it.
-check("dark canvas is still #141414", tokenValue(darkBlock, "background"), "0 0% 8%");
-check("dark tile is still #181818", tokenValue(darkBlock, "card"), "0 0% 9.4%");
-check("dark foreground is still pure white", tokenValue(darkBlock, "foreground"), "0 0% 100%");
+// Dark and colourblind dark share the Night Sitting canvas: a cool
+// near-black, with pure white ink.
+for (const [label, block] of [
+  ["dark", darkBlock],
+  ["colourblind-safe dark", cbDarkBlock],
+]) {
+  check(`${label} canvas is the cool near-black`, tokenValue(block, "background"), "224 14% 6%");
+  check(`${label} card is the first ladder step`, tokenValue(block, "card"), "224 11% 9%");
+  check(`${label} foreground is pure white`, tokenValue(block, "foreground"), "0 0% 100%");
+}
 
 // Every token the light palette needs must exist in both, or a component
 // styled through it renders with an empty custom property in one theme.
@@ -386,6 +391,62 @@ check(
     contrast(tokenValue(darkBlock, "primary"), tokenValue(darkBlock, "background")),
   true,
 );
+
+// --- the surface ladder ------------------------------------------------------
+// Every surface a word or a focused control can sit on keeps the text and
+// focus-ring minimums, not only the canvas and the card.
+const SURFACES = ["background", "card", "popover", "surface-1", "surface-2", "surface-3"];
+for (const [label, block] of PALETTES) {
+  const ratiosBelow = (fg, min) =>
+    SURFACES.map((bg) => [bg, contrast(tokenValue(block, fg), tokenValue(block, bg))])
+      .filter(([, ratio]) => ratio < min)
+      .map(([bg, ratio]) => `${fg}/${bg}: ${ratio.toFixed(2)} < ${min}`);
+  check(
+    `${label}: muted text meets 4.5:1 on every surface step`,
+    ratiosBelow("muted-foreground", 4.5),
+    [],
+  );
+  check(`${label}: the focus ring meets 3:1 on every surface step`, ratiosBelow("ring", 3), []);
+}
+
+// Dark and colourblind dark are the Night Sitting ladder: each step lighter
+// than the last, the card visibly off the canvas, and the hairline (and the
+// divider border that shares it) at least 1.3:1 against the canvas and the
+// card it edges, so surfaces separate by a crease rather than a heavy shadow.
+for (const [label, block] of [
+  ["dark", darkBlock],
+  ["colourblind-safe dark", cbDarkBlock],
+]) {
+  const lum = (token) => luminance(hslToRgb(tokenValue(block, token)));
+  check(
+    `${label}: the ladder steps lighter from canvas to surface-3`,
+    lum("background") < lum("card") &&
+      lum("card") <= lum("surface-1") &&
+      lum("surface-1") < lum("surface-2") &&
+      lum("surface-2") < lum("surface-3"),
+    true,
+  );
+  check(
+    `${label}: the card is a visible step off the canvas (at least 1.05:1)`,
+    contrast(tokenValue(block, "card"), tokenValue(block, "background")) >= 1.05,
+    true,
+  );
+  const edgesBelow = ["hairline", "border"].flatMap((edge) =>
+    ["background", "card", "surface-1"]
+      .map((bg) => [bg, contrast(tokenValue(block, edge), tokenValue(block, bg))])
+      .filter(([, ratio]) => ratio < 1.3)
+      .map(([bg, ratio]) => `${edge}/${bg}: ${ratio.toFixed(2)} < 1.3`),
+  );
+  check(`${label}: hairline and border separate at least 1.3:1`, edgesBelow, []);
+  check(
+    `${label}: raised surfaces carry a 1px inner top highlight and a small shadow`,
+    ["elevation-1", "elevation-2", "elevation-3"].every((t) =>
+      tokenValue(block, t).startsWith("inset 0 1px 0 hsl(0 0% 100% /"),
+    ),
+    true,
+  );
+  check(`${label}: tone washes are toned down to 0.34`, tokenValue(block, "tone-alpha"), "0.34");
+}
 
 // --- primitives use the tokens the assertions above protect ----------------
 const inputSrc = readFileSync("src/components/ui/input.tsx", "utf8");
