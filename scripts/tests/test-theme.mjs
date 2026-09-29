@@ -400,6 +400,36 @@ check(
   [],
 );
 
+// --- chrome carries no accent -----------------------------------------------
+// The accent is spent on commit actions and the active rule only. The avatar
+// is a neutral surface-3 chip with foreground initials, and the unread count
+// is a foreground chip with background ink sitting on the nav's canvas. The
+// colourblind palettes inherit the surface tokens, so resolve each token the
+// way the cascade does for html.dark.theme-* (later blocks win).
+const CASCADES = [
+  ["light", [rootBlock]],
+  ["dark", [rootBlock, darkBlock]],
+  ["high-contrast light", [rootBlock, hcLightBlock]],
+  ["high-contrast dark", [rootBlock, darkBlock, hcLightBlock, hcDarkBlock]],
+  ["colourblind-safe light", [rootBlock, cbLightBlock]],
+  ["colourblind-safe dark", [rootBlock, darkBlock, cbLightBlock, cbDarkBlock]],
+];
+const resolved = (blocks, name) =>
+  blocks.reduce((value, block) => tokenValue(block, name) ?? value, null);
+for (const [label, blocks] of CASCADES) {
+  const ratio = (fg, bg) => contrast(resolved(blocks, fg), resolved(blocks, bg));
+  check(
+    `${label}: avatar initials (foreground on surface-3) meet 4.5:1`,
+    ratio("foreground", "surface-3") >= 4.5,
+    true,
+  );
+  check(
+    `${label}: unread count (background ink on a foreground chip) meets 4.5:1, and 3:1 against the nav canvas`,
+    ratio("background", "foreground") >= 4.5,
+    true,
+  );
+}
+
 // --link must be at least as legible as the primary it replaces for body
 // links in the dark palettes.
 check(
@@ -688,6 +718,24 @@ check(
   "password recovery skips the brand splash",
   authLayout.includes("ROUTES.forgotPassword"),
   false,
+);
+
+// Chrome carries no accent (the contrast half is with the palette pairs above).
+const bellSrc = readFileSync("src/components/layout/notification-bell.tsx", "utf8");
+check(
+  "the avatar and the unread count do not use the accent",
+  [userMenu, bellSrc].some((s) => /\b(bg|text)-primary(-foreground)?\b/.test(s)),
+  false,
+);
+check(
+  "the avatar is a neutral surface chip",
+  userMenu.includes("bg-surface-3") && userMenu.includes("text-foreground"),
+  true,
+);
+check(
+  "the unread count is a neutral foreground chip",
+  bellSrc.includes("bg-foreground") && bellSrc.includes("text-background"),
+  true,
 );
 
 const topNav = readFileSync("src/components/layout/top-nav.tsx", "utf8");

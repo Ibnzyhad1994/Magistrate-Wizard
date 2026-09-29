@@ -84,7 +84,7 @@ export function NotificationBell({ className }: { className?: string }) {
           {hasUnread && (
             <span
               aria-hidden="true"
-              className="absolute right-1 top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground"
+              className="absolute right-1 top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[10px] font-semibold leading-4 text-background ring-2 ring-background"
             >
               {display}
             </span>
