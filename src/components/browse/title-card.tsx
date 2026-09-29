@@ -65,9 +65,10 @@ export function TitleCard({
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--foreground)/0.12),transparent_55%)]" />
       <Icon
         className={cn(
+          "absolute",
           layout === "list"
             ? "right-[-18%] top-[12%] h-[70%] w-[70%] rotate-[-16deg] text-foreground/15"
-            : "absolute right-[6%] top-[26%] h-[60%] w-auto rotate-[-16deg] text-primary-foreground/20",
+            : "right-[6%] top-[26%] h-[60%] w-auto rotate-[-16deg] text-primary-foreground/20",
         )}
         strokeWidth={1.25}
         aria-hidden="true"

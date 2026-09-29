@@ -785,5 +785,19 @@ check(
   [true, true, true, true, true, false],
 );
 
+// Blue on the capacity strip means keyboard focus only. The selected day's
+// ring and today's bar are drawn in the tile's paired ink (the 4.5:1 pairs
+// above), never the stage blue beside the focus ring or the brand accent.
+const capacityStrip = readFileSync("src/pages/docket/docket-capacity-strip.tsx", "utf8");
+check(
+  "capacity day tile: selected is an ink ring, today an ink bar, neither blue nor accent",
+  [
+    /selected && "ring-2 ring-inset ring-current"/.test(capacityStrip),
+    /today &&\s*"after:absolute[^"]*after:bg-current\b/.test(capacityStrip),
+    /stage-outcome-complete|ring-primary/.test(capacityStrip),
+  ],
+  [true, true, false],
+);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

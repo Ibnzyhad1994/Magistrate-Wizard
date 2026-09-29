@@ -90,10 +90,12 @@ function buildMonthGrid(year: number, month: number): { date: string; inMonth: b
  * so the tile is a wide rectangle: efficient screen use for a workload
  * calendar matters more than conventional square calendar styling. The
  * entire tile background still carries the traffic-light colour — not a
- * border, not just the date number. "Selected" and "today" are shown as a
- * ring and a border respectively, both of which compose independently of
- * the inline background-color fill so they stay visible at every band,
- * including a solid red Full/Over-capacity tile.
+ * border, not just the date number. "Selected" is a ring and "today" a short
+ * bar at the foot of the tile, both drawn in the tile's own paired ink (at least 4.5:1
+ * against its fill in every palette), so they stay visible at every band,
+ * including a solid red Full/Over-capacity tile. Neither is blue: blue is
+ * the keyboard focus outline only, drawn outside the tile so all three
+ * states can show on one day at once.
  */
 function DayTile({
   date,
@@ -138,11 +140,14 @@ function DayTile({
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={hint}
-      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-md border text-xs transition-[background-color,box-shadow] duration-150 ease-out-expo hover:shadow-elevation-1 ${
-        size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20"
-      } ${style.textClass} ${
-        today ? "border-2 border-stage-outcome-complete" : "border-hairline hc:border-border"
-      } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+      className={cn(
+        "relative flex w-full flex-col items-center justify-center gap-0.5 rounded-md border border-hairline text-xs transition-[background-color,box-shadow] duration-150 ease-out-expo hover:shadow-elevation-1 hc:border-border",
+        size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20",
+        style.textClass,
+        today &&
+          "after:absolute after:bottom-1 after:left-1/2 after:h-[3px] after:w-4 after:-translate-x-1/2 after:rounded-full after:bg-current sm:after:bottom-1.5",
+        selected && "ring-2 ring-inset ring-current",
+      )}
       style={{ backgroundColor: style.bg }}
     >
       <span className="text-sm font-bold leading-none">{day}</span>
