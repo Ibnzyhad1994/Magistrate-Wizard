@@ -49,7 +49,7 @@ function AppearanceChip({ status, outcome }: { status: string; outcome: string |
 
 export function DocketMatterCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-sm border border-border bg-card p-3">
+    <div className="space-y-3 rounded-md border border-hairline bg-card p-3 shadow-elevation-1 hc:border-border">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-5 w-3/4" />
       <div className="grid grid-cols-2 gap-3">
@@ -123,7 +123,7 @@ export function DocketMatterCard({
   );
 
   return (
-    <article className="rounded-sm border border-border bg-card p-3">
+    <article className="rounded-md border border-hairline bg-card p-3 shadow-elevation-1 hc:border-border">
       <div className="mb-3 flex items-start justify-between gap-3">
         <Link
           to={ROUTES.docketMatter(row.id)}

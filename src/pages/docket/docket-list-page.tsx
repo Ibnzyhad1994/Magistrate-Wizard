@@ -463,7 +463,7 @@ export default function DocketListPage() {
       {isPending ? (
         effectiveBrowseView === "list" ? (
           isDesktop ? (
-            <Skeleton className="h-64 w-full rounded-sm" />
+            <Skeleton className="h-64 w-full rounded-md" />
           ) : (
             <div className="flex flex-col gap-3">
               <DocketMatterCardSkeleton />
