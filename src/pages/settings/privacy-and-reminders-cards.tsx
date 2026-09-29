@@ -43,7 +43,7 @@ export function SoundCuesCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Label className="flex items-center gap-2 text-sm">
+        <Label className="flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
           <Checkbox
             checked={enabled}
             onCheckedChange={(checked) => handleToggle(checked === true)}
@@ -105,7 +105,7 @@ export function HearingRemindersCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
           <Checkbox
             checked={prefs.enabled}
             onCheckedChange={(checked) => void handleEnabled(checked === true)}
