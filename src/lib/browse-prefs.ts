@@ -15,17 +15,52 @@ export const TILE_SIZE_LABELS: Record<TileSize, string> = {
   large: "Large",
 };
 
-/** Default is Compact — slightly smaller than the original poster tiles. */
+/** Default is Compact: the most stills a row. */
 export const DEFAULT_TILE_SIZE: TileSize = "compact";
 export const DEFAULT_BROWSE_VIEW: BrowseView = "tiles";
 
-export const TILE_WIDTH_CLASS: Record<TileSize, string> = {
-  compact:
-    "w-[32vw] min-w-[7.25rem] max-w-[10.5rem] sm:w-[20vw] md:w-[13vw] lg:w-[10vw] xl:w-[8.75vw]",
-  regular:
-    "w-[42vw] min-w-[9.5rem] max-w-[13.5rem] sm:w-[28vw] md:w-[18vw] lg:w-[14vw] xl:w-[12vw]",
-  large: "w-[48vw] min-w-[11rem] max-w-[16rem] sm:w-[32vw] md:w-[22vw] lg:w-[16vw] xl:w-[14vw]",
+/**
+ * Tiles are 16:9 stills sized by columns, not by a fixed width. One table
+ * gives the column count per screen width and tile size; the containers
+ * (`TitleGallery`, `ContentRow`) read it through `stillColumnVars`, and
+ * `.still-grid` / `.still-rail` in index.css switch columns at these
+ * breakpoints. At every width Compact shows at least as many columns as
+ * Regular and Regular at least as many as Large, and no still is narrower
+ * than `STILL_MIN_WIDTH_PX` (npm run test:still-scale checks both).
+ */
+export const STILL_BREAKPOINTS = [
+  ["base", 0],
+  ["sm", 640],
+  ["md", 768],
+  ["lg", 1024],
+  ["2xl", 1536],
+] as const;
+
+export const TILE_COLUMNS: Record<TileSize, readonly [number, number, number, number, number]> = {
+  compact: [2, 3, 4, 5, 6],
+  regular: [2, 2, 3, 4, 5],
+  large: [1, 1, 2, 3, 4],
 };
+
+/** Space between stills, in a grid row and along a rail. */
+export const STILL_GAP_PX = 12;
+/** A rail still is this share of a gallery column, so the next one peeks. */
+export const RAIL_STILL_SHARE = 0.9;
+/** The narrowest a still may be: a 16-character case number fits on one line. */
+export const STILL_MIN_WIDTH_PX = 136;
+
+/** The column table for one tile size as CSS custom properties. */
+export function stillColumnVars(size: TileSize): Record<string, string> {
+  const vars: Record<string, string> = {
+    "--still-gap": `${STILL_GAP_PX}px`,
+    "--still-min": `${STILL_MIN_WIDTH_PX}px`,
+    "--still-rail-share": String(RAIL_STILL_SHARE),
+  };
+  STILL_BREAKPOINTS.forEach(([name], i) => {
+    vars[`--still-cols-${name}`] = String(TILE_COLUMNS[size][i]);
+  });
+  return vars;
+}
 
 export const LIST_THUMB_CLASS: Record<TileSize, string> = {
   compact: "h-[4.25rem] w-[2.85rem]",

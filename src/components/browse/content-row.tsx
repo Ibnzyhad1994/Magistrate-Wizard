@@ -1,9 +1,11 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TitleCardSkeleton } from "@/components/browse/title-card-skeleton";
 import { useHScroll } from "@/hooks/use-h-scroll";
+import { stillColumnVars } from "@/lib/browse-prefs";
+import { useUiStore } from "@/store/ui-store";
 
 interface ContentRowProps {
   title: string;
@@ -16,10 +18,13 @@ interface ContentRowProps {
 /**
  * Horizontally scrolling carousel row — the core Netflix browse metaphor.
  * On mobile the edge chevrons stay available whenever the row overflows,
- * so a magistrate can page tiles without relying only on a swipe.
+ * so a magistrate can page tiles without relying only on a swipe. Each
+ * still is 90% of a gallery column at the same tile size, so the next one
+ * peeks in as the cue that the row scrolls.
  */
 export function ContentRow({ title, href, children, isLoading, className }: ContentRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const tileSize = useUiStore((s) => s.tileSize);
   const { canScrollLeft, canScrollRight } = useHScroll(scrollerRef, [isLoading, children]);
 
   const handleScroll = (direction: -1 | 1) => {
@@ -64,9 +69,12 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
         >
           <ChevronLeft className="h-7 w-7" />
         </button>
+        {/* py-1 keeps a still's focus ring (2px gap, 2px ring) inside the
+            scroller, whose overflow would otherwise clip it top and bottom. */}
         <div
           ref={scrollerRef}
-          className="browse-gutter scrollbar-none flex snap-x snap-mandatory scroll-px-[4vw] gap-2 overflow-x-auto overscroll-x-contain scroll-smooth"
+          className="browse-gutter scrollbar-none still-rail flex snap-x snap-mandatory scroll-px-[4vw] overflow-x-auto overscroll-x-contain scroll-smooth py-1"
+          style={stillColumnVars(tileSize) as CSSProperties}
         >
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => <TitleCardSkeleton key={i} layout="tiles" />)
