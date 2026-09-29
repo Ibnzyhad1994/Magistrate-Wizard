@@ -80,7 +80,7 @@ function DocketStageRow({
   const uploadRuling = useUploadDocument("docket_matter", row.id);
   const uploadJudgment = useUploadDocument("docket_matter", row.id);
   const caseColBase =
-    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden border-r border-border sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
   const protocol = matterProtocol(row);
   const stage = matterProtocolStage(row);
   const classification = matterClassificationLabel(row.category_name, row.category_other);
@@ -125,7 +125,7 @@ function DocketStageRow({
     // Marked at the row, not per cell: 14 procedure columns across three
     // layouts would be forty-odd places to keep in step, and what the
     // magistrate needs to know is that this FILE has unsent changes.
-    <TableRow className={pending ? "bg-warning/10" : undefined}>
+    <TableRow className={pending ? "group/row bg-warning/10" : "group/row"}>
       {selection && (
         <TableCell className="w-9 px-2">
           <Checkbox
@@ -136,13 +136,15 @@ function DocketStageRow({
           />
         </TableCell>
       )}
-      <TableCell className={`${caseColBase} z-20`}>
+      <TableCell className={`${caseColBase} z-20 bg-card group-hover/row:bg-surface-2`}>
         <Link
           to={ROUTES.docketMatter(row.id)}
           className="block min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
+          <p className="identifier truncate text-xs font-semibold text-muted-foreground">
+            {row.case_number}
+          </p>
           <p className="truncate text-sm text-foreground">{row.matter_title}</p>
           {pending && (
             <p className="truncate text-[11px] font-medium text-warning">
@@ -274,17 +276,17 @@ export function DocketStageSheet({
 }) {
   const pendingMatters = usePendingMatterIds();
   const caseColBase =
-    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+    "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden border-r border-border sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
   const columns = visibleBoardColumns(rows);
 
   return (
     <div className="relative" data-tour="docket-board">
-      <div className="relative rounded-sm border border-border">
+      <div className="relative overflow-hidden rounded-md border border-hairline shadow-elevation-1 hc:border-border">
         <Table
           className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]"
           aria-label="Docket board"
         >
-          <TableHeader>
+          <TableHeader className="[&>tr>th]:border-b [&>tr>th]:border-border">
             <TableRow className="hover:bg-transparent">
               {selection && (
                 <TableHead className="w-9 px-2">
@@ -295,31 +297,31 @@ export function DocketStageSheet({
                   />
                 </TableHead>
               )}
-              <TableHead className={`${caseColBase} z-30`}>Case</TableHead>
+              <TableHead className={`${caseColBase} z-30 bg-surface-1`}>Case</TableHead>
               {columns.map((column) => (
                 <TableHead
                   key={column.key}
-                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-card sm:min-w-[7rem]"
+                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
                   data-tour-focus={column.key === "arraignment_status" ? "" : undefined}
                 >
                   <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
               ))}
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-card sm:min-w-[7rem]"
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
                 data-tour="docket-outcome"
               >
                 Outcome
               </TableHead>
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-card sm:min-w-[7.5rem]"
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-surface-1 sm:min-w-[7.5rem]"
                 data-tour="docket-next-date"
               >
                 Next date
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="tabular-nums [&>tr:last-child>td]:border-b-0 [&>tr>td]:border-b [&>tr>td]:border-border">
             {rows.map((row, index) => (
               <DocketStageRow
                 key={row.id}

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/common/empty-state";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Billboard } from "@/components/browse";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
@@ -77,11 +77,11 @@ export default function CalloverDetailPage() {
     );
   }
 
-  if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
+  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
 
   if (!callover) {
     return (
-      <InlineError
+      <PageError
         error={new Error("This callover doesn't exist, or you no longer have access to it.")}
       />
     );

@@ -35,3 +35,17 @@ const STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
 export function statusBadgeVariant(status: string): BadgeVariant {
   return STATUS_BADGE_VARIANT[status] ?? "outline";
 }
+
+/**
+ * The same map as a dot fill, for the status flag on a browse tile:
+ * green when live, red when refused, neutral otherwise. Each fill clears
+ * 3:1 against the flag's card chip in every palette.
+ */
+const STATUS_DOT_CLASS: Partial<Record<BadgeVariant, string>> = {
+  success: "bg-success",
+  destructive: "bg-destructive",
+};
+
+export function statusDotClass(status: string): string {
+  return STATUS_DOT_CLASS[statusBadgeVariant(status)] ?? "bg-muted-foreground";
+}

@@ -50,7 +50,7 @@ export function UserMenu({ compact = false }: UserMenuProps) {
         >
           <Avatar className={compact ? "h-8 w-8 rounded-sm" : "h-7 w-7"}>
             <AvatarImage src={profile?.avatar_url ?? undefined} alt={displayName} />
-            <AvatarFallback className="rounded-sm bg-primary text-xs font-bold text-primary-foreground">
+            <AvatarFallback className="rounded-sm bg-surface-3 text-xs font-bold text-foreground ring-1 ring-inset ring-hairline">
               {getInitials(displayName)}
             </AvatarFallback>
           </Avatar>

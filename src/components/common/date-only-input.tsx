@@ -150,7 +150,7 @@ export function DateOnlyInput({
           placeholder="DD/MM/YYYY"
           inputMode="numeric"
           autoComplete="off"
-          className={cn("pr-9", invalid && "border-destructive", className)}
+          className={cn("pr-11 lg:pr-9", invalid && "border-destructive", className)}
           aria-label={aria["aria-label"] ?? "Date (DD/MM/YYYY)"}
           aria-invalid={invalid}
         />
@@ -158,7 +158,7 @@ export function DateOnlyInput({
           type="button"
           disabled={disabled}
           onClick={() => setOpen((v) => !v)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50 lg:inset-y-auto lg:right-2 lg:top-1/2 lg:w-auto lg:-translate-y-1/2"
           aria-label={open ? "Close calendar" : "Open calendar"}
           aria-expanded={open}
           aria-haspopup="dialog"

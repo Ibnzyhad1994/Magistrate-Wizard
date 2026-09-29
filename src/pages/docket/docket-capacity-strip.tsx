@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SEGMENT_ON_CLASS, SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
 import {
   useDocketMatterCategories,
   useDocketCapacitySnapshot,
@@ -89,10 +90,12 @@ function buildMonthGrid(year: number, month: number): { date: string; inMonth: b
  * so the tile is a wide rectangle: efficient screen use for a workload
  * calendar matters more than conventional square calendar styling. The
  * entire tile background still carries the traffic-light colour — not a
- * border, not just the date number. "Selected" and "today" are shown as a
- * ring and a border respectively, both of which compose independently of
- * the inline background-color fill so they stay visible at every band,
- * including a solid red Full/Over-capacity tile.
+ * border, not just the date number. "Selected" is a ring and "today" a short
+ * bar at the foot of the tile, both drawn in the tile's own paired ink (at least 4.5:1
+ * against its fill in every palette), so they stay visible at every band,
+ * including a solid red Full/Over-capacity tile. Neither is blue: blue is
+ * the keyboard focus outline only, drawn outside the tile so all three
+ * states can show on one day at once.
  */
 function DayTile({
   date,
@@ -137,11 +140,14 @@ function DayTile({
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={hint}
-      className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-md border text-xs transition-[background-color,box-shadow,transform] duration-150 ease-out-expo hover:-translate-y-px hover:shadow-elevation-1 ${
-        size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20"
-      } ${style.textClass} ${
-        today ? "border-2 border-stage-outcome-complete" : "border-hairline hc:border-border"
-      } ${selected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+      className={cn(
+        "relative flex w-full flex-col items-center justify-center gap-0.5 rounded-md border border-hairline text-xs transition-[background-color,box-shadow] duration-150 ease-out-expo hover:shadow-elevation-1 hc:border-border",
+        size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20",
+        style.textClass,
+        today &&
+          "after:absolute after:bottom-1 after:left-1/2 after:h-[3px] after:w-4 after:-translate-x-1/2 after:rounded-full after:bg-current sm:after:bottom-1.5",
+        selected && "ring-2 ring-inset ring-current",
+      )}
       style={{ backgroundColor: style.bg }}
     >
       <span className="text-sm font-bold leading-none">{day}</span>
@@ -316,7 +322,7 @@ export function DocketCapacityStrip({
         <div
           role="group"
           aria-label="Capacity calendar view"
-          className="grid w-full grid-cols-3 rounded-md bg-surface-2 p-0.5 hc:border hc:border-border"
+          className={cn("grid w-full grid-cols-3", SEGMENT_TRACK_CLASS)}
         >
           {CAPACITY_VIEWS.map((view) => {
             const selected = calendarView === view.id;
@@ -330,8 +336,7 @@ export function DocketCapacityStrip({
                 variant="ghost"
                 className={cn(
                   "min-h-11 w-full px-1 text-xs sm:text-sm",
-                  selected &&
-                    "bg-surface-1 text-foreground shadow-elevation-1 hover:bg-surface-1 hc:bg-foreground hc:text-background",
+                  selected && SEGMENT_ON_CLASS,
                 )}
                 onClick={handleSelectView}
               >
@@ -415,11 +420,16 @@ export function DocketCapacityStrip({
             </p>
             <div className="flex flex-wrap gap-2">
               <HintTooltip label={captionTotalHint}>
+                {/* The button is the 44px touch target below lg; the pill inside
+                    keeps its size and carries the focus ring. From lg the pill
+                    stretches to the row, as it did when it was the button. */}
                 <button
                   type="button"
-                  className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group inline-flex min-h-11 items-center rounded-full focus-visible:outline-none lg:min-h-0 lg:items-stretch"
                 >
-                  All: {selectedTotal}
+                  <span className="inline-flex items-center rounded-full bg-neutral-900/10 px-2 py-0.5 text-[11px] font-semibold text-foreground group-focus-visible:ring-2 group-focus-visible:ring-ring">
+                    All: {selectedTotal}
+                  </span>
                 </button>
               </HintTooltip>
               {(categories ?? []).map((cat) => {

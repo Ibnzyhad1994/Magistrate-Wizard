@@ -51,7 +51,7 @@ export function DocketOutcomeCell({
   const cellClassName = cn(
     "inline-flex max-w-full touch-manipulation items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium",
     TONE_CLASS[tone],
-    "min-h-9 min-w-[5.5rem] sm:min-h-7",
+    "min-h-11 min-w-[5.5rem] lg:min-h-7",
     canEdit && "cursor-pointer hover:brightness-110",
   );
 

@@ -49,7 +49,7 @@ function AppearanceChip({ status, outcome }: { status: string; outcome: string |
 
 export function DocketMatterCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-sm border border-border bg-card p-3">
+    <div className="space-y-3 rounded-md border border-hairline bg-card p-3 shadow-elevation-1 hc:border-border">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-5 w-3/4" />
       <div className="grid grid-cols-2 gap-3">
@@ -123,14 +123,16 @@ export function DocketMatterCard({
   );
 
   return (
-    <article className="rounded-sm border border-border bg-card p-3">
+    <article className="rounded-md border border-hairline bg-card p-3 shadow-elevation-1 hc:border-border">
       <div className="mb-3 flex items-start justify-between gap-3">
         <Link
           to={ROUTES.docketMatter(row.id)}
-          className="min-w-0 hover:underline"
+          className="min-h-11 min-w-0 hover:underline"
           data-tour={isTourFirstMatter ? "docket-first-matter" : undefined}
         >
-          <p className="truncate text-xs font-semibold text-muted-foreground">{row.case_number}</p>
+          <p className="identifier truncate text-xs font-semibold text-muted-foreground">
+            {row.case_number}
+          </p>
           <p className="text-sm text-foreground">{row.matter_title}</p>
           {classification && (
             <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">

@@ -222,6 +222,8 @@ const config: Config = {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
         brand: ["Cinzel", "Palatino Linotype", "Palatino", "ui-serif", "Georgia", "serif"],
+        // Identifiers (the `identifier` utility) and code: one mono face everywhere.
+        mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
     },
   },
@@ -238,6 +240,12 @@ const config: Config = {
     // sticky hover state behind.
     plugin(({ addVariant }) => {
       addVariant("hover-fine", "@media (hover: hover) and (pointer: fine)");
+    }),
+    // `dim:` is dark and colourblind dark, never high-contrast dark: the
+    // dark palettes whose surfaces step by luminance. `dark:` alone would
+    // also match high-contrast dark and, generated after `hc:`, win there.
+    plugin(({ addVariant }) => {
+      addVariant("dim", ".dark:not(.theme-high-contrast) &");
     }),
   ],
 };

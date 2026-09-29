@@ -47,7 +47,12 @@ export function CapacityIndicator({
     if (onPress) {
       return (
         <HintTooltip label={editLabel}>
-          <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
+          <button
+            type="button"
+            onClick={onPress}
+            aria-label={editLabel}
+            className="inline-flex min-h-11 items-center rounded-full lg:inline-block lg:min-h-0"
+          >
             {unsetChip}
           </button>
         </HintTooltip>
@@ -73,7 +78,12 @@ export function CapacityIndicator({
     if (onPress) {
       return (
         <HintTooltip label={chipHint}>
-          <button type="button" onClick={onPress} aria-label={editLabel} className="rounded-full">
+          <button
+            type="button"
+            onClick={onPress}
+            aria-label={editLabel}
+            className="inline-flex min-h-11 items-center rounded-full lg:inline-block lg:min-h-0"
+          >
             {chip}
           </button>
         </HintTooltip>

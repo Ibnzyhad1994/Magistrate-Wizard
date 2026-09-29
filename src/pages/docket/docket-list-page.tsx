@@ -41,7 +41,7 @@ import {
 } from "@/lib/docket-selection";
 import { DocketBulkAdjournDialog } from "@/pages/docket/docket-bulk-adjourn-dialog";
 import { DocketCloseoutPanel } from "@/pages/docket/docket-closeout-panel";
-import { formatDate, getLocalDateOnly, toTitleCase } from "@/lib/utils";
+import { formatDate, getLocalDateOnly } from "@/lib/utils";
 import {
   EMPTY_PROCEDURE_FILTERS,
   hasActiveProcedureFilters,
@@ -75,10 +75,10 @@ function docketCover(matter: {
     matter.charge_or_issue ??
     (matter.headline ? matter.headline.replace(/<\/?b>/gi, "") : undefined);
   return {
-    eyebrow: matter.case_number,
+    identifier: matter.case_number,
     title: matter.matter_title,
     subtitle: charge || undefined,
-    badge: matter.status ? toTitleCase(matter.status) : undefined,
+    status: matter.status,
     meta: [matter.court_name, matter.updated_at ? formatDate(matter.updated_at) : null].filter(
       (v): v is string => Boolean(v),
     ),
@@ -445,7 +445,7 @@ export default function DocketListPage() {
       <DocketStageFilters filters={filters} onChange={setFilters} />
 
       {bulkAllowed && selected.size > 0 && (
-        <div className="browse-bleed sticky bottom-0 z-30 mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-hairline bg-background/90 py-3 backdrop-blur-md hc:border-border hc:bg-background">
+        <div className="browse-bleed sticky bottom-0 z-30 mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-hairline bg-background/90 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 backdrop-blur-md hc:border-border hc:bg-background">
           <p className="text-sm text-foreground">
             {selected.size === 1 ? "1 file selected" : `${selected.size} files selected`}
           </p>
@@ -463,7 +463,7 @@ export default function DocketListPage() {
       {isPending ? (
         effectiveBrowseView === "list" ? (
           isDesktop ? (
-            <Skeleton className="h-64 w-full rounded-sm" />
+            <Skeleton className="h-64 w-full rounded-md" />
           ) : (
             <div className="flex flex-col gap-3">
               <DocketMatterCardSkeleton />

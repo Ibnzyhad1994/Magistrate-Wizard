@@ -1,16 +1,30 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import { TONE_GRADIENT, TONE_ICON, TONE_LABEL, type TitleCardTone } from "@/lib/browse-tones";
+import { cn, toTitleCase } from "@/lib/utils";
+import {
+  POSTER_INK,
+  POSTER_SCRIM_CLASS,
+  POSTER_SCRIM_FADE_CLASS,
+  TONE_GRADIENT,
+  TONE_ICON,
+  TONE_LABEL,
+  type TitleCardTone,
+} from "@/lib/browse-tones";
 import { LIST_THUMB_CLASS, type BrowseView } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
+import { statusDotClass } from "@/components/common/status-badge-variant";
 
 interface TitleCardProps {
   title: string;
   eyebrow?: string;
+  /** Case number, citation or code: takes the eyebrow slot in the identifier style. */
+  identifier?: string;
   subtitle?: string;
   meta?: string[];
+  /** Flag label; defaults to the title-cased `status`. */
   badge?: string;
+  /** Raw record status (`active`, `draft`): colours the flag's dot from the shared status map. */
+  status?: string | null;
   tone?: TitleCardTone;
   imageUrl?: string | null;
   href?: string;
@@ -23,17 +37,20 @@ interface TitleCardProps {
 }
 
 /**
- * Browse tile. A 16:9 still in tile view, with the words below the art on
- * the card surface, never over it; a compact row in list view. The still
- * fills the width its container gives it (`TitleGallery`, `ContentRow`);
- * view comes from Settings unless `layout` overrides.
+ * Browse tile. In tile view, a 16:9 still with the words below the art on
+ * the card surface (the default), or a 2:3 poster with the words on the art
+ * over a scrim, as Settings' Tile style chooses; a compact row in list view.
+ * Either fills the width its container gives it (`TitleGallery`,
+ * `ContentRow`); view comes from Settings unless `layout` overrides.
  */
 export function TitleCard({
   title,
   eyebrow,
+  identifier,
   subtitle,
   meta,
   badge,
+  status,
   tone = "docket",
   imageUrl,
   href,
@@ -45,18 +62,25 @@ export function TitleCard({
 }: TitleCardProps) {
   const storedView = useUiStore((s) => s.browseView);
   const tileSize = useUiStore((s) => s.tileSize);
+  const tileStyle = useUiStore((s) => s.tileStyle);
   const layout = layoutOverride ?? storedView;
   const Icon = TONE_ICON[tone];
   const hasPhoto = Boolean(imageUrl);
+  const flagLabel = badge ?? (status ? toTitleCase(status) : undefined);
+  const kicker = identifier || eyebrow;
+  const kickerClass = identifier ? "identifier" : "uppercase tracking-[0.12em]";
 
   const toneArt = (
     <>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--foreground)/0.12),transparent_55%)]" />
       <Icon
         className={cn(
+          "absolute",
           layout === "list"
             ? "right-[-18%] top-[12%] h-[70%] w-[70%] rotate-[-16deg] text-foreground/15"
-            : "absolute right-[6%] top-[26%] h-[60%] w-auto rotate-[-16deg] text-primary-foreground/20",
+            : tileStyle === "posters"
+              ? "right-[-6%] top-[18%] h-[46%] w-[46%] rotate-[-16deg] text-primary-foreground/20"
+              : "right-[6%] top-[26%] h-[60%] w-auto rotate-[-16deg] text-primary-foreground/20",
         )}
         strokeWidth={1.25}
         aria-hidden="true"
@@ -94,20 +118,21 @@ export function TitleCard({
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              {eyebrow && (
-                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70">
-                  {eyebrow}
+              {kicker && (
+                <p
+                  className={cn(
+                    "truncate text-[11px] font-semibold text-foreground/70",
+                    kickerClass,
+                  )}
+                >
+                  {kicker}
                 </p>
               )}
               <h3 className="line-clamp-1 text-sm font-bold leading-snug text-foreground">
                 {title}
               </h3>
             </div>
-            {badge && (
-              <span className="shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-                {badge}
-              </span>
-            )}
+            {flagLabel && <StatusFlag label={flagLabel} status={status} />}
           </div>
           {subtitle && (
             <p className="line-clamp-2 text-[12px] leading-snug text-foreground/75">{subtitle}</p>
@@ -116,6 +141,68 @@ export function TitleCard({
             <p className="truncate text-[11px] text-foreground/50">{meta.join(" · ")}</p>
           )}
           {children}
+        </div>
+      </article>
+    ) : tileStyle === "posters" ? (
+      <article
+        className={cn(
+          "relative aspect-[2/3] overflow-hidden rounded-md bg-gradient-to-br ring-1 ring-inset ring-transparent transition-[box-shadow] duration-120 ease-out-expo hc:ring-border",
+          "hover-fine:group-hover/still:shadow-elevation-3 hover-fine:group-hover/still:ring-primary-foreground/40",
+          TONE_GRADIENT[tone],
+          className,
+        )}
+      >
+        {toneArt}
+        {/* A cover is an identification photo of a party: on a poster too
+            it is only a small documentary inset, never the art. */}
+        {hasPhoto && (
+          <img
+            src={imageUrl!}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute left-2 top-9 aspect-[3/4] h-[26%] w-auto rounded-sm object-cover shadow-elevation-1 ring-1 ring-primary-foreground/30"
+          />
+        )}
+
+        <div className="absolute inset-x-2 top-2 flex flex-row-reverse flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">
+            {TONE_LABEL[tone]}
+          </span>
+
+          {flagLabel && <StatusFlag label={flagLabel} status={status} className="mr-auto" />}
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 flex flex-col">
+          <div aria-hidden="true" className={cn("h-10", POSTER_SCRIM_FADE_CLASS)} />
+          {/* The scrim is dark in every theme, so the words on it (and any
+              child, such as a search headline) take the dark tokens. */}
+          <div className={cn("dark flex flex-col gap-0.5 px-2 pb-2", POSTER_SCRIM_CLASS)}>
+            {kicker && (
+              <p className={cn("text-[10px] font-semibold", POSTER_INK.kicker, kickerClass)}>
+                {kicker}
+              </p>
+            )}
+            <h3
+              className={cn(
+                "line-clamp-3 text-[13px] font-semibold leading-snug [text-wrap:pretty]",
+                POSTER_INK.title,
+              )}
+            >
+              {title}
+            </h3>
+            {subtitle && (
+              <p className={cn("line-clamp-3 text-[11px] leading-snug", POSTER_INK.subtitle)}>
+                {subtitle}
+              </p>
+            )}
+            {meta && meta.length > 0 && (
+              <p className={cn("line-clamp-2 text-[10px] leading-snug", POSTER_INK.meta)}>
+                {meta.join(" · ")}
+              </p>
+            )}
+            {children}
+          </div>
         </div>
       </article>
     ) : (
@@ -150,20 +237,16 @@ export function TitleCard({
               {TONE_LABEL[tone]}
             </span>
 
-            {badge && (
-              <span className="mr-auto shrink-0 rounded-[2px] bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-                {badge}
-              </span>
-            )}
+            {flagLabel && <StatusFlag label={flagLabel} status={status} className="mr-auto" />}
           </div>
         </div>
 
         {/* 11px plus the 1px border: text sits 12px in from the still's
             edge, which the 136px floor is sized for. */}
         <div className="flex flex-col gap-0.5 px-[11px] pb-3 pt-2.5">
-          {eyebrow && (
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {eyebrow}
+          {kicker && (
+            <p className={cn("text-[10px] font-semibold text-muted-foreground", kickerClass)}>
+              {kicker}
             </p>
           )}
           <h3 className="line-clamp-4 text-sm font-semibold leading-[1.3] text-foreground [text-wrap:pretty]">
@@ -186,7 +269,10 @@ export function TitleCard({
     "group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     layout === "list"
       ? "block w-full min-w-0 rounded-md"
-      : "group/still block w-full min-w-0 snap-start rounded-lg",
+      : cn(
+          "group/still block w-full min-w-0 snap-start",
+          tileStyle === "posters" ? "rounded-md" : "rounded-lg",
+        ),
   );
 
   if (href) {
@@ -201,5 +287,38 @@ export function TitleCard({
     <button type="button" onClick={onClick} className={cn(wrapClass, "text-left")}>
       {body}
     </button>
+  );
+}
+
+/**
+ * An opaque chip on the card surface, so the word reads over any art in
+ * every palette. The status hue rides on the dot, never on the chip: a
+ * status is never the accent, and colour is never the only signal.
+ */
+function StatusFlag({
+  label,
+  status,
+  className,
+}: {
+  label: string;
+  status?: string | null;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-sm bg-card px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground ring-1 ring-inset ring-border",
+        status && "pl-1",
+        className,
+      )}
+    >
+      {status && (
+        <span
+          aria-hidden="true"
+          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", statusDotClass(status))}
+        />
+      )}
+      {label}
+    </span>
   );
 }

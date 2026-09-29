@@ -10,7 +10,8 @@
  * - Compact never shows fewer columns than Regular, nor Regular than Large;
  * - no size's still is narrower than the size before it;
  * - no still, in a gallery or on a Home rail, is narrower than 136px;
- * - a 16-character case number fits on one line inside that floor;
+ * - a 16-character case number fits on one line inside that floor, and
+ *   the still's own case number fits on one line at every width;
  * - a title clamped at four lines keeps the parties before the colon.
  *
  *   npm run test:still-scale
@@ -42,6 +43,11 @@ function check(label, actual, expected) {
 
 check("tile sizes keep their three steps", TILE_SIZES, ["compact", "regular", "large"]);
 check("Compact stays the default", DEFAULT_TILE_SIZE, "compact");
+check(
+  "stills take no step at xl (the posters' breakpoint): 1024-1535px is one column count",
+  TILE_SIZES.map((s) => TILE_COLUMNS[s][3] === TILE_COLUMNS[s][4]),
+  [true, true, true],
+);
 check(
   "the table has one column count per breakpoint for every size",
   TILE_SIZES.map((s) => TILE_COLUMNS[s].length),
@@ -101,18 +107,14 @@ const galleryStill = (w, size) => {
 const railStill = (w, size) => galleryStill(w, size) * RAIL_STILL_SHARE;
 
 // A 16-character case number (the length the floor is sized for) inside the
-// still's 12px edge inset. The floor is sized for the identifier face planned
-// for case numbers (IBM Plex Mono 11.5px at normal tracking, a 0.6em
-// advance: 110.4px). Today's face, Inter 10px semibold capitals tracked
-// 0.12em, is wider: its widest 16-character case number measured in
-// Chromium ("WMC-MW-2026-0088") is 130.2px. Until the identifier face
-// lands, it fits on one line in every gallery still; on the
-// Compact and Regular Home rails it wraps after a hyphen on phones under
-// 386px, and on a Compact rail on 768-784px tablets.
-// It never truncates at any width.
+// still's 12px edge inset. Case numbers are identifiers, set in IBM Plex Mono
+// at normal tracking, a fixed 0.6em advance. The floor is sized for the
+// board's planned 11.5px (110.4px); the still's kicker is 10px (96px, as
+// measured in Chromium), so a case number sits on one line in every gallery
+// and rail still. It never truncates at any width.
 const CASE_NUMBER_CHARS = 16;
 const IDENTIFIER_ADVANCE_PX = 0.6 * 11.5;
-const TODAY_WIDEST_CASE_NUMBER_PX = 130.2;
+const STILL_CASE_NUMBER_PX = CASE_NUMBER_CHARS * 0.6 * 10;
 // Text sits 12px in from the still's outer edge (1px border, 11px padding).
 const STILL_PADDING_PX = 12;
 check(
@@ -137,31 +139,14 @@ for (let w = 360; w <= 1920; w++) {
 }
 check("360-1920px: Compact >= Regular >= Large columns at every width", inverted, []);
 check("360-1920px: no size's still is narrower than the size before it", narrower, []);
-const galleryWraps = [];
-const railWraps = [];
+const wraps = [];
 for (let w = 360; w <= 1920; w++) {
   for (const s of TILE_SIZES) {
-    if (galleryStill(w, s) - 2 * STILL_PADDING_PX < TODAY_WIDEST_CASE_NUMBER_PX)
-      galleryWraps.push(`${w}px ${s}`);
-    if (railStill(w, s) - 2 * STILL_PADDING_PX < TODAY_WIDEST_CASE_NUMBER_PX)
-      railWraps.push([w, s]);
+    const narrowest = Math.min(galleryStill(w, s), railStill(w, s));
+    if (narrowest - 2 * STILL_PADDING_PX < STILL_CASE_NUMBER_PX) wraps.push(`${w}px ${s}`);
   }
 }
-check("today's case-number face fits on one line in every gallery still", galleryWraps, []);
-const span = (rows) => (rows.length ? `${rows[0][0]}-${rows[rows.length - 1][0]}px` : null);
-const railWrapsFor = (size) => {
-  const rows = railWraps.filter(([, s]) => s === size);
-  return [span(rows.filter(([w]) => w < 640)), span(rows.filter(([w]) => w >= 640))];
-};
-check(
-  "on a rail it wraps only on phones under 386px (Compact, Regular) and at 768-784px (Compact)",
-  TILE_SIZES.map(railWrapsFor),
-  [
-    ["360-385px", "768-784px"],
-    ["360-385px", null],
-    [null, null],
-  ],
-);
+check("the still's case number fits on one line in every gallery and rail still", wraps, []);
 check(`360-1920px: no gallery or rail still under ${STILL_MIN_WIDTH_PX}px`, underFloor, []);
 
 // The widths the design was approved at (board round 1), to the pixel.

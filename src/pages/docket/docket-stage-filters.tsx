@@ -89,7 +89,7 @@ export function DocketStageFilters({
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
-          className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-foreground/80"
+          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-foreground/80 lg:min-h-10"
           aria-expanded={expanded}
           onClick={() => setExpanded((open) => !open)}
         >

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
+import { SEGMENT_ON_CLASS, SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,7 +105,7 @@ export default function CalendarPage() {
             <div
               role="group"
               aria-label="Calendar view"
-              className="inline-grid grid-cols-2 rounded-md bg-surface-2 p-0.5 hc:border hc:border-border"
+              className={cn("inline-grid grid-cols-2", SEGMENT_TRACK_CLASS)}
             >
               {(["month", "agenda"] as const).map((option) => (
                 <Button
@@ -113,11 +114,7 @@ export default function CalendarPage() {
                   size="sm"
                   onClick={() => setView(option)}
                   aria-pressed={view === option}
-                  className={cn(
-                    "min-h-9 px-4",
-                    view === option &&
-                      "bg-surface-1 text-foreground shadow-elevation-1 hover:bg-surface-1 hc:bg-foreground hc:text-background",
-                  )}
+                  className={cn("min-h-9 px-4", view === option && SEGMENT_ON_CLASS)}
                 >
                   {option === "month" ? "Month" : "Agenda"}
                 </Button>
