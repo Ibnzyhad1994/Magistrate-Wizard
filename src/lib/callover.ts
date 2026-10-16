@@ -147,7 +147,7 @@ export function itemsMissingExpectedNextDate<T extends CalloverItemLike>(items: 
 export function defaultCalloverTitle(isoDate: string): string {
   const parsed = new Date(`${isoDate}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return "Callover";
-  return `Callover, ${parsed.toLocaleDateString(undefined, {
+  return `Callover, ${parsed.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",

@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Gavel } from "lucide-react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCalendarEvents, type CalendarEventRow } from "@/hooks/docket/use-calendar-events";
+import { useCalloverMatterKeys } from "@/hooks/docket/use-callovers";
+import { calloverMatterKey } from "@/lib/callover-schedule";
+import { CalloverChip } from "@/components/common/callover-chip";
 import { BREAKPOINTS } from "@/hooks/use-media-query";
 import { ROUTES } from "@/routes/paths";
 import {
@@ -65,6 +68,11 @@ export default function CalendarPage() {
   const to = monthEnd(cursor.year, cursor.month);
   const { data, isPending, isFetching, isError, error, refetch } = useCalendarEvents(from, to);
   const events = useMemo(() => data ?? [], [data]);
+  // Callover matters are ordinary appearances here, marked with the
+  // Callovers gavel. RLS returns nothing to a role without callover access.
+  const { data: calloverKeys } = useCalloverMatterKeys(from, to);
+  const isCallover = (event: CalendarEventRow) =>
+    calloverKeys?.has(calloverMatterKey(event.scheduled_date, event.docket_matter_id)) ?? false;
   const byDate = useMemo(() => groupByDate(events), [events]);
   const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor]);
   const monthLabel = new Intl.DateTimeFormat("en-GB", {
@@ -233,8 +241,14 @@ export default function CalendarPage() {
                               "border-notice-action bg-notice-action/10 text-notice-action",
                           )}
                           title={event.court_name ?? undefined}
-                          aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${event.pending ? " (on this device)" : ""}`}
+                          aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${isCallover(event) ? " · Callover" : ""}${event.pending ? " (on this device)" : ""}`}
                         >
+                          {isCallover(event) && (
+                            <Gavel
+                              className="mr-1 inline h-2.5 w-2.5 align-[-1px]"
+                              aria-hidden="true"
+                            />
+                          )}
                           {event.scheduled_time ? `${formatTimeOnly(event.scheduled_time)} · ` : ""}
                           {event.case_number}
                         </button>
@@ -277,10 +291,11 @@ export default function CalendarPage() {
                     {event.case_number} · {event.matter_title}
                   </p>
                   {event.court_name && (
-                    <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+                    <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
                       {event.court_name}
                     </span>
                   )}
+                  {isCallover(event) && <CalloverChip />}
                   <p className="text-xs text-muted-foreground">
                     {toTitleCase(event.event_type || "Hearing")}
                     {event.location ? ` · ${event.location}` : ""}

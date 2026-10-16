@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -46,6 +46,7 @@ import { broughtForwardStageNotice } from "@/lib/callover";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/utils";
+import type { Tables } from "@/types/database.types";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   boardColumnPatch,
@@ -69,13 +70,17 @@ interface CreateDocketMatterDialogProps {
   defaultCourtId?: string | null;
   /**
    * When set, the caller handles what happens next instead of the dialog
-   * navigating to the new matter. The callover running sheet uses this to
-   * add the matter it just created as an item and stay on the sheet —
+   * navigating to the new matter. Callover intake uses this to list the
+   * matter it just created on the sitting day and stay where it is —
    * navigating away mid-sitting would lose the magistrate's place.
    */
-  onCreated?: (matterId: string) => void;
+  onCreated?: (matter: Tables<"docket_matters">) => void;
   /** Opens the "already in progress" disclosure expanded (callover intake). */
   defaultBroughtForward?: boolean;
+  title?: string;
+  description?: string;
+  /** Fields of the caller's own, shown first (callover intake's listing date). */
+  extraFields?: ReactNode;
 }
 
 /**
@@ -101,6 +106,9 @@ export function CreateDocketMatterDialog({
   defaultCourtId,
   onCreated,
   defaultBroughtForward = false,
+  title = "New docket matter",
+  description = "Add a matter to your docket. You can add parties and hearings after.",
+  extraFields,
 }: CreateDocketMatterDialogProps) {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
@@ -255,9 +263,9 @@ export function CreateDocketMatterDialog({
       });
       onOpenChange(false);
       form.reset();
-      setBroughtForward(false);
+      setBroughtForward(defaultBroughtForward);
       setSubmitDuplicate(false);
-      if (onCreated) onCreated(created.id);
+      if (onCreated) onCreated(created);
       else navigate(ROUTES.docketMatter(created.id));
     } catch (err) {
       // Surfaced globally via the mutation cache toast subscriber. A
@@ -277,10 +285,8 @@ export function CreateDocketMatterDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New docket matter</DialogTitle>
-          <DialogDescription>
-            Add a matter to your docket. You can add parties and hearings after.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {courtsPending ? null : noCourts ? (
@@ -308,6 +314,8 @@ export function CreateDocketMatterDialog({
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {extraFields}
+
               <FormField
                 control={form.control}
                 name="court_id"

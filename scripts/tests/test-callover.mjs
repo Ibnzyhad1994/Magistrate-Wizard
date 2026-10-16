@@ -199,9 +199,9 @@ check(
   "Callover",
 );
 check(
-  "a valid date yields a dated title",
-  defaultCalloverTitle("2026-09-11").startsWith("Callover, "),
-  true,
+  "a valid date yields a day-first title whatever the device locale",
+  defaultCalloverTitle("2026-09-11"),
+  "Callover, 11 September 2026",
 );
 
 // --- the intake promise ---------------------------------------------------

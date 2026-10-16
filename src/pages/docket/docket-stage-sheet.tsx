@@ -30,6 +30,7 @@ import {
   outcomeBoardPatch,
 } from "@/lib/docket-protocols";
 import { ROUTES } from "@/routes/paths";
+import { CalloverChip } from "@/components/common/callover-chip";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
 import type { Json, TablesUpdate } from "@/types/database.types";
@@ -58,11 +59,14 @@ function DocketStageRow({
   onPatch,
   onLogAppearance,
   pending = false,
+  onCallover = false,
   selection,
 }: {
   row: DocketMatterBoardRow;
   columns: BoardColumn[];
   showCourt: boolean;
+  /** On a callover on the day this list shows. */
+  onCallover?: boolean;
   isTourNextDate?: boolean;
   isTourOutcome?: boolean;
   isTourFirstMatter?: boolean;
@@ -164,6 +168,7 @@ function DocketStageRow({
               {row.court_name}
             </span>
           )}
+          {onCallover && <CalloverChip className="mr-1" />}
           {row.appearance_status && (
             <span
               className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
@@ -255,9 +260,12 @@ export function DocketStageSheet({
   onPatch,
   onLogAppearance,
   selection,
+  calloverMatterIds,
 }: {
   rows: DocketMatterBoardRow[];
   showCourt?: boolean;
+  /** Matters on a callover on the day this list shows. */
+  calloverMatterIds?: ReadonlySet<string>;
   /** Omitted entirely when bulk adjourn is not offered for this list. */
   selection?: {
     selected: ReadonlySet<string>;
@@ -332,6 +340,7 @@ export function DocketStageSheet({
                 onPatch={onPatch}
                 onLogAppearance={onLogAppearance}
                 pending={pendingMatters.has(row.id)}
+                onCallover={calloverMatterIds?.has(row.id) ?? false}
                 selection={
                   selection
                     ? {
