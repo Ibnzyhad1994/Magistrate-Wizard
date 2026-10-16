@@ -79,7 +79,7 @@ interface CreateDocketMatterDialogProps {
   defaultBroughtForward?: boolean;
   title?: string;
   description?: string;
-  /** Fields of the caller's own, shown above the buttons (callover intake's listing date). */
+  /** Fields of the caller's own, shown first (callover intake's listing date). */
   extraFields?: ReactNode;
 }
 
@@ -314,6 +314,8 @@ export function CreateDocketMatterDialog({
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {extraFields}
+
               <FormField
                 control={form.control}
                 name="court_id"
@@ -646,8 +648,6 @@ export function CreateDocketMatterDialog({
                   </div>
                 )}
               </div>
-
-              {extraFields}
 
               <DialogFooter>
                 <Button
