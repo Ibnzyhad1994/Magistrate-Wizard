@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Plus, ClipboardList, Landmark } from "lucide-react";
+import { Search, Plus, ClipboardList, Gavel, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -23,6 +23,8 @@ import {
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
 import { CalloverMatterDialog } from "@/pages/docket/callover/callover-matter-dialog";
+import { useCalloverMatterKeys, useCallovers } from "@/hooks/docket/use-callovers";
+import { calloverMatterKey } from "@/lib/callover-schedule";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 import { DocketStageFilters } from "@/pages/docket/docket-stage-filters";
 import { DocketStageSheet, type LogAppearanceRequest } from "@/pages/docket/docket-stage-sheet";
@@ -265,6 +267,25 @@ export default function DocketListPage() {
   useEffect(() => {
     if (!bulkAllowed) setSelected(new Set());
   }, [bulkAllowed]);
+  // Callover matters are ordinary rows on their day, marked so they read
+  // apart, with the day's own callover sheet one click away.
+  const calloverDay = selectedDate ?? "";
+  const { data: calloverKeys } = useCalloverMatterKeys(calloverDay, calloverDay, {
+    enabled: canCallover && !!selectedDate,
+  });
+  const calloverMatterIds = useMemo(
+    () =>
+      new Set(
+        (data ?? [])
+          .filter((row) => calloverKeys?.has(calloverMatterKey(calloverDay, row.id)))
+          .map((row) => row.id),
+      ),
+    [data, calloverKeys, calloverDay],
+  );
+  const { data: allCallovers } = useCallovers(courtId, {
+    enabled: canCallover && !!selectedDate && scopeReady,
+  });
+  const daySheets = (allCallovers ?? []).filter((c) => c.callover_date === selectedDate);
   const { data: coverUrls } = useSignedUrls((data ?? []).map((m) => m.cover_image_path));
   const noCourts = !courtsPending && (myCourts?.length ?? 0) === 0;
 
@@ -419,6 +440,16 @@ export default function DocketListPage() {
         </h2>
         {selectedDate && (
           <div className="flex flex-wrap items-center gap-2">
+            {daySheets.map((sheet) => (
+              <Button key={sheet.id} size="sm" variant="ghost" asChild>
+                <Link to={ROUTES.callover(sheet.id)}>
+                  <Gavel className="h-4 w-4" />
+                  {daySheets.length > 1 && sheet.courts?.name
+                    ? `Callover sheet, ${sheet.courts.name}`
+                    : "Callover sheet"}
+                </Link>
+              </Button>
+            ))}
             <DailyProgressReportButton date={selectedDate} courtId={courtId} />
             <Button size="sm" variant="ghost" onClick={() => setSelectedDate(null)}>
               All Matters
@@ -588,6 +619,7 @@ export default function DocketListPage() {
                 }
                 rows={data}
                 showCourt={courtId === null}
+                calloverMatterIds={calloverMatterIds}
                 onPatch={(id, values, expectedUpdatedAt) =>
                   patch.mutateAsync({ id, values, expectedUpdatedAt })
                 }
@@ -600,6 +632,7 @@ export default function DocketListPage() {
                     key={row.id}
                     row={row}
                     showCourt={courtId === null}
+                    onCallover={calloverMatterIds.has(row.id)}
                     isTourNextDate={index === 0}
                     isTourOutcome={index === 0}
                     isTourFirstMatter={index === 0}

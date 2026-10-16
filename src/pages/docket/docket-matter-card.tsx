@@ -15,6 +15,7 @@ import {
   outcomeBoardPatch,
 } from "@/lib/docket-protocols";
 import { ROUTES } from "@/routes/paths";
+import { CalloverChip } from "@/components/common/callover-chip";
 import type { DocketMatterBoardRow } from "@/hooks/docket/use-docket-matters";
 import { useUploadDocument } from "@/hooks/use-documents";
 import type { Json, TablesUpdate } from "@/types/database.types";
@@ -69,9 +70,12 @@ export function DocketMatterCard({
   isTourFirstMatter,
   onPatch,
   onLogAppearance,
+  onCallover = false,
 }: {
   row: DocketMatterBoardRow;
   showCourt: boolean;
+  /** On a callover on the day this list shows. */
+  onCallover?: boolean;
   isTourNextDate?: boolean;
   isTourOutcome?: boolean;
   isTourFirstMatter?: boolean;
@@ -142,6 +146,7 @@ export function DocketMatterCard({
               {row.court_name}
             </span>
           )}
+          {onCallover && <CalloverChip className="mr-1" />}
           {row.appearance_status && (
             <AppearanceChip status={row.appearance_status} outcome={row.appearance_outcome} />
           )}
