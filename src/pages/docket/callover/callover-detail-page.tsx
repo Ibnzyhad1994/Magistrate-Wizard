@@ -1,24 +1,28 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { CheckCircle2, Gavel, ListPlus, Plus, RotateCcw } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Gavel, ListPlus, Plus, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Billboard } from "@/components/browse";
-import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
+import { CalloverMatterDialog } from "@/pages/docket/callover/callover-matter-dialog";
+import { CapacityOverrideDialog } from "@/pages/docket/capacity-override-dialog";
 import { CalloverRow, type CalloverRowData } from "@/pages/docket/callover/callover-row";
 import { CalloverReportButton } from "@/pages/docket/callover/callover-report-button";
 import {
-  useAddCalloverItem,
   useCallover,
   useCalloverItems,
+  useCalloverListedMatters,
+  useListCalloverItemsOnSchedule,
   usePopulateCallover,
   useRemoveCalloverItem,
   useUpdateCallover,
@@ -33,6 +37,13 @@ import {
   itemsMissingExpectedNextDate,
   sortCalloverItems,
 } from "@/lib/callover";
+import {
+  calloverAppearance,
+  itemsMissingFromSchedule,
+  type CapacityReached,
+  type ScheduleCalloverAppearanceInput,
+} from "@/lib/callover-schedule";
+import { procedureStageLabel } from "@/lib/docket-procedure";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
 
@@ -53,10 +64,14 @@ export default function CalloverDetailPage() {
   const updateItem = useUpdateCalloverItem(id);
   const removeItem = useRemoveCalloverItem(id);
   const populate = usePopulateCallover(id);
-  const addItem = useAddCalloverItem(id);
+  const listOnSchedule = useListCalloverItemsOnSchedule();
 
   const [addOpen, setAddOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [overCapacity, setOverCapacity] = useState<{
+    rows: ScheduleCalloverAppearanceInput[];
+    capacity: CapacityReached;
+  } | null>(null);
 
   const rows = useMemo(
     () => sortCalloverItems((items ?? []) as unknown as CalloverRowData[]),
@@ -64,6 +79,48 @@ export default function CalloverDetailPage() {
   );
   const progress = calloverProgress(rows);
   const missingDates = itemsMissingExpectedNextDate(rows);
+
+  // Rows typed in before callover matters were listed on their sitting day
+  // (or added by any other route) are missing from that day's schedule.
+  const sittingDate = callover?.callover_date;
+  const matterIds = useMemo(() => rows.map((row) => row.docket_matter_id), [rows]);
+  const { data: listedMatterIds } = useCalloverListedMatters(sittingDate, matterIds);
+  const offSchedule = listedMatterIds ? itemsMissingFromSchedule(rows, listedMatterIds) : [];
+
+  async function putOnSchedule(
+    toList: ScheduleCalloverAppearanceInput[],
+    acknowledgeOverride: boolean,
+    overrideReason: string | null,
+  ) {
+    const result = await listOnSchedule.mutateAsync(
+      toList.map((row) => ({ ...row, acknowledgeOverride, overrideReason })),
+    );
+    setOverCapacity(result.capacity ? { rows: result.refused, capacity: result.capacity } : null);
+    if (result.listed > 0) {
+      toast.success(
+        `${result.listed} matter${result.listed === 1 ? "" : "s"} added to the ${formatDate(toList[0].date)} schedule.`,
+      );
+    }
+  }
+
+  function listOffSchedule() {
+    if (!sittingDate) return;
+    void putOnSchedule(
+      offSchedule.map((row) => ({
+        matterId: row.docket_matter_id,
+        date: sittingDate,
+        categoryId: row.docket_matters?.category_id ?? null,
+        stageAtEvent: row.docket_matters?.procedure_stage
+          ? procedureStageLabel(row.docket_matters.procedure_stage)
+          : null,
+        ...calloverAppearance(row),
+      })),
+      false,
+      null,
+    ).catch(() => {
+      // Surfaced by the mutation's own error toast.
+    });
+  }
 
   const status = isCalloverStatus(callover?.status) ? callover.status : "draft";
   const editable = isCalloverEditable(status);
@@ -157,8 +214,35 @@ export default function CalloverDetailPage() {
 
         {!editable && (
           <p className="rounded-md border border-border bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
-            This callover is complete. Reopen it to make changes.
+            This callover is complete. Its matters stay on the schedule. Reopen it to make changes.
           </p>
+        )}
+
+        {offSchedule.length > 0 ? (
+          <Alert variant="warning" className="flex flex-wrap items-center justify-between gap-3">
+            <AlertDescription>
+              {offSchedule.length === 1
+                ? "1 matter on this callover is"
+                : `${offSchedule.length} matters on this callover are`}{" "}
+              not on the {formatDate(callover.callover_date)} schedule or calendar.
+            </AlertDescription>
+            <Button size="sm" onClick={listOffSchedule} disabled={listOnSchedule.isPending}>
+              {listOnSchedule.isPending ? (
+                <LoadingSpinner className="text-current" size={14} />
+              ) : (
+                <CalendarCheck className="h-4 w-4" />
+              )}
+              Add to the schedule
+            </Button>
+          </Alert>
+        ) : (
+          rows.length > 0 &&
+          listedMatterIds && (
+            <p className="text-sm text-muted-foreground">
+              Every matter here is on the {formatDate(callover.callover_date)} schedule. Marking the
+              callover completed only locks this sheet.
+            </p>
+          )
         )}
 
         {itemsPending ? (
@@ -215,17 +299,30 @@ export default function CalloverDetailPage() {
         )}
       </div>
 
-      {/* Intake opens with the brought-forward disclosure already expanded:
-          anything added mid-callover is, by definition, a matter that
-          pre-dates this docket. On success it becomes an item on this
-          sheet rather than navigating away and losing the sitting. */}
-      <CreateDocketMatterDialog
+      {/* Anything added mid-callover is, by definition, a matter that
+          pre-dates this docket. It is listed on the sitting day and joins
+          this sheet, rather than navigating away and losing the sitting. */}
+      <CalloverMatterDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         defaultCourtId={callover.court_id}
-        defaultBroughtForward
-        onCreated={(matterId) => addItem.mutate({ matterId, sortOrder: rows.length + 1 })}
+        date={callover.callover_date}
+        calloverId={callover.id}
       />
+
+      {overCapacity && (
+        <CapacityOverrideDialog
+          info={overCapacity.capacity}
+          scheduledDate={callover.callover_date}
+          isPending={listOnSchedule.isPending}
+          onCancel={() => setOverCapacity(null)}
+          onConfirm={(reason) => {
+            void putOnSchedule(overCapacity.rows, true, reason).catch(() => {
+              // Surfaced by the mutation's own error toast.
+            });
+          }}
+        />
+      )}
 
       <AlertDialog
         open={completeOpen}
@@ -233,8 +330,8 @@ export default function CalloverDetailPage() {
         title="Mark this callover completed?"
         description={
           missingDates.length > 0
-            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. You can complete it now and reopen it later.`
-            : "The sheet becomes read-only. You can reopen it later."
+            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. You can complete it now and reopen it later. Nothing is removed.`
+            : "The sheet becomes read-only. Its matters stay on the schedule and calendar. You can reopen it later."
         }
         confirmLabel="Mark completed"
         isConfirming={updateCallover.isPending}

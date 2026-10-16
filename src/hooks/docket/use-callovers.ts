@@ -2,6 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/utils";
+import {
+  calloverMatterKeys,
+  listCalloverMatter,
+  scheduleCalloverAppearance,
+  type CapacityReached,
+  type ListCalloverMatterInput,
+  type ScheduleCalloverAppearanceInput,
+} from "@/lib/callover-schedule";
 import type { TablesInsert, TablesUpdate } from "@/types/database.types";
 
 export const calloverKeys = {
@@ -9,6 +17,9 @@ export const calloverKeys = {
   list: (courtId: string | null) => ["callovers", "list", courtId] as const,
   detail: (id: string | undefined) => ["callovers", "detail", id] as const,
   items: (calloverId: string | undefined) => ["callovers", "items", calloverId] as const,
+  matterKeys: (from: string, to: string) => ["callovers", "matter-keys", from, to] as const,
+  listed: (date: string | undefined, matterIds: readonly string[]) =>
+    ["callovers", "listed", date, matterIds] as const,
 };
 
 /**
@@ -169,28 +180,6 @@ export function usePopulateCallover(calloverId: string | undefined) {
   });
 }
 
-export function useAddCalloverItem(calloverId: string | undefined) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ matterId, sortOrder }: { matterId: string; sortOrder: number }) => {
-      const { data, error } = await supabase
-        .from("docket_callover_items")
-        .insert({
-          callover_id: calloverId as string,
-          docket_matter_id: matterId,
-          sort_order: sortOrder,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => invalidateCallover(queryClient, calloverId),
-    meta: { silent: true },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
-}
-
 /**
  * Quiet by design — the running sheet saves row-by-row as the magistrate
  * works, and a toast per keystroke-settled field would be noise. Errors
@@ -230,6 +219,102 @@ export function useRemoveCalloverItem(calloverId: string | undefined) {
       toast.success("Removed from the callover.");
       invalidateCallover(queryClient, calloverId);
     },
+    meta: { silent: true },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+}
+
+/**
+ * Which matters sit on a callover on which day, as calloverMatterKey()
+ * strings, so the Calendar and the Docket day list can mark them. RLS
+ * scopes it to the courts the caller sits, exactly like the sheets.
+ */
+export function useCalloverMatterKeys(from: string, to: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: calloverKeys.matterKeys(from, to),
+    enabled: options?.enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("docket_callovers")
+        .select("callover_date, docket_callover_items(docket_matter_id)")
+        .gte("callover_date", from)
+        .lte("callover_date", to);
+      if (error) throw error;
+      return calloverMatterKeys(data ?? []);
+    },
+    meta: { silent: true },
+  });
+}
+
+/** The sheet's matters that already have an appearance on the callover date. */
+export function useCalloverListedMatters(date: string | undefined, matterIds: readonly string[]) {
+  return useQuery({
+    queryKey: calloverKeys.listed(date, matterIds),
+    enabled: Boolean(date) && matterIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("docket_events")
+        .select("docket_matter_id")
+        .eq("scheduled_date", date as string)
+        .in("docket_matter_id", [...matterIds])
+        .neq("event_status", "entered_in_error");
+      if (error) throw error;
+      return new Set((data ?? []).map((row) => row.docket_matter_id));
+    },
+  });
+}
+
+function invalidateSchedule(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: calloverKeys.all });
+  void queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+  void queryClient.invalidateQueries({ queryKey: ["docket-matters"] });
+  void queryClient.invalidateQueries({ queryKey: ["docket-events"] });
+  void queryClient.invalidateQueries({ queryKey: ["docket-capacity-snapshot"] });
+  void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+}
+
+/**
+ * A new callover matter: listed on the sitting day, then put on that
+ * day's sheet. A capacity_reached result comes back to the caller for the
+ * shared override prompt, with nothing written yet.
+ */
+export function useListCalloverMatter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ListCalloverMatterInput) => listCalloverMatter(supabase, input),
+    onSuccess: (result) => {
+      if (result.status === "created") invalidateSchedule(queryClient);
+    },
+    meta: { silent: true },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+}
+
+/**
+ * Lists sheet rows that never reached the day's schedule, one appearance
+ * each. Partial success is intended, as for bulk adjourn: rows the
+ * capacity check refuses are returned for one override prompt covering
+ * them all, and the rows already listed stay listed.
+ */
+export function useListCalloverItemsOnSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: readonly ScheduleCalloverAppearanceInput[]) => {
+      let listed = 0;
+      const refused: ScheduleCalloverAppearanceInput[] = [];
+      let capacity: CapacityReached | null = null;
+      for (const row of rows) {
+        const result = await scheduleCalloverAppearance(supabase, row);
+        if (result.status === "created") {
+          listed += 1;
+        } else {
+          refused.push(row);
+          capacity ??= result;
+        }
+      }
+      return { listed, refused, capacity };
+    },
+    onSettled: () => invalidateSchedule(queryClient),
     meta: { silent: true },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
