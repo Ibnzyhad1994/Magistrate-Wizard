@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Plus, Gauge, Trash2, CloudDownload } from "lucide-react";
+import { Plus, Gauge, Gavel, Trash2, CloudDownload } from "lucide-react";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { formatTimeOnly } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ export function DocketToolbar({
   noCourts,
   onOpenCapacity,
   onNewMatter,
+  onCallover,
   offlineReadyAt,
   onTakeOffline,
   takingOffline = false,
@@ -17,6 +18,8 @@ export function DocketToolbar({
   noCourts: boolean;
   onOpenCapacity: () => void;
   onNewMatter: () => void;
+  /** Adds a callover matter to a day's schedule; omitted for roles that cannot keep callovers. */
+  onCallover?: () => void;
   /** When this exact list was last saved for offline use, if ever. */
   offlineReadyAt?: string | null;
   onTakeOffline?: () => void;
@@ -63,6 +66,19 @@ export function DocketToolbar({
                 <CloudDownload className="h-4 w-4" />
               )}
               {offlineReadyAt ? "Offline ready" : "Take offline"}
+            </Button>
+          </HintTooltip>
+        )}
+        {onCallover && !noCourts && (
+          <HintTooltip label="Add a matter from before the docket straight onto a day's schedule.">
+            <Button
+              variant="secondary"
+              className="min-h-11 lg:min-h-9"
+              onClick={onCallover}
+              data-tour="docket-callover"
+            >
+              <Gavel className="h-4 w-4" />
+              Callover
             </Button>
           </HintTooltip>
         )}

@@ -22,6 +22,7 @@ import {
 } from "@/hooks/docket/use-docket-matters";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { CreateDocketMatterDialog } from "@/pages/docket/create-docket-matter-dialog";
+import { CalloverMatterDialog } from "@/pages/docket/callover/callover-matter-dialog";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 import { DocketStageFilters } from "@/pages/docket/docket-stage-filters";
 import { DocketStageSheet, type LogAppearanceRequest } from "@/pages/docket/docket-stage-sheet";
@@ -89,6 +90,9 @@ export default function DocketListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
+  // Callover tables are magistrate-court scoped (can_access_callover, 0129),
+  // matching the Callovers nav item's own roles.
+  const canCallover = hasRole("magistrate", "admin");
   const { data: myCourts, isPending: courtsPending } = useMyCurrentCourts();
   const lastDocketScope = useUiStore((s) => s.lastDocketScope);
   const setLastDocketScope = useUiStore((s) => s.setLastDocketScope);
@@ -126,6 +130,7 @@ export default function DocketListPage() {
   const scopeReady = scope.status === "resolved";
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [calloverOpen, setCalloverOpen] = useState(false);
   const [capacityOpen, setCapacityOpen] = useState(false);
   const [logAppearance, setLogAppearance] = useState<LogAppearanceRequest | null>(null);
 
@@ -325,6 +330,7 @@ export default function DocketListPage() {
         noCourts={noCourts}
         onOpenCapacity={() => setCapacityOpen(true)}
         onNewMatter={() => setCreateOpen(true)}
+        onCallover={canCallover ? () => setCalloverOpen(true) : undefined}
         offlineReadyAt={offlineBoard.savedAt}
         onTakeOffline={offlineBoard.takeOffline}
         takingOffline={offlineBoard.isSaving}
@@ -630,6 +636,15 @@ export default function DocketListPage() {
         onOpenChange={setCreateOpen}
         defaultCourtId={courtId}
       />
+      {canCallover && (
+        <CalloverMatterDialog
+          open={calloverOpen}
+          onOpenChange={setCalloverOpen}
+          defaultCourtId={courtId}
+          defaultDate={selectedDate ?? getLocalDateOnly()}
+          onListed={setSelectedDate}
+        />
+      )}
       <DocketCapacitySettingsDialog open={capacityOpen} onOpenChange={setCapacityOpen} />
       {bulkOpen && (
         <DocketBulkAdjournDialog
