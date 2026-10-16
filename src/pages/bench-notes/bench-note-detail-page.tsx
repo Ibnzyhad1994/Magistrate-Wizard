@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
 import { QuickCodeInsert } from "@/components/quick-codes/quick-code-insert";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
@@ -123,10 +123,10 @@ export default function BenchNoteDetailPage() {
       </div>
     );
   }
-  if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
+  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
   if (!note) {
     return (
-      <InlineError error={new Error("This note doesn't exist, or you don't have access to it.")} />
+      <PageError error={new Error("This note doesn't exist, or you don't have access to it.")} />
     );
   }
 

@@ -53,12 +53,12 @@ export function DocketCloseoutPanel({
 
   return (
     <section className="mb-4 rounded-md border border-hairline bg-card shadow-elevation-1 hc:border-border">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className="flex min-w-0 items-center gap-1.5 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-h-11 min-w-0 items-center gap-1.5 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-0"
         >
           {open ? (
             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

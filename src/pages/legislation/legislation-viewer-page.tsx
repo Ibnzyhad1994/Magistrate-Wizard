@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { SafeExternalLink } from "@/components/common/safe-external-link";
@@ -87,10 +87,10 @@ export default function LegislationViewerPage() {
       </div>
     );
   }
-  if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
+  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
   if (!statute) {
     return (
-      <InlineError error={new Error("This item doesn't exist, or you don't have access to it.")} />
+      <PageError error={new Error("This item doesn't exist, or you don't have access to it.")} />
     );
   }
 
@@ -143,7 +143,7 @@ export default function LegislationViewerPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={statute.code}
+        identifier={statute.code}
         title={statute.title}
         description={
           [
@@ -214,7 +214,7 @@ export default function LegislationViewerPage() {
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="w-72 overflow-y-auto p-3"
+                className="w-72 overflow-y-auto p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pl-[calc(0.75rem+env(safe-area-inset-left,0px))] pt-[calc(0.75rem+env(safe-area-inset-top,0px))]"
                 aria-describedby={undefined}
               >
                 <SheetTitle className="sr-only">Contents</SheetTitle>

@@ -11,7 +11,7 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/common/empty-state";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Billboard } from "@/components/browse";
 import { CalloverMatterDialog } from "@/pages/docket/callover/callover-matter-dialog";
@@ -134,11 +134,11 @@ export default function CalloverDetailPage() {
     );
   }
 
-  if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
+  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
 
   if (!callover) {
     return (
-      <InlineError
+      <PageError
         error={new Error("This callover doesn't exist, or you no longer have access to it.")}
       />
     );

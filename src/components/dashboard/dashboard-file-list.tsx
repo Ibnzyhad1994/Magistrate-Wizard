@@ -56,11 +56,11 @@ export function DashboardFileList({
                   <span className="text-lg font-semibold tabular-nums tracking-tight text-muted-foreground group-hover:text-foreground">
                     {ordinal}
                   </span>
-                  <span className="hidden truncate text-sm tabular-nums text-muted-foreground sm:block">
+                  <span className="identifier hidden truncate text-sm text-muted-foreground sm:block">
                     {row.case_number || "—"}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm tabular-nums text-muted-foreground sm:hidden">
+                    <span className="identifier block text-sm text-muted-foreground sm:hidden">
                       {row.case_number || "—"}
                     </span>
                     <span className="block text-base font-medium leading-snug text-foreground group-hover:text-primary">

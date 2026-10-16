@@ -177,11 +177,11 @@ function JudgmentTable({
         <TitleCard
           key={row.id}
           tone="judgment"
-          eyebrow={row.case_number ?? undefined}
+          identifier={row.case_number ?? undefined}
           title={row.title}
           subtitle={[row.citation, row.category_name].filter(Boolean).join(" · ") || undefined}
           meta={[toTitleCase(row.status), formatDate(row.updated_at)]}
-          badge={toTitleCase(row.status)}
+          status={row.status}
           href={ROUTES.judgmentDetail(row.id)}
           onClick={() => onOpen(row.id)}
         />

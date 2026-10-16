@@ -117,6 +117,7 @@ export function DocketStageStrip({
         <ProcedureStageGrid
           layout="overview"
           compact
+          cellClassName="min-h-11 lg:min-h-8"
           columns={columns}
           protocol={protocol}
           categoryName={categoryName}

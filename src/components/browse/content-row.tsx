@@ -19,12 +19,13 @@ interface ContentRowProps {
  * Horizontally scrolling carousel row — the core Netflix browse metaphor.
  * On mobile the edge chevrons stay available whenever the row overflows,
  * so a magistrate can page tiles without relying only on a swipe. Each
- * still is 90% of a gallery column at the same tile size, so the next one
- * peeks in as the cue that the row scrolls.
+ * tile is 90% of a gallery column at the same tile style and size, so the
+ * next one peeks in as the cue that the row scrolls.
  */
 export function ContentRow({ title, href, children, isLoading, className }: ContentRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const tileSize = useUiStore((s) => s.tileSize);
+  const tileStyle = useUiStore((s) => s.tileStyle);
   const { canScrollLeft, canScrollRight } = useHScroll(scrollerRef, [isLoading, children]);
 
   const handleScroll = (direction: -1 | 1) => {
@@ -37,9 +38,11 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
     <section className={cn("group/row relative space-y-3", className)}>
       <div className="browse-gutter flex items-baseline justify-between">
         {href ? (
+          // A 44px target below lg; the negative margins keep the row's
+          // height, so only the tappable area grows.
           <Link
             to={href}
-            className="inline-flex items-baseline gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-my-2.5 inline-flex min-h-11 items-center gap-2 rounded-sm text-title text-foreground transition-colors hover:text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:my-0 lg:min-h-0 lg:items-baseline"
           >
             {title}
             {/* Netflix's "Explore all": slides in beside the title on
@@ -74,7 +77,7 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
         <div
           ref={scrollerRef}
           className="browse-gutter scrollbar-none still-rail flex snap-x snap-mandatory scroll-px-[4vw] overflow-x-auto overscroll-x-contain scroll-smooth py-1"
-          style={stillColumnVars(tileSize) as CSSProperties}
+          style={stillColumnVars(tileSize, tileStyle) as CSSProperties}
         >
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => <TitleCardSkeleton key={i} layout="tiles" />)

@@ -224,7 +224,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
           <button
             type="button"
             onClick={() => setNextDateOpen(true)}
-            className="rounded-full"
+            className="inline-flex min-h-11 items-center rounded-full lg:min-h-0"
             aria-label={
               nextDate ? `Change next date, currently ${formatDate(nextDate)}` : "Set next date"
             }

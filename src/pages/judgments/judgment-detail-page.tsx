@@ -29,7 +29,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
@@ -194,10 +194,10 @@ export default function JudgmentDetailPage() {
       </div>
     );
   }
-  if (isError) return <InlineError error={error} onRetry={() => void refetch()} />;
+  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
   if (!judgment) {
     return (
-      <InlineError
+      <PageError
         error={new Error("This judgment doesn't exist, or you don't have access to it.")}
       />
     );
@@ -231,7 +231,7 @@ export default function JudgmentDetailPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={judgment.case_number ?? undefined}
+        identifier={judgment.case_number ?? undefined}
         title={judgment.title}
         description={
           [
@@ -494,7 +494,9 @@ function FieldsCard({
         <CardContent className="space-y-3 text-sm">
           <p>
             <span className="font-medium text-foreground">Case number: </span>
-            <span className="text-muted-foreground">{judgment.case_number || NOT_SET}</span>
+            <span className="identifier text-muted-foreground">
+              {judgment.case_number || NOT_SET}
+            </span>
           </p>
           <p>
             <span className="font-medium text-foreground">Court: </span>
@@ -508,7 +510,7 @@ function FieldsCard({
           </p>
           <p>
             <span className="font-medium text-foreground">Citation: </span>
-            <span className="text-muted-foreground">{judgment.citation || NOT_SET}</span>
+            <span className="identifier text-muted-foreground">{judgment.citation || NOT_SET}</span>
           </p>
         </CardContent>
       </Card>
@@ -541,7 +543,7 @@ function FieldsCard({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="case_number"
@@ -575,7 +577,7 @@ function FieldsCard({
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="court_name"
@@ -630,7 +632,10 @@ function DiscoverabilityCard({
   return (
     <Card>
       <CardContent className="p-3">
-        <label htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2 text-sm">
+        <label
+          htmlFor={checkboxId}
+          className="flex min-h-11 cursor-pointer items-center gap-2 text-sm lg:min-h-0"
+        >
           <Checkbox
             id={checkboxId}
             checked={judgment.is_discoverable}
@@ -852,7 +857,9 @@ function ContentCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+      {/* 16px sides on phones leave the reading column about 42 characters
+          wide at 390px; the desktop measure is set by max-w-measure. */}
+      <CardHeader className="flex flex-row items-center justify-between gap-2 px-4 sm:px-6">
         <CardTitle>Content</CardTitle>
         {isDraft && (
           <div className="flex items-center gap-2">
@@ -875,7 +882,7 @@ function ContentCard({
           </div>
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 px-4 sm:px-6">
         {notice && (
           <div
             role="status"

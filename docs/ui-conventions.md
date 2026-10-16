@@ -31,16 +31,23 @@ Short rules for anything user-facing. Primitives live in `src/components/ui`; if
 The visual language is Netflix's: a near-black canvas, content lifted off it by luminance and shadow rather than frames, one Sealing Wax (warm red) commit action, tight-tracked display titles. The light palette is the same system on warm paper.
 
 - **Raise, don't frame.** A region that must stand off the canvas is `bg-card` (or `bg-surface-1`) with `shadow-elevation-1` and a `border-hairline` crease. Never `border-border` on a card or panel: that is the divider token. High contrast has no shadows, so add `hc:border-border` alongside the hairline — `Card` does this for you; use `Card` before reaching for a bespoke `div`.
-- **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. Selected segments are `bg-surface-1 shadow-elevation-1` inside a `bg-surface-2` track.
-- **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus. Not `shadow-lg`, not a literal `rgba` shadow.
+- **Surface scale**: `surface-1` raised, `surface-2` nested or hover, `surface-3` pressed / top of a stack. A selected segment sits one surface step above its `bg-surface-2` track: `SEGMENT_ON_CLASS` in `components/ui/segmented.ts` (surface-1 in light, surface-3 in dark and colourblind dark through the `dim:` variant, inverted to foreground in high contrast, hover included).
+- **Dark ladder** (dark and colourblind dark): a cool near-black canvas (`224 14% 6%`, `#0D0E11`), then card and `surface-1` at 9%, `surface-2` at 12.5% and `surface-3` at 17% lightness, all on the same cool hue. The hairline and the divider `border` are 19%: at least 1.3:1 against the canvas, the card and `surface-1`, so a raised region separates by its crease, not by a heavy shadow. Muted text is at least 4.5:1 and the focus ring at least 3:1 on every step, in all six palettes; `npm run test:theme` enforces the ladder. Browser chrome and native status-bar colours (`THEME_COLOR` in `src/lib/theme.ts`, `index.html`, `native-shell.ts`, `capacitor.config.ts`, `electron/main.mjs`) mirror the canvas and change with it. Never give a surface a literal neutral background (`bg-[#141414]`, `bg-zinc-900`): it falls off the ladder.
+- **Elevation**: `shadow-elevation-1` resting card, `-2` sticky bars and hover lift, `-3` menus and a hovered poster. In dark each is small, with a 1px inner top highlight (`inset 0 1px 0` white at 3.5-5%). Not `shadow-lg`, not a literal `rgba` shadow.
+- **Tables** sit on the ladder: the header row on `surface-1`, a hovered row on `surface-2`, a selected row on `surface-3`, and rows divided by the `border` divider token, all from `Table`. A sheet with sticky columns (the docket List sheet) uses `border-separate border-spacing-0`, where row borders do not paint, so its cells carry the dividers (`[&>tr>td]:border-b`, the last row without one), the sticky case column ends in a 1px `border-r` divider rather than a drawn shadow, and its opaque cells follow the row's hover (`group/row`, `group-hover/row:bg-surface-2`). The sheet's frame, and each matter card that replaces it below `lg`, is a raised region: `border-hairline`, `shadow-elevation-1`, `hc:border-border`, `rounded-md`. Figures in the sheet body are `tabular-nums`.
+- **Tone washes** behind a page header are drawn at `--tone-alpha`: 0.34 on the dark ladder, so the hue tints the header without flooding it.
 - **Type scale**: `text-display-xl` (Billboard) · `text-display` (page title) · `text-title-lg` (empty-state / hero heading) · `text-title` (row and section headings) · `text-heading` (card titles). Each sets weight, tracking and leading; do not add `font-bold tracking-tight` on top. Small uppercase labels are the `eyebrow` utility (deliberately not `text-`-prefixed: tailwind-merge would treat it as a colour).
+- **Identifiers** (case numbers, citations, statute codes, quick-code words, and the docket's next hearing date) are not labels: they carry the `identifier` utility (IBM Plex Mono, normal tracking, the text's own case, tabular figures), never `uppercase` or wide `tracking-[…]`, so a case number reads as a reference, never wraps mid-number, and digits line up down a column. `TitleCard` and `Billboard` take one through their `identifier` prop, never `eyebrow`. `npm run test:identifiers` guards this.
+- **Type families**: Inter (`font-sans`) for everything read; IBM Plex Mono (`font-mono`, through `identifier`) for identifiers and code; Cinzel (`font-brand`) for the wordmark only, at `font-semibold`. Only the faces in use ship: Inter 400-800, Cinzel 600, Plex Mono 400 and 500 (Latin subset). Plex Mono has no 600: the utility sets `font-synthesis: none`, so a `font-semibold` identifier renders the 500 face rather than a smeared synthetic bold. Adding a weight means adding its `@fontsource` import in `src/main.tsx`.
 - **Reading measure**: long legal text read in place (a judgment's body, case law's summary and full text) is `text-base leading-relaxed` in a `max-w-measure` column, about 70 characters per line, sitting unframed on its card. An editor keeps its frame and full width.
 - **Page headers** are `BrowseHeader` with the workspace `tone`; it draws the edge-to-edge band. Empty states on a browse page pass the same `tone` to `EmptyState`.
-- **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow.
+- **Detail headers** (a docket matter, judgment, case-law authority, statute, bench note or callover) are `Billboard variant="detail"`, which draws the same tone band as `BrowseHeader`: no art, no set-dressing icon, the title in `text-display`, stepping down to 22px below `sm` so a long case title stays at three or four lines on a phone. Its actions (Back first) are quiet `ghost` tools at the page's tool size (`size="sm"`), kept at 44px below `lg`. The eyebrow (case number, citation) is full `text-foreground`, because it sits where the band is strongest. The nav keeps its resting fade over it; only Home's hero billboard turns the nav cinematic.
+- **Identification photos** are a party's photo, never art. On a detail header a cover shows only as a small documentary inset (floated top right, `rounded-md` with a hairline), never as the backdrop.
+- **Motion**: hover lifts and page changes use `ease-out-expo`; sticky chrome frosts (`bg-background/85 backdrop-blur-md hc:bg-background`) rather than going opaque with a hard shadow. A tile in a dense grid, such as a capacity day, never moves on hover: its hover is a shadow step with no translate, so the strip does not twitch under the pointer.
 
 ## Stills (browse tiles)
 
-Every browse page (docket Tiles, judgments, case law, legislation, bench notes, bookmarks, search) and the Home rails show `TitleCard` as a 16:9 still.
+Every browse page (docket Tiles, judgments, case law, legislation, bench notes, bookmarks, search) and the Home rails show `TitleCard` as a 16:9 still, unless the user picks Posters under Settings, Tile style (see "Posters" below).
 
 - **Words below the art, never on it.** The art is the tone gradient and icon with the status flag and type label in one row across its top; the case number, title, subtitle and meta sit below on `bg-card`, so their contrast is the card's, not a photo's.
 - **Identification photos are never the still.** A matter's cover is shown only as a small documentary inset on the tone art, never full-bleed and never hero art.
@@ -49,17 +56,26 @@ Every browse page (docket Tiles, judgments, case law, legislation, bench notes, 
 - **Text**: case number never truncated (it may wrap at a hyphen, never an ellipsis); title `text-sm font-semibold`, at most four lines; subtitle at most two; court and date wrap to a second line rather than an ellipsis. Stills in one row share a height.
 - **Hover** is a surface step (`bg-surface-2`, 120ms), never a scale, and only for a fine pointer: use the `hover-fine:` variant so a tap on a touch screen never leaves a hover state behind. Focus is the wrapper's ring; a rail keeps `py-1` so its overflow does not clip it.
 
+### Posters (Tile style)
+
+Settings has a per-device Tile style: Wide stills (the default) or Posters, stored with the other browse preferences (`tileStyle` in `src/store/ui-store.ts`). Posters are the earlier 2:3 tiles, kept as a maintained presentation, not a leftover path.
+
+- **Words on the art, on a scrim.** A poster is the tone gradient and icon at 2:3 with the status flag and type label across its top, as on a still. The case number, title (13px semibold, at most three lines), subtitle and meta sit at its foot on `POSTER_SCRIM_CLASS`, never under 80% black, in the `POSTER_INK` inks (`src/lib/browse-tones.ts`). The scrim block carries the `dark` tokens, so a child such as a search headline reads on it in the light theme too. `npm run test:tile-style` checks every ink at 4.5:1 over pure white art in every palette.
+- **Identification photos are never the poster.** A cover is the same small documentary inset, under the flag row.
+- **The poster column table** (`POSTER_COLUMNS`, same containers and CSS): under 640px 2 / 2 / 2, 640-767 3 / 3 / 2, 768-1023 4 / 3 / 3, 1024-1279 5 / 4 / 3, 1280-1535 7 / 6 / 5, 1536 and up 8 / 7 / 6. The 136px floor holds for posters too, gallery and rail, so a phone shows two at every size, and a size never shows fewer posters than stills. Stills take no step at the xl breakpoint; it exists for posters.
+- **Hover** is a shadow step to `shadow-elevation-3` with a light edge in 120ms behind `hover-fine:`, never the old scale.
+
 ## Buttons
 
 One of each per surface:
 
 - `default` (red) — the commit action: create, save, finalise, connect.
 - `play` (white) — a Billboard's lead action only. Never on a list page or in a card.
-- `more` — translucent on cinematic art; the Billboard's second action and a detail page's Back.
+- `more` — translucent on cinematic art; the Home billboard's second action only.
 - `secondary` — quiet filled tools and refinement clears on plain canvas; `outline` is the same weight with an edge for use on a card.
-- `ghost` / `link` — icon buttons, inline controls, inline links.
+- `ghost` / `link` — icon buttons, inline controls, inline links, and a detail header's Back and other header actions.
 
-A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segmented control (`Tabs variant="segmented"` or a `role="group"` of ghost buttons on a `bg-surface-2` track), never a red button.
+A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segmented control (`Tabs variant="segmented"`, or a `role="group"` of ghost buttons with `aria-pressed` on a `SEGMENT_TRACK_CLASS` track, the selected one `SEGMENT_ON_CLASS`), never a red button.
 
 ## Colour and tokens
 
@@ -70,9 +86,23 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Status colours are registered tokens: `bg-notice-action`, `text-stage-progress`, `bg-capacity-full`, plus `warning` / `success` / `info` aliases. Never `bg-[hsl(var(--…))]`, never `amber-500`.
 - Text on a capacity fill uses the fill's paired ink, `text-capacity-full-foreground` and its siblings, never `text-white` or `text-neutral-900`: each pair is at least 4.5:1 in every palette, and `npm run test:theme` enforces it.
 - Status badges take their variant from `statusBadgeVariant` (`src/components/common/status-badge-variant.ts`): `success` (green) for a live or in-force record, `secondary` / `outline` for not yet or no longer live, `destructive` for refused, dismissed or in error. A status is never the `default` (red) badge; red belongs to the commit action.
+- A browse tile's status flag (`TitleCard` `status`, on the art and on list rows alike) is a `bg-card` chip with an inset `ring-border` edge, a 2px `rounded-sm` tag, and a dot from `statusDotClass`, the same map as a fill: green live, red refused, neutral otherwise. The chip never takes the accent or a status fill, so its word stays at 15:1 over any art in every palette, and each dot clears 3:1 against it; `npm run test:theme` enforces both. A flag that is not a status (`Canonical`, an appearance type, an instrument type) passes `badge` alone and has no dot.
+- Chrome carries no accent. The account avatar's initials sit on a neutral `bg-surface-3` chip with `text-foreground` and a `ring-hairline` edge, and the unread count is a `bg-foreground` chip with `text-background` ink, cut out from the bell by a `ring-background` notch. The count stays `aria-hidden`; the bell's label announces it. Both pairs are at least 4.5:1 in every palette (`npm run test:theme`). The accent belongs to commit actions and the active rule only.
 - Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards and chips are `rounded-md`; a still is `rounded-lg`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
-- Sizes: inputs and buttons are 44px / 16px on phones and 36px / 14px from `lg` up; the primitives do this, do not override heights.
+- Sizes: inputs and buttons are 44px / 16px below `lg` (phones and tablets) and 36px / 14px from `lg` up (`Button size="sm"` is 44px below `lg`, 32px from it); the primitives do this, do not override heights. See "Phones and tablets".
+
+## Phones and tablets
+
+Below `lg` (1024px) the app is used by touch; from `lg` up every size stays the compact desktop one.
+
+- **Touch targets**: every tappable control is at least 44px tall below `lg`. Write it mobile-first as `min-h-11 … lg:min-h-<desktop>` (or `lg:min-h-0`), never `max-lg:`, so the desktop box stays exactly what it was. `min-h`, not `h`, so a wrapped label never clips and a caller's `h-8` still yields 44px on a phone.
+- **Keep the visual small, grow the target**: a pill, chip or badge that is a control keeps its size and sits inside a 44px button (`inline-flex min-h-11 items-center`); the pill carries the focus ring through `group-focus-visible:`. An icon inside a field (the date input's calendar) gets a full-height, 44px-wide button and the field's end padding makes room for it.
+- **The one exception** is a link or button inside a sentence, such as "5 matters in all" in the capacity caption (WCAG 2.5.8 inline exception). A native checkbox counts together with its `label`, so the label row is `min-h-11` below `lg`.
+- **Guarded in CI**: `e2e/touch-targets.spec.ts` signs in at 390 × 844 and fails on any visible, enabled control under 44px on Home, the docket list and a matter, judgments and case law. It runs in the authenticated Playwright job in CI only.
+- **Stacked details**: a details grid of fields is one column below `sm` (`grid-cols-1 sm:grid-cols-2`), so a value such as a court name is never cut inside its input on a phone.
+- **Reading on a phone**: the card that holds long legal text (a judgment's Content, case law's read-only Details) has 16px sides below `sm` (`px-4 sm:px-6` on its header and content), about 42 characters a line at 390px. The 65-75 character measure is the desktop rule and `max-w-measure` still sets it.
+- **Safe areas**: anything fixed or sticky against a screen edge pads that edge with `env(safe-area-inset-*, 0px)` added to its normal padding: the top bar, sticky toolbars, the docket's sticky selection bar (bottom), and sheets on every edge they touch (the `Sheet` primitive does this per side, and moves its close button below the notch). A sheet that overrides the padding (`p-0`, `p-3`) must add the insets back itself, as `MobileNav` does.
 
 ## Z-index tiers
 
@@ -83,5 +113,6 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Never `outline-none` without a `focus-visible:ring-*` replacement; the global `:focus-visible` rule is the floor.
 - Focus colour is the `--ring` token (`ring-ring`): blue in every palette except high-contrast dark, which is yellow. It never equals `--destructive` or `--primary`, so a focused field cannot read as an error, and it clears 3:1 against both the canvas and the card.
 - Primitives draw focus as `focus-visible:ring-2 focus-visible:ring-ring` with no offset: one width, no gap, the same on every surface.
+- Blue means keyboard focus and nothing else. A state beside focus (selected, today, current) is drawn in ink, never in `--ring`'s blue, the stage blue or the accent. On the docket capacity strip the selected day is an inset `ring-current` ring and today a short `after:bg-current` bar at the foot of the tile: both take the tile's paired capacity ink, so they clear 4.5:1 on every fill, and they sit inside the tile so the focus outline outside it never covers them.
 - Every animation and transition is collapsed under `prefers-reduced-motion`; do not add `motion-safe:` variants by hand.
 - Motion is quiet and short: a work tool, not a trailer. Sheets and dialogs (and their scrims) open in 240ms and close in 180ms on `ease-out-expo` (`duration-240` / `duration-180`), animating only `transform` and `opacity`; `Sheet` and `DialogContent` already do this, so do not set a duration on them. A hover is a surface step in 120ms (`duration-120`), never a scale, behind `hover-fine:`. Nothing waits on an animation before it accepts input.

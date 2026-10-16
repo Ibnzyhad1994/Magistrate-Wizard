@@ -50,11 +50,11 @@ const THEME_SET = new Set<string>(THEMES);
 
 /** Browser chrome / PWA status bar, matching index.css canvases. */
 export const THEME_COLOR: Record<ResolvedTheme, string> = {
-  dark: "#141414",
+  dark: "#0d0e11",
   light: "#f6f3ee",
   "high-contrast": "#000000",
   "high-contrast-light": "#ffffff",
-  colourblind: "#141414",
+  colourblind: "#0d0e11",
   "colourblind-light": "#f6f3ee",
 };
 

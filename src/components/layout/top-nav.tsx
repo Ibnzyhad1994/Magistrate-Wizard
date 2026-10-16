@@ -56,7 +56,10 @@ export function TopNav() {
   const mobileNavOpen = useUiStore((state) => state.mobileNavOpen);
   const setMobileNavOpen = useUiStore((state) => state.setMobileNavOpen);
   const isDesktop = useIsDesktop();
-  const showWordmark = useMediaQuery("(min-width: 400px)");
+  // The wordmark needs about 540px beside the menu button and the four
+  // chrome buttons; narrower, it ran under Search. The seal alone keeps the
+  // link's name (AppLogo renders it sr-only).
+  const showWordmark = useMediaQuery("(min-width: 540px)");
   const { profile } = useAuth();
   const { data: hasApprovedMagistrateCourt } = useHasApprovedMagistrateCourt();
   // Locked-down state: a magistrate with zero currently-active
@@ -137,7 +140,9 @@ export function TopNav() {
       <Link
         to={isPendingMagistrate ? ROUTES.courtAssignments : ROUTES.home}
         className={cn(
-          "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          // 44px tall below lg so the home link is a full touch target; lg
+          // keeps the plain link box it always had.
+          "flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:block lg:min-h-0",
           hideActionCluster ? "shrink-0" : "min-w-0 shrink",
         )}
       >

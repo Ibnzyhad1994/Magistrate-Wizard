@@ -14,14 +14,14 @@ const EXAMPLE_CASE_NUMBER = "GEO-2026-EX";
 const EXAMPLE_TITLE = "Police v. Example";
 
 const caseColBase =
-  "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
+  "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden border-r border-border sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
 
 function ExampleStageChip({ label, isCurrent }: { label: string; isCurrent?: boolean }) {
   return (
     <span
       className={`inline-flex max-w-full items-center rounded-md px-2 py-1 text-left text-xs font-medium text-muted-foreground ${
         isCurrent ? "ring-2 ring-match" : ""
-      } min-h-9 min-w-[5.5rem] sm:min-h-7`}
+      } min-h-11 min-w-[5.5rem] lg:min-h-7`}
     >
       {label}
     </span>
@@ -40,40 +40,40 @@ function ExampleCaseLabel() {
 function DesktopExampleSheet() {
   return (
     <div className="relative" data-tour="docket-board">
-      <div className="relative rounded-sm border border-border">
+      <div className="relative overflow-hidden rounded-md border border-hairline shadow-elevation-1 hc:border-border">
         <Table
           className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]"
           aria-label="Example docket board"
         >
-          <TableHeader>
+          <TableHeader className="[&>tr>th]:border-b [&>tr>th]:border-border">
             <TableRow className="hover:bg-transparent">
-              <TableHead className={`${caseColBase} z-30`}>Case</TableHead>
+              <TableHead className={`${caseColBase} z-30 bg-surface-1`}>Case</TableHead>
               {PROCEDURE_COLUMNS.map((column) => (
                 <TableHead
                   key={column.key}
-                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-card sm:min-w-[7rem]"
+                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
                   data-tour-focus={column.key === "arraignment_status" ? "" : undefined}
                 >
                   <ProcedureColumnHeading columnKey={column.key} label={column.label} />
                 </TableHead>
               ))}
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-card sm:min-w-[7rem]"
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
                 data-tour="docket-outcome"
               >
                 Outcome
               </TableHead>
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-card sm:min-w-[7.5rem]"
+                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-surface-1 sm:min-w-[7.5rem]"
                 data-tour="docket-next-date"
               >
                 Next date
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="tabular-nums [&>tr:last-child>td]:border-b-0 [&>tr>td]:border-b [&>tr>td]:border-border">
             <TableRow className="hover:bg-transparent">
-              <TableCell className={`${caseColBase} z-20`}>
+              <TableCell className={`${caseColBase} z-20 bg-card`}>
                 <ExampleCaseLabel />
               </TableCell>
               {PROCEDURE_COLUMNS.map((column) => (
@@ -102,7 +102,10 @@ function DesktopExampleSheet() {
 
 function MobileExampleCard() {
   return (
-    <article className="rounded-sm border border-border bg-card p-3" data-tour="docket-board">
+    <article
+      className="rounded-md border border-hairline bg-card p-3 shadow-elevation-1 hc:border-border"
+      data-tour="docket-board"
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <ExampleCaseLabel />
         <div className="shrink-0" data-tour="docket-next-date">

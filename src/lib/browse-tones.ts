@@ -16,6 +16,21 @@ export const TONE_GRADIENT: Record<TitleCardTone, string> = {
 };
 
 /**
+ * A poster's words sit on its art, so they sit on a scrim: a short fade,
+ * then a gradient that never drops below 80% black under any line of text.
+ * White words keep their contrast over the lightest tone, the tone icon
+ * and a cover inset alike (npm run test:tile-style computes each ink).
+ */
+export const POSTER_SCRIM_FADE_CLASS = "bg-gradient-to-t from-black/80 to-transparent";
+export const POSTER_SCRIM_CLASS = "bg-gradient-to-t from-black/90 to-black/80";
+export const POSTER_INK = {
+  kicker: "text-primary-foreground/80",
+  title: "text-primary-foreground",
+  subtitle: "text-primary-foreground/85",
+  meta: "text-primary-foreground/75",
+} as const;
+
+/**
  * Welcome / detail heroes on the light canvas. Tiles keep TONE_GRADIENT
  * so posters stay cinematic; the billboard is a page surface and has to
  * follow the theme.

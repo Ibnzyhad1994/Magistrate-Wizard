@@ -5,10 +5,28 @@ import { TitleGallery } from "@/components/browse/title-gallery";
 
 export function TitleCardSkeleton({ layout }: { layout?: BrowseView }) {
   const storedView = useUiStore((s) => s.browseView);
+  const tileStyle = useUiStore((s) => s.tileStyle);
   const view = layout ?? storedView;
 
   if (view === "list") {
     return <Skeleton className="h-[4.5rem] w-full rounded-sm bg-foreground/10" />;
+  }
+
+  // The poster's shape: 2:3 art with the words at its foot.
+  if (tileStyle === "posters") {
+    return (
+      <div
+        aria-hidden="true"
+        className="relative aspect-[2/3] snap-start overflow-hidden rounded-md"
+      >
+        <Skeleton className="absolute inset-0 rounded-none bg-foreground/10" />
+        <div className="absolute inset-x-2 bottom-2 space-y-2">
+          <Skeleton className="h-2.5 w-2/3 bg-foreground/15" />
+          <Skeleton className="h-3.5 w-full bg-foreground/15" />
+          <Skeleton className="h-2.5 w-1/2 bg-foreground/15" />
+        </div>
+      </div>
+    );
   }
 
   // The still's shape: 16:9 art, then case number, two title lines and meta.

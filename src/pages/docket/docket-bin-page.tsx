@@ -74,7 +74,7 @@ export default function DocketBinPage() {
                 <TableCell>
                   <Link
                     to={ROUTES.docketMatter(row.id)}
-                    className="font-medium text-foreground hover:underline"
+                    className="identifier font-medium text-foreground hover:underline"
                   >
                     {row.case_number}
                   </Link>

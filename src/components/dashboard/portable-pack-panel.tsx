@@ -170,7 +170,7 @@ export function PortablePackPanel({
                           htmlFor={`pack-${row.id}`}
                           className="text-sm font-normal leading-snug"
                         >
-                          <span className="font-medium">{row.case_number}</span>
+                          <span className="identifier font-medium">{row.case_number}</span>
                           <span className="block text-muted-foreground">{row.matter_title}</span>
                         </Label>
                       </li>

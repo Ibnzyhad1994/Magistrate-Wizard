@@ -121,7 +121,7 @@ const createWindow = async () => {
     height: 900,
     minWidth: 1024,
     minHeight: 640,
-    backgroundColor: "#141414",
+    backgroundColor: "#0d0e11",
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(dirname(fileURLToPath(import.meta.url)), "preload.cjs"),
@@ -160,7 +160,7 @@ const startGoogleLoopback = (authUrl) =>
       const error = requestUrl.searchParams.get("error");
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
-        `<!doctype html><html><body style="font-family:sans-serif;background:#141414;color:#fff;padding:2rem">
+        `<!doctype html><html><body style="font-family:sans-serif;background:#0d0e11;color:#fff;padding:2rem">
          <p>${error ? "Google sign-in was cancelled." : "Signed in. You can close this window."}</p>
          </body></html>`,
       );

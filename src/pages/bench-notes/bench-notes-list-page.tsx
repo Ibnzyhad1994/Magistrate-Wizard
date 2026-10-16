@@ -17,7 +17,7 @@ import { useScopedSearchIds } from "@/hooks/use-scoped-search";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { ROUTES } from "@/routes/paths";
-import { formatDate, toTitleCase } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 const PARENT_TYPE_LABELS: Record<string, string> = {
   docket_matter: "Docket Matter",
@@ -143,7 +143,7 @@ export default function BenchNotesListPage() {
               tone="note"
               eyebrow={PARENT_TYPE_LABELS[note.entity_type] ?? note.entity_type}
               title={note.title}
-              badge={toTitleCase(note.status)}
+              status={note.status}
               meta={[formatDate(note.updated_at)]}
               href={ROUTES.benchNoteDetail(note.id)}
             />

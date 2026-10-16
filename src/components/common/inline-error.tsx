@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { getErrorMessage, isRateLimitedError } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-interface InlineErrorProps {
+export interface InlineErrorProps {
   error: unknown;
   onRetry?: () => void;
   className?: string;

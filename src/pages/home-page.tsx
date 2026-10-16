@@ -194,10 +194,10 @@ export default function HomePage() {
                     layout="tiles"
                     key={m.id}
                     tone="docket"
-                    eyebrow={m.case_number}
+                    identifier={m.case_number}
                     title={m.matter_title}
                     subtitle={issueOf(m)}
-                    badge={toTitleCase(m.status)}
+                    status={m.status}
                     meta={
                       "courts" in m
                         ? [rel(m.courts)?.name].filter((v): v is string => Boolean(v))
@@ -223,7 +223,7 @@ export default function HomePage() {
                       layout="tiles"
                       key={event.id}
                       tone="docket"
-                      eyebrow={matter?.case_number}
+                      identifier={matter?.case_number}
                       title={matter?.matter_title ?? eventLabel(event.event_type)}
                       subtitle={matter?.charge_or_issue ?? undefined}
                       badge={eventLabel(event.event_type)}
@@ -250,10 +250,10 @@ export default function HomePage() {
                     layout="tiles"
                     key={j.id}
                     tone="judgment"
-                    eyebrow={j.case_number ?? undefined}
+                    identifier={j.case_number ?? undefined}
                     title={j.title}
                     subtitle={j.court_name ?? j.citation ?? undefined}
-                    badge="Draft"
+                    status="draft"
                     href={ROUTES.judgmentDetail(j.id)}
                   />
                 ))}
@@ -271,10 +271,10 @@ export default function HomePage() {
                     layout="tiles"
                     key={j.id}
                     tone="judgment"
-                    eyebrow={j.case_number ?? undefined}
+                    identifier={j.case_number ?? undefined}
                     title={j.title}
                     subtitle={j.court_name ?? j.citation ?? undefined}
-                    badge="Final"
+                    status="final"
                     href={ROUTES.judgmentDetail(j.id)}
                   />
                 ))}
@@ -290,10 +290,11 @@ export default function HomePage() {
                       layout="tiles"
                       key={row.id}
                       tone="docket"
-                      eyebrow={matter?.case_number}
+                      identifier={matter?.case_number}
                       title={matter?.matter_title ?? "Retained matter"}
                       subtitle={matter?.charge_or_issue ?? undefined}
-                      badge={matter?.status ? toTitleCase(matter.status) : "Retained"}
+                      badge={matter?.status ? undefined : "Retained"}
+                      status={matter?.status}
                       imageUrl={coverUrl(matter?.cover_image_path)}
                       href={ROUTES.docketMatter(row.docket_matter_id)}
                     />
@@ -315,7 +316,7 @@ export default function HomePage() {
                     tone="note"
                     eyebrow={entityLabel(note.entity_type)}
                     title={note.title}
-                    badge={toTitleCase(note.status)}
+                    status={note.status}
                     href={ROUTES.benchNoteDetail(note.id)}
                   />
                 ))}
@@ -333,7 +334,7 @@ export default function HomePage() {
                     layout="tiles"
                     key={code.id}
                     tone="code"
-                    eyebrow={code.code_word}
+                    identifier={code.code_word}
                     title={code.title ?? code.code_word}
                     subtitle={code.category ?? undefined}
                     href={`${ROUTES.quickCodes}?qc=${code.id}`}

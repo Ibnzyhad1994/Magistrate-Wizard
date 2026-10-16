@@ -4,10 +4,13 @@ import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 import {
   DEFAULT_BROWSE_VIEW,
   DEFAULT_TILE_SIZE,
+  DEFAULT_TILE_STYLE,
   isBrowseView,
   isTileSize,
+  isTileStyle,
   type BrowseView,
   type TileSize,
+  type TileStyle,
 } from "@/lib/browse-prefs";
 
 const DEFAULT_DOCKET_BROWSE_VIEW: BrowseView = "list";
@@ -18,6 +21,7 @@ interface UiState {
   browseView: BrowseView;
   docketBrowseView: BrowseView;
   tileSize: TileSize;
+  tileStyle: TileStyle;
   /**
    * Remembered Docket scope: a court_id, or `null` for "All My Courts".
    * Purely a same-device convenience for a bare `/docket` visit with no
@@ -37,6 +41,7 @@ interface UiActions {
   setBrowseView: (view: BrowseView) => void;
   setDocketBrowseView: (view: BrowseView) => void;
   setTileSize: (size: TileSize) => void;
+  setTileStyle: (style: TileStyle) => void;
   setLastDocketScope: (courtId: string | null) => void;
 }
 
@@ -53,6 +58,7 @@ export const useUiStore = create<UiState & UiActions>()(
       browseView: DEFAULT_BROWSE_VIEW,
       docketBrowseView: DEFAULT_DOCKET_BROWSE_VIEW,
       tileSize: DEFAULT_TILE_SIZE,
+      tileStyle: DEFAULT_TILE_STYLE,
       lastDocketScope: null,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -60,6 +66,7 @@ export const useUiStore = create<UiState & UiActions>()(
       setBrowseView: (view) => set({ browseView: view }),
       setDocketBrowseView: (view) => set({ docketBrowseView: view }),
       setTileSize: (size) => set({ tileSize: size }),
+      setTileStyle: (style) => set({ tileStyle: style }),
       setLastDocketScope: (courtId) => set({ lastDocketScope: courtId }),
     }),
     {
@@ -69,6 +76,7 @@ export const useUiStore = create<UiState & UiActions>()(
         browseView: state.browseView,
         docketBrowseView: state.docketBrowseView,
         tileSize: state.tileSize,
+        tileStyle: state.tileStyle,
         lastDocketScope: state.lastDocketScope,
       }),
       merge: (persisted, current) => {
@@ -81,6 +89,7 @@ export const useUiStore = create<UiState & UiActions>()(
             ? stored.docketBrowseView
             : current.docketBrowseView,
           tileSize: isTileSize(stored.tileSize) ? stored.tileSize : current.tileSize,
+          tileStyle: isTileStyle(stored.tileStyle) ? stored.tileStyle : current.tileStyle,
           lastDocketScope:
             typeof stored.lastDocketScope === "string" ? stored.lastDocketScope : null,
         };

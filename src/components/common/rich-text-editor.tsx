@@ -244,7 +244,7 @@ function ToolbarButton({
       type="button"
       size="icon"
       variant={active ? "secondary" : "ghost"}
-      className="h-7 w-7"
+      className="h-11 w-11 lg:h-7 lg:w-7"
       onClick={onClick}
       aria-label={label}
       aria-pressed={hasPopup ? undefined : active}

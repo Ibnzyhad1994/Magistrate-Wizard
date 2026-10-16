@@ -29,11 +29,12 @@ export const buttonVariants = cva(
         play: "bg-white font-bold text-black shadow-elevation-1 hover:bg-white/85",
         more: "bg-white/30 font-semibold text-white shadow-sm backdrop-blur-sm hover:bg-white/20",
       },
-      // Touch targets: 44px on phones, the compact desktop height from lg
-      // up. min-h rather than h so a wrapped label never clips.
+      // Touch targets: 44px below lg (phones and tablets), the compact
+      // desktop height from lg up. min-h rather than h so a wrapped label
+      // never clips, and so a caller's h-8 still yields 44px on a phone.
       size: {
         default: "min-h-11 px-4 py-2 lg:min-h-9",
-        sm: "min-h-9 rounded-md px-3 text-xs lg:min-h-8",
+        sm: "min-h-11 rounded-md px-3 text-xs lg:min-h-8",
         lg: "min-h-11 rounded-md px-8 lg:min-h-10",
         billboard: "h-12 rounded-md px-8 text-base",
         icon: "h-9 w-9",

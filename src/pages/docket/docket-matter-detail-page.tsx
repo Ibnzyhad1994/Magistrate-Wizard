@@ -7,7 +7,7 @@ import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InlineError } from "@/components/common/inline-error";
+import { PageError } from "@/components/browse/page-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import {
   useBinDocketMatter,
@@ -102,12 +102,12 @@ export default function DocketMatterDetailPage() {
   }
 
   if (isError) {
-    return <InlineError error={error} onRetry={() => void refetch()} />;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
 
   if (!matter) {
     return (
-      <InlineError
+      <PageError
         error={new Error("This matter doesn't exist, or you don't currently have access to it.")}
       />
     );
@@ -119,7 +119,7 @@ export default function DocketMatterDetailPage() {
     <>
       <Billboard
         variant="detail"
-        eyebrow={matter.case_number}
+        identifier={matter.case_number}
         title={matter.matter_title}
         description={
           [matter.courts?.name, matter.magisterial_districts?.name].filter(Boolean).join(" · ") ||
