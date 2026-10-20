@@ -25,5 +25,9 @@ Reopening any of them requires a new superseding ADR agreed in review.
 - Shared helpers must be written to exclude these tables, even when that
   makes them longer.
 - Support tooling works from metadata and the audit log.
+- The audit log therefore records metadata only for these rows (ids, owner,
+  status, flags, timestamps), as an allowlist. Titles, case names, case
+  numbers, code words and attached file names count as content and stay
+  out (migration 0162).
 - Migrations that touch these policies get a threat-model note in the PR
   stating explicitly that no admin path was added.
