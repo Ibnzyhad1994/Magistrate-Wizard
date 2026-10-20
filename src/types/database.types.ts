@@ -4066,6 +4066,7 @@ export type Database = {
       list_binned_docket_matters: {
         Args: never
         Returns: {
+          can_purge: boolean
           case_number: string
           court_id: string
           court_name: string
@@ -4201,6 +4202,17 @@ export type Database = {
         Args: {
           p_body: string
           p_court_id: string
+          p_link: string
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
+      }
+      notify_court_staff_except: {
+        Args: {
+          p_body: string
+          p_court_id: string
+          p_except_profile_id: string
           p_link: string
           p_title: string
           p_type: string
