@@ -46,6 +46,7 @@ import { broughtForwardStageNotice } from "@/lib/callover";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/utils";
+import { escapeLikePattern, isSameCaseNumber } from "@/lib/docket-case-number";
 import type { Tables } from "@/types/database.types";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -167,6 +168,9 @@ export function CreateDocketMatterDialog({
   // not found here, and the constraint still catches it on insert (the
   // catch in onSubmit re-runs this lookup so the notice appears then too).
   // The bin is not excluded: a binned matter still holds the number.
+  // Letter case is ignored, as the index ignores it (0166): an escaped
+  // ILIKE with no wildcard is a case-insensitive equality. PostgREST still
+  // reads `*` as a wildcard, so the exact comparison below picks the row.
   const watchedDistrictId = form.watch("district_id");
   const watchedCaseNumber = form.watch("case_number");
   const debouncedCaseNumber = useDebouncedValue(watchedCaseNumber.trim());
@@ -177,18 +181,17 @@ export function CreateDocketMatterDialog({
         .from("docket_matters")
         .select("id, case_number, matter_title, deleted_at")
         .eq("district_id", watchedDistrictId)
-        .eq("case_number", debouncedCaseNumber)
-        .limit(1)
-        .maybeSingle();
+        .ilike("case_number", escapeLikePattern(debouncedCaseNumber))
+        .limit(10);
       if (error) throw error;
-      return data;
+      return data.find((row) => isSameCaseNumber(row.case_number, debouncedCaseNumber)) ?? null;
     },
     enabled: open && !!watchedDistrictId && debouncedCaseNumber.length >= 2,
     staleTime: 10_000,
     meta: { silent: true },
   });
   const duplicate =
-    duplicateLookup.data && duplicateLookup.data.case_number === watchedCaseNumber.trim()
+    duplicateLookup.data && isSameCaseNumber(duplicateLookup.data.case_number, watchedCaseNumber)
       ? duplicateLookup.data
       : null;
   const [submitDuplicate, setSubmitDuplicate] = useState(false);
