@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 
 export const quickCodesKeys = {
@@ -71,10 +72,8 @@ export function useUpdateQuickCode(id: string) {
 export function useDeleteQuickCode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("quick_codes").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) =>
+      deleteThenCleanStorage(supabase, () => supabase.from("quick_codes").delete().eq("id", id)),
     onSuccess: () => {
       toast.success("Quick Code deleted.");
       void queryClient.invalidateQueries({ queryKey: quickCodesKeys.all });

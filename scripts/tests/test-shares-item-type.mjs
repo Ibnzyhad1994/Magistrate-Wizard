@@ -6,7 +6,12 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isShareableCaseLaw, shareNoun } from "../../src/lib/shares.ts";
+import {
+  isShareableCaseLaw,
+  shareNoun,
+  shareRecipientNotFound,
+  shareRecipientRole,
+} from "../../src/lib/shares.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sql = readFileSync(
@@ -53,6 +58,26 @@ check("missing owner cannot be shared", isShareableCaseLaw(undefined), false);
 check("docket noun", shareNoun("docket_matter"), "matter");
 check("judgment noun", shareNoun("judgment"), "judgment");
 check("case law noun", shareNoun("case_law"), "research entry");
+
+// 0165 (C-09): clerks can never open judgments or research, so the share
+// dialog asks for a magistrate and explains an empty lookup that way.
+check(
+  "a matter can go to a magistrate or clerk",
+  shareRecipientRole("docket_matter"),
+  "magistrate or clerk",
+);
+check("a judgment goes to a magistrate", shareRecipientRole("judgment"), "magistrate");
+check("research goes to a magistrate", shareRecipientRole("case_law"), "magistrate");
+check(
+  "an empty judgment lookup names who can receive it",
+  shareRecipientNotFound("judgment"),
+  "No one found with that email. Check the address. They must be an active magistrate who sits a court, and you must be able to share this judgment.",
+);
+check(
+  "an empty matter lookup keeps the any-active-user wording",
+  shareRecipientNotFound("docket_matter"),
+  "No one found with that email. Check the address. They must be an active user, and you must be able to share this matter.",
+);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

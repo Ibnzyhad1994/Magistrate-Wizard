@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { resolveStoredMimeType } from "@/lib/ingest-source";
+import { requestStorageCleanup } from "@/lib/storage-cleanup";
 
 const key = (entityType: string, entityId: string) => ["documents", entityType, entityId] as const;
 
@@ -314,6 +315,9 @@ export function useDeleteDocument(entityType: string, entityId: string) {
           `The file was removed, but its record couldn't be cleared (${getErrorMessage(error)}). Refresh. If it's still listed, delete it again.`,
         );
       }
+      // A preview derivative stored in another viewer's folder could not be
+      // removed above; its row went with the source row, which queued it.
+      void requestStorageCleanup(supabase);
     },
     onSuccess: () => {
       toast.success("Document deleted.");
