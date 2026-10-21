@@ -123,6 +123,7 @@
     "test:case-law-title": "node --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-title.mjs",
     "test:ingest-harvest-quality": "node --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-harvest-quality.mjs",
     "test:csp": "node --import ./scripts/test-support/register.mjs scripts/tests/test-csp.mjs",
+    "test:record-id": "node --import ./scripts/test-support/register.mjs scripts/tests/test-record-id.mjs",
     "seed:harvest-indexes": "node scripts/seed-legal-library/harvest-official-indexes.mjs",
     "seed:harvest-mola": "node scripts/seed-legal-library/harvest-mola-ajax.mjs",
     "seed:prepare-catalogs": "node scripts/seed-legal-library/prepare-catalogs.mjs",

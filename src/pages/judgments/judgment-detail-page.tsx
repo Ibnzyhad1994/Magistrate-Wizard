@@ -29,7 +29,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
@@ -155,7 +156,8 @@ function useAutoClassifyJudgment(judgmentId: string, currentCategoryId: string |
 }
 
 export default function JudgmentDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.judgments, "Back to Judgments");
   const { data: judgment, isPending, isError, error, refetch } = useJudgment(id);
@@ -186,6 +188,13 @@ export default function JudgmentDetailPage() {
     }
   }
 
+  const notFound = (
+    <PageNotFound
+      message="This judgment doesn't exist, or you don't have access to it."
+      back={back}
+    />
+  );
+  if (!id) return notFound;
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -194,14 +203,11 @@ export default function JudgmentDetailPage() {
       </div>
     );
   }
-  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
-  if (!judgment) {
-    return (
-      <PageError
-        error={new Error("This judgment doesn't exist, or you don't have access to it.")}
-      />
-    );
+  if (isError) {
+    if (isNotFoundError(error)) return notFound;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
+  if (!judgment) return notFound;
 
   const isDraft = judgment.status === "draft";
   const isOwner = judgment.owner_id === user?.id;

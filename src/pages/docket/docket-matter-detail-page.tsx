@@ -7,7 +7,7 @@ import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import {
   useBinDocketMatter,
@@ -16,6 +16,7 @@ import {
   useRestoreDocketMatter,
 } from "@/hooks/docket/use-docket-matters";
 import { formatDateTime, toTitleCase } from "@/lib/utils";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { docketBinDaysLabel, docketBinPurgeAt, isDocketMatterBinned } from "@/lib/docket-bin";
 import { OverviewSection } from "@/pages/docket/sections/overview-section";
 import { PartiesSection } from "@/pages/docket/sections/parties-section";
@@ -45,7 +46,8 @@ const MATTER_TABS = [
 ] as const;
 
 export default function DocketMatterDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab") ?? "overview";
@@ -92,6 +94,15 @@ export default function DocketMatterDetailPage() {
     });
   }
 
+  const notFound = (
+    <PageNotFound
+      message="This matter doesn't exist, or you don't currently have access to it."
+      back={back}
+    />
+  );
+
+  if (!id) return notFound;
+
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -102,16 +113,11 @@ export default function DocketMatterDetailPage() {
   }
 
   if (isError) {
+    if (isNotFoundError(error)) return notFound;
     return <PageError error={error} onRetry={() => void refetch()} />;
   }
 
-  if (!matter) {
-    return (
-      <PageError
-        error={new Error("This matter doesn't exist, or you don't currently have access to it.")}
-      />
-    );
-  }
+  if (!matter) return notFound;
 
   const badges = [toTitleCase(matter.status), ...(isBinned ? ["In the bin"] : [])];
 
