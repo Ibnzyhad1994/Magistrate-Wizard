@@ -88,3 +88,6 @@ jobs:
 
       - name: Deploy edge function webhook-dispatch
         run: npx supabase functions deploy webhook-dispatch --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy edge function storage-cleanup
+        run: npx supabase functions deploy storage-cleanup --project-ref "$SUPABASE_PROJECT_REF"

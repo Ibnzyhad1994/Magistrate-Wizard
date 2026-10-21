@@ -14,8 +14,8 @@ no window where a table exists without policies. Every function pins
 recorded in `docs/adr/` and `DEVELOPMENT_WORKFLOW.md`; do not weaken them
 "because a helper would be simpler".
 
-`supabase/functions/` holds the two edge functions (`clerk-access-notify`,
-`webhook-dispatch`). `supabase/seed.sql` is the synthetic local seed
+`supabase/functions/` holds the three edge functions (`clerk-access-notify`,
+`webhook-dispatch`, `storage-cleanup`). `supabase/seed.sql` is the synthetic local seed
 (never real user content).
 
 ## Local development loop
