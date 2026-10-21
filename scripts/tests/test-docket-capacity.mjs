@@ -1,7 +1,8 @@
 /**
  * Docket capacity strip vs board list contract (0139 + 0147/0148
  * total-matters count matching list_docket_matters day membership +
- * all-courts day click).
+ * all-courts day click), and since 0163 one shared booked count for the
+ * strip, the booking RPCs and the next-free-day suggestion.
  *
  * Snapshot SQL still accepts optional p_court_id. The week strip must not
  * send it: tiles count every court the caller sits. Clicking a day writes
@@ -19,10 +20,19 @@ import {
 } from "../../src/lib/docket-board-params.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const snapshotSql = readFileSync(
-  join(__dirname, "../../supabase/migrations/0148_docket_calendar_total_matches_board.sql"),
+const capacitySql = readFileSync(
+  join(__dirname, "../../supabase/migrations/0163_docket_scheduling_capacity_presiding.sql"),
   "utf8",
 );
+/** The text of one `create ... function public.<name>` up to its `comment on function`. */
+const functionSql = (name) => {
+  const start = capacitySql.search(
+    new RegExp(`create (or replace )?function public\\.${name}\\(`, "i"),
+  );
+  return capacitySql.slice(start, capacitySql.indexOf(`comment on function public.${name}`, start));
+};
+const snapshotSql = functionSql("get_docket_capacity_snapshot");
+const bookedCountSql = functionSql("docket_booked_count");
 const listSql = readFileSync(
   join(__dirname, "../../supabase/migrations/0139_docket_capacity_matches_board.sql"),
   "utf8",
@@ -52,23 +62,44 @@ const check = (label, actual, expected) => {
 };
 
 check(
-  "0148 redefines get_docket_capacity_snapshot with optional p_court_id",
-  /create function public\.get_docket_capacity_snapshot\([\s\S]*?p_court_id uuid default null/i.test(
+  "0163 redefines get_docket_capacity_snapshot with optional p_court_id",
+  /function public\.get_docket_capacity_snapshot\([\s\S]*?p_court_id uuid default null/i.test(
     snapshotSql,
   ),
   true,
 );
 check("snapshot excludes binned matters", snapshotSql.includes("dm.deleted_at is null"), true);
 check(
-  "snapshot counts distinct matters, not event rows",
-  snapshotSql.includes("count(distinct e.docket_matter_id)"),
+  "the booked count excludes binned matters",
+  bookedCountSql.includes("dm.deleted_at is null"),
   true,
 );
 check(
-  "category utilisation still scopes to the calling magistrate",
-  snapshotSql.includes("e.presiding_magistrate_id = (select auth.uid())"),
+  "the booked count counts distinct matters, not event rows",
+  bookedCountSql.includes("count(distinct e.docket_matter_id)"),
   true,
 );
+check(
+  "the booked count counts scheduled and completed sittings",
+  bookedCountSql.includes("e.event_status in ('scheduled', 'completed')"),
+  true,
+);
+check(
+  "category utilisation still scopes to the calling magistrate, through the booked count",
+  /public\.docket_booked_count\(\s*\(select auth\.uid\(\)\), c\.id/.test(snapshotSql),
+  true,
+);
+for (const fn of [
+  "schedule_docket_event_with_capacity",
+  "set_docket_matter_next_date",
+  "find_next_available_docket_date",
+]) {
+  check(
+    `${fn} counts with the same booked count as the strip`,
+    functionSql(fn).includes("public.docket_booked_count("),
+    true,
+  );
+}
 check(
   "snapshot does not apply list-style full-text search",
   /search_vector @@/.test(snapshotSql),

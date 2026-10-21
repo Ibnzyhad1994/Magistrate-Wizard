@@ -1076,6 +1076,7 @@ export type Database = {
           docket_matter_id: string
           id: string
           magistrate_profile_id: string
+          overridden_by: string | null
           reason: string | null
           scheduled_count_at_override: number
           scheduled_date: string
@@ -1088,6 +1089,7 @@ export type Database = {
           docket_matter_id: string
           id?: string
           magistrate_profile_id: string
+          overridden_by?: string | null
           reason?: string | null
           scheduled_count_at_override: number
           scheduled_date: string
@@ -1100,6 +1102,7 @@ export type Database = {
           docket_matter_id?: string
           id?: string
           magistrate_profile_id?: string
+          overridden_by?: string | null
           reason?: string | null
           scheduled_count_at_override?: number
           scheduled_date?: string
@@ -1129,6 +1132,13 @@ export type Database = {
           {
             foreignKeyName: "docket_capacity_overrides_magistrate_profile_id_fkey"
             columns: ["magistrate_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "docket_capacity_overrides_overridden_by_fkey"
+            columns: ["overridden_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -3883,6 +3893,20 @@ export type Database = {
         }
       }
       dispatch_pending_webhooks: { Args: never; Returns: number }
+      docket_booked_count: {
+        Args: {
+          p_category_id: string
+          p_court_id?: string
+          p_exclude_matter_id?: string
+          p_magistrate_id: string
+          p_scheduled_date: string
+        }
+        Returns: number
+      }
+      docket_magistrate_can_hear: {
+        Args: { p_docket_matter_id: string; p_profile_id: string }
+        Returns: boolean
+      }
       docket_matter_matches_query: {
         Args: {
           p_case_number: string
@@ -3933,6 +3957,7 @@ export type Database = {
       find_next_available_docket_date: {
         Args: {
           p_category_id: string
+          p_docket_matter_id?: string
           p_max_days_ahead?: number
           p_start_date: string
         }
@@ -4188,6 +4213,10 @@ export type Database = {
         Returns: string
       }
       my_court_id: { Args: never; Returns: string }
+      new_docket_event_presiding_magistrate: {
+        Args: { p_docket_matter_id: string; p_prior_event_id?: string }
+        Returns: string
+      }
       notify_admins: {
         Args: {
           p_body: string
@@ -4414,6 +4443,7 @@ export type Database = {
           p_event_id?: string
           p_event_status?: string
           p_event_type?: string
+          p_expected_updated_at?: string
           p_location?: string
           p_notes?: string
           p_orders_made_at_event?: string
