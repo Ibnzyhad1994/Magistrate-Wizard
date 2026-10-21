@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import { ConcurrentEditError, HEARING_CONFLICT_MESSAGE } from "@/lib/concurrency";
 import { isKnownOffline } from "@/lib/offline/is-queueable-error";
 import { enqueueQueuedNextDate } from "@/lib/offline/runtime";
 import type { Database } from "@/types/database.types";
@@ -148,12 +149,26 @@ export function useDocketCapacitySnapshot(date: string | undefined) {
   });
 }
 
+/**
+ * `matterId` makes the suggestion follow the capacity the booking will be
+ * checked against: a clerk's listing counts against the matter's sitting
+ * magistrate, not the clerk (0163).
+ */
 export function useNextAvailableDocketDate() {
   return useMutation({
-    mutationFn: async ({ categoryId, startDate }: { categoryId: string; startDate: string }) => {
+    mutationFn: async ({
+      categoryId,
+      startDate,
+      matterId,
+    }: {
+      categoryId: string;
+      startDate: string;
+      matterId?: string;
+    }) => {
       const { data, error } = await supabase.rpc("find_next_available_docket_date", {
         p_category_id: categoryId,
         p_start_date: startDate,
+        p_docket_matter_id: matterId,
       });
       if (error) throw error;
       return data;
@@ -176,6 +191,8 @@ export interface ScheduleDocketEventInput {
   categoryId?: string | null;
   acknowledgeOverride?: boolean;
   overrideReason?: string | null;
+  /** The edited hearing's updated_at as the dialog read it; a mismatch is a conflict, not an overwrite. */
+  expectedUpdatedAt?: string | null;
 }
 
 /**
@@ -185,6 +202,9 @@ export interface ScheduleDocketEventInput {
  * "Log appearance" shortcut) get capacity checking for free. Returns the
  * raw RPC row rather than throwing/toasting on a "capacity_reached" result
  * — the caller decides whether that's an error or a prompt to confirm.
+ * A "conflict" (the hearing changed since `expectedUpdatedAt`) throws
+ * ConcurrentEditError: nothing was saved, and the caller closes the dialog
+ * so the latest version is what gets reopened.
  */
 export function useScheduleDocketEventWithCapacity(matterId: string) {
   const queryClient = useQueryClient();
@@ -205,10 +225,12 @@ export function useScheduleDocketEventWithCapacity(matterId: string) {
         p_category_id: input.categoryId ?? undefined,
         p_acknowledge_override: input.acknowledgeOverride ?? false,
         p_override_reason: input.overrideReason ?? undefined,
+        p_expected_updated_at: input.expectedUpdatedAt ?? undefined,
       });
       if (error) throw error;
       const row = data?.[0];
       if (!row) throw new Error("No response from the scheduling function.");
+      if (row.status === "conflict") throw new ConcurrentEditError(HEARING_CONFLICT_MESSAGE);
       return row;
     },
     onSuccess: (result) => {
@@ -219,7 +241,12 @@ export function useScheduleDocketEventWithCapacity(matterId: string) {
       }
     },
     meta: { silent: true },
-    onError: (err) => toast.error(getErrorMessage(err)),
+    onError: (err) => {
+      toast.error(getErrorMessage(err));
+      if (err instanceof ConcurrentEditError) {
+        void queryClient.invalidateQueries({ queryKey: ["docket-events", matterId] });
+      }
+    },
   });
 }
 

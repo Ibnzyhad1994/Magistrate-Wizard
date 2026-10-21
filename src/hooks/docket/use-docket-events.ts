@@ -22,6 +22,7 @@ import { getProfileCache } from "@/lib/offline/store";
 import { seedMatterEvents } from "@/lib/offline/seed";
 import { useOutboxJobs } from "@/hooks/offline/use-pending-hearings";
 import { useAuthStore } from "@/store/auth-store";
+import { ConcurrentEditError, HEARING_CONFLICT_MESSAGE } from "@/lib/concurrency";
 
 const key = (matterId: string) => ["docket-events", matterId] as const;
 
@@ -175,19 +176,33 @@ export function useCreateDocketEvent(matterId: string) {
   });
 }
 
+/**
+ * `expectedUpdatedAt`, when supplied, makes the UPDATE match only while the
+ * hearing still carries the updated_at the editor read (the same guard
+ * useUpdateDocketMatter uses). Zero rows then means someone else saved
+ * first: ConcurrentEditError, never a silent overwrite of their orders.
+ */
 export function useUpdateDocketEvent(matterId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: TablesUpdate<"docket_events"> }) => {
+    mutationFn: async ({
+      id,
+      values,
+      expectedUpdatedAt,
+    }: {
+      id: string;
+      values: TablesUpdate<"docket_events">;
+      expectedUpdatedAt?: string | null;
+    }) => {
       try {
-        const { data, error } = await supabase
-          .from("docket_events")
-          .update(values)
-          .eq("id", id)
-          .select()
-          .single();
+        let query = supabase.from("docket_events").update(values).eq("id", id);
+        if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+        const { data, error } = await query.select().maybeSingle();
         if (error) throw error;
-        return { row: data, queued: false as const };
+        if (data) return { row: data, queued: false as const };
+        if (!expectedUpdatedAt) {
+          throw new Error("This hearing could not be found, or you no longer have access to it.");
+        }
       } catch (error) {
         if (!isQueueableError(error)) throw error;
         const patch = {
@@ -234,6 +249,12 @@ export function useUpdateDocketEvent(matterId: string) {
           ),
           queued: true as const,
         };
+      }
+      throw new ConcurrentEditError(HEARING_CONFLICT_MESSAGE);
+    },
+    onError: (error) => {
+      if (error instanceof ConcurrentEditError) {
+        void queryClient.invalidateQueries({ queryKey: key(matterId) });
       }
     },
     onSuccess: (result) => {

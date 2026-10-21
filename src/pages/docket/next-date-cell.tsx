@@ -281,6 +281,7 @@ export function NextDateDialog({
       {pendingOverride && (
         <CapacityOverrideDialog
           info={pendingOverride}
+          matterId={matterId}
           scheduledDate={date}
           isPending={setNextDate.isPending}
           onCancel={() => setPendingOverride(null)}

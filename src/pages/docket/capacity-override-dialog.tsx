@@ -32,6 +32,7 @@ interface CapacityReachedInfo {
  */
 export function CapacityOverrideDialog({
   info,
+  matterId,
   scheduledDate,
   isPending,
   onCancel,
@@ -39,6 +40,8 @@ export function CapacityOverrideDialog({
   onDateSuggested,
 }: {
   info: CapacityReachedInfo;
+  /** The matter being booked, so the suggestion uses the capacity the booking is checked against. */
+  matterId?: string;
   scheduledDate: string;
   isPending: boolean;
   onCancel: () => void;
@@ -85,6 +88,7 @@ export function CapacityOverrideDialog({
                 const suggested = await nextAvailable.mutateAsync({
                   categoryId: info.category_id as string,
                   startDate: scheduledDate,
+                  matterId,
                 });
                 if (suggested) onDateSuggested(suggested);
                 onCancel();
