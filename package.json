@@ -124,6 +124,7 @@
     "test:ingest-harvest-quality": "node --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-harvest-quality.mjs",
     "test:csp": "node --import ./scripts/test-support/register.mjs scripts/tests/test-csp.mjs",
     "test:record-id": "node --import ./scripts/test-support/register.mjs scripts/tests/test-record-id.mjs",
+    "test:home-greeting": "node --import ./scripts/test-support/register.mjs scripts/tests/test-home-greeting.mjs",
     "seed:harvest-indexes": "node scripts/seed-legal-library/harvest-official-indexes.mjs",
     "seed:harvest-mola": "node scripts/seed-legal-library/harvest-mola-ajax.mjs",
     "seed:prepare-catalogs": "node scripts/seed-legal-library/prepare-catalogs.mjs",

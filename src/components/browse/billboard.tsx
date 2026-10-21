@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Play, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,8 @@ interface BillboardAction {
   label: string;
   href?: string;
   onClick?: () => void;
+  /** The destination's own icon (as in the nav); without one the slot's default glyph is used. */
+  icon?: LucideIcon;
 }
 
 interface BillboardProps {
@@ -282,9 +285,12 @@ function BillboardButton({
   const iconClass = tool ? "h-4 w-4" : "h-5 w-5";
   const size = tool ? "sm" : "billboard";
   const sizeClass = tool ? "max-lg:min-h-11" : undefined;
+  const ActionIcon = action.icon;
   const inner = (
     <>
-      {icon === "back" ? (
+      {ActionIcon ? (
+        <ActionIcon className={iconClass} aria-hidden="true" />
+      ) : icon === "back" ? (
         <ArrowLeft className={iconClass} aria-hidden="true" />
       ) : icon === "play" ? (
         <Play className={cn(iconClass, "fill-current")} aria-hidden="true" />
