@@ -147,7 +147,7 @@ export function PortablePackPanel({
         {isPending ? (
           <p className="text-sm text-muted-foreground">Reading the files you can pack…</p>
         ) : (
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-2 lg:gap-12">
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-foreground">Take off this platform</h3>
               {exportable.length === 0 ? (
@@ -168,7 +168,7 @@ export function PortablePackPanel({
                         />
                         <Label
                           htmlFor={`pack-${row.id}`}
-                          className="text-sm font-normal leading-snug"
+                          className="min-w-0 break-words text-sm font-normal leading-snug"
                         >
                           <span className="identifier font-medium">{row.case_number}</span>
                           <span className="block text-muted-foreground">{row.matter_title}</span>
@@ -217,7 +217,7 @@ export function PortablePackPanel({
                     review. They will open on the court you choose, with you as the person who
                     brought them in.
                   </p>
-                  <ul className="max-h-32 overflow-y-auto text-sm text-muted-foreground">
+                  <ul className="max-h-32 overflow-y-auto break-words text-sm text-muted-foreground">
                     {preview.matters.map((matter) => (
                       <li key={matter.case_number}>
                         {matter.case_number} · {matter.matter_title}

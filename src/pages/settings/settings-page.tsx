@@ -107,7 +107,10 @@ export default function SettingsPage() {
         description="Display preferences for this device. Tile style, tile size and list or tile view apply across Docket, Case Law, and the other browse pages."
       />
 
-      <div className="grid gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
+      {/* minmax(0, 1fr) below lg as well: the implicit `auto` track grew to
+          the widest unbreakable word in any card (a long matter title in
+          the pack list), which pushed every card past a phone's edge. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
         <SettingsIndex visible={visibleSections} />
         <div className="max-w-3xl space-y-6">
           <SettingsSection id="display">
