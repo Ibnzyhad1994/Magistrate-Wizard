@@ -54,7 +54,7 @@ time.
    triggers on the environment you are changing (`supabase db diff`, the
    Dashboard, or `list_migrations`) — do not assume from local files.
 2. **Number it.** Next unused number, one number per file, reconciled
-   against live migration history. Renumbering an *unapplied* migration is
+   against live migration history. Renumbering an _unapplied_ migration is
    fine; renaming or editing an applied one never is.
 3. **Design and threat-model it.** Who can read/write what afterwards? Any
    new `SECURITY DEFINER` function needs an explicit note: why DEFINER,
@@ -67,7 +67,7 @@ time.
    linked project, or `deploy-db.yml` for production from `main`).
 6. **Verify live**: structure, behavioural regression (RLS/privacy changes
    get a rollback-only pass), Supabase advisors (security + performance) —
-   call out any *new* finding explicitly.
+   call out any _new_ finding explicitly.
 7. **Update the architecture spec** (`docs/architecture/`), regenerate types,
    add the `CHANGELOG.md` line, commit the migration + spec + related docs
    together. Frontend changes go in a separate commit where practical.
