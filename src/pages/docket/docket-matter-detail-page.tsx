@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Pencil, Trash2, RotateCcw, StickyNote } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +13,7 @@ import {
   usePurgeDocketMatter,
   useRestoreDocketMatter,
 } from "@/hooks/docket/use-docket-matters";
-import { formatDateTime, toTitleCase } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { docketBinDaysLabel, docketBinPurgeAt, isDocketMatterBinned } from "@/lib/docket-bin";
 import { OverviewSection } from "@/pages/docket/sections/overview-section";
@@ -119,8 +117,6 @@ export default function DocketMatterDetailPage() {
 
   if (!matter) return notFound;
 
-  const badges = [toTitleCase(matter.status), ...(isBinned ? ["In the bin"] : [])];
-
   return (
     <>
       <Billboard
@@ -131,7 +127,10 @@ export default function DocketMatterDetailPage() {
           [matter.courts?.name, matter.magisterial_districts?.name].filter(Boolean).join(" · ") ||
           undefined
         }
-        badges={badges}
+        // The status itself has one home, the Overview status row, as the
+        // editable select or (read-only) a single badge. It used to appear
+        // here and in the action row as well.
+        badges={isBinned ? ["In the bin"] : undefined}
         tone="docket"
         imageUrl={matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined}
         tourId="matter-header"
@@ -180,7 +179,6 @@ export default function DocketMatterDetailPage() {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={statusBadgeVariant(matter.status)}>{toTitleCase(matter.status)}</Badge>
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
           <Button size="sm" variant="ghost" onClick={() => setNoteOpen(true)}>
             <StickyNote className="h-3.5 w-3.5" />
