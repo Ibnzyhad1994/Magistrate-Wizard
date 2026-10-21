@@ -246,11 +246,14 @@ export const saveDraftContent = async (
 
 /**
  * The draft to store after a save that did NOT land. `null` means leave it
- * as it is (still queued, try again later).
+ * as it is (still queued, try again later). `countAttempts: false` is the
+ * automatic backoff retry, which leaves an unclassified failure's attempt
+ * count alone, as the docket outbox does.
  */
 export const draftAfterFailedSave = (
   draft: JudgmentDraft,
   outcome: Exclude<DraftSaveOutcome, { kind: "saved" }>,
+  { countAttempts = true }: { countAttempts?: boolean } = {},
 ): JudgmentDraft | null => {
   switch (outcome.kind) {
     case "offline":
@@ -265,6 +268,7 @@ export const draftAfterFailedSave = (
     case "refused":
       return { ...draft, queued: false, problem: { reason: "refused", message: outcome.message } };
     case "failed": {
+      if (!countAttempts) return null;
       const attempts = (draft.attempts ?? 0) + 1;
       if (attempts >= MAX_DRAFT_ATTEMPTS) {
         return {

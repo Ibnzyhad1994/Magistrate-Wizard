@@ -134,13 +134,19 @@ const inFlight = new Set<string>();
 
 export type SendResult = DraftSaveOutcome | { kind: "busy" } | { kind: "missing" };
 
+/** `countAttempts: false` = the automatic backoff retry; see draftAfterFailedSave. */
+export type SendOptions = { countAttempts?: boolean };
+
 /**
  * Sends the stored draft for one judgment, the one path for both the Save
  * button and the reconnect replay. The draft on the device is the source:
  * the caller persists it (queued) first, so a tab closed mid-request still
  * has it to replay.
  */
-export const sendJudgmentDraft = async (judgmentId: string): Promise<SendResult> => {
+export const sendJudgmentDraft = async (
+  judgmentId: string,
+  options: SendOptions = {},
+): Promise<SendResult> => {
   const id = profileId();
   if (!id) return { kind: "missing" };
   if (inFlight.has(judgmentId)) return { kind: "busy" };
@@ -161,7 +167,7 @@ export const sendJudgmentDraft = async (judgmentId: string): Promise<SendResult>
       else await store.save(id, next);
       invalidateJudgment(judgmentId);
     } else {
-      const next = draftAfterFailedSave(draft, outcome);
+      const next = draftAfterFailedSave(draft, outcome, options);
       if (next) {
         // Keep anything typed while this was in flight.
         const latest = await store.load(id, judgmentId);
@@ -186,7 +192,7 @@ export const sendJudgmentDraft = async (judgmentId: string): Promise<SendResult>
 let flushing = false;
 
 /** Replays every queued judgment draft. Triggered with the docket outbox. */
-export const flushQueuedJudgmentDrafts = async () => {
+export const flushQueuedJudgmentDrafts = async (options: SendOptions = {}) => {
   if (flushing) return;
   if (useAuthStore.getState().status === "locked") return;
   const id = profileId();
@@ -197,7 +203,7 @@ export const flushQueuedJudgmentDrafts = async () => {
   try {
     const drafts = (await (await draftStore()).list(id)).filter((d) => d.queued && !d.problem);
     for (const draft of drafts) {
-      const outcome = await sendJudgmentDraft(draft.judgmentId);
+      const outcome = await sendJudgmentDraft(draft.judgmentId, options);
       if (outcome.kind === "saved") saved += 1;
       else if (outcome.kind === "conflict" || outcome.kind === "refused") problems += 1;
       else if (outcome.kind === "offline" || outcome.kind === "authExpired") break;

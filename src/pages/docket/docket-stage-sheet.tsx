@@ -152,7 +152,7 @@ function DocketStageRow({
           <p className="truncate text-sm text-foreground">{row.matter_title}</p>
           {pending && (
             <p className="truncate text-[11px] font-medium text-warning">
-              Saved on this device. Will sync when online.
+              Saved on this device, not yet synced.
             </p>
           )}
           {row.charge_or_issue && (

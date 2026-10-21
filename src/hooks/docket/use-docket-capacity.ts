@@ -278,7 +278,7 @@ export function useSetDocketMatterNextDate() {
     },
     onSuccess: (result, variables) => {
       if (result.status === "queued") {
-        toast.success("Next date saved on this device. Will sync when online.");
+        toast.success("Next date saved on this device, not yet synced.");
         return;
       }
       if (result.status === "created") {

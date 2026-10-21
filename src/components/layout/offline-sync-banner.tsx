@@ -9,15 +9,12 @@ import {
 } from "@/hooks/offline/use-pending-hearings";
 import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
-import {
-  flushQueuedJudgmentDrafts,
-  refreshJudgmentDraftSummary,
-} from "@/lib/offline/judgment-drafts-runtime";
+import { refreshJudgmentDraftSummary } from "@/lib/offline/judgment-drafts-runtime";
 import {
   discardFailedHearing,
-  flushPendingHearings,
   reapplyFailedJob,
   startOfflineFlushListeners,
+  syncOfflineWorkNow,
 } from "@/lib/offline/runtime";
 import { describeFailedJob } from "@/lib/offline/outbox";
 
@@ -45,8 +42,7 @@ export function OfflineSyncBanner() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await flushPendingHearings();
-      await flushQueuedJudgmentDrafts();
+      await syncOfflineWorkNow();
     } finally {
       setSyncing(false);
     }
@@ -67,7 +63,7 @@ export function OfflineSyncBanner() {
         <p>
           {count > 0 && (
             <>
-              Saved on this device. Will sync when online.
+              Saved on this device, not yet synced.
               {count > 1 ? ` ${count} pending.` : " 1 pending."}
             </>
           )}

@@ -193,7 +193,7 @@ export function useJudgmentDraft(judgment: ServerJudgment, editable: boolean) {
       case "busy":
         setQueued(true);
         if (outcome.kind === "offline") {
-          toast.message("Saved on this device. It will sync when you are back online.");
+          toast.message("Saved on this device, not yet synced.");
         }
         return;
       case "authExpired":
