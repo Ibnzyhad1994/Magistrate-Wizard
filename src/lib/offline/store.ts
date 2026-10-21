@@ -48,6 +48,11 @@ const memory = {
 
 const listeners = new Set<() => void>();
 
+/** Bumped by each sign-out wipe, so a flush that was in flight can tell. */
+const wipes: Record<string, number> = {};
+
+export const offlineWipeCount = (profileId: string) => wipes[profileId] ?? 0;
+
 const emit = () => {
   for (const listener of listeners) listener();
 };
@@ -335,6 +340,7 @@ export const clearOfflineForProfile = async (
   memory.profiles = nextProfiles;
   const writes = [persistCache(profileId), persistProfiles(profileId)];
   if (!opts.keepOutbox) {
+    wipes[profileId] = offlineWipeCount(profileId) + 1;
     const nextOutbox = { ...memory.outbox };
     const nextFailed = { ...memory.failed };
     delete nextOutbox[profileId];

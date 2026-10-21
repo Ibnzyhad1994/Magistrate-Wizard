@@ -24,6 +24,7 @@ import {
   getFailedJobs,
   getOutboxJobs,
   getProfileCache,
+  offlineWipeCount,
   setOutboxJobs,
   subscribeOfflineStore,
 } from "@/lib/offline/store";
@@ -261,7 +262,11 @@ export const flushPendingHearings = async ({ background = false } = {}) => {
   if (jobs.length === 0) return { skipped: true as const };
   flushing = true;
   try {
+    const wipesBefore = offlineWipeCount(profileId);
     const result = await flushOutbox(jobs, liveFlushDeps(), { countAttempts: !background });
+    // Signed out and wiped while this was sending: writing the leftovers
+    // back would restore work the person chose to discard.
+    if (offlineWipeCount(profileId) !== wipesBefore) return result;
     await setOutboxJobs(profileId, result.jobs);
     if (result.failed.length > 0) {
       // Dead-letter, not silence: persisted so the sync banner can show

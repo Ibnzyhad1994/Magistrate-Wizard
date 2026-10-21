@@ -52,16 +52,25 @@ export const getJudgmentDraftSummary = () => summary;
 
 const profileId = () => useAuthStore.getState().user?.id ?? null;
 
+const summarise = (drafts: JudgmentDraft[]): JudgmentDraftSummary => ({
+  queued: drafts.filter((d) => d.queued && !d.problem).map((d) => d.judgmentId),
+  needsAttention: drafts.filter((d) => d.problem).map((d) => d.judgmentId),
+});
+
 /** Re-reads the drafts and tells the banner. Cheap: a handful of records at most. */
 export const refreshJudgmentDraftSummary = async () => {
   const id = profileId();
-  const drafts = id ? await (await draftStore()).list(id) : [];
-  summary = {
-    queued: drafts.filter((d) => d.queued && !d.problem).map((d) => d.judgmentId),
-    needsAttention: drafts.filter((d) => d.problem).map((d) => d.judgmentId),
-  };
+  summary = summarise(id ? await (await draftStore()).list(id) : []);
   for (const listener of listeners) listener();
 };
+
+/**
+ * Read straight from the store rather than the banner's summary, which
+ * can lag a save by a tick: sign-out decides from this whether anything
+ * would be lost.
+ */
+export const readJudgmentDraftSummary = async (id: string) =>
+  summarise(await (await draftStore()).list(id));
 
 // --- store access for the editor --------------------------------------------------
 
@@ -86,8 +95,12 @@ export const discardJudgmentDraft = async (judgmentId: string) => {
   void refreshJudgmentDraftSummary();
 };
 
+/** Bumped by each sign-out wipe, so a send that was in flight can tell. */
+const clears = new Map<string, number>();
+
 /** Explicit sign-out only. A lock keeps drafts, as it keeps the docket outbox. */
 export const clearJudgmentDraftsForProfile = async (id: string) => {
+  clears.set(id, (clears.get(id) ?? 0) + 1);
   await (await draftStore()).clearProfile(id);
   summary = EMPTY_SUMMARY;
   for (const listener of listeners) listener();
@@ -157,7 +170,10 @@ export const sendJudgmentDraft = async (
     if (!draft) return { kind: "missing" };
     if (isKnownOffline()) return { kind: "offline" };
 
+    const clearsBefore = clears.get(id) ?? 0;
     const outcome = await saveDraftContent(draft, id, liveDeps());
+    // Signed out and wiped while this was sending: do not restore the draft.
+    if ((clears.get(id) ?? 0) !== clearsBefore) return outcome;
     if (outcome.kind === "saved") {
       const next = afterDraftSaved(await store.load(id, judgmentId), draft, {
         fingerprint: outcome.fingerprint,
