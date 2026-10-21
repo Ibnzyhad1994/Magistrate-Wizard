@@ -198,7 +198,7 @@ function DetailBillboard({
     <section
       data-tour={tourId}
       className={cn(
-        "tone-band relative isolate w-full overflow-hidden pb-10 pt-[calc(6rem+env(safe-area-inset-top))]",
+        "tone-band relative isolate w-full overflow-hidden pb-10 pt-[calc(6rem+env(safe-area-inset-top)+var(--offline-banner-h))]",
         className,
       )}
       style={{ "--band": TONE_HSL_VAR[tone] } as CSSProperties}

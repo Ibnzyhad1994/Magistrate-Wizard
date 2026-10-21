@@ -29,7 +29,7 @@ export function DocketToolbar({
   const handleNewMatter = () => onNewMatter();
 
   return (
-    <div className="browse-bleed sticky top-[calc(68px+env(safe-area-inset-top))] z-40 mb-4 bg-background/85 py-2 backdrop-blur-md hc:bg-background">
+    <div className="browse-bleed sticky top-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h))] z-40 mb-4 bg-background/85 py-2 backdrop-blur-md hc:bg-background">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" className="min-h-11 lg:min-h-9" asChild>
           <Link to={ROUTES.docketBin}>

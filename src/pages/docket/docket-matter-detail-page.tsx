@@ -211,7 +211,7 @@ export default function DocketMatterDetailPage() {
           className="w-full"
         >
           <TabsList
-            className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-background/85 backdrop-blur-md hc:bg-background"
+            className="sticky top-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h))] z-20 bg-background/85 backdrop-blur-md hc:bg-background"
             data-tour="matter-tabs"
           >
             <TabsTrigger value="overview">Overview</TabsTrigger>

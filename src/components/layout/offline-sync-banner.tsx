@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   syncOfflineWorkNow,
 } from "@/lib/offline/runtime";
 import { describeFailedJob } from "@/lib/offline/outbox";
+import { reserveBannerHeight } from "@/lib/reserve-banner-height";
 
 export function OfflineSyncBanner() {
   const { count: hearingCount } = usePendingHearings();
@@ -27,6 +28,9 @@ export function OfflineSyncBanner() {
   const [syncing, setSyncing] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
   const count = hearingCount + judgments.queued.length;
+  const visible =
+    count > 0 || failed.length > 0 || judgments.needsAttention.length > 0 || storageFull;
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     startOfflineFlushListeners();
@@ -36,8 +40,15 @@ export function OfflineSyncBanner() {
     void refreshJudgmentDraftSummary();
   }, [profileId]);
 
-  if (count === 0 && failed.length === 0 && judgments.needsAttention.length === 0 && !storageFull)
-    return null;
+  // Fixed under the nav, so it reserves its own height in the page offsets;
+  // otherwise it covers the top of the page (a matter's case number and
+  // title). Layout effect: the offset lands in the frame it first paints.
+  useLayoutEffect(() => {
+    if (!visible || !bannerRef.current) return;
+    return reserveBannerHeight(bannerRef.current);
+  }, [visible]);
+
+  if (!visible) return null;
 
   const handleSync = async () => {
     setSyncing(true);
@@ -50,6 +61,7 @@ export function OfflineSyncBanner() {
 
   return (
     <div
+      ref={bannerRef}
       className="fixed inset-x-0 top-[calc(68px+env(safe-area-inset-top,0px))] z-40 border-b border-amber-500/30 bg-amber-950/80 px-4 py-2 text-sm text-amber-50 backdrop-blur-sm max-md:text-xs"
       role="status"
     >

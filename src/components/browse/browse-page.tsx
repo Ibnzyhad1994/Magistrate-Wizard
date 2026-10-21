@@ -14,7 +14,7 @@ export function BrowsePage({ children, className, flushTop }: BrowsePageProps) {
     <div
       className={cn(
         "browse-gutter pb-[calc(5rem+env(safe-area-inset-bottom))]",
-        flushTop ? "pt-0" : "pt-[calc(6rem+env(safe-area-inset-top))]",
+        flushTop ? "pt-0" : "pt-[calc(6rem+env(safe-area-inset-top)+var(--offline-banner-h))]",
         className,
       )}
     >

@@ -24,6 +24,11 @@
    * same thing in both themes.
    */
   :root {
+    /* Height of the offline sync banner under the fixed nav, published by
+       the banner while it shows (reserve-banner-height.ts). Every page top
+       offset and sticky bar adds it, so the banner never covers content. */
+    --offline-banner-h: 0px;
+
     /* Tone hues shared by every palette (browse-tones.ts). A wash is
        always drawn at --tone-alpha over the canvas, so the hue can stay
        fixed while each palette decides how loud it is. */
