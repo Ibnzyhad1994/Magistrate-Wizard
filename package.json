@@ -139,6 +139,7 @@
     "test:audit-export-csv": "node --import ./scripts/test-support/register.mjs scripts/tests/test-audit-export-csv.mjs",
     "test:electron-hardening": "node --import ./scripts/test-support/register.mjs scripts/tests/test-electron-hardening.mjs",
     "test:error-messages": "node --import ./scripts/test-support/register.mjs scripts/tests/test-error-messages.mjs",
+    "test:input-validation-db": "node --import ./scripts/test-support/register.mjs scripts/tests/test-input-validation-db.mjs",
     "test:lazy-routes": "node --import ./scripts/test-support/register.mjs scripts/tests/test-lazy-routes.mjs",
     "test:native-config": "node --import ./scripts/test-support/register.mjs scripts/tests/test-native-config.mjs",
     "test:safe-links": "node --import ./scripts/test-support/register.mjs scripts/tests/test-safe-links.mjs"
