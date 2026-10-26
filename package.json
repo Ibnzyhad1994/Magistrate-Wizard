@@ -121,6 +121,7 @@
     "test:docket-calendar-mismatch": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-calendar-mismatch.mjs",
     "test:walkthrough": "node --import ./scripts/test-support/register.mjs scripts/tests/test-walkthrough.mjs && node --import ./scripts/test-support/register.mjs scripts/tests/test-tour-overlay.mjs && node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-tour-example.mjs && node --import ./scripts/test-support/register.mjs scripts/tests/test-clerk-home.mjs",
     "test:docket-bin-purge": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-matter-bin-purge.mjs",
+    "test:docket-bin-integrity": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-bin-integrity.mjs",
     "test:case-law-title": "node --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-title.mjs",
     "test:ingest-harvest-quality": "node --import ./scripts/test-support/register.mjs scripts/tests/test-ingest-harvest-quality.mjs",
     "test:csp": "node --import ./scripts/test-support/register.mjs scripts/tests/test-csp.mjs",

@@ -60,6 +60,7 @@ export default function DocketMatterDetailPage() {
   const [purgeOpen, setPurgeOpen] = useState(false);
 
   const canEdit = access?.canEdit ?? false;
+  const canManage = access?.canManage ?? false;
   const isBinned = matter ? isDocketMatterBinned(matter) : false;
   const liveEdit = canEdit && !isBinned;
   const binMatter = useBinDocketMatter(matter?.id ?? "");
@@ -142,29 +143,29 @@ export default function DocketMatterDetailPage() {
             <p className="mt-1 text-muted-foreground">
               Permanently deleted after{" "}
               {formatDateTime(docketBinPurgeAt(matter.deleted_at).toISOString())} (
-              {docketBinDaysLabel(matter.deleted_at)}). Restore it to work on it again, or empty it
-              now.
+              {docketBinDaysLabel(matter.deleted_at)}). Restore it to work on it again
+              {canManage ? ", or empty it now" : ""}.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {canEdit && (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => restoreMatter.mutate(matter.id)}
-                    disabled={restoreMatter.isPending}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Restore
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => setPurgeOpen(true)}
-                    disabled={purgeMatter.isPending}
-                  >
-                    Empty now
-                  </Button>
-                </>
+                <Button
+                  size="sm"
+                  onClick={() => restoreMatter.mutate(matter.id)}
+                  disabled={restoreMatter.isPending}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restore
+                </Button>
+              )}
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setPurgeOpen(true)}
+                  disabled={purgeMatter.isPending}
+                >
+                  Empty now
+                </Button>
               )}
               <Button size="sm" variant="ghost" asChild>
                 <Link to={ROUTES.docketBin}>Open bin</Link>
@@ -186,16 +187,18 @@ export default function DocketMatterDetailPage() {
                 <Pencil className="h-3.5 w-3.5" />
                 Edit details
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-destructive-text hover:text-destructive-text"
-                onClick={handleMoveToBin}
-                disabled={binMatter.isPending}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Move to bin
-              </Button>
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive-text hover:text-destructive-text"
+                  onClick={handleMoveToBin}
+                  disabled={binMatter.isPending}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Move to bin
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -261,7 +264,7 @@ export default function DocketMatterDetailPage() {
         open={purgeOpen}
         onOpenChange={setPurgeOpen}
         title="Permanently delete this matter?"
-        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments and case law are kept."
+        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments, case law and bench notes are kept."
         confirmLabel="Empty now"
         isConfirming={purgeMatter.isPending}
         onConfirm={() => {

@@ -14,6 +14,8 @@ export const NOTIFICATION_TYPES = [
   "hearing_tomorrow",
   "stale_draft",
   "issue_report_decided",
+  "docket_matter_binned",
+  "docket_matter_purged",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -58,6 +60,7 @@ export const notificationTone = (type: string): NotificationTone => {
     case "court_request":
     case "hearing_tomorrow":
     case "stale_draft":
+    case "docket_matter_binned":
       return "action";
     case "share_granted":
     case "court_assigned":
@@ -99,6 +102,10 @@ export const notificationTypeLabel = (type: string) => {
       return "Stale draft";
     case "issue_report_decided":
       return "Issue report update";
+    case "docket_matter_binned":
+      return "Matter moved to the bin";
+    case "docket_matter_purged":
+      return "Matter permanently deleted";
     default:
       return "Notice";
   }
