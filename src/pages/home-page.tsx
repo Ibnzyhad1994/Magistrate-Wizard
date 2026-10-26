@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ClipboardList, Scale } from "lucide-react";
 import { Billboard, ContentRow, TitleCard } from "@/components/browse";
 import { InlineError } from "@/components/common/inline-error";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +13,7 @@ import { useSignedUrls } from "@/hooks/use-signed-urls";
 import { useMyClerkAccessRequests } from "@/hooks/clerk/use-clerk-access";
 import { useMyCurrentCourts } from "@/hooks/docket/use-lookups";
 import { clerkHomeState, clerkPendingDescription } from "@/lib/clerk-home";
+import { homeWelcomeTitle } from "@/lib/home-greeting";
 import { APP_NAME } from "@/lib/constants";
 import { ROUTES } from "@/routes/paths";
 import { formatDate, formatTimeOnly, toTitleCase } from "@/lib/utils";
@@ -135,24 +137,24 @@ export default function HomePage() {
       ? {
           tone: "judgment" as const,
           eyebrow: APP_NAME,
-          title: name ? `Welcome, Magistrate ${name}` : "Welcome, Magistrate",
+          title: homeWelcomeTitle({ role: profile.role, name }),
           description: `Your docket, library and tools, all in one place.`,
           primaryAction: { label: "New matter", href: `${ROUTES.docket}?new=1` },
-          secondaryAction: { label: "Browse docket", href: ROUTES.docket },
-          tertiaryAction: { label: "Judgments", href: ROUTES.judgments },
+          secondaryAction: { label: "Browse docket", href: ROUTES.docket, icon: ClipboardList },
+          tertiaryAction: { label: "Judgments", href: ROUTES.judgments, icon: Scale },
         }
       : clerkState === "loading"
         ? {
             tone: "judgment" as const,
             eyebrow: APP_NAME,
-            title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
+            title: homeWelcomeTitle({ role: "clerk", name }),
             description: "Loading your court assignment.",
           }
         : isPendingClerk
           ? {
               tone: "judgment" as const,
               eyebrow: APP_NAME,
-              title: name ? `Welcome, ${name}` : "Welcome",
+              title: homeWelcomeTitle({ role: "clerk", name, pendingClerk: true }),
               description: clerkPendingDescription({
                 pendingRequestCount: pendingClerkRequests.length,
                 pendingCourtName: pendingClerkRequests[0]?.courts?.name,
@@ -162,7 +164,7 @@ export default function HomePage() {
           : {
               tone: "judgment" as const,
               eyebrow: APP_NAME,
-              title: name ? `Welcome, Clerk ${name}` : "Welcome, Clerk",
+              title: homeWelcomeTitle({ role: "clerk", name }),
               description: `Your matters and hearings for your court${(myCourts?.length ?? 0) > 1 ? "s" : ""}.`,
               primaryAction: { label: "Open docket", href: ROUTES.docket },
             };

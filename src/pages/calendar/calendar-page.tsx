@@ -131,15 +131,19 @@ export default function CalendarPage() {
             <Button variant="secondary" size="sm" onClick={handleToday}>
               Today
             </Button>
-            <Button variant="ghost" size="icon" onClick={handlePrev} aria-label="Previous month">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <p className="min-w-[9rem] text-center text-sm font-semibold text-foreground">
-              {monthLabel}
-            </p>
-            <Button variant="ghost" size="icon" onClick={handleNext} aria-label="Next month">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            {/* One unit, so a narrow toolbar wraps it whole instead of
+                stranding an arrow on a row of its own. */}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handlePrev} aria-label="Previous month">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <p className="min-w-[9rem] text-center text-sm font-semibold text-foreground">
+                {monthLabel}
+              </p>
+              <Button variant="ghost" size="icon" onClick={handleNext} aria-label="Next month">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         }
       />

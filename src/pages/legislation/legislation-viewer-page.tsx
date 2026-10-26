@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
 import { DocumentsPanel } from "@/components/common/documents-panel";
 import { SafeExternalLink } from "@/components/common/safe-external-link";
@@ -60,7 +61,9 @@ function indentFor(level: string) {
  * exclusively on the separate edit route.
  */
 export default function LegislationViewerPage() {
-  const { id, provisionId } = useParams<{ id: string; provisionId?: string }>();
+  const params = useParams<{ id: string; provisionId?: string }>();
+  const id = recordIdOrUndefined(params.id);
+  const provisionId = recordIdOrUndefined(params.provisionId);
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.legislation, "Back to Legislation");
   const { hasRole } = useAuth();
@@ -79,6 +82,11 @@ export default function LegislationViewerPage() {
     return node ? { ...node, body_text: selectedBody?.body_text ?? null } : null;
   }, [provisions, provisionId, selectedBody]);
 
+  const notFound = (
+    <PageNotFound message="This item doesn't exist, or you don't have access to it." back={back} />
+  );
+  // A section link with a malformed section id names nothing either.
+  if (!id || (params.provisionId !== undefined && !provisionId)) return notFound;
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -87,12 +95,11 @@ export default function LegislationViewerPage() {
       </div>
     );
   }
-  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
-  if (!statute) {
-    return (
-      <PageError error={new Error("This item doesn't exist, or you don't have access to it.")} />
-    );
+  if (isError) {
+    if (isNotFoundError(error)) return notFound;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
+  if (!statute) return notFound;
 
   const isAdmin = hasRole("admin");
   const hasPdf = !!statute.primary_document_id;

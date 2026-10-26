@@ -22,7 +22,16 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const supabaseUrl = env.VITE_SUPABASE_URL || "http://127.0.0.1:56321";
   const csp = buildCsp(supabaseUrl);
-  const productionHeaders = { "Content-Security-Policy": csp };
+  // `vite preview` serves the built index.html, whose meta CSP allows the
+  // theme bootstrap by hash. A header and a meta policy are AND-ed, so a
+  // header without the same hash blocked the script and brought the dark
+  // flash back for Light users in every local production check.
+  const productionHeaders = {
+    "Content-Security-Policy": cspWithInlineScriptHashes(
+      csp,
+      readFileSync(path.resolve(__dirname, "index.html"), "utf8"),
+    ),
+  };
 
   return {
     plugins: [

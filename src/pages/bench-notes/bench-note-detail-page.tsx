@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { RichTextEditorLazy as RichTextEditor } from "@/components/common/rich-text-editor-lazy";
 import { QuickCodeInsert } from "@/components/quick-codes/quick-code-insert";
 import { BookmarkToggle } from "@/components/common/bookmark-toggle";
@@ -44,7 +45,8 @@ const PARENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function BenchNoteDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.benchNotes, "Back to Bench Notes");
   const { data: note, isPending, isError, error, refetch } = useBenchNote(id);
@@ -115,6 +117,10 @@ export default function BenchNoteDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const notFound = (
+    <PageNotFound message="This note doesn't exist, or you don't have access to it." back={back} />
+  );
+  if (!id) return notFound;
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -123,12 +129,11 @@ export default function BenchNoteDetailPage() {
       </div>
     );
   }
-  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
-  if (!note) {
-    return (
-      <PageError error={new Error("This note doesn't exist, or you don't have access to it.")} />
-    );
+  if (isError) {
+    if (isNotFoundError(error)) return notFound;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
+  if (!note) return notFound;
 
   return (
     <>

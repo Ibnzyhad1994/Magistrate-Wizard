@@ -11,7 +11,8 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/common/empty-state";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Billboard } from "@/components/browse";
 import { CalloverMatterDialog } from "@/pages/docket/callover/callover-matter-dialog";
@@ -53,7 +54,8 @@ import { formatDate } from "@/lib/utils";
  * decisions to a closed tab is worse than useless.
  */
 export default function CalloverDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
 
   const { data: callover, isPending, isError, error, refetch } = useCallover(id);
@@ -125,6 +127,15 @@ export default function CalloverDetailPage() {
   const status = isCalloverStatus(callover?.status) ? callover.status : "draft";
   const editable = isCalloverEditable(status);
 
+  const notFound = (
+    <PageNotFound
+      message="This callover doesn't exist, or you no longer have access to it."
+      back={{ to: ROUTES.callovers, label: "Back to callovers" }}
+    />
+  );
+
+  if (!id) return notFound;
+
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -134,15 +145,12 @@ export default function CalloverDetailPage() {
     );
   }
 
-  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
-
-  if (!callover) {
-    return (
-      <PageError
-        error={new Error("This callover doesn't exist, or you no longer have access to it.")}
-      />
-    );
+  if (isError) {
+    if (isNotFoundError(error)) return notFound;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
+
+  if (!callover) return notFound;
 
   const title = callover.title || defaultCalloverTitle(callover.callover_date);
 
