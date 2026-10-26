@@ -47,6 +47,7 @@ import { ageingSummary, matterAgeing } from "@/lib/matter-ageing";
 import { procedureStageLabel } from "@/lib/docket-procedure";
 import { matterProtocolStage } from "@/lib/docket-protocols";
 import { formatDate, getLocalDateOnly } from "@/lib/utils";
+import { isConcurrentEditError } from "@/lib/concurrency";
 import { NOT_SET } from "@/lib/empty-display";
 import type { DocketEvent, DocketMatter } from "@/types";
 
@@ -431,7 +432,11 @@ function HearingProgressDialog({
     };
     try {
       if (entry) {
-        await updateEvent.mutateAsync({ id: entry.id, values: payload });
+        await updateEvent.mutateAsync({
+          id: entry.id,
+          values: payload,
+          expectedUpdatedAt: entry.updated_at,
+        });
       } else {
         await createEvent.mutateAsync(payload);
       }
@@ -440,8 +445,10 @@ function HearingProgressDialog({
       // note the magistrate just entered.
       const nextDateOk = await saveNextDateIfSet();
       if (nextDateOk) onClose();
-    } catch {
-      // Surfaced globally via the mutation cache toast subscriber.
+    } catch (err) {
+      // Surfaced globally via the mutation cache toast subscriber. A
+      // conflict saved nothing and this dialog holds the stale copy.
+      if (isConcurrentEditError(err)) onClose();
     }
   }
 
@@ -634,6 +641,7 @@ function HearingProgressDialog({
       {pendingOverride && (
         <CapacityOverrideDialog
           info={pendingOverride}
+          matterId={matterId}
           scheduledDate={nextDateValue}
           isPending={setNextDate.isPending}
           onCancel={() => setPendingOverride(null)}

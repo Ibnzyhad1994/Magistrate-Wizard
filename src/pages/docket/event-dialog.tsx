@@ -40,6 +40,7 @@ import {
   type DocketEventFormValues,
 } from "@/lib/validations/docket";
 import { getLocalDateOnly, toTitleCase } from "@/lib/utils";
+import { isConcurrentEditError } from "@/lib/concurrency";
 import type { DocketEvent } from "@/types";
 import { useDocketMatter } from "@/hooks/docket/use-docket-matters";
 
@@ -119,6 +120,7 @@ export function DocketEventDialog({
       categoryId: values.category_id || null,
       acknowledgeOverride,
       overrideReason,
+      expectedUpdatedAt: event?.updated_at ?? null,
     });
     if (result.status === "capacity_reached") {
       setPendingOverride({ result, values });
@@ -128,11 +130,13 @@ export function DocketEventDialog({
     onClose();
   }
 
+  // Errors are toasted by the mutation. A conflict saved nothing, and this
+  // dialog holds the stale copy, so it closes for the latest to be reopened.
   async function onSubmit(values: DocketEventFormValues) {
     try {
       await submit(values, false, null);
-    } catch {
-      // Surfaced globally via the mutation cache toast subscriber.
+    } catch (err) {
+      if (isConcurrentEditError(err)) onClose();
     }
   }
 
@@ -140,8 +144,8 @@ export function DocketEventDialog({
     if (!pendingOverride) return;
     try {
       await submit(pendingOverride.values, true, reason);
-    } catch {
-      // Surfaced globally via the mutation cache toast subscriber.
+    } catch (err) {
+      if (isConcurrentEditError(err)) onClose();
     }
   }
 
@@ -353,6 +357,7 @@ export function DocketEventDialog({
       {pendingOverride && (
         <CapacityOverrideDialog
           info={pendingOverride.result}
+          matterId={matterId}
           scheduledDate={pendingOverride.values.scheduled_date}
           isPending={isPending}
           onCancel={() => setPendingOverride(null)}
