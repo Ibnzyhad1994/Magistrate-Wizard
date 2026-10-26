@@ -154,9 +154,11 @@ const broughtForwardFields = {
 export const docketMatterSchema = z.object({
   court_id: z.string().min(1, "Court is required"),
   district_id: z.string().min(1, "District is required"),
-  case_number: z.string().min(1, "Case number is required").max(100),
-  matter_title: z.string().min(1, "Matter title is required").max(300),
-  charge_or_issue: z.string().max(2000).optional().or(z.literal("")),
+  // Trimmed before the length rules, as the database trims and checks them
+  // (0166): a title of only spaces is blank, not a title.
+  case_number: z.string().trim().min(1, "Case number is required").max(100),
+  matter_title: z.string().trim().min(1, "Matter title is required").max(300),
+  charge_or_issue: z.string().trim().max(2000).optional().or(z.literal("")),
   status: z.enum(DOCKET_MATTER_STATUSES).default("active"),
   category_id: z.string().min(1, "Classification is required"),
   category_other: z.string().max(200).optional().or(z.literal("")),

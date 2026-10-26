@@ -325,6 +325,21 @@ const UNIQUE_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
 ];
 
 /**
+ * CHECK constraints on user-entered text (0166). The forms enforce the same
+ * rules first; these sentences cover a write that skipped them, such as one
+ * from an older version of the app.
+ */
+const CHECK_VIOLATION_MESSAGES: Array<[substring: string, message: string]> = [
+  ["docket_matters_case_number_not_blank", "A case number is required."],
+  ["docket_matters_case_number_length", "A case number can be at most 100 characters."],
+  ["docket_matters_matter_title_not_blank", "A matter title is required."],
+  ["docket_matters_matter_title_length", "A matter title can be at most 300 characters."],
+  ["docket_matters_charge_or_issue_length", "The charge or issue can be at most 2,000 characters."],
+  ["judgments_title_length", "A judgment title can be at most 300 characters."],
+  ["quick_codes_content_length", "Quick Code content can be at most 20,000 characters."],
+];
+
+/**
  * Raw Postgres/PostgREST text that must never reach a toast. Anything
  * matching is replaced by a generic sentence and the original is sent to
  * Sentry (or the console) via `reportError`, so the mapping table above can
@@ -389,6 +404,12 @@ export function getErrorMessage(error: unknown): string {
         rawMessage?.toLowerCase().includes(substring.toLowerCase()),
       );
       return match?.[1] ?? "That already exists.";
+    }
+    if (code === "23514") {
+      const match = CHECK_VIOLATION_MESSAGES.find(([substring]) =>
+        rawMessage?.toLowerCase().includes(substring),
+      );
+      if (match) return match[1];
     }
     if (code === "42501") {
       return "You don't have permission to do that.";

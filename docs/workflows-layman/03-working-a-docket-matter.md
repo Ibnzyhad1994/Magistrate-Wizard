@@ -13,6 +13,7 @@
 5. Save.
 
 The district is filled in from the Court. You do not choose it. Case numbers must be unique **inside that district**, not worldwide — two districts may both have "45/2024".
+Capital letters and spaces around the number do not make a new one: "B-12/2024", "b-12/2024" and " B-12/2024 " are the same file, and the form tells you when a number is already taken.
 
 On **Docket**, **List** is the working sheet: one row per file, procedure as columns you can click. **Tiles** is cover-photo browse. Quick filters (stage, custody, disclosure, trial, next date) sit above the list.
 

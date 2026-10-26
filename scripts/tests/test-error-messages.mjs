@@ -126,6 +126,44 @@ check(
 );
 check("house copy is not reported", reported.length, 0);
 
+// --- CHECK violations on user-entered text (0166) ---------------------------
+const checkViolation = (table, constraint) => ({
+  code: "23514",
+  message: `new row for relation "${table}" violates check constraint "${constraint}"`,
+});
+check(
+  "blank case number",
+  getErrorMessage(checkViolation("docket_matters", "docket_matters_case_number_not_blank")),
+  "A case number is required.",
+);
+check(
+  "blank matter title",
+  getErrorMessage(checkViolation("docket_matters", "docket_matters_matter_title_not_blank")),
+  "A matter title is required.",
+);
+check(
+  "matter title too long",
+  getErrorMessage(checkViolation("docket_matters", "docket_matters_matter_title_length")),
+  "A matter title can be at most 300 characters.",
+);
+check(
+  "judgment title too long",
+  getErrorMessage(checkViolation("judgments", "judgments_title_length")),
+  "A judgment title can be at most 300 characters.",
+);
+check(
+  "Quick Code content too long",
+  getErrorMessage(checkViolation("quick_codes", "quick_codes_content_length")),
+  "Quick Code content can be at most 20,000 characters.",
+);
+reported.length = 0;
+check(
+  "an unmapped CHECK violation still never leaks its raw text",
+  getErrorMessage(checkViolation("docket_matters", "docket_matters_some_other_check")),
+  GENERIC_ERROR_MESSAGE,
+);
+check("and is still reported", reported.length, 1);
+
 // --- Sentry scrubbing -------------------------------------------------------
 check(
   "emails are scrubbed",

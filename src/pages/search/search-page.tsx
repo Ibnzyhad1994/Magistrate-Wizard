@@ -141,6 +141,8 @@ export default function SearchPage() {
         <Input
           className="pl-8"
           placeholder="Search everything…"
+          // global_search refuses a longer query (0166).
+          maxLength={500}
           value={input}
           onChange={(e) => handleInputChange(e.target.value)}
           onInput={(e) => handleInputChange((e.target as HTMLInputElement).value)}
