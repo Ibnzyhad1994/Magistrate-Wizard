@@ -135,6 +135,7 @@
     "test:callover": "node --import ./scripts/test-support/register.mjs scripts/tests/test-callover.mjs",
     "test:callover-schedule": "node --import ./scripts/test-support/register.mjs scripts/tests/test-callover-schedule.mjs",
     "test:callover-schedule-db": "node --import ./scripts/test-support/register.mjs scripts/tests/test-callover-schedule-db.mjs",
+    "test:callover-record-integrity": "node --import ./scripts/test-support/register.mjs scripts/tests/test-callover-record-integrity.mjs",
     "test:copy-style": "node scripts/tests/test-copy-style.mjs",
     "test:docket-outcome": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-outcome.mjs",
     "test:sound-cues": "node scripts/tests/test-sound-cues.mjs",

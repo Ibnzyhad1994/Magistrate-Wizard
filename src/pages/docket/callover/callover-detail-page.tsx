@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { CalendarCheck, CheckCircle2, Gavel, ListPlus, Plus, RotateCcw } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Gavel, ListPlus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { statusBadgeVariant } from "@/components/common/status-badge-variant";
@@ -189,7 +189,7 @@ export default function CalloverDetailPage() {
             <CalloverReportButton callover={callover} rows={rows} title={title} />
           )}
 
-          {editable ? (
+          {editable && (
             <Button
               size="sm"
               variant="ghost"
@@ -199,22 +199,13 @@ export default function CalloverDetailPage() {
               <CheckCircle2 className="h-4 w-4" />
               Mark completed
             </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => updateCallover.mutate({ status: "in_progress" })}
-              disabled={updateCallover.isPending}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reopen
-            </Button>
           )}
         </div>
 
         {!editable && (
           <p className="rounded-md border border-border bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
-            This callover is complete. Its matters stay on the schedule. Reopen it to make changes.
+            This callover is complete. Its sheet is the record of the sitting and can no longer be
+            changed. Its matters stay on the schedule.
           </p>
         )}
 
@@ -330,8 +321,8 @@ export default function CalloverDetailPage() {
         title="Mark this callover completed?"
         description={
           missingDates.length > 0
-            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. You can complete it now and reopen it later. Nothing is removed.`
-            : "The sheet becomes read-only. Its matters stay on the schedule and calendar. You can reopen it later."
+            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. A completed sheet cannot be changed, but each matter can still get a next date. Nothing is removed.`
+            : "The sheet becomes the record of the sitting and cannot be reopened or changed. Its matters stay on the schedule and calendar."
         }
         confirmLabel="Mark completed"
         isConfirming={updateCallover.isPending}

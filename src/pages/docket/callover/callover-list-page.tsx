@@ -32,8 +32,8 @@ import { formatDate, getLocalDateOnly } from "@/lib/utils";
 
 /**
  * Callover sittings. A callover is a record of a sitting, so this list is
- * history as much as it is a worklist — completed sittings stay visible
- * and reopenable rather than disappearing once the day is done.
+ * history as much as it is a worklist — completed sittings stay visible,
+ * read-only, rather than disappearing once the day is done.
  */
 export default function CalloverListPage() {
   const navigate = useNavigate();

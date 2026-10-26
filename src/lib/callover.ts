@@ -29,9 +29,8 @@ export function isCalloverStatus(value: unknown): value is CalloverStatus {
 
 /**
  * A completed callover is a record of a sitting, so the running sheet
- * stops accepting edits. It is not frozen forever — the UI offers an
- * explicit Reopen (back to `in_progress`), which is audited like any
- * other change, rather than silently permitting edits to a closed record.
+ * stops accepting edits for good: the database refuses any change to a
+ * completed callover or its rows, and there is no Reopen (0164).
  */
 export function isCalloverEditable(status: string | null | undefined): boolean {
   return status !== "completed";
