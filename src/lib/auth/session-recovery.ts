@@ -1,7 +1,6 @@
 import { queryClient } from "@/lib/query-client";
 import { isAuthExpiredError } from "@/lib/offline/is-queueable-error";
-import { flushPendingHearings } from "@/lib/offline/runtime";
-import { flushQueuedJudgmentDrafts } from "@/lib/offline/judgment-drafts-runtime";
+import { syncOfflineWorkNow } from "@/lib/offline/runtime";
 import { bumpRememberUntil } from "@/lib/auth/session-storage";
 
 type ExecutableMutation = {
@@ -44,8 +43,9 @@ export async function recoverSessionWork(): Promise<void> {
     retries.push(mutation.execute().catch(() => undefined));
   }
   await Promise.all(retries);
-  await flushPendingHearings();
-  await flushQueuedJudgmentDrafts();
+  // Not the bare flushes: unlocking also starts the automatic sync, and a
+  // bare flush would return at once while that one was still sending.
+  await syncOfflineWorkNow();
   await queryClient.invalidateQueries();
 }
 

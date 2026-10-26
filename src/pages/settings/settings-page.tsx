@@ -52,7 +52,7 @@ const SECTIONS = [
 function SettingsIndex({ visible }: { visible: ReadonlySet<string> }) {
   return (
     <nav aria-label="Settings sections" className="hidden lg:block">
-      <ul className="sticky top-[calc(68px+env(safe-area-inset-top)+1.5rem)] space-y-1">
+      <ul className="sticky top-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h)+1.5rem)] space-y-1">
         {SECTIONS.filter((section) => visible.has(section.id)).map((section) => (
           <li key={section.id}>
             <a
@@ -70,7 +70,10 @@ function SettingsIndex({ visible }: { visible: ReadonlySet<string> }) {
 
 function SettingsSection({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-[calc(68px+env(safe-area-inset-top)+1rem)]">
+    <section
+      id={id}
+      className="scroll-mt-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h)+1rem)]"
+    >
       {children}
     </section>
   );

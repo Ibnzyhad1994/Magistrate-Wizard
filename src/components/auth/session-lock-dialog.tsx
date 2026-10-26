@@ -13,22 +13,17 @@ import {
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { PasswordInput } from "@/components/auth/password-input";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuardedSignOut } from "@/hooks/use-guarded-sign-out";
+import { UnsyncedSignOutDialog } from "@/components/auth/unsynced-sign-out-dialog";
 
 /**
  * Blocking re-auth. The workspace behind this dialog stays mounted so
  * unsaved form state is not thrown away.
  */
 export function SessionLockDialog() {
-  const {
-    user,
-    profile,
-    reauthenticate,
-    isReauthenticating,
-    signOut,
-    isSigningOut,
-    resetPassword,
-    isResettingPassword,
-  } = useAuth();
+  const { user, profile, reauthenticate, isReauthenticating, resetPassword, isResettingPassword } =
+    useAuth();
+  const { requestSignOut, isSigningOut, dialog } = useGuardedSignOut();
   const [password, setPassword] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const email = user?.email ?? profile?.email ?? "";
@@ -129,7 +124,7 @@ export function SessionLockDialog() {
               variant="ghost"
               className="h-11 w-full text-foreground/70"
               disabled={isSigningOut}
-              onClick={() => void signOut()}
+              onClick={() => void requestSignOut()}
             >
               Sign out
             </Button>
@@ -138,6 +133,7 @@ export function SessionLockDialog() {
             </p>
           </DialogFooter>
         </form>
+        <UnsyncedSignOutDialog {...dialog} />
       </DialogContent>
     </Dialog>
   );

@@ -32,8 +32,8 @@ export const initNativeShell = async () => {
     });
     App.addListener("appStateChange", ({ isActive }) => {
       if (!isActive) return;
-      void import("@/lib/offline/runtime").then(({ flushPendingHearings }) => {
-        void flushPendingHearings();
+      void import("@/lib/offline/runtime").then(({ syncOfflineWorkNow }) => {
+        void syncOfflineWorkNow();
       });
     });
   } catch {

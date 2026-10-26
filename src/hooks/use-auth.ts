@@ -5,8 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/auth-store";
 import { ROUTES } from "@/routes/paths";
 import { toast } from "sonner";
-import { clearOfflineForProfile } from "@/lib/offline/store";
-import { clearJudgmentDraftsForProfile } from "@/lib/offline/judgment-drafts-runtime";
+import { clearDeviceWorkForProfile } from "@/lib/offline/sign-out-guard";
 import { recordAuthEvent } from "@/lib/record-auth-event";
 import { setRememberMeFlag } from "@/lib/auth/session-storage";
 
@@ -146,20 +145,21 @@ export function useAuth() {
     mutationKey: ["auth", "signOut"],
     mutationFn: async () => {
       const profileId = user?.id;
+      // Deletes this profile's unsynced work, so callers go through
+      // useGuardedSignOut, which asks first when there is any. Awaited and
+      // done first, while the person is still on the page: the login page
+      // only appears once storage holds nothing of this profile. A
+      // fire-and-forget wipe after it raced the next sign-in.
+      if (profileId) await clearDeviceWorkForProfile(profileId);
       // Leave `locked` before GoTrue SIGNED_OUT so AuthProvider does not
       // ignore the event and keep the overlay up.
       useAuthStore.getState().clearForSignOut();
       await recordAuthEvent("logout");
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      return profileId;
     },
-    onSuccess: (profileId) => {
+    onSuccess: () => {
       queryClient.clear();
-      if (profileId) {
-        void clearOfflineForProfile(profileId);
-        void clearJudgmentDraftsForProfile(profileId);
-      }
       navigate(ROUTES.login);
     },
   });

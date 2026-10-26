@@ -345,9 +345,9 @@ export const syncDocketEventToGoogle = async (eventId: string) => {
 };
 
 export const runGoogleCalendarSyncNow = async () => {
-  const { flushPendingHearings } = await import("@/lib/offline/runtime");
+  const { syncOfflineWorkNow } = await import("@/lib/offline/runtime");
   const { getOutboxJobs } = await import("@/lib/offline/store");
-  await flushPendingHearings();
+  await syncOfflineWorkNow();
   const state = await loadGoogleCalendarState();
   if (!isGoogleConnected(state)) throw new Error("Google Calendar is not connected.");
   const profileId = await currentUserId();
