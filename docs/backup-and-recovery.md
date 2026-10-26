@@ -45,6 +45,9 @@ SQL dumps do not include Storage objects. Document files live in the
 `documents` and `avatars` buckets. After a database-only restore, signed
 URLs will 404 until the matching objects are copied back.
 
+Deleting a judgment, bench note, quick code, Case Law entry, docket matter or document also deletes its files: the database queues them in `storage_cleanup_queue` (0165) and the `storage-cleanup` edge function removes them through the Storage API.
+A database restore that brings a deleted record back therefore does not bring its files back.
+
 ## What this app does not do
 
 There is no application-level nightly dump into a second bucket in this

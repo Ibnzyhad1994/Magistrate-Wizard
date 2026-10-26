@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { formatCaseLawTitle } from "@/lib/case-law-title";
@@ -440,10 +441,8 @@ export function useSetCaseLawDiscoverable(id: string) {
 export function useDeleteCaseLaw() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("case_law").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) =>
+      deleteThenCleanStorage(supabase, () => supabase.from("case_law").delete().eq("id", id)),
     onSuccess: () => {
       toast.success("Research entry deleted.");
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });

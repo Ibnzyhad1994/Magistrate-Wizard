@@ -139,6 +139,8 @@ export function useRevokeShare(itemType: ShareItemType, itemId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Any non-null value means "revoke": shares_guard stamps the server's
+      // now() (0165), so this device's clock is never stored.
       const { error } = await supabase
         .from("shares")
         .update({ revoked_at: new Date().toISOString() })

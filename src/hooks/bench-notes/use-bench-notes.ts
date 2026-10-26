@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import type { Json } from "@/types/database.types";
 import type { BenchNoteParentType } from "@/lib/validations/bench-note";
@@ -108,10 +109,8 @@ export function useUpdateBenchNoteContent(id: string) {
 export function useDeleteBenchNote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("bench_notes").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) =>
+      deleteThenCleanStorage(supabase, () => supabase.from("bench_notes").delete().eq("id", id)),
     onSuccess: () => {
       toast.success("Bench Note deleted.");
       void queryClient.invalidateQueries({ queryKey: benchNotesKeys.all });

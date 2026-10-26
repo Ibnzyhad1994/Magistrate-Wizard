@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth-store";
 import { supabase } from "@/lib/supabase";
+import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
 import {
@@ -411,10 +412,10 @@ export function useRestoreDocketMatter(id?: string) {
 export function usePurgeDocketMatter(id?: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (matterId: string) => {
-      const { error } = await supabase.rpc("purge_docket_matter", { p_id: matterId });
-      if (error) throw error;
-    },
+    mutationFn: (matterId: string) =>
+      deleteThenCleanStorage(supabase, () =>
+        supabase.rpc("purge_docket_matter", { p_id: matterId }),
+      ),
     onSuccess: (_data, matterId) => {
       toast.success("Matter permanently deleted.");
       invalidateAfterBinChange(queryClient, id ?? matterId);
