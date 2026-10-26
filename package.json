@@ -64,6 +64,7 @@
     "test:pentest-xss": "node --import ./scripts/test-support/register.mjs scripts/tests/pentest-xss-probes.mjs",
     "test:admin-magistrate-docket-access": "node --import ./scripts/test-support/register.mjs scripts/tests/test-admin-magistrate-docket-access.mjs",
     "test:case-law-facets": "node --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-facets.mjs",
+    "test:case-law-library-integrity": "node --import ./scripts/test-support/register.mjs scripts/tests/test-case-law-library-integrity.mjs",
     "test:docket-scope": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-scope.mjs",
     "test:docket-two-level-scope": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-two-level-scope.mjs",
     "test:document-pdf-viewer": "node --import ./scripts/test-support/register.mjs scripts/tests/test-document-pdf-viewer.mjs",
