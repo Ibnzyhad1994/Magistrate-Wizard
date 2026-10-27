@@ -44,6 +44,18 @@ export type LogAppearanceRequest = {
   notes: string;
 };
 
+/**
+ * Outcome and Next date are pinned to the right edge the way Case is
+ * pinned to the left, so the procedure stages scroll between them. With
+ * eight or more stages the sheet is wider than a 1280-1440 px window, and
+ * these two columns (what the matter came to, and when it is back) used to
+ * sit behind a horizontal scroll with no cue that they existed. Fixed
+ * widths, because Outcome's offset is Next date's width.
+ */
+const NEXT_DATE_COL = "sticky right-0 w-[7.5rem] min-w-[7.5rem] max-w-[7.5rem]";
+const OUTCOME_COL =
+  "sticky right-[7.5rem] w-[7.5rem] min-w-[7.5rem] max-w-[7.5rem] border-l border-border";
+
 const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgment">> = {
   ruling_status: "ruling",
   judgment_status: "judgment",
@@ -152,7 +164,7 @@ function DocketStageRow({
           <p className="truncate text-sm text-foreground">{row.matter_title}</p>
           {pending && (
             <p className="truncate text-[11px] font-medium text-warning">
-              Saved on this device. Will sync when online.
+              Saved on this device, not yet synced.
             </p>
           )}
           {row.charge_or_issue && (
@@ -230,7 +242,10 @@ function DocketStageRow({
           </TableCell>
         );
       })}
-      <TableCell className="p-1.5" data-tour-join={isTourOutcome ? "docket-outcome" : undefined}>
+      <TableCell
+        className={`${OUTCOME_COL} z-20 bg-card p-1.5 group-hover/row:bg-surface-2`}
+        data-tour-join={isTourOutcome ? "docket-outcome" : undefined}
+      >
         <DocketOutcomeCell
           value={row.outcome_status}
           outcomeAdjourned={row.outcome_adjourned}
@@ -240,7 +255,7 @@ function DocketStageRow({
         />
       </TableCell>
       <TableCell
-        className="whitespace-nowrap"
+        className={`${NEXT_DATE_COL} z-20 whitespace-nowrap bg-card group-hover/row:bg-surface-2`}
         data-tour-join={isTourNextDate ? "docket-next-date" : undefined}
       >
         <NextDateCell
@@ -316,13 +331,13 @@ export function DocketStageSheet({
                 </TableHead>
               ))}
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
+                className={`${OUTCOME_COL} top-0 z-30 whitespace-nowrap bg-surface-1`}
                 data-tour="docket-outcome"
               >
                 Outcome
               </TableHead>
               <TableHead
-                className="sticky top-0 z-20 min-w-[6.5rem] whitespace-nowrap bg-surface-1 sm:min-w-[7.5rem]"
+                className={`${NEXT_DATE_COL} top-0 z-30 whitespace-nowrap bg-surface-1`}
                 data-tour="docket-next-date"
               >
                 Next date

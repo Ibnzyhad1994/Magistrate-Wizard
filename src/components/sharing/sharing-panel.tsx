@@ -34,7 +34,12 @@ import {
 } from "@/hooks/shares/use-shares";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, toTitleCase } from "@/lib/utils";
-import { shareNoun, type ShareItemType } from "@/lib/shares";
+import {
+  shareNoun,
+  shareRecipientNotFound,
+  shareRecipientRole,
+  type ShareItemType,
+} from "@/lib/shares";
 
 interface SharingPanelProps {
   itemType: ShareItemType;
@@ -59,7 +64,7 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
         <p className="max-w-lg text-sm text-muted-foreground">
           {itemType === "docket_matter"
             ? "Everyone at this court already has the file. Share only with someone at another court. They can't share it on."
-            : `Give another magistrate or clerk access to this ${noun}. They can't share it on. To switch between view and edit, revoke and share again.`}
+            : `Give another ${shareRecipientRole(itemType)} access to this ${noun}. They can't share it on. To switch between view and edit, revoke and share again.`}
         </p>
         {canManage && activeShares.length > 0 && (
           <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -251,7 +256,8 @@ export function CreateShareDialog({
         <DialogHeader>
           <DialogTitle>Share this {noun}</DialogTitle>
           <DialogDescription>
-            Enter the exact email address of the magistrate or clerk you want to share with.
+            Enter the exact email address of the {shareRecipientRole(itemType)} you want to share
+            with.
           </DialogDescription>
         </DialogHeader>
 
@@ -289,10 +295,7 @@ export function CreateShareDialog({
           )}
 
           {notFound && (
-            <p className="text-sm text-destructive-text">
-              No one found with that email. Check the address. They must be an active user, and you
-              must be able to share this {noun}.
-            </p>
+            <p className="text-sm text-destructive-text">{shareRecipientNotFound(itemType)}</p>
           )}
 
           {resolved && (

@@ -52,7 +52,7 @@ const SECTIONS = [
 function SettingsIndex({ visible }: { visible: ReadonlySet<string> }) {
   return (
     <nav aria-label="Settings sections" className="hidden lg:block">
-      <ul className="sticky top-[calc(68px+env(safe-area-inset-top)+1.5rem)] space-y-1">
+      <ul className="sticky top-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h)+1.5rem)] space-y-1">
         {SECTIONS.filter((section) => visible.has(section.id)).map((section) => (
           <li key={section.id}>
             <a
@@ -70,7 +70,10 @@ function SettingsIndex({ visible }: { visible: ReadonlySet<string> }) {
 
 function SettingsSection({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-[calc(68px+env(safe-area-inset-top)+1rem)]">
+    <section
+      id={id}
+      className="scroll-mt-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h)+1rem)]"
+    >
       {children}
     </section>
   );
@@ -107,7 +110,10 @@ export default function SettingsPage() {
         description="Display preferences for this device. Tile style, tile size and list or tile view apply across Docket, Case Law, and the other browse pages."
       />
 
-      <div className="grid gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
+      {/* minmax(0, 1fr) below lg as well: the implicit `auto` track grew to
+          the widest unbreakable word in any card (a long matter title in
+          the pack list), which pushed every card past a phone's edge. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
         <SettingsIndex visible={visibleSections} />
         <div className="max-w-3xl space-y-6">
           <SettingsSection id="display">

@@ -21,6 +21,7 @@ never by editing the old one.
 | [0006](0006-share-view-vs-edit.md)                        | Share `view` vs `edit` is preserved wherever it gates behaviour                                    |
 | [0007](0007-no-admin-bypass.md)                           | Established "no admin bypass" decisions are not reopened for convenience                           |
 | [0008](0008-asymmetric-association-tables.md)             | Deliberately asymmetric association tables are not normalised without design review                |
+| [0009](0009-district-wide-case-numbers.md)                | Case numbers are unique across a Magisterial District, disclosing only that a number is in use     |
 
 Adding one: copy the shortest existing file, take the next number, add a
 row here, and link it from the migration or PR that relies on it.

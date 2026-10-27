@@ -119,6 +119,7 @@ const handleJobError = (
   insertedIds: string[],
   updatedIds: string[],
   failed: FailedOutboxJob[],
+  countAttempts: boolean,
 ): FlushResult | "drop" => {
   if (isAuthExpiredError(error)) {
     remaining.push(job, ...queue);
@@ -133,7 +134,13 @@ const handleJobError = (
   // Anything else is assumed transient and the drain stops so the rest
   // stay queued in order. Bounded, because an error we cannot classify
   // would otherwise retry on every reconnect forever and keep every job
-  // behind it from ever reaching the server.
+  // behind it from ever reaching the server. A background retry does not
+  // count: it runs on a timer, so counting it would set a hearing aside
+  // after a short outage rather than after repeated real attempts.
+  if (!countAttempts) {
+    remaining.push(job, ...queue);
+    return stoppedResult(remaining, insertedIds, updatedIds, failed);
+  }
   const attempts = (job.attempts ?? 0) + 1;
   if (attempts >= MAX_UNCLASSIFIED_ATTEMPTS) {
     failed.push(failedJob(job, "stalled", errorMessage(error)));
@@ -171,7 +178,21 @@ const DRAIN_ORDER: Record<OutboxJob["kind"], number> = {
   googlePending: 4,
 };
 
-export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<FlushResult> => {
+export type FlushOptions = {
+  /**
+   * False for the automatic backoff retry: an unclassified failure then
+   * leaves the job queued exactly as it was, without using up one of its
+   * MAX_UNCLASSIFIED_ATTEMPTS. Explicit triggers (Sync, reconnect, sign-in)
+   * still count, so a job that can never succeed is still set aside.
+   */
+  countAttempts?: boolean;
+};
+
+export const flushOutbox = async (
+  jobs: OutboxJob[],
+  deps: FlushDeps,
+  { countAttempts = true }: FlushOptions = {},
+): Promise<FlushResult> => {
   let queue = jobs
     .map((job, index) => ({ job: { ...job }, index }))
     .sort((a, b) => DRAIN_ORDER[a.job.kind] - DRAIN_ORDER[b.job.kind] || a.index - b.index)
@@ -199,6 +220,7 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
           insertedIds,
           updatedIds,
           failed,
+          countAttempts,
         );
         if (handled === "drop") continue;
         return handled;
@@ -233,6 +255,7 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
           insertedIds,
           updatedIds,
           failed,
+          countAttempts,
         );
         if (handled === "drop") continue;
         return handled;
@@ -272,6 +295,7 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
           insertedIds,
           updatedIds,
           failed,
+          countAttempts,
         );
         if (handled === "drop") continue;
         return handled;
@@ -308,6 +332,7 @@ export const flushOutbox = async (jobs: OutboxJob[], deps: FlushDeps): Promise<F
           insertedIds,
           updatedIds,
           failed,
+          countAttempts,
         );
         if (handled === "drop") continue;
         return handled;

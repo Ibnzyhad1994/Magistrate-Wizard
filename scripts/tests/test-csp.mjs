@@ -3,6 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { loadConfigFromFile } from "vite";
 import {
   buildCsp,
   cspWithInlineScriptHashes,
@@ -164,6 +165,23 @@ check("'self' survives alongside the hash", hashedCsp.includes("script-src 'self
 check(
   "wasm-unsafe-eval is preserved (pdf.js/tesseract need it)",
   hashedCsp.includes("'wasm-unsafe-eval'"),
+  true,
+);
+
+// `vite preview` sends the policy as a header as well as the built page's
+// meta tag, and the browser enforces both. A header without the bootstrap's
+// hash blocked it on every page, so read the header from the real config.
+const { config: viteConfig } = await loadConfigFromFile(
+  { command: "serve", mode: "production", isPreview: true },
+  "vite.config.ts",
+  process.cwd(),
+  "silent",
+);
+const previewCsp = viteConfig.preview?.headers?.["Content-Security-Policy"] ?? "";
+check("vite preview sends a CSP header", previewCsp.startsWith("default-src 'self'"), true);
+check(
+  "the preview header carries the theme bootstrap's hash, as the meta tag does",
+  previewCsp.includes(expectedHash),
   true,
 );
 

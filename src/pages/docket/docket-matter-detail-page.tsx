@@ -2,12 +2,10 @@ import { useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Pencil, Trash2, RotateCcw, StickyNote } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { statusBadgeVariant } from "@/components/common/status-badge-variant";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import {
   useBinDocketMatter,
@@ -15,7 +13,8 @@ import {
   usePurgeDocketMatter,
   useRestoreDocketMatter,
 } from "@/hooks/docket/use-docket-matters";
-import { formatDateTime, toTitleCase } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { docketBinDaysLabel, docketBinPurgeAt, isDocketMatterBinned } from "@/lib/docket-bin";
 import { OverviewSection } from "@/pages/docket/sections/overview-section";
 import { PartiesSection } from "@/pages/docket/sections/parties-section";
@@ -45,7 +44,8 @@ const MATTER_TABS = [
 ] as const;
 
 export default function DocketMatterDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab") ?? "overview";
@@ -60,6 +60,7 @@ export default function DocketMatterDetailPage() {
   const [purgeOpen, setPurgeOpen] = useState(false);
 
   const canEdit = access?.canEdit ?? false;
+  const canManage = access?.canManage ?? false;
   const isBinned = matter ? isDocketMatterBinned(matter) : false;
   const liveEdit = canEdit && !isBinned;
   const binMatter = useBinDocketMatter(matter?.id ?? "");
@@ -92,6 +93,15 @@ export default function DocketMatterDetailPage() {
     });
   }
 
+  const notFound = (
+    <PageNotFound
+      message="This matter doesn't exist, or you don't currently have access to it."
+      back={back}
+    />
+  );
+
+  if (!id) return notFound;
+
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -102,18 +112,11 @@ export default function DocketMatterDetailPage() {
   }
 
   if (isError) {
+    if (isNotFoundError(error)) return notFound;
     return <PageError error={error} onRetry={() => void refetch()} />;
   }
 
-  if (!matter) {
-    return (
-      <PageError
-        error={new Error("This matter doesn't exist, or you don't currently have access to it.")}
-      />
-    );
-  }
-
-  const badges = [toTitleCase(matter.status), ...(isBinned ? ["In the bin"] : [])];
+  if (!matter) return notFound;
 
   return (
     <>
@@ -125,7 +128,10 @@ export default function DocketMatterDetailPage() {
           [matter.courts?.name, matter.magisterial_districts?.name].filter(Boolean).join(" · ") ||
           undefined
         }
-        badges={badges}
+        // The status itself has one home, the Overview status row, as the
+        // editable select or (read-only) a single badge. It used to appear
+        // here and in the action row as well.
+        badges={isBinned ? ["In the bin"] : undefined}
         tone="docket"
         imageUrl={matter.cover_image_path ? coverUrls?.[matter.cover_image_path] : undefined}
         tourId="matter-header"
@@ -142,29 +148,29 @@ export default function DocketMatterDetailPage() {
             <p className="mt-1 text-muted-foreground">
               Permanently deleted after{" "}
               {formatDateTime(docketBinPurgeAt(matter.deleted_at).toISOString())} (
-              {docketBinDaysLabel(matter.deleted_at)}). Restore it to work on it again, or empty it
-              now.
+              {docketBinDaysLabel(matter.deleted_at)}). Restore it to work on it again
+              {canManage ? ", or empty it now" : ""}.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {canEdit && (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => restoreMatter.mutate(matter.id)}
-                    disabled={restoreMatter.isPending}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Restore
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => setPurgeOpen(true)}
-                    disabled={purgeMatter.isPending}
-                  >
-                    Empty now
-                  </Button>
-                </>
+                <Button
+                  size="sm"
+                  onClick={() => restoreMatter.mutate(matter.id)}
+                  disabled={restoreMatter.isPending}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restore
+                </Button>
+              )}
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setPurgeOpen(true)}
+                  disabled={purgeMatter.isPending}
+                >
+                  Empty now
+                </Button>
               )}
               <Button size="sm" variant="ghost" asChild>
                 <Link to={ROUTES.docketBin}>Open bin</Link>
@@ -174,7 +180,6 @@ export default function DocketMatterDetailPage() {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={statusBadgeVariant(matter.status)}>{toTitleCase(matter.status)}</Badge>
           <BookmarkToggle entityType="docket_matter" entityId={matter.id} />
           <Button size="sm" variant="ghost" onClick={() => setNoteOpen(true)}>
             <StickyNote className="h-3.5 w-3.5" />
@@ -186,16 +191,18 @@ export default function DocketMatterDetailPage() {
                 <Pencil className="h-3.5 w-3.5" />
                 Edit details
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-destructive-text hover:text-destructive-text"
-                onClick={handleMoveToBin}
-                disabled={binMatter.isPending}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Move to bin
-              </Button>
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive-text hover:text-destructive-text"
+                  onClick={handleMoveToBin}
+                  disabled={binMatter.isPending}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Move to bin
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -211,7 +218,7 @@ export default function DocketMatterDetailPage() {
           className="w-full"
         >
           <TabsList
-            className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 bg-background/85 backdrop-blur-md hc:bg-background"
+            className="sticky top-[calc(68px+env(safe-area-inset-top)+var(--offline-banner-h))] z-20 bg-background/85 backdrop-blur-md hc:bg-background"
             data-tour="matter-tabs"
           >
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -261,7 +268,7 @@ export default function DocketMatterDetailPage() {
         open={purgeOpen}
         onOpenChange={setPurgeOpen}
         title="Permanently delete this matter?"
-        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments and case law are kept."
+        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments, case law and bench notes are kept."
         confirmLabel="Empty now"
         isConfirming={purgeMatter.isPending}
         onConfirm={() => {

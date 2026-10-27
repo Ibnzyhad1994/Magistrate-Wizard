@@ -206,8 +206,15 @@ async function main() {
   {
     const { error: binErr } = await magClient.rpc("bin_docket_matter", { p_id: matter.id });
     checkErr("7. Re-bin for purge tests", binErr, false);
-    const { error: expErr } = await magClient.rpc("purge_expired_docket_matters");
-    checkErr("7b. purge_expired_docket_matters runs", expErr, false);
+    const { error: clientExpErr } = await magClient.rpc("purge_expired_docket_matters");
+    checkErr(
+      "7a. A signed-in user cannot run purge_expired_docket_matters (0161)",
+      clientExpErr,
+      true,
+    );
+    // The service role stands in for the hourly pg_cron job.
+    const { error: expErr } = await admin.rpc("purge_expired_docket_matters");
+    checkErr("7b. purge_expired_docket_matters runs for the scheduler", expErr, false);
     const { data: still } = await admin
       .from("docket_matters")
       .select("id")
@@ -265,8 +272,14 @@ async function main() {
       .from("docket_matters")
       .update({ deleted_at: eightDaysAgo })
       .eq("id", expiredMatter.id);
-    checkErr("10. Can move a live matter straight into an expired bin timestamp", stampErr, false);
-    const { data: purged, error: purgeErr } = await magClient.rpc("purge_expired_docket_matters");
+    checkErr("10. A client cannot write deleted_at directly (0161)", stampErr, true);
+    // The service role bins it 8 days in the past, as the scheduler's clock would see it.
+    const { error: adminStampErr } = await admin
+      .from("docket_matters")
+      .update({ deleted_at: eightDaysAgo })
+      .eq("id", expiredMatter.id);
+    checkErr("10a. The service role can stand in for 8 days in the bin", adminStampErr, false);
+    const { data: purged, error: purgeErr } = await admin.rpc("purge_expired_docket_matters");
     checkErr("10b. purge_expired_docket_matters runs for expired row", purgeErr, false);
     check("10c. At least one expired matter was purged", (purged ?? 0) >= 1);
     const { data: gone } = await admin

@@ -102,14 +102,16 @@ export default function DocketBinPage() {
                       <RotateCcw className="h-4 w-4" />
                       Restore
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={purgeMatter.isPending}
-                      onClick={() => setPurgeId(row.id)}
-                    >
-                      Empty now
-                    </Button>
+                    {row.can_purge && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={purgeMatter.isPending}
+                        onClick={() => setPurgeId(row.id)}
+                      >
+                        Empty now
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -122,7 +124,7 @@ export default function DocketBinPage() {
         open={!!purgeId}
         onOpenChange={(open) => !open && setPurgeId(null)}
         title="Permanently delete this matter?"
-        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments and case law are kept."
+        description="This can't be undone. The file and its hearings, parties, tags, shares and documents are deleted. Linked judgments, case law and bench notes are kept."
         confirmLabel="Empty now"
         isConfirming={purgeMatter.isPending}
         onConfirm={() => {

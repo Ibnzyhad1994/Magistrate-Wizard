@@ -22,7 +22,10 @@ export const QUICK_CODE_CATEGORIES = [
 export const quickCodeFieldsSchema = z.object({
   code_word: z.string().min(1, "Code word is required").max(100),
   title: z.string().max(200).optional().or(z.literal("")),
-  content: z.string().min(1, "Content is required"),
+  content: z
+    .string()
+    .min(1, "Content is required")
+    .max(20000, "Content can be at most 20,000 characters"),
   description: z.string().max(1000).optional().or(z.literal("")),
   category: z.string().max(100).optional().or(z.literal("")),
 });

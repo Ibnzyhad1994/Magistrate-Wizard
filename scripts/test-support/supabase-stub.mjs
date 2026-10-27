@@ -4,7 +4,8 @@
 //
 // Default property access still throws so accidental network use fails
 // loudly. Session-lock tests install a programmable `auth.signOut` /
-// `auth.getSession` by calling `installSupabaseAuthMock`.
+// `auth.getSession` by calling `installSupabaseAuthMock`; offline sync
+// tests install a programmable `from(table)` with `installSupabaseFromMock`.
 
 const unusedClientError = () => {
   throw new Error(
@@ -36,6 +37,17 @@ export const installSupabaseAuthMock = (handlers = {}) => {
   };
 };
 
+let fromMock = null;
+
+/** `handler(table)` returns the query builder the code under test chains on. */
+export const installSupabaseFromMock = (handler) => {
+  fromMock = handler;
+};
+
+export const resetSupabaseFromMock = () => {
+  fromMock = null;
+};
+
 export const resetSupabaseAuthMock = () => {
   authMock.calls = [];
   authMock.signOut = unusedClientError;
@@ -47,6 +59,7 @@ export const supabase = new Proxy(
   {
     get(_target, prop) {
       if (prop === "auth") return authMock;
+      if (prop === "from" && fromMock) return fromMock;
       unusedClientError();
     },
   },

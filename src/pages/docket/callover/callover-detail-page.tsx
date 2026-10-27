@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { CalendarCheck, CheckCircle2, Gavel, ListPlus, Plus, RotateCcw } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Gavel, ListPlus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { statusBadgeVariant } from "@/components/common/status-badge-variant";
@@ -11,7 +11,8 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/common/empty-state";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { Billboard } from "@/components/browse";
 import { CalloverMatterDialog } from "@/pages/docket/callover/callover-matter-dialog";
@@ -53,7 +54,8 @@ import { formatDate } from "@/lib/utils";
  * decisions to a closed tab is worse than useless.
  */
 export default function CalloverDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
 
   const { data: callover, isPending, isError, error, refetch } = useCallover(id);
@@ -125,6 +127,15 @@ export default function CalloverDetailPage() {
   const status = isCalloverStatus(callover?.status) ? callover.status : "draft";
   const editable = isCalloverEditable(status);
 
+  const notFound = (
+    <PageNotFound
+      message="This callover doesn't exist, or you no longer have access to it."
+      back={{ to: ROUTES.callovers, label: "Back to callovers" }}
+    />
+  );
+
+  if (!id) return notFound;
+
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -134,15 +145,12 @@ export default function CalloverDetailPage() {
     );
   }
 
-  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
-
-  if (!callover) {
-    return (
-      <PageError
-        error={new Error("This callover doesn't exist, or you no longer have access to it.")}
-      />
-    );
+  if (isError) {
+    if (isNotFoundError(error)) return notFound;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
+
+  if (!callover) return notFound;
 
   const title = callover.title || defaultCalloverTitle(callover.callover_date);
 
@@ -189,7 +197,7 @@ export default function CalloverDetailPage() {
             <CalloverReportButton callover={callover} rows={rows} title={title} />
           )}
 
-          {editable ? (
+          {editable && (
             <Button
               size="sm"
               variant="ghost"
@@ -199,22 +207,13 @@ export default function CalloverDetailPage() {
               <CheckCircle2 className="h-4 w-4" />
               Mark completed
             </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => updateCallover.mutate({ status: "in_progress" })}
-              disabled={updateCallover.isPending}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reopen
-            </Button>
           )}
         </div>
 
         {!editable && (
           <p className="rounded-md border border-border bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
-            This callover is complete. Its matters stay on the schedule. Reopen it to make changes.
+            This callover is complete. Its sheet is the record of the sitting and can no longer be
+            changed. Its matters stay on the schedule.
           </p>
         )}
 
@@ -330,8 +329,8 @@ export default function CalloverDetailPage() {
         title="Mark this callover completed?"
         description={
           missingDates.length > 0
-            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. You can complete it now and reopen it later. Nothing is removed.`
-            : "The sheet becomes read-only. Its matters stay on the schedule and calendar. You can reopen it later."
+            ? `${missingDates.length} matter${missingDates.length === 1 ? " has" : "s have"} an outcome but no next date. A completed sheet cannot be changed, but each matter can still get a next date. Nothing is removed.`
+            : "The sheet becomes the record of the sitting and cannot be reopened or changed. Its matters stay on the schedule and calendar."
         }
         confirmLabel="Mark completed"
         isConfirming={updateCallover.isPending}

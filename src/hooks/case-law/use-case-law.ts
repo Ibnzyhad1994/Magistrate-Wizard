@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { formatCaseLawTitle } from "@/lib/case-law-title";
@@ -338,23 +339,31 @@ export function useSetCaseLawReviewStatus() {
  * error_summary set, target_case_law_id cleared) BEFORE deleting the
  * case_law row itself -- the previous implementation deleted the row
  * directly and never touched import_jobs, leaving it silently dangling
- * (the audit-confirmed §5/§3 defect). The caller must remove any attached
- * Storage object(s) FIRST (SQL cannot delete a Storage blob, only the
- * `documents` metadata row, which cascades automatically on this delete).
+ * (the audit-confirmed §5/§3 defect). The RPC refuses a record that is
+ * already published (0162), e.g. from a stale review queue, so the attached
+ * Storage objects are removed only AFTER it succeeds: a refused reject
+ * never deletes a published record's files. SQL cannot delete a Storage
+ * blob, only the `documents` metadata row, which cascades on the delete.
  */
 export function useRejectCanonicalCaseLaw() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason?: string | null }) => {
-      // Remove any attached documents' Storage objects first -- the RPC's
-      // cascade only removes the `documents` metadata row, never the
-      // underlying blob (SQL cannot touch Storage; see use-documents.ts).
+      // Read the file paths first: the RPC's cascade removes the
+      // `documents` rows that hold them.
       const { data: docs, error: docsError } = await supabase
         .from("documents")
         .select("file_path")
         .eq("entity_type", "case_law")
         .eq("entity_id", id);
       if (docsError) throw docsError;
+
+      const { error } = await supabase.rpc("reject_case_law_import", {
+        p_case_law_id: id,
+        p_reason: reason ?? undefined,
+      });
+      if (error) throw error;
+
       if (docs && docs.length > 0) {
         const { error: removeError } = await supabase.storage
           .from("documents")
@@ -363,27 +372,28 @@ export function useRejectCanonicalCaseLaw() {
           // Deliberately does not interpolate removeError.message -- that's
           // raw Supabase Storage API text, not something a curator should
           // ever see (Section 38: no raw internals in user-facing errors).
-          console.error("Storage cleanup failed during case law rejection:", removeError);
-          throw new Error(
-            `Couldn't remove ${docs.length} attached file(s), so the draft was kept. Try rejecting it again.`,
-          );
+          console.error("Storage cleanup failed after case law rejection:", removeError);
+          return { unremovedFiles: docs.length };
         }
       }
-
-      const { error } = await supabase.rpc("reject_case_law_import", {
-        p_case_law_id: id,
-        p_reason: reason ?? undefined,
-      });
-      if (error) throw error;
+      return { unremovedFiles: 0 };
     },
-    onSuccess: () => {
-      toast.success("Draft rejected and removed.");
+    onSuccess: ({ unremovedFiles }) => {
+      if (unremovedFiles > 0) {
+        toast.warning(
+          `Draft rejected and removed, but ${unremovedFiles} attached file(s) couldn't be deleted from storage.`,
+        );
+      } else {
+        toast.success("Draft rejected and removed.");
+      }
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
     },
     meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
+      // A refused reject usually means the queue is stale (already published).
+      void queryClient.invalidateQueries({ queryKey: caseLawKeys.reviewQueue });
     },
   });
 }
@@ -431,10 +441,8 @@ export function useSetCaseLawDiscoverable(id: string) {
 export function useDeleteCaseLaw() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("case_law").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) =>
+      deleteThenCleanStorage(supabase, () => supabase.from("case_law").delete().eq("id", id)),
     onSuccess: () => {
       toast.success("Research entry deleted.");
       void queryClient.invalidateQueries({ queryKey: caseLawKeys.all });

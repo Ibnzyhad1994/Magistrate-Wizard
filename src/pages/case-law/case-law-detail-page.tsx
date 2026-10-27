@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/inline-error";
-import { PageError } from "@/components/browse/page-error";
+import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { isNotFoundError, recordIdOrUndefined } from "@/lib/record-id";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { SaveState } from "@/components/common/save-state";
@@ -64,7 +65,8 @@ import { SharingPanel } from "@/components/sharing/sharing-panel";
 import { isShareableCaseLaw } from "@/lib/shares";
 
 export default function CaseLawDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = recordIdOrUndefined(idParam);
   const navigate = useNavigate();
   const back = useBackNav(ROUTES.caseLaw, "Back to Case Law");
   const { user, hasRole } = useAuth();
@@ -78,6 +80,10 @@ export default function CaseLawDetailPage() {
   const [confirmDeleteCanonical, setConfirmDeleteCanonical] = useState(false);
   const { data: categories } = useLegalCaseCategories();
 
+  const notFound = (
+    <PageNotFound message="This entry doesn't exist, or you don't have access to it." back={back} />
+  );
+  if (!id) return notFound;
   if (isPending) {
     return (
       <div className="browse-gutter space-y-4 pt-24">
@@ -86,12 +92,11 @@ export default function CaseLawDetailPage() {
       </div>
     );
   }
-  if (isError) return <PageError error={error} onRetry={() => void refetch()} />;
-  if (!caseLaw) {
-    return (
-      <PageError error={new Error("This entry doesn't exist, or you don't have access to it.")} />
-    );
+  if (isError) {
+    if (isNotFoundError(error)) return notFound;
+    return <PageError error={error} onRetry={() => void refetch()} />;
   }
+  if (!caseLaw) return notFound;
 
   const isCanonical = caseLaw.owner_id === null;
   const isOwner = caseLaw.owner_id === user?.id;

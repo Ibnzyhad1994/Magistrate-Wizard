@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import type { TablesUpdate } from "@/types/database.types";
 
@@ -182,10 +183,8 @@ export function useUnlockJudgment(id: string) {
 export function useDeleteJudgment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("judgments").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) =>
+      deleteThenCleanStorage(supabase, () => supabase.from("judgments").delete().eq("id", id)),
     onSuccess: () => {
       toast.success("Draft deleted.");
       void queryClient.invalidateQueries({ queryKey: judgmentsKeys.all });

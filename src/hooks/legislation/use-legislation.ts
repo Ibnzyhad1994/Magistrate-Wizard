@@ -161,8 +161,7 @@ export function useCreateCanonicalStatute() {
  * record's `primary_document_id`. `finalize_legislation_document`
  * (0098/0114) links+publishes atomically.
  *
- * Cleanup on failure, mirroring `useRejectCanonicalStatute`'s existing
- * storage-then-metadata order:
+ * Cleanup on failure, in storage-then-metadata order:
  *   - The file upload/`documents` insert fails -> `uploadDocumentToEntity`
  *     has already cleaned up any Storage orphan itself; this hook then
  *     deletes the now file-less draft `statutes` row so nothing broken is
@@ -356,20 +355,31 @@ export function useSetStatuteReviewStatus() {
  * Admin-only: rejects a draft Act via `reject_legislation_import` (0058),
  * which atomically reconciles the linked import_jobs row BEFORE deleting
  * the statutes row (statute_provisions cascade via their own FK; attached
- * `documents` metadata cascades via the 0058-fixed trigger). The caller
- * must remove any attached Storage object(s) FIRST -- SQL cannot delete a
- * Storage blob, only the metadata row.
+ * `documents` metadata cascades via the 0058-fixed trigger). The RPC
+ * refuses a record that is already published (0162), so the attached
+ * Storage objects are removed only AFTER it succeeds: a refused reject
+ * never deletes a published Act's files. SQL cannot delete a Storage blob,
+ * only the metadata row.
  */
 export function useRejectCanonicalStatute() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason?: string | null }) => {
+      // Read the file paths first: the RPC's cascade removes the
+      // `documents` rows that hold them.
       const { data: docs, error: docsError } = await supabase
         .from("documents")
         .select("file_path")
         .eq("entity_type", "statute")
         .eq("entity_id", id);
       if (docsError) throw docsError;
+
+      const { error } = await supabase.rpc("reject_legislation_import", {
+        p_statute_id: id,
+        p_reason: reason ?? undefined,
+      });
+      if (error) throw error;
+
       if (docs && docs.length > 0) {
         const { error: removeError } = await supabase.storage
           .from("documents")
@@ -378,27 +388,28 @@ export function useRejectCanonicalStatute() {
           // Deliberately does not interpolate removeError.message -- that's
           // raw Supabase Storage API text, not something a curator should
           // ever see (Section 38: no raw internals in user-facing errors).
-          console.error("Storage cleanup failed during legislation rejection:", removeError);
-          throw new Error(
-            `Couldn't remove ${docs.length} attached file(s), so the draft was kept. Try rejecting it again.`,
-          );
+          console.error("Storage cleanup failed after legislation rejection:", removeError);
+          return { unremovedFiles: docs.length };
         }
       }
-
-      const { error } = await supabase.rpc("reject_legislation_import", {
-        p_statute_id: id,
-        p_reason: reason ?? undefined,
-      });
-      if (error) throw error;
+      return { unremovedFiles: 0 };
     },
-    onSuccess: () => {
-      toast.success("Draft rejected and removed.");
+    onSuccess: ({ unremovedFiles }) => {
+      if (unremovedFiles > 0) {
+        toast.warning(
+          `Draft rejected and removed, but ${unremovedFiles} attached file(s) couldn't be deleted from storage.`,
+        );
+      } else {
+        toast.success("Draft rejected and removed.");
+      }
       void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
       void queryClient.invalidateQueries({ queryKey: importJobsQueryKey });
     },
     meta: { silent: true },
     onError: (error) => {
       toast.error(getErrorMessage(error));
+      // A refused reject usually means the queue is stale (already published).
+      void queryClient.invalidateQueries({ queryKey: legislationKeys.reviewQueue });
     },
   });
 }
