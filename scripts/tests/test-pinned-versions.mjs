@@ -9,8 +9,7 @@
  *   - the functions' supabase-js is the app's locked supabase-js;
  *   - package.json pins the supabase CLI exactly, and every workflow that
  *     runs `npx supabase` either installs it with npm ci first or names the
- *     pinned version. deploy-db.yml is the exception: it deploys
- *     production and is changed only with the owner (BE-03).
+ *     pinned version, deploy-db.yml included (BE-03).
  *
  *   npm run test:pinned-versions
  */
@@ -20,7 +19,6 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const EXACT = /^\d+\.\d+\.\d+$/;
-const UNPINNED_DEPLOY_WORKFLOWS = new Set(["deploy-db.yml"]);
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -101,7 +99,6 @@ check(
 
 const workflowsDir = join(ROOT, ".github/workflows");
 for (const name of readdirSync(workflowsDir).filter((file) => file.endsWith(".yml"))) {
-  if (UNPINNED_DEPLOY_WORKFLOWS.has(name)) continue;
   const text = readFileSync(join(workflowsDir, name), "utf8");
   const firstCli = text.search(/npx\s+(--yes\s+)?(supabase\b|"\$SUPABASE_CLI")/);
   if (firstCli === -1) continue;

@@ -18,7 +18,7 @@
  *   npm run test:deploy-db
  */
 import { readFileSync } from "node:fs";
-import { parseDryRun, renderSummary, samePlan } from "../db-push-plan.mjs";
+import { parseDryRun, pinnedCli, renderSummary, samePlan } from "../db-push-plan.mjs";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -40,6 +40,12 @@ const throws = (fn) => {
 };
 
 // ---------- the plan script ----------
+check(
+  "the plan script runs the CLI version package.json pins",
+  pinnedCli(),
+  `supabase@${JSON.parse(readFileSync("package.json", "utf8")).devDependencies.supabase}`,
+);
+
 const pending = {
   upToDate: false,
   dryRun: true,
@@ -60,11 +66,11 @@ check(
   parseDryRun(`${JSON.stringify(pending)}\n`),
   planOf(pending),
 );
-check(
-  "an up-to-date dry run parses to an empty plan",
-  parseDryRun(JSON.stringify(upToDate)),
-  { migrations: [], seeds: [], roles: [] },
-);
+check("an up-to-date dry run parses to an empty plan", parseDryRun(JSON.stringify(upToDate)), {
+  migrations: [],
+  seeds: [],
+  roles: [],
+});
 check(
   "the last JSON line wins over stray stdout text",
   parseDryRun(`Warning: something\n{"dryRun":true,"migrations":["a.sql"]}\n`),
@@ -75,7 +81,11 @@ check(
   throws(() => parseDryRun(JSON.stringify({ ...pending, dryRun: false }))),
   true,
 );
-check("no JSON result is refused", throws(() => parseDryRun("Remote database is up to date.\n")), true);
+check(
+  "no JSON result is refused",
+  throws(() => parseDryRun("Remote database is up to date.\n")),
+  true,
+);
 check(
   "a malformed migration list is refused",
   throws(() => parseDryRun(JSON.stringify({ dryRun: true, migrations: "a.sql" }))),

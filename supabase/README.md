@@ -95,14 +95,14 @@ time.
 ## Hosted projects
 
 ```bash
-npm install -g supabase        # or use npx
-supabase login
-supabase link --project-ref <project-ref>
-supabase db push --dry-run     # shows exactly what would apply
-supabase db push               # applies every pending migration, in order
-supabase functions deploy clerk-access-notify
-supabase functions deploy webhook-dispatch
-supabase functions deploy storage-cleanup
+npm ci                             # installs the CLI version package.json pins
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push --dry-run     # shows exactly what would apply
+npx supabase db push               # applies every pending migration, in order
+npx supabase functions deploy clerk-access-notify
+npx supabase functions deploy webhook-dispatch
+npx supabase functions deploy storage-cleanup
 ```
 
 `<project-ref>` is the id in `https://<project-ref>.supabase.co`. The
