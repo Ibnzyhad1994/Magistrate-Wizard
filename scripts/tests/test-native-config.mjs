@@ -153,6 +153,30 @@ check(
   false,
 );
 
+// Electron: the window opens on its first paint, in the colour of the theme
+// the app last applied, with the seal as its icon.
+const electronMain = read("electron/main.mjs");
+const builder = read("electron-builder.yml");
+check(
+  "electron: shown on ready-to-show, never before",
+  [/show:\s*false/.test(electronMain), electronMain.includes('win.once("ready-to-show"')],
+  [true, true],
+);
+check(
+  "electron: first colour and title bar come from the stored theme",
+  [
+    /backgroundColor:\s*theme\.canvas/.test(electronMain),
+    /nativeTheme\.themeSource\s*=\s*theme\.scheme/.test(electronMain),
+    read("electron/preload.cjs").includes('"window-theme"'),
+  ],
+  [true, true, true],
+);
+check(
+  "electron: the window and the installer carry the seal icon",
+  [electronMain.includes('"icon.png"'), /^icon:\s*electron\/icon\.png$/m.test(builder)],
+  [true, true],
+);
+
 // Each generated PNG is the size its slot expects and is not the template's.
 const pngSize = (rel) => {
   const buf = readFileSync(join(__dirname, "../../", rel));
@@ -168,6 +192,7 @@ const launchPngs = {
   "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png": [1024, 1024],
   "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png": [2732, 2732],
   "public/apple-touch-icon.png": [180, 180],
+  "electron/icon.png": [512, 512],
 };
 for (const [rel, size] of Object.entries(launchPngs)) {
   check(`png: ${rel} is ${size.join("x")}`, pngSize(rel), size);

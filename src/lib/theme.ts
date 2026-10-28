@@ -131,6 +131,7 @@ export function applyResolvedTheme(
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", THEME_COLOR[resolved]);
   void syncNativeStatusBar(resolved);
+  window.magistrateWizard?.setWindowTheme?.(THEME_COLOR[resolved], scheme);
 }
 
 async function syncNativeStatusBar(resolved: ResolvedTheme) {

@@ -1,8 +1,8 @@
 /**
  * Draw the native shells' launch identity from the seal (`public/favicon.svg`)
  * on the dark canvas: Android launcher icons (legacy, round and the adaptive
- * foreground) and splash screens, the iOS app icon and launch image, and the
- * web's apple-touch-icon.
+ * foreground) and splash screens, the iOS app icon and launch image, the
+ * Electron window and installer icon, and the web's apple-touch-icon.
  * Rasterised by the Playwright Chromium the e2e suite already uses, so the
  * seal is drawn exactly as a browser draws the favicon.
  *
@@ -84,6 +84,10 @@ for (const name of ["splash-2732x2732.png", "splash-2732x2732-1.png", "splash-27
   });
 }
 
+// Electron: the window and taskbar icon, and electron-builder's source for
+// the Windows .ico (it needs at least 256px). Transparent around the seal,
+// as Windows icons are.
+add("electron/icon.png", 512, 512, { background: "transparent", sealFraction: 0.94 });
 // iOS ignores an SVG apple-touch-icon; it rounds the corners itself.
 add("public/apple-touch-icon.png", 180, 180, { background: CANVAS, sealFraction: 0.66 });
 
