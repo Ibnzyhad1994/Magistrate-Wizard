@@ -31,3 +31,17 @@ updates:
         update-types:
           - minor
           - patch
+
+  # Workflow actions are pinned by commit SHA with the release as a comment
+  # (BE-22); Dependabot moves both together. One weekly pull request for
+  # them all, against develop for the same reason as npm.
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
