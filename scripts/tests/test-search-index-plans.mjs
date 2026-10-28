@@ -25,7 +25,8 @@
  *
  *   npm run test:search-index-plans
  */
-import { appendFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { runSql, sections } from "../test-support/psql.mjs";
 import { assertLocalSupabase } from "../test-support/assert-local-supabase.mjs";
@@ -416,8 +417,9 @@ set local pg_trgm.similarity_threshold = 0.3;
   // function on every row), not I/O. Buffers are printed for the record; a
   // trigram common to every row (" v ") keeps the new case-law reads near a
   // thousand pages however small the result.
-  // Also written to the CI job summary, which keeps the numbers of a passing
-  // run (the runner prints a script's output only when it fails).
+  // Also written to LIVE_REPORT_DIR when set: live-db.yml prints those files
+  // and adds them to the job summary, so a passing run keeps its numbers (the
+  // runner prints a script's output only when it fails).
   const rows = [];
   const report = (label, p) => {
     console.log(
@@ -455,9 +457,10 @@ set local pg_trgm.similarity_threshold = 0.3;
       true,
     );
   }
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(
-      process.env.GITHUB_STEP_SUMMARY,
+  if (process.env.LIVE_REPORT_DIR) {
+    mkdirSync(process.env.LIVE_REPORT_DIR, { recursive: true });
+    writeFileSync(
+      path.join(process.env.LIVE_REPORT_DIR, "search-index-plans.md"),
       [
         `### BE-13 search plans: ${CASE_LAW_ROWS} case_law rows, ${DOCKET_ROWS} docket matters, signed-in magistrate`,
         "",

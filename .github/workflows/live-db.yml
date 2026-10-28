@@ -77,4 +77,16 @@ jobs:
       - name: Live scripts (npm run test:live)
         env:
           SCHEMA_ALIGN_SKIP_LIVE: "1"
+          LIVE_REPORT_DIR: ${{ runner.temp }}/live-reports
         run: npm run test:live
+
+      # Measurements some live scripts write (for example the BE-13 search
+      # plans), kept in the log and the job summary whether or not they pass.
+      - name: Live reports
+        if: always()
+        run: |
+          shopt -s nullglob
+          for report in "${{ runner.temp }}"/live-reports/*.md; do
+            cat "$report"
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          done
