@@ -16,6 +16,7 @@ export const NOTIFICATION_TYPES = [
   "issue_report_decided",
   "docket_matter_binned",
   "docket_matter_purged",
+  "maintenance_failed",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -61,6 +62,7 @@ export const notificationTone = (type: string): NotificationTone => {
     case "hearing_tomorrow":
     case "stale_draft":
     case "docket_matter_binned":
+    case "maintenance_failed":
       return "action";
     case "share_granted":
     case "court_assigned":
@@ -106,6 +108,8 @@ export const notificationTypeLabel = (type: string) => {
       return "Matter moved to the bin";
     case "docket_matter_purged":
       return "Matter permanently deleted";
+    case "maintenance_failed":
+      return "Maintenance problem";
     default:
       return "Notice";
   }
