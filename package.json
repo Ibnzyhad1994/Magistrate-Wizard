@@ -160,10 +160,10 @@
     "test:safe-links": "node --import ./scripts/test-support/register.mjs scripts/tests/test-safe-links.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.1",
+    "@capacitor/android": "^6.2.2",
     "@capacitor/app": "^6.0.3",
-    "@capacitor/core": "^6.2.1",
-    "@capacitor/ios": "^6.2.1",
+    "@capacitor/core": "^6.2.2",
+    "@capacitor/ios": "^6.2.2",
     "@capacitor/network": "^6.0.3",
     "@capacitor/preferences": "^6.0.4",
     "@capacitor/status-bar": "^6.0.3",
@@ -193,7 +193,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "docx-preview": "^0.4.0",
-    "dompurify": "^3.4.14",
+    "dompurify": "^3.4.17",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.454.0",
