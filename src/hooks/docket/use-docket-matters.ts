@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth-store";
 import { supabase } from "@/lib/supabase";
+import { checkRpc } from "@/lib/rpc-results";
 import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
@@ -54,7 +55,7 @@ export function useDocketMatters(search: string) {
           p_limit: 50,
         });
         if (error) throw error;
-        return data;
+        return checkRpc("search_docket_matters", data);
       }
       const { data, error } = await supabase
         .from("docket_matters")
@@ -223,6 +224,7 @@ export function useDocketMatterBoard(
           ...args,
         });
         if (error) throw error;
+        checkRpc("list_docket_matters", data);
         if (cacheable && data) {
           const profileId = await currentProfileId();
           if (profileId) await seedBoard(profileId, boardCacheKey(courtId, exactDate), data);
@@ -458,7 +460,7 @@ export function useTakeBoardOffline(exactDate: string | null, courtId: string | 
         ...filtersToRpcArgs(EMPTY_PROCEDURE_FILTERS),
       });
       if (error) throw error;
-      await seedBoard(profileId, key, data ?? []);
+      await seedBoard(profileId, key, checkRpc("list_docket_matters", data ?? []));
       return (data ?? []).length;
     },
     onSuccess: (count) => {

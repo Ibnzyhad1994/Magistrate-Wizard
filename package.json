@@ -122,6 +122,7 @@
     "test:search-index-plans": "node --import ./scripts/test-support/register.mjs scripts/tests/test-search-index-plans.mjs",
     "test:global-search-per-type": "node --import ./scripts/test-support/register.mjs scripts/tests/test-global-search-per-type.mjs",
     "test:scheduled-maintenance": "node --import ./scripts/test-support/register.mjs scripts/tests/test-scheduled-maintenance.mjs",
+    "test:rpc-results": "node --import ./scripts/test-support/register.mjs scripts/tests/test-rpc-results.mjs",
     "test:auth-event-anon-cap": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-event-anon-cap.mjs",
     "test:court-request-recovery-rpc": "node --import ./scripts/test-support/register.mjs scripts/tests/test-court-request-recovery-rpc.mjs",
     "test:pentest": "node --import ./scripts/test-support/register.mjs scripts/tests/pentest-security-audit.mjs",

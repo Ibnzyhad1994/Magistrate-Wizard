@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { checkRpc } from "@/lib/rpc-results";
 import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
@@ -71,7 +72,7 @@ export function useCaseLawScopedSearch(params: {
         p_limit: 200,
       });
       if (error) throw error;
-      return data ?? [];
+      return checkRpc("search_case_law_scoped", data ?? []);
     },
     enabled: active,
     // Keeps the previous scoped result set on screen while a refined
