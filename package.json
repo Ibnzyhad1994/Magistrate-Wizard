@@ -164,6 +164,8 @@
     "test:sound-cues": "node scripts/tests/test-sound-cues.mjs",
     "prepare": "husky",
     "test:audit-export-csv": "node --import ./scripts/test-support/register.mjs scripts/tests/test-audit-export-csv.mjs",
+    "test:audit-ledger-export": "node --import ./scripts/test-support/register.mjs scripts/tests/test-audit-ledger-export.mjs",
+    "test:audit-log-export": "node --import ./scripts/test-support/register.mjs scripts/tests/test-audit-log-export.mjs",
     "test:electron-hardening": "node --import ./scripts/test-support/register.mjs scripts/tests/test-electron-hardening.mjs",
     "test:error-messages": "node --import ./scripts/test-support/register.mjs scripts/tests/test-error-messages.mjs",
     "test:input-validation": "node --import ./scripts/test-support/register.mjs scripts/tests/test-input-validation.mjs",
