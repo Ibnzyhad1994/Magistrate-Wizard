@@ -22,7 +22,8 @@
  * the list's 0190 index (EXPLAIN as the signed-in user, RLS applied).
  *
  * Needs `psql` and the local stack (`npm run db:start`). Fixtures are
- * disposable users and rows, removed at the end.
+ * disposable users and rows; the rows are removed at the end and the users
+ * banned (the immutable audit ledger keeps them from being deleted).
  *
  *   npm run test:list-keyset-paging
  */
@@ -131,7 +132,8 @@ insert into public.magistrate_courts (profile_id, court_id)
 select '${magistrate.id}', id from public.courts where name = 'BE15 Court ${tag}';
 
 -- Library and import jobs, added by the admin. Six updated_at values with
--- microsecond parts, so ties straddle every page boundary.
+-- microsecond parts, so ties straddle every page boundary. Case Law is
+-- found again by citation: case_law_title_guard rewrites case_name.
 set local request.jwt.claims = '${claims(admin.id)}';
 insert into public.case_law (case_name, citation, court, jurisdiction, review_status, updated_at)
 select '${tag} v Crown ' || g, '[2025] ${tag} ' || g, 'Fixture Court', 'Fixture',
@@ -216,7 +218,7 @@ select coalesce(string_agg(${alias}.id::text, ',' order by ${orderBy}), '') from
           ),
           ids("import_jobs", "j", "public.import_jobs j", "j.created_at desc, j.id desc"),
           `\\echo @@case_law_fixtures
-select count(*) from public.case_law where case_name like '${tag} v Crown %' and review_status = 'published';`,
+select count(*) from public.case_law where citation like '[2025] ${tag} %' and review_status = 'published';`,
         ].join("\n"),
       ) +
         asUser(
@@ -251,7 +253,7 @@ select count(*) from public.case_law where case_name like '${tag} v Crown %' and
   const { data: drafts } = await service
     .from("case_law")
     .select("id")
-    .like("case_name", `${tag} v Crown %`)
+    .like("citation", `[2025] ${tag} %`)
     .eq("review_status", "draft");
   check(
     "Case Law: no draft is listed",
@@ -461,7 +463,7 @@ function cleanup() {
     `delete from public.docket_events where docket_matter_id in (select id from public.docket_matters where court_id in (${courtIds}))`,
     `delete from public.docket_matters where court_id in (${courtIds})`,
     `delete from public.judgments where owner_id = '${magistrate}'`,
-    `delete from public.case_law where case_name like '${tag} v Crown %'`,
+    `delete from public.case_law where citation like '[2025] ${tag} %'`,
     `delete from public.statutes where code like '${tag}-%'`,
     `delete from public.import_jobs where created_by = '${admin}'`,
     `delete from public.magistrate_courts where profile_id = '${magistrate}'`,
@@ -484,9 +486,12 @@ try {
   failures += 1;
 } finally {
   cleanup();
+  // The fixture users cannot be deleted: their writes left audit_log rows
+  // naming them, and the audit ledger is immutable (its ON DELETE SET NULL
+  // is refused). Ban them instead, so the accounts can never sign in again.
   for (const id of created.users) {
-    const { error } = await service.auth.admin.deleteUser(id);
-    if (error) console.error(`Could not delete fixture user ${id}:`, error.message);
+    const { error } = await service.auth.admin.updateUserById(id, { ban_duration: "876000h" });
+    if (error) console.error(`Could not ban fixture user ${id}:`, error.message);
   }
 }
 
