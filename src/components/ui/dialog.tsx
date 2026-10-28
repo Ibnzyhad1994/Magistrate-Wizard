@@ -86,10 +86,14 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 DialogHeader.displayName = "DialogHeader";
 
+// The dialog is the scroll container and a sticky box stops at its padding,
+// so `-bottom-6` (minus the dialog's p-6) is what pins the footer to the
+// dialog's bottom edge; at `bottom-0` a long form showed through a 24px
+// strip below Cancel on a phone.
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "sticky bottom-0 z-10 -mx-6 -mb-6 mt-auto flex flex-col-reverse gap-2 border-t border-border bg-card px-6 py-4 sm:flex-row sm:justify-end sm:gap-0 sm:space-x-2",
+      "sticky -bottom-6 z-10 -mx-6 -mb-6 mt-auto flex flex-col-reverse gap-2 border-t border-border bg-card px-6 py-4 sm:flex-row sm:justify-end sm:gap-0 sm:space-x-2",
       className,
     )}
     {...props}

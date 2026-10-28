@@ -143,7 +143,7 @@ export function DocketCapacitySettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-left">
           <div className="flex items-center gap-0.5 pr-8">
             <DialogTitle>Docket Capacity Settings</DialogTitle>

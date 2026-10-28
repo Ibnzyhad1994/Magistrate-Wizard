@@ -189,7 +189,7 @@ export const DocumentViewerDialog = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="flex h-[85vh] w-full max-w-4xl flex-col gap-3 overflow-hidden sm:max-w-4xl"
+        className="flex h-[85dvh] w-full max-w-4xl flex-col gap-3 overflow-hidden sm:max-w-4xl"
         aria-describedby={undefined}
       >
         <DialogHeader className={kind === "pdf" ? "sr-only" : undefined}>

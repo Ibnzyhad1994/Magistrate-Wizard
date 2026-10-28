@@ -80,7 +80,7 @@ function HeroBillboard({
     <section
       data-tour={tourId ?? "home-billboard"}
       className={cn(
-        "relative isolate min-h-[78vh] w-full overflow-hidden bg-gradient-to-br",
+        "relative isolate min-h-[78dvh] w-full overflow-hidden bg-gradient-to-br",
         TONE_GRADIENT_HERO[tone],
         className,
       )}
@@ -97,7 +97,7 @@ function HeroBillboard({
         <>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--primary)/0.08),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--foreground)/0.14),transparent_55%)]" />
           <Icon
-            className="absolute right-[6%] top-[18%] h-[55vh] w-[55vh] max-w-[46vw] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10"
+            className="absolute right-[6%] top-[18%] h-[55dvh] w-[55dvh] max-w-[46vw] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10"
             strokeWidth={1}
             aria-hidden="true"
           />
@@ -108,7 +108,7 @@ function HeroBillboard({
 
       <div
         className={cn(
-          "browse-gutter relative flex min-h-[78vh] max-w-3xl flex-col justify-end pt-32",
+          "browse-gutter relative flex min-h-[78dvh] max-w-3xl flex-col justify-end pt-32",
           caption ? "pb-32" : "pb-24",
         )}
       >
