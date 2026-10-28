@@ -108,6 +108,11 @@ const TOKENS = [
   "stage-remand",
   "stage-dismissed",
   "stage-outcome-complete",
+  "stage-progress-text",
+  "stage-done-text",
+  "stage-remand-text",
+  "stage-dismissed-text",
+  "stage-outcome-complete-text",
   "notice-action",
   "notice-granted",
   "notice-revoked",
@@ -338,6 +343,30 @@ for (const [label, block] of PALETTES) {
     })
     .filter(Boolean);
   check(`${label}: tile status flag text and dots meet their contrast minimum`, flagFailing, []);
+  // Small chip words on their own tint: the docket's stage and outcome
+  // cells (`bg-stage-done/15 text-stage-done-text`) and the Scheduled
+  // appearance chip (`bg-primary/15 text-link`). The tint is composited over
+  // every surface a chip can sit on, a selected table row (surface-3) included.
+  const chipFailing = [
+    ["stage-progress-text", "stage-progress", 0.15],
+    ["stage-done-text", "stage-done", 0.15],
+    ["stage-remand-text", "stage-remand", 0.2],
+    ["stage-dismissed-text", "stage-dismissed", 0.15],
+    ["stage-outcome-complete-text", "stage-outcome-complete", 0.15],
+    ["link", "primary", 0.15],
+  ]
+    .flatMap(([fg, tint, alpha]) =>
+      ["background", "card", "popover", "surface-1", "surface-2", "surface-3"].map((under) => {
+        const words = hslToRgb(tokenValue(block, fg));
+        const wash = hslToRgb(tokenValue(block, tint));
+        const ground = hslToRgb(tokenValue(block, under));
+        const chip = ground.map((v, i) => alpha * wash[i] + (1 - alpha) * v);
+        const ratio = contrastRgb(words, chip);
+        return ratio >= 4.5 ? null : `${fg} on ${tint}/${alpha} over ${under}: ${ratio.toFixed(2)}`;
+      }),
+    )
+    .filter(Boolean);
+  check(`${label}: chip words meet 4.5:1 on their own tint`, chipFailing, []);
   check(
     `${label}: over capacity is darker than full`,
     luminance(hslToRgb(tokenValue(block, "capacity-over"))) <

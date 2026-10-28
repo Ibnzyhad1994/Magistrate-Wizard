@@ -35,9 +35,9 @@ import {
 
 const TONE_CLASS: Record<ReturnType<typeof procedureCellTone>, string> = {
   muted: "text-muted-foreground",
-  progress: "bg-[hsl(var(--stage-progress)/0.15)] text-stage-progress",
-  done: "bg-[hsl(var(--stage-done)/0.15)] text-stage-done",
-  remand: "bg-[hsl(var(--stage-remand)/0.20)] text-stage-remand",
+  progress: "bg-stage-progress/15 text-stage-progress-text",
+  done: "bg-stage-done/15 text-stage-done-text",
+  remand: "bg-stage-remand/20 text-stage-remand-text",
 };
 
 /** Ruling/Judgment-only: lets the cell attach the actual file, not just record a status (0074). */

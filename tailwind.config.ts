@@ -69,6 +69,12 @@ const config: Config = {
           remand: "hsl(var(--stage-remand))",
           dismissed: "hsl(var(--stage-dismissed))",
           "outcome-complete": "hsl(var(--stage-outcome-complete))",
+          // Each stage's words on its own tint: `bg-stage-done/15 text-stage-done-text`.
+          "progress-text": "hsl(var(--stage-progress-text))",
+          "done-text": "hsl(var(--stage-done-text))",
+          "remand-text": "hsl(var(--stage-remand-text))",
+          "dismissed-text": "hsl(var(--stage-dismissed-text))",
+          "outcome-complete-text": "hsl(var(--stage-outcome-complete-text))",
         },
         notice: {
           action: "hsl(var(--notice-action))",

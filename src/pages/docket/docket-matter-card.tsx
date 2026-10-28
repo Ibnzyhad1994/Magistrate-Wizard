@@ -33,7 +33,7 @@ function AppearanceChip({ status, outcome }: { status: string; outcome: string |
     <span
       className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
         status === "scheduled"
-          ? "bg-primary/20 text-primary"
+          ? "bg-primary/15 text-link"
           : status === "completed"
             ? "bg-foreground/10 text-muted-foreground"
             : "bg-foreground/5 text-muted-foreground"

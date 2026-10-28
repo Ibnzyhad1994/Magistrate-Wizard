@@ -465,7 +465,7 @@ export default function CourtAssignmentsPage() {
                       <p className="border-t border-border pt-3 text-sm text-muted-foreground">
                         Clerks sit a court through{" "}
                         <Link
-                          className="text-primary underline-offset-2 hover:underline"
+                          className="text-link underline-offset-2 hover:underline"
                           to={ROUTES.clerkAccessRequests}
                         >
                           Clerk Access

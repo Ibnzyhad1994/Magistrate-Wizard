@@ -184,7 +184,7 @@ function DocketStageRow({
             <span
               className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                 row.appearance_status === "scheduled"
-                  ? "bg-primary/20 text-primary"
+                  ? "bg-primary/15 text-link"
                   : row.appearance_status === "completed"
                     ? "bg-foreground/10 text-muted-foreground"
                     : "bg-foreground/5 text-muted-foreground"
