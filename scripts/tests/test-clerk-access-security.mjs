@@ -12,6 +12,9 @@
 // Run with:
 //   SUPABASE_SERVICE_ROLE_KEY=... node --experimental-strip-types --import ./scripts/test-support/register.mjs scripts/tests/test-clerk-access-security.mjs
 //
+// 62-68 (0168): an admin session cannot write role, court_id or email
+// directly; the RPC and the service role still can.
+//
 // Creates its own throwaway district/courts/profiles/auth users and
 // deletes every one of them at the end, regardless of pass/fail.
 
@@ -948,6 +951,95 @@ async function main() {
     check(
       "61. enforce_rpc_rate_limit rejects a bucket name outside the wrapper allowlist",
       error !== null && /Unknown rate-limited RPC/i.test(error.message ?? ""),
+    );
+  }
+
+  // --- 0168: an admin session cannot write role / court_id / email directly --
+  // Threat (BE-10): the policy's is_admin() branch let an admin's own
+  // session write any column, bypassing correct_unassigned_account_type's
+  // rules (no active courts, not self, never to or from admin). Those
+  // columns now change only through the RPCs, sign-up or the service role.
+  {
+    const admin2 = await createUser(email("admin2"), password, {});
+    created.users.push(admin2.id);
+    await admin.auth.admin.updateUserById(admin2.id, { email_confirm: true });
+    await admin.from("profiles").update({ role: "admin" }).eq("id", admin2.id);
+    const admin2Client = await signAs(admin2.email, password);
+    const profileOf = async (id) =>
+      (
+        await admin
+          .from("profiles")
+          .select("role, court_id, email, full_name")
+          .eq("id", id)
+          .single()
+      ).data;
+    const before = await profileOf(m1.id);
+
+    const { error: roleErr } = await admin2Client
+      .from("profiles")
+      .update({ role: "clerk" })
+      .eq("id", m1.id);
+    check(
+      "62. An admin session cannot change a magistrate's role directly",
+      roleErr !== null && (await profileOf(m1.id)).role === before.role,
+    );
+    const { error: courtErr } = await admin2Client
+      .from("profiles")
+      .update({ court_id: beta.id })
+      .eq("id", m1.id);
+    check(
+      "63. An admin session cannot change profiles.court_id directly",
+      courtErr !== null && (await profileOf(m1.id)).court_id === before.court_id,
+    );
+    const { error: emailErr } = await admin2Client
+      .from("profiles")
+      .update({ email: `admin-rewrite-${stamp}@example.test` })
+      .eq("id", m1.id);
+    check(
+      "64. An admin session cannot change profiles.email directly",
+      emailErr !== null && (await profileOf(m1.id)).email === before.email,
+    );
+    const { error: selfErr } = await admin2Client
+      .from("profiles")
+      .update({ role: "magistrate" })
+      .eq("id", admin2.id);
+    check(
+      "65. An admin session cannot demote itself directly either",
+      selfErr !== null && (await profileOf(admin2.id)).role === "admin",
+    );
+
+    const { error: nameErr } = await admin2Client
+      .from("profiles")
+      .update({ full_name: "Test Magistrate One (admin edit)" })
+      .eq("id", m1.id);
+    check(
+      "66. Control: an admin still edits other profile fields directly",
+      !nameErr && (await profileOf(m1.id)).full_name === "Test Magistrate One (admin edit)",
+    );
+    await admin.from("profiles").update({ full_name: before.full_name }).eq("id", m1.id);
+
+    const unassigned = await createUser(email("wrong-type"), password, {
+      full_name: "Test Wrong Account Type",
+    });
+    created.users.push(unassigned.id);
+    const { error: rpcErr } = await admin2Client.rpc("correct_unassigned_account_type", {
+      p_profile_id: unassigned.id,
+      p_new_role: "clerk",
+      p_reason: "Signed up as the wrong account type (BE-10 fixture)",
+    });
+    check(
+      "67. Control: correct_unassigned_account_type still changes the role",
+      !rpcErr && (await profileOf(unassigned.id)).role === "clerk",
+    );
+    if (rpcErr) console.log("   (error:", rpcErr.message, ")");
+
+    const { error: serviceErr } = await admin
+      .from("profiles")
+      .update({ role: "magistrate" })
+      .eq("id", unassigned.id);
+    check(
+      "68. Control: the service role still writes role (operators, fixtures)",
+      !serviceErr && (await profileOf(unassigned.id)).role === "magistrate",
     );
   }
 
