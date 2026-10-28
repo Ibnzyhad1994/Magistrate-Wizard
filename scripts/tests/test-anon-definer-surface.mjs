@@ -65,6 +65,8 @@ const ANON_ALLOWLIST = new Set([
 const SIGNED_IN_ONLY = [
   "apply_case_law_tags",
   "apply_statute_tags",
+  "create_case_law_import",
+  "create_legislation_import",
   "finalize_legislation_document",
   "publish_case_law_import",
   "reject_case_law_import",

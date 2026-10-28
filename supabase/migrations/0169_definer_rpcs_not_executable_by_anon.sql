@@ -16,6 +16,7 @@
 --   Edge Function with the anon key, by an RLS policy, or by an INVOKER
 --   function anon can reach. Every app call site runs signed in.
 --     apply_case_law_tags, apply_statute_tags              curators tagging
+--     create_case_law_import, create_legislation_import     admin import
 --     finalize_legislation_document                         Act upload
 --     publish_case_law_import, reject_case_law_import       import review
 --     publish_legislation_import, reject_legislation_import import review
@@ -63,6 +64,8 @@ declare
   v_names constant text[] := array[
     'apply_case_law_tags',
     'apply_statute_tags',
+    'create_case_law_import',
+    'create_legislation_import',
     'finalize_legislation_document',
     'publish_case_law_import',
     'reject_case_law_import',
