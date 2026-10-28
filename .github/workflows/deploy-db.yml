@@ -1,10 +1,16 @@
 name: Deploy database (production)
 
 # Applies committed migrations and redeploys the edge functions to the
-# PRODUCTION Supabase project when they land on `main`. Until this workflow
-# existed, migrations reached production by someone running `supabase db push`
-# by hand, so a frontend depending on a new migration could deploy (via
-# Vercel, on the same push to main) before the schema did.
+# PRODUCTION Supabase project. Until this workflow existed, migrations reached
+# production by someone running `supabase db push` by hand, so a frontend
+# depending on a new migration could deploy (via Vercel, on the same push to
+# main) before the schema did.
+#
+# Manual dispatch only (BE-03). It used to run on every push to main touching
+# supabase/**, which would have pushed every migration main had collected to
+# production in one go, and its dry run only showed after the environment
+# approval, so the approver signed off blind. Nothing triggers it on its own
+# until the plan/apply split lets the approver see the plan first.
 #
 # Gate: the job runs in the GitHub Environment `production`. Configure that
 # environment in Settings → Environments → production with REQUIRED REVIEWERS
@@ -26,13 +32,6 @@ name: Deploy database (production)
 #   SUPABASE_DB_PASSWORD   the database password (Project Settings → Database)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/functions/**"
-      - ".github/workflows/deploy-db.yml"
   workflow_dispatch:
 
 permissions:
