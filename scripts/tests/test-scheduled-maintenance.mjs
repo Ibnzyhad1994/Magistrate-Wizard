@@ -58,7 +58,7 @@ create temp table be16_outcome (ok boolean, error text) on commit drop;
 
 -- Each step becomes a stub that records it ran; the failing ones raise
 -- after recording, so their own write must be rolled back with them.
-do $$
+do $do$
 declare
   s text;
   v_result text;
@@ -78,15 +78,15 @@ begin
       case when v_result = 'void' then '' else ' null' end
     );
   end loop;
-end $$;
+end $do$;
 
-do $$
+do $do$
 begin
   perform public.run_scheduled_maintenance();
   insert into pg_temp.be16_outcome values (true, null);
 exception when others then
   insert into pg_temp.be16_outcome values (false, sqlerrm);
-end $$;
+end $do$;
 
 \\echo @@outcome
 select coalesce(ok::text, '') || '|' || coalesce(error, '') from pg_temp.be16_outcome;
