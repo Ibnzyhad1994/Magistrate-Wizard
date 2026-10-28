@@ -41,6 +41,20 @@ npm run supabase:types    # writes src/types/database.types.ts from the LOCAL sc
 That file is pure generator output; hand-written aliases live in
 `src/types/db-aliases.ts`, so regenerating is always safe.
 
+Then refresh the public-schema snapshot from a freshly reset stack and
+commit it with the migration:
+
+```bash
+npm run db:reset && npm run db:schema-snapshot    # writes supabase/schema.sql
+```
+
+`supabase/schema.sql` is `supabase db dump --schema public` output: every
+table, policy and whole function body as the migrations leave them,
+including bodies that a migration rewrites in place. Migration CI dumps the
+same schema after applying every migration and fails when it differs from
+the committed file; the failed run uploads its dump as the `public-schema`
+artifact.
+
 Live-database tests (`npm run test:live`) run against this local stack and
 refuse a remote host unless `ALLOW_REMOTE_SUPABASE=1` is set.
 
@@ -59,6 +73,9 @@ time.
 3. **Design and threat-model it.** Who can read/write what afterwards? Any
    new `SECURITY DEFINER` function needs an explicit note: why DEFINER,
    fixed `search_path`, EXECUTE grants, what it exposes.
+   A changed function is restated whole (`create or replace` with the full
+   body), never patched by rewriting `pg_get_functiondef()` output, so the
+   migration and `supabase/schema.sql` show the code that runs.
 4. **Pretest locally.** `npm run db:reset` must apply cleanly from 0001.
    Run the behavioural pretest with disposable fixtures only — never the
    real admin profile. Migration CI does the same apply on every develop
@@ -68,8 +85,8 @@ time.
 6. **Verify live**: structure, behavioural regression (RLS/privacy changes
    get a rollback-only pass), Supabase advisors (security + performance) —
    call out any _new_ finding explicitly.
-7. **Update the architecture spec** (`docs/architecture/`), regenerate types,
-   add the `CHANGELOG.md` line, commit the migration + spec + related docs
+7. **Update the architecture spec** (`docs/architecture/`), regenerate types
+   and `supabase/schema.sql`, add the `CHANGELOG.md` line, commit the migration + spec + related docs
    together. Frontend changes go in a separate commit where practical.
 8. **Never commit an unapplied migration to `main` as if it were live.**
    `main` must always reconstruct what is actually on production.

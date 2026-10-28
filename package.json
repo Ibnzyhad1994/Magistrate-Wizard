@@ -95,6 +95,7 @@
     "db:stop": "npx supabase stop",
     "db:reset": "npx supabase db reset",
     "db:status": "npx supabase status",
+    "db:schema-snapshot": "npx supabase db dump --local --schema public -f supabase/schema.sql",
     "supabase:types": "npx supabase gen types typescript --local --schema public > src/types/database.types.ts",
     "postinstall": "node scripts/copy-ocr-assets.mjs",
     "copy:ocr-assets": "node scripts/copy-ocr-assets.mjs",

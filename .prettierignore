@@ -1,5 +1,6 @@
 # Generated or vendored: never reformat
 src/types/database.types.ts
+supabase/schema.sql
 package-lock.json
 dist
 release
