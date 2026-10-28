@@ -53,6 +53,7 @@ const likePattern = (q) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 const magistrate = randomUUID();
 const outsider = randomUUID();
+const curator = randomUUID();
 const district = randomUUID();
 const court = randomUUID();
 const otherCourt = randomUUID();
@@ -155,7 +156,12 @@ values
    '{"provider":"email","providers":["email"]}', '{"full_name":"BE13 Magistrate"}', now(), now(), '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', ${lit(outsider)}, 'authenticated', 'authenticated',
    'be13-outsider-${outsider.slice(0, 8)}@example.test', '', now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"BE13 Outsider"}', now(), now(), '', '', '', '');
+   '{"provider":"email","providers":["email"]}', '{"full_name":"BE13 Outsider"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', ${lit(curator)}, 'authenticated', 'authenticated',
+   'be13-curator-${curator.slice(0, 8)}@example.test', '', now(),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"BE13 Curator"}', now(), now(), '', '', '', '');
+-- Only an admin may add canonical Case Law (case_law_ownership_guard).
+update public.profiles set role = 'admin' where id = ${lit(curator)};
 insert into public.magisterial_districts (id, name) values (${lit(district)}, 'BE13 District ${district.slice(0, 8)}');
 insert into public.courts (id, name, jurisdiction, district_id, is_active) values
   (${lit(court)}, 'BE13 Court ${court.slice(0, 8)}', 'Test', ${lit(district)}, true),
@@ -163,10 +169,12 @@ insert into public.courts (id, name, jurisdiction, district_id, is_active) value
 insert into public.magistrate_courts (profile_id, court_id) values
   (${lit(magistrate)}, ${lit(court)}), (${lit(outsider)}, ${lit(otherCourt)});
 
--- The library: bulk rows go in without the per-row audit trigger (rolled back anyway).
--- Needs table ownership; without it the rows simply go in with their triggers.
-do $ begin alter table public.case_law disable trigger user;
-exception when insufficient_privilege then null; end $;
+-- The library, added by the curator. The bulk rows skip the per-row audit
+-- trigger when the role owns the table (rolled back anyway); otherwise they
+-- simply go in with their triggers.
+set local request.jwt.claims = ${lit(claims(curator))};
+do $do$ begin alter table public.case_law disable trigger user;
+exception when insufficient_privilege then null; end $do$;
 insert into public.case_law (case_name, citation, court, jurisdiction, summary, review_status)
 select
   initcap(substr(md5(g::text), 1, 9)) || ' v ' || initcap(substr(md5((g * 7)::text), 1, 9)),
@@ -180,12 +188,15 @@ from generate_series(1, ${CASE_LAW_ROWS}) g;
 insert into public.case_law (case_name, citation, court, jurisdiction, summary, review_status, owner_id, is_discoverable)
 values
   ('Quillfeather v Rexmoor', '[2021] FIXCIT 4242', 'Fixture Court of Appeal', 'Fixture',
-   'Held 100% liable for the collapse.', 'published', null, false),
-  -- Matches every query, but is another magistrate's private research.
-  ('Quillfeather v Rexmoor (private notes)', '[2021] FIXCIT 4242 PRIVATE', 'Fixture Court of Appeal',
-   'Fixture', 'Held 100% liable, private.', 'published', ${lit(outsider)}, false);
-do $ begin alter table public.case_law enable trigger user;
-exception when insufficient_privilege then null; end $;
+   'Held 100% liable for the collapse.', 'published', null, false);
+do $do$ begin alter table public.case_law enable trigger user;
+exception when insufficient_privilege then null; end $do$;
+-- Matches every query, but is another magistrate's private research (the
+-- ownership guard stamps the owner from the session).
+set local request.jwt.claims = ${lit(claims(outsider))};
+insert into public.case_law (case_name, citation, court, jurisdiction, summary, owner_id, is_discoverable)
+values ('Quillfeather v Rexmoor (private notes)', '[2021] FIXCIT 4242 PRIVATE', 'Fixture Court of Appeal',
+  'Fixture', 'Held 100% liable, private.', ${lit(outsider)}, false);
 
 set local request.jwt.claims = ${lit(claims(magistrate))};
 insert into public.docket_matters (case_number, matter_title, charge_or_issue, court_id, district_id)
