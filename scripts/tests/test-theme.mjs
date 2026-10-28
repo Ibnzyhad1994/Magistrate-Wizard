@@ -15,6 +15,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { badgeVariants } from "@/components/ui/badge-variants";
+import { SEGMENT_ON_CLASS, SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -506,6 +507,39 @@ for (const [label, block] of PALETTES) {
     [],
   );
   check(`${label}: the focus ring meets 3:1 on every surface step`, ratiosBelow("ring", 3), []);
+}
+
+// A selected segment (docket Weekly / Daily / Monthly, calendar Month /
+// Agenda, segmented Tabs) is raised one step above its surface-2 track:
+// surface-1 in the light palettes, surface-3 in dark and colourblind dark,
+// where surface-1 is darker than the track and would read as pressed in.
+// High contrast inverts the selected segment to foreground instead.
+const tabsSrc = readFileSync("src/components/ui/tabs.tsx", "utf8");
+check(
+  "segment track is surface-2 and the selected segment one step above it",
+  [
+    SEGMENT_TRACK_CLASS.split(/\s+/).includes("bg-surface-2"),
+    SEGMENT_ON_CLASS.split(/\s+/).includes("bg-surface-1"),
+    SEGMENT_ON_CLASS.split(/\s+/).includes("dim:bg-surface-3"),
+    SEGMENT_ON_CLASS.split(/\s+/).includes("hc:bg-foreground"),
+    tabsSrc.includes("data-[state=active]:bg-surface-1"),
+    tabsSrc.includes("dim:data-[state=active]:bg-surface-3"),
+    tabsSrc.includes("hc:data-[state=active]:bg-foreground"),
+  ],
+  [true, true, true, true, true, true, true],
+);
+for (const [label, block, raised] of [
+  ["light", rootBlock, "surface-1"],
+  ["colourblind-safe light", cbLightBlock, "surface-1"],
+  ["dark", darkBlock, "surface-3"],
+  ["colourblind-safe dark", cbDarkBlock, "surface-3"],
+]) {
+  check(
+    `${label}: the selected segment (${raised}) is lighter than its surface-2 track`,
+    luminance(hslToRgb(tokenValue(block, raised))) >
+      luminance(hslToRgb(tokenValue(block, "surface-2"))),
+    true,
+  );
 }
 
 // Dark and colourblind dark are the Night Sitting ladder: each step lighter
