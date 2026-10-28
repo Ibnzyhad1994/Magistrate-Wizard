@@ -118,6 +118,7 @@
     "test:clerk-access-security": "node --import ./scripts/test-support/register.mjs scripts/tests/test-clerk-access-security.mjs",
     "test:anon-auth-surface": "node --import ./scripts/test-support/register.mjs scripts/tests/test-anon-auth-surface.mjs",
     "test:anon-definer-surface": "node --import ./scripts/test-support/register.mjs scripts/tests/test-anon-definer-surface.mjs",
+    "test:auth-event-anon-cap": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-event-anon-cap.mjs",
     "test:court-request-recovery-rpc": "node --import ./scripts/test-support/register.mjs scripts/tests/test-court-request-recovery-rpc.mjs",
     "test:pentest": "node --import ./scripts/test-support/register.mjs scripts/tests/pentest-security-audit.mjs",
     "test:seed-heuristics": "node scripts/tests/test-seed-heuristics.mjs",
