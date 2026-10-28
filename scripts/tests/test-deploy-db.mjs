@@ -5,9 +5,12 @@
  *   - scripts/db-push-plan.mjs reads the CLI's dry-run result, refuses
  *     anything that is not a dry run, renders the job summary and compares
  *     plans exactly;
- *   - the workflow starts only by hand (no push trigger), plans in the
+ *   - the workflow never starts on its own (no push trigger), plans in the
  *     reviewer-free `production-plan` environment and applies in
- *     `production`, after the plan and only after verifying it.
+ *     `production`, after the plan and only after verifying it;
+ *   - the release (develop-ci-automerge.yml) runs it before it moves main,
+ *     so the frontend Vercel builds from main never goes live ahead of its
+ *     schema.
  *
  * The plan and verify steps also run against the local stack in
  * migration-ci.yml.
@@ -122,7 +125,7 @@ const apply = job("apply");
 check(
   "deploy-db has no automatic trigger",
   [...triggers.matchAll(/^ {2}([a-z_]+):/gm)].map((match) => match[1]),
-  ["workflow_dispatch"],
+  ["workflow_dispatch", "workflow_call"],
 );
 check(
   "the plan job runs in the reviewer-free production-plan environment",
@@ -141,7 +144,12 @@ check(
   /environment:\s*\n\s*name: production\n/.test(apply) && apply.includes("needs: plan"),
   true,
 );
-check("the apply job runs only when asked to", /\n {4}if: inputs\.apply\b/.test(apply), true);
+check(
+  "the apply job runs only when asked to, by hand from main or in the release on develop",
+  apply.includes("(inputs.apply && github.ref == 'refs/heads/main') ||") &&
+    apply.includes("(inputs.release && github.ref == 'refs/heads/develop')"),
+  true,
+);
 const verifyAt = apply.indexOf("node scripts/db-push-plan.mjs verify --linked");
 const pushAt = apply.indexOf('"$SUPABASE_CLI" db push --linked');
 check(
@@ -149,6 +157,33 @@ check(
   verifyAt !== -1 &&
     pushAt > verifyAt &&
     apply.includes("DB_PUSH_PLAN: ${{ needs.plan.outputs.plan }}"),
+  true,
+);
+
+// ---------- the release orders the frontend after the database ----------
+const release = readFileSync(".github/workflows/develop-ci-automerge.yml", "utf8");
+const releaseJob = (name) => {
+  const start = release.indexOf(`\n  ${name}:\n`);
+  const next = release.slice(start + 1).search(/\n {2}[a-z][\w-]*:\n/);
+  return next === -1 ? release.slice(start) : release.slice(start, start + 1 + next);
+};
+const database = releaseJob("database");
+check(
+  "the release applies the database through deploy-db.yml",
+  database.includes("uses: ./.github/workflows/deploy-db.yml") &&
+    /with:\s*\n\s*release: true\n/.test(database),
+  true,
+);
+check(
+  "the release runs the database only when dispatched on develop",
+  database.includes(
+    "if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'",
+  ),
+  true,
+);
+check(
+  "main (the production frontend) moves only after the database",
+  /\n {4}needs: \[[^\]]*\bdatabase\b[^\]]*\]/.test(releaseJob("merge-to-main")),
   true,
 );
 

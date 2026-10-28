@@ -81,7 +81,8 @@ time.
    real admin profile. Migration CI does the same apply on every develop
    push.
 5. **Review / approve**, then **apply** (`supabase db push` against the
-   linked project, or `deploy-db.yml` for production from `main`).
+   linked preview project; production gets it in the release, see
+   "Release order" below).
 6. **Verify live**: structure, behavioural regression (RLS/privacy changes
    get a rollback-only pass), Supabase advisors (security + performance) —
    call out any _new_ finding explicitly.
@@ -106,8 +107,46 @@ supabase functions deploy storage-cleanup
 
 `<project-ref>` is the id in `https://<project-ref>.supabase.co`. The
 production and develop-preview refs, and which branch feeds which, are in
-`docs/environments.md`. On `main`, `.github/workflows/deploy-db.yml` runs
-the same commands inside the `production` GitHub Environment.
+`docs/environments.md`. For production, `.github/workflows/deploy-db.yml`
+runs the same commands; it never starts on its own.
+
+### Release order
+
+A release is one manual run of `develop-ci-automerge.yml` on `develop`
+(Actions → "Develop CI + Fast-forward to Main" → Run workflow). In order:
+
+1. every gate (audit, lint, typecheck, tests, build, Playwright smokes, the
+   live database suite);
+2. `deploy-db.yml`'s **plan** job: `db push --dry-run` against production,
+   listed in the run's summary, in the reviewer-free `production-plan`
+   environment;
+3. its **apply** job, in the `production` environment: a reviewer reads the
+   plan and approves; the job plans again, stops unless production still
+   lacks exactly that list, then pushes the migrations and deploys the
+   edge functions;
+4. the fast-forward of `main` to the tested commit, which Vercel builds as
+   the production frontend.
+
+So the frontend never goes live ahead of its schema. A rejected approval or
+a failed apply leaves `main`, and the live frontend, where they were. If
+the apply succeeds but the fast-forward fails (someone pushed to `main` out
+of band), production's schema is ahead of `main` until it is fixed: rebase
+`develop` onto `main` and release again.
+
+To see what production lacks without changing it, run "Deploy database
+(production)" by hand with "apply" unticked. With "apply" ticked, from
+`main` only, it applies `main` again (for example to redeploy the
+functions).
+
+**Expand, then contract.** Between the apply (step 3) and Vercel finishing
+its build (step 4), and again after any Vercel rollback, the live frontend
+is the previous release running on the new schema. So a migration never
+breaks the frontend that is live when it applies: add columns, tables and
+functions (nullable or defaulted), and drop, rename or tighten them only in
+a later release, once no live frontend uses the old shape.
+
+Apply to the develop preview first (above), and let the live suite and a
+preview check pass there, before releasing a migration to production.
 
 ## After the first migration run on a new project
 

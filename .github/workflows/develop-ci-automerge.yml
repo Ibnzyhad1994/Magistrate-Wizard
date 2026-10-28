@@ -5,13 +5,14 @@ name: Develop CI + Fast-forward to Main
 # Playwright smokes and the live database suite (reused from e2e.yml and
 # live-db.yml, which already run on their own for pull requests).
 #
-# `main` is NOT moved by a push. Moving main deploys production: Vercel builds
-# the frontend from main, and deploy-db.yml runs `supabase db push` against the
-# production project when the push touches supabase/**. So the fast-forward
-# only runs when someone dispatches this workflow by hand on `develop`
-# (Actions → "Develop CI + Fast-forward to Main" → Run workflow), which runs
-# every gate below first. The production-database timing stays with whoever
-# presses that button.
+# `main` is NOT moved by a push. Moving main deploys the production frontend
+# (Vercel builds main). So the release only runs when someone dispatches this
+# workflow by hand on `develop` (Actions → "Develop CI + Fast-forward to Main"
+# → Run workflow): every gate below, then the production database
+# (deploy-db.yml: its plan in the job summary, then the apply once the
+# `production` environment's reviewers approve), then the fast-forward. The
+# frontend therefore never goes live ahead of the schema it needs (BE-03); a
+# rejected or failed database apply leaves main where it was.
 #
 # The audit is its own job so it never hides the other gates. It blocks only
 # on critical advisories in production dependencies; dev-only and high
@@ -160,10 +161,20 @@ jobs:
     permissions:
       contents: read
 
-  # Manual only: moving main deploys production (Vercel, and deploy-db.yml
-  # for supabase/** changes). Dispatch on develop to run it.
-  merge-to-main:
+  # The release, manual only: the production database first, for the commit
+  # this run tested. Its plan is in the run summary before anyone approves.
+  database:
     needs: [audit, test, e2e, live-db]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'
+    uses: ./.github/workflows/deploy-db.yml
+    with:
+      release: true
+    permissions:
+      contents: read
+
+  # Then the frontend: moving main deploys it (Vercel builds main).
+  merge-to-main:
+    needs: [audit, test, e2e, live-db, database]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -186,7 +197,7 @@ jobs:
           git push origin main
 
   notify-failure:
-    needs: [audit, test, e2e, live-db, merge-to-main]
+    needs: [audit, test, e2e, live-db, database, merge-to-main]
     if: failure() && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -220,14 +231,15 @@ jobs:
               core.info(`Opened #${created.number}`);
             }
 
-  # Runs after a green push (merge-to-main skipped) or a green dispatch
-  # (merge-to-main succeeded).
+  # Runs after a green push (database and merge-to-main skipped) or a green
+  # dispatch (both succeeded).
   notify-recovered:
-    needs: [audit, test, e2e, live-db, merge-to-main]
+    needs: [audit, test, e2e, live-db, database, merge-to-main]
     if: >-
       !cancelled() && github.ref == 'refs/heads/develop' &&
       needs.audit.result == 'success' && needs.test.result == 'success' &&
       needs.e2e.result == 'success' && needs.live-db.result == 'success' &&
+      (needs.database.result == 'success' || needs.database.result == 'skipped') &&
       (needs.merge-to-main.result == 'success' || needs.merge-to-main.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 5

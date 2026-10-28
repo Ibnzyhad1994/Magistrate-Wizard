@@ -6,27 +6,40 @@ name: Deploy database (production)
 # depending on a new migration could deploy (via Vercel, on the same push to
 # main) before the schema did.
 #
-# Manual dispatch only (BE-03): Actions → "Deploy database (production)" →
-# Run workflow. It used to run on every push to main touching supabase/**,
-# with its dry run behind the environment approval, so the approver signed off
-# blind. It now runs in two jobs:
+# It never runs on its own (BE-03). It used to run on every push to main
+# touching supabase/**, with its dry run behind the environment approval, so
+# the approver signed off blind. Two things start it:
+#
+#   - the release: develop-ci-automerge.yml, dispatched on develop, calls it
+#     for the commit it tested once every gate is green, and fast-forwards
+#     main only after it succeeds. main is the production frontend (Vercel
+#     builds it), so the frontend never goes live ahead of its schema;
+#   - by hand: Actions → "Deploy database (production)" → Run workflow, to see
+#     production's plan, or (from main, "apply" ticked) to apply main again,
+#     for example to redeploy the functions.
+#
+# It runs in two jobs:
 #
 #   plan   `db push --dry-run` against production, written to the job summary.
 #          Runs in the reviewer-free environment `production-plan`, so anyone
 #          can see what production lacks without an approval. A migration
 #          that already exists remotely under a different name fails here,
 #          before anything is written.
-#   apply  Only when the run was started with "apply" ticked, and only from
-#          main. Runs in the environment `production`, whose required
-#          reviewers approve after reading the plan. It plans again and stops
-#          unless production still lacks exactly the planned list, then
-#          `db push` and `functions deploy`.
+#   apply  In the release, or by hand from main with "apply" ticked. Runs in
+#          the environment `production`, whose required reviewers approve
+#          after reading the plan. It plans again and stops unless production
+#          still lacks exactly the planned list, then `db push` and
+#          `functions deploy`.
 #
 # Leave "apply" unticked to see production's state without changing it.
 #
+# Between the apply and Vercel's build of main the live frontend is the
+# previous one, so every migration must keep that frontend working (expand
+# now, contract in a later release: supabase/README.md "Release order").
+#
 # Environments (Settings → Environments; this cannot be verified or set from
 # the repository). Both hold the three secrets below and allow only the
-# branches that may deploy:
+# branches that deploy, `develop` (the release) and `main`:
 #   production-plan  no reviewers
 #   production       REQUIRED REVIEWERS, so a human approves every
 #                    production schema change after reading the plan
@@ -46,6 +59,12 @@ on:
         description: "Apply the plan to production (from main, after the production environment's approval). Unticked: plan only."
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      release:
+        description: "Called by the release on develop: apply, then the caller moves main."
+        type: boolean
+        required: true
 
 permissions:
   contents: read
@@ -63,10 +82,12 @@ jobs:
     outputs:
       plan: ${{ steps.plan.outputs.plan }}
     steps:
-      - name: Apply runs only from main
-        if: inputs.apply && github.ref != 'refs/heads/main'
+      - name: Apply runs only from main, or in the release on develop
+        if: >-
+          (inputs.apply && github.ref != 'refs/heads/main') ||
+          (inputs.release && github.ref != 'refs/heads/develop')
         run: |
-          echo "::error::Apply was requested on $GITHUB_REF. Production is deployed from main only; run it there, or untick apply to plan."
+          echo "::error::Apply was requested on $GITHUB_REF. By hand, production is applied from main only; the release runs on develop. Untick apply to plan."
           exit 1
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -98,7 +119,9 @@ jobs:
 
   apply:
     needs: plan
-    if: inputs.apply && github.ref == 'refs/heads/main'
+    if: >-
+      (inputs.apply && github.ref == 'refs/heads/main') ||
+      (inputs.release && github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
