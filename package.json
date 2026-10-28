@@ -56,6 +56,7 @@
     "test:storage-cleanup": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-cleanup.mjs",
     "test:storage-sharing-notices": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-sharing-notices.mjs",
     "test:storage-cleanup-schedule": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-cleanup-schedule.mjs",
+    "test:storage-cleanup-retry": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-cleanup-retry.mjs",
     "test:edge-function-cors": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors.mjs",
     "test:edge-function-cors-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors-live.mjs",
     "test:pinned-versions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-pinned-versions.mjs",

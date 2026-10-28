@@ -6,8 +6,9 @@
  *   BE-07  a matter purged from the bin by the database's own job (no user
  *          delete follows it) loses its court documents from Storage within
  *          a couple of cron ticks, and its queue row is gone;
- *          a removal that keeps failing backs off, then is dead-lettered and
- *          no longer retried, so it cannot block the rest of the queue;
+ *          a run takes only due, live rows: a row that is not yet due, or
+ *          has been dead-lettered after failing too often, is left alone, so
+ *          failing rows cannot block the rest of the queue;
  *          no client role can ask for a scheduled run.
  *
  * Needs the scheduled-call configuration that live-db.yml writes after
@@ -53,7 +54,6 @@ const noSession = { auth: { autoRefreshToken: false, persistSession: false } };
 const admin = createClient(URL, SERVICE, noSession);
 const MARK = `BE07-${Date.now() % 1_000_000}`;
 const PASSWORD = "BE07-fixture-pass-123!";
-const DEAD_BUCKET = `${MARK.toLowerCase()}-missing-bucket`;
 
 const created = { users: [], courts: [], matters: [], objects: [], districtId: null };
 
@@ -210,53 +210,64 @@ async function main() {
   check("BE-07 the purged matter's file leaves Storage on the schedule", drained, true);
   check("BE-07 its queue row is gone", await queueRow("documents", path), null);
 
-  // ---------- a removal that keeps failing backs off, then is dead-lettered ----------
-  const deadPath = `${MARK}/never-removable.txt`;
+  // ---------- runs take only due, live rows ----------
+  // A real orphan file (no documents row) queued by hand, so every run,
+  // scheduled or not, would remove it the moment it may. The retry rule
+  // that sets these columns after a failure is test-storage-cleanup-retry.
+  const orphan = `${user.id}/${MARK}-orphan.txt`;
   must(
-    await admin
-      .from("storage_cleanup_queue")
-      .insert({ bucket_id: DEAD_BUCKET, object_name: deadPath }),
-    "queue a row in a bucket that does not exist",
+    await admin.storage
+      .from("documents")
+      .upload(orphan, new Blob([`${MARK} orphan`], { type: "text/plain" }), {
+        contentType: "text/plain",
+      }),
+    "upload orphan",
+  );
+  created.objects.push(orphan);
+  const setRow = async (fields) =>
+    must(
+      await admin
+        .from("storage_cleanup_queue")
+        .update(fields)
+        .eq("bucket_id", "documents")
+        .eq("object_name", orphan),
+      "update orphan row",
+    );
+  const aSecondAgo = () => new Date(Date.now() - 1_000).toISOString();
+  must(
+    await admin.from("storage_cleanup_queue").insert({
+      bucket_id: "documents",
+      object_name: orphan,
+      attempts: 3,
+      next_attempt_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+    }),
+    "queue the orphan, not yet due",
   );
   {
     const { status } = await runCleanup();
-    check("BE-07 a run with a failing row still answers 200", status, 200);
-    const row = await queueRow(DEAD_BUCKET, deadPath);
-    // >= 1, not 1: a scheduled run may take the same due row at the same moment.
-    check("BE-07 the failing row counts its attempt", (row?.attempts ?? 0) >= 1, true);
+    check("BE-07 a run answers 200", status, 200);
+    check("BE-07 a row that is not yet due is left for later", await stored(orphan), true);
+    check("BE-07 and stays queued", (await queueRow("documents", orphan))?.attempts, 3);
+  }
+  {
+    await setRow({ next_attempt_at: aSecondAgo(), dead_lettered_at: new Date().toISOString() });
+    await runCleanup();
+    check("BE-07 a dead-lettered row is not retried", await stored(orphan), true);
     check(
-      "BE-07 the failing row is pushed back, not retried at once",
-      !!row && Date.parse(row.next_attempt_at) > Date.now(),
+      "BE-07 and stays queued for an operator",
+      !!(await queueRow("documents", orphan))?.dead_lettered_at,
       true,
     );
-    check("BE-07 one failure does not dead-letter it", row?.dead_lettered_at ?? null, null);
   }
   {
-    must(
-      await admin
-        .from("storage_cleanup_queue")
-        .update({ attempts: 7, next_attempt_at: new Date(Date.now() - 1_000).toISOString() })
-        .eq("bucket_id", DEAD_BUCKET)
-        .eq("object_name", deadPath),
-      "make the row due on its last attempt",
-    );
+    await setRow({ next_attempt_at: aSecondAgo(), dead_lettered_at: null });
     await runCleanup();
-    const row = await queueRow(DEAD_BUCKET, deadPath);
-    check("BE-07 the eighth failure dead-letters the row", !!row?.dead_lettered_at, true);
-    check("BE-07 the dead-lettered row keeps its last error", !!row?.last_error, true);
-  }
-  {
-    must(
-      await admin
-        .from("storage_cleanup_queue")
-        .update({ next_attempt_at: new Date(Date.now() - 1_000).toISOString() })
-        .eq("bucket_id", DEAD_BUCKET)
-        .eq("object_name", deadPath),
-      "make the dead-lettered row due again",
+    check(
+      "BE-07 control: once due and live again, the file is removed",
+      await stored(orphan),
+      false,
     );
-    await runCleanup();
-    const row = await queueRow(DEAD_BUCKET, deadPath);
-    check("BE-07 a dead-lettered row is not retried", row?.attempts, 8);
+    check("BE-07 control: and its queue row is gone", await queueRow("documents", orphan), null);
   }
 
   console.log(
@@ -266,7 +277,6 @@ async function main() {
 
 async function cleanup() {
   try {
-    await admin.from("storage_cleanup_queue").delete().eq("bucket_id", DEAD_BUCKET);
     if (created.objects.length > 0) {
       await admin.storage.from("documents").remove(created.objects);
       await admin.from("storage_cleanup_queue").delete().in("object_name", created.objects);

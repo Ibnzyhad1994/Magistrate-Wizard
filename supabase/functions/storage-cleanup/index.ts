@@ -8,7 +8,7 @@
 // the Storage API with the service role, then drops their queue rows.
 // A file that a `documents` row references again is kept and dequeued.
 // A failed removal stays queued (attempts, last_error) and is retried with
-// a growing delay (next_attempt_at); after MAX_ATTEMPTS it is dead-lettered
+// a growing delay (next_attempt_at); after 8 attempts it is dead-lettered
 // (dead_lettered_at) for an operator, so failing rows never starve the rest.
 //
 // Callers: the app after every delete, and pg_cron every minute through
@@ -23,13 +23,12 @@
 // No email, no outbound call beyond Storage.
 
 import { createClient } from "@supabase/supabase-js";
+import { afterFailedRemoval } from "../_shared/cleanup-retry.ts";
 import { CORS_HEADERS, preflight } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BATCH_SIZE = 100;
-const MAX_ATTEMPTS = 8;
-const MAX_BACKOFF_MS = 24 * 60 * 60 * 1000;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const json = (body: unknown, status = 200) =>
@@ -54,10 +53,6 @@ const isAuthorised = async (req: Request) => {
 };
 
 type QueueRow = { bucket_id: string; object_name: string; attempts: number };
-
-// One minute after the first failure, doubling, capped at a day.
-const retryAt = (attempts: number) =>
-  new Date(Date.now() + Math.min(60_000 * 2 ** (attempts - 1), MAX_BACKOFF_MS)).toISOString();
 
 Deno.serve(async (req) => {
   // The app invokes this from the browser, so the preflight must pass.
@@ -121,17 +116,11 @@ Deno.serve(async (req) => {
     if (removeError) {
       failed += orphans.length;
       for (const row of orphans) {
-        const attempts = row.attempts + 1;
-        const dead = attempts >= MAX_ATTEMPTS;
-        if (dead) deadLettered += 1;
+        const next = afterFailedRemoval(row.attempts, removeError.message);
+        if (next.dead_lettered_at) deadLettered += 1;
         await admin
           .from("storage_cleanup_queue")
-          .update({
-            attempts,
-            last_error: removeError.message,
-            next_attempt_at: retryAt(attempts),
-            dead_lettered_at: dead ? new Date().toISOString() : null,
-          })
+          .update(next)
           .eq("bucket_id", bucket)
           .eq("object_name", row.object_name);
       }
