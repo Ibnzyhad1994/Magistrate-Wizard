@@ -62,6 +62,7 @@ import { DocketStageStrip, type OverviewLogAppearance } from "@/pages/docket/doc
 import { HearingProgressSection } from "@/pages/docket/sections/hearing-progress-section";
 import { DocketEventDialog } from "@/pages/docket/event-dialog";
 import { NextDateDialog } from "@/pages/docket/next-date-cell";
+import { Alert } from "@/components/ui/alert";
 
 type MatterStatus = (typeof DOCKET_MATTER_STATUSES)[number];
 
@@ -296,9 +297,10 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
       </Card>
 
       {boardComplete && (
-        <div
+        <Alert
+          variant="warning"
           role="status"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)] px-3 py-2 text-sm"
+          className="flex flex-wrap items-center justify-between gap-2 py-2"
         >
           <p className="text-foreground">
             <span className="font-medium">Board complete.</span> Every stage is done, but
@@ -338,7 +340,7 @@ export function OverviewSection({ matter }: OverviewSectionProps) {
               </Button>
             </div>
           )}
-        </div>
+        </Alert>
       )}
 
       <DocketStageStrip

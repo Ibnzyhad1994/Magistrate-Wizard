@@ -70,7 +70,7 @@ export default function ClerkAccessRequestsPage() {
             ) : (
               <div className="mt-4 space-y-3">
                 {pending.map((r) => (
-                  <Card key={r.id} className="border-border bg-foreground/5">
+                  <Card key={r.id}>
                     <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                       <div>
                         <p className="font-medium text-foreground">
@@ -126,7 +126,7 @@ export default function ClerkAccessRequestsPage() {
             ) : (
               <div className="mt-4 space-y-3">
                 {activeRoster.map((row) => (
-                  <Card key={row.id} className="border-border bg-foreground/5">
+                  <Card key={row.id}>
                     <CardContent className="flex items-center justify-between gap-4 py-4">
                       <div>
                         <p className="font-medium text-foreground">
@@ -161,7 +161,7 @@ export default function ClerkAccessRequestsPage() {
           <TabsContent value="history">
             <div className="mt-4 space-y-3">
               {decided.map((r) => (
-                <Card key={r.id} className="border-border bg-foreground/5">
+                <Card key={r.id}>
                   <CardContent className="flex items-center justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">
@@ -185,7 +185,7 @@ export default function ClerkAccessRequestsPage() {
                 </Card>
               ))}
               {revokedRoster.map((row) => (
-                <Card key={row.id} className="border-border bg-foreground/5">
+                <Card key={row.id}>
                   <CardContent className="flex items-center justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">

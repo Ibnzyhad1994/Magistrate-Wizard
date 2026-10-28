@@ -33,6 +33,8 @@ import { useUploadDocument } from "@/hooks/use-documents";
 import type { Json, TablesUpdate } from "@/types/database.types";
 import { matterClassificationLabel } from "@/lib/validations/docket";
 import { ProcedureColumnHeading } from "@/pages/docket/procedure-column-heading";
+import { badgeVariants } from "@/components/ui/badge-variants";
+import { cn } from "@/lib/utils";
 
 export type LogAppearanceRequest = {
   matterId: string;
@@ -170,12 +172,12 @@ function DocketStageRow({
             </p>
           )}
           {classification && (
-            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+            <span className={cn(badgeVariants({ variant: "tag" }), "mt-0.5")}>
               {classification}
             </span>
           )}
           {showCourt && row.court_name && (
-            <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+            <span className={cn(badgeVariants({ variant: "tag" }), "mt-0.5")}>
               {row.court_name}
             </span>
           )}

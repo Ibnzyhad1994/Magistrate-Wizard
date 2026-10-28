@@ -643,7 +643,7 @@ export function LegislationPdfViewer({
       )}
 
       {searchOpen && showScannedNotice && (
-        <div className="border-b border-notice-action/35 bg-notice-action/10 px-3 py-2 text-xs text-notice-action">
+        <div className="border-b border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
           This PDF has no searchable text, but you can still read it.
         </div>
       )}

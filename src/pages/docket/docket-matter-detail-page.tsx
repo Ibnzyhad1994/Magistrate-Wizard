@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageError, PageNotFound } from "@/components/browse/page-error";
+import { Alert } from "@/components/ui/alert";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import {
   useBinDocketMatter,
@@ -143,7 +144,7 @@ export default function DocketMatterDetailPage() {
       />
       <div className="browse-gutter relative z-10 -mt-6 space-y-4 pb-20">
         {isBinned && matter.deleted_at && (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+          <Alert variant="destructive" role="status">
             <p className="font-medium text-foreground">This file is in the bin</p>
             <p className="mt-1 text-muted-foreground">
               Permanently deleted after{" "}
@@ -176,7 +177,7 @@ export default function DocketMatterDetailPage() {
                 <Link to={ROUTES.docketBin}>Open bin</Link>
               </Button>
             </div>
-          </div>
+          </Alert>
         )}
 
         <div className="flex flex-wrap items-center gap-3">

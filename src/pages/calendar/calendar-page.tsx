@@ -22,6 +22,7 @@ import {
   toTitleCase,
 } from "@/lib/utils";
 import { isInactiveEventStatus } from "@/lib/google-calendar/map-event";
+import { badgeVariants } from "@/components/ui/badge-variants";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -292,7 +293,7 @@ export default function CalendarPage() {
                     {event.case_number} · {event.matter_title}
                   </p>
                   {event.court_name && (
-                    <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+                    <span className={cn(badgeVariants({ variant: "tag" }), "mr-1 mt-0.5")}>
                       {event.court_name}
                     </span>
                   )}

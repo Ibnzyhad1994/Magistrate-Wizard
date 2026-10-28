@@ -291,7 +291,7 @@ export function TourOverlay({
           )}
           <div
             ref={cardRef}
-            className="absolute z-[82] w-[min(20rem,calc(100vw-2rem))] rounded-md border border-foreground/15 bg-card p-4 text-foreground shadow-xl"
+            className="absolute z-[82] w-[min(20rem,calc(100vw-2rem))] rounded-md border border-hairline bg-card p-4 text-foreground shadow-elevation-3 hc:border-border"
             style={{ top: cardPos.top, left: cardPos.left }}
           >
             <p className="eyebrow text-muted-foreground">

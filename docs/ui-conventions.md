@@ -8,7 +8,7 @@ Short rules for anything user-facing. Primitives live in `src/components/ui`; if
 - **Spinner** (`Loader2` + `sr-only` text) only for an action in flight (a button, a save indicator), never for a page.
 - **`PageLoader`** for a full-route first load only.
 - **`EmptyState`** for "nothing here yet" — never a bare `<p>No … yet</p>`. Give it the one action that creates the first item.
-- **`Alert`** (`ui/alert.tsx`) for inline, persistent notices; **toast** for transient outcomes of an action. Never both for the same event.
+- **`Alert`** (`ui/alert.tsx`) for inline, persistent notices (a warning, a hint beside a form, a record in the bin), never a hand-built tinted `div`; pass `role="note"` or `role="status"` when the notice is not urgent, so it is not announced as an alert; **toast** for transient outcomes of an action. Never both for the same event.
 
 ## Toasts
 
@@ -90,6 +90,9 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Status badges take their variant from `statusBadgeVariant` (`src/components/common/status-badge-variant.ts`): `success` (green) for a live or in-force record, `secondary` / `outline` for not yet or no longer live, `destructive` for refused, dismissed or in error. A status is never the `default` (red) badge; red belongs to the commit action.
 - A browse tile's status flag (`TitleCard` `status`, on the art and on list rows alike) is a `bg-card` chip with an inset `ring-border` edge, a 2px `rounded-sm` tag, and a dot from `statusDotClass`, the same map as a fill: green live, red refused, neutral otherwise. The chip never takes the accent or a status fill, so its word stays at 15:1 over any art in every palette, and each dot clears 3:1 against it; `npm run test:theme` enforces both. A flag that is not a status (`Canonical`, an appearance type, an instrument type) passes `badge` alone and has no dot.
 - Chrome carries no accent. The account avatar's initials sit on a neutral `bg-surface-3` chip with `text-foreground` and a `ring-hairline` edge, and the unread count is a `bg-foreground` chip with `text-background` ink, cut out from the bell by a `ring-background` notch. The count stays `aria-hidden`; the bell's label announces it. Both pairs are at least 4.5:1 in every palette (`npm run test:theme`). The accent belongs to commit actions and the active rule only.
+- A descriptive tag that is not a status (a classification, a court, "Brought forward") is the `tag` Badge variant: neutral `bg-surface-2`, muted words, `rounded-md`, one line that truncates. A status is a `Badge` from `statusBadgeVariant`, never a hand-built pill.
+- Filter pills (a row of toggles with `aria-pressed`) use `filterPillClass` (`components/ui/filter-pill.ts`): selected inverts to ink, never the accent.
+- Menus, tooltips, hints, the date picker and the walkthrough card take `shadow-elevation-3`; a sticky column ends in a `border-r` divider rather than a drawn shadow.
 - Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards and chips are `rounded-md`; a still is `rounded-lg`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
 - Fields share one recipe: `Input`, `Textarea` and `Select` are `rounded-md`, `bg-card`, `border-input`, no shadow, and the one focus ring. Use the primitive rather than a raw `<input>` or `<textarea>` so a field cannot drift from it.

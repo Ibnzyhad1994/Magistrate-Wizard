@@ -25,6 +25,7 @@ import { formatDate, cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 import { CreateBenchNoteDialog } from "@/components/bench-notes/create-bench-note-dialog";
 import { Billboard } from "@/components/browse";
+import { Alert } from "@/components/ui/alert";
 
 const LEVEL_ORDER = ["part", "chapter", "section", "subsection", "paragraph", "schedule"];
 const LEVEL_LABELS: Record<string, string> = {
@@ -186,7 +187,7 @@ export default function LegislationViewerPage() {
         </div>
 
         {statute.is_current_version === false && supersedingStatute && (
-          <div className="rounded-lg border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] p-3 text-sm text-notice-action">
+          <Alert variant="warning" role="note">
             This is a superseded version.{" "}
             <button
               type="button"
@@ -195,7 +196,7 @@ export default function LegislationViewerPage() {
             >
               View the current version: {supersedingStatute.title}
             </button>
-          </div>
+          </Alert>
         )}
 
         <div className="flex flex-wrap items-center gap-2">

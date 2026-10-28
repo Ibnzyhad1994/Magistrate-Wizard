@@ -95,7 +95,7 @@ export default function ClerkAccessPage() {
       />
 
       {approvedCount === 0 && !isPending && (
-        <Card className="max-w-2xl border-border bg-foreground/5">
+        <Card className="max-w-2xl">
           <CardContent className="flex items-start gap-4 pt-6">
             <Gavel className="mt-0.5 h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div>
@@ -140,7 +140,7 @@ export default function ClerkAccessPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(requests ?? []).map((r) => (
-            <Card key={r.id} className="border-border bg-foreground/5">
+            <Card key={r.id}>
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
@@ -177,7 +177,7 @@ export default function ClerkAccessPage() {
           Request access to another court
         </Button>
       ) : (
-        <Card className="max-w-lg border-border bg-foreground/5">
+        <Card className="max-w-lg">
           <CardHeader>
             <CardTitle>Request court access</CardTitle>
             <CardDescription>

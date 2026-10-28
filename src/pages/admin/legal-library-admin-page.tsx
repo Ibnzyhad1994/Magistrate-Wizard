@@ -115,6 +115,7 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { CaseLaw, Statute, LegalAuthorityCourt } from "@/types";
 import { scrollBehavior } from "@/lib/motion";
+import { filterPillClass } from "@/components/ui/filter-pill";
 
 type ReviewRow<T> = T & {
   duplicate_warning: string | null;
@@ -570,15 +571,11 @@ function TagReviewEditor({
               aria-pressed={selected.has(name)}
               aria-label={`${selected.has(name) ? "Deselect" : "Select"} tag ${name}${conf ? `, ${conf} confidence` : ""}`}
               title={title}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                selected.has(name)
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              }`}
+              className={filterPillClass(selected.has(name))}
             >
               {selected.has(name) ? "✓ " : "+ "}
               {name}
-              {conf ? <span className="ml-1 text-[10px] opacity-70">{conf}</span> : null}
+              {conf ? <span className="ml-1 text-[11px] font-normal">{conf}</span> : null}
             </button>
           );
         })}

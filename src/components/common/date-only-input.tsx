@@ -171,7 +171,7 @@ export function DateOnlyInput({
       )}
 
       {open && !disabled && (
-        <div className="absolute z-50 mt-1 w-64 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md">
+        <div className="absolute z-popover mt-1 w-64 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-elevation-3">
           <div className="mb-2 flex items-center justify-between">
             <Button
               type="button"
