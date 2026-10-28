@@ -218,7 +218,7 @@ export function DateOnlyInput({
                   onClick={() => pickDay(day)}
                   className={cn(
                     "h-7 w-7 rounded-md text-sm hover:bg-accent hover:text-accent-foreground",
-                    isSelected && "bg-primary text-primary-foreground hover:bg-primary/90",
+                    isSelected && "bg-foreground text-background hover:bg-foreground/90",
                   )}
                 >
                   {day}

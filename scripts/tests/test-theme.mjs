@@ -942,6 +942,35 @@ check(
   [true, true, false],
 );
 
+// Inks are tinted neutrals on the paper palettes: a few degrees toward the
+// accent's hue at a low chroma, never pure grey. High contrast stays pure.
+const INKS = ["foreground", "card-foreground", "popover-foreground", "muted-foreground"];
+const hueSat = (hsl) =>
+  hsl
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((v) => parseFloat(v));
+for (const [label, block] of [
+  ["light", rootBlock],
+  ["colourblind-safe light", cbLightBlock],
+]) {
+  check(
+    `${label}: inks are tinted neutrals (hue 10-40, saturation 4-16%)`,
+    INKS.filter((name) => {
+      const [h, sat] = hueSat(tokenValue(block, name) ?? "0 0% 0%");
+      return !(h >= 10 && h <= 40 && sat >= 4 && sat <= 16);
+    }),
+    [],
+  );
+}
+check(
+  "high contrast inks stay pure grey",
+  [hcLightBlock, hcDarkBlock].flatMap((block) =>
+    ["foreground", "muted-foreground"].filter((name) => hueSat(tokenValue(block, name))[1] !== 0),
+  ),
+  [],
+);
+
 // Browse tile and hero art come from the --tone-* tokens over each palette's
 // canvas (.tone-art), never a fixed hex table, so the art follows the palette.
 // The type label on the art (--art-ink, full strength) keeps 4.5:1 against every stop

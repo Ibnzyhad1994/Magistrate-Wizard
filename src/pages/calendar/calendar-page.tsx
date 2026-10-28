@@ -206,7 +206,7 @@ export default function CalendarPage() {
                   <div
                     className={cn(
                       "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                      isToday && "bg-primary font-bold text-primary-foreground",
+                      isToday && "bg-foreground font-bold text-background",
                     )}
                   >
                     {Number(date.slice(8))}
@@ -219,7 +219,7 @@ export default function CalendarPage() {
                       <span
                         key={event.id}
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full bg-primary",
+                          "h-1.5 w-1.5 rounded-full bg-foreground",
                           event.pending && "bg-notice-action",
                           isInactiveEventStatus(event.event_status) && "bg-foreground/30",
                         )}
@@ -233,10 +233,11 @@ export default function CalendarPage() {
                           type="button"
                           onClick={() => handleOpenEvent(event)}
                           className={cn(
-                            // A chip with a coloured leading edge, the way an
-                            // event reads in a streaming guide: colour says what
-                            // kind of thing it is, the surface says it is one item.
-                            "block w-full truncate rounded-sm border-l-2 border-primary bg-primary/10 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-primary/20",
+                            // A chip with a leading edge, the way an event reads
+                            // in a guide: the surface says it is one item, the
+                            // edge its kind. A hearing is ink; the accent stays
+                            // for the commit action, so a full month is not red.
+                            "block w-full truncate rounded-sm border-l-2 border-foreground bg-surface-2 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-surface-3",
                             isInactiveEventStatus(event.event_status) &&
                               "border-muted-foreground/40 bg-muted text-muted-foreground line-through",
                             event.pending &&
@@ -283,7 +284,7 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => handleOpenEvent(event)}
                 className={cn(
-                  "flex w-full flex-col gap-1 border-l-2 border-primary px-4 py-3 text-left transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:justify-between",
+                  "flex w-full flex-col gap-1 border-l-2 border-foreground px-4 py-3 text-left transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
                   event.pending && "text-notice-action",
                 )}
