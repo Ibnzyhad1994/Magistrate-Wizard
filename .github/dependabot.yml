@@ -2,6 +2,32 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    # main only ever fast-forwards to develop (develop-ci-automerge.yml), so a
+    # bump merged straight into main would break that fast-forward for good.
+    target-branch: develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # A dependency joins the first group it matches, so the lockstep families
+    # come before the catch-all dev tooling group.
+    groups:
+      # core, the native platforms, the CLI and the plugins share one major.
+      capacitor:
+        patterns:
+          - "@capacitor/*"
+      # Every TipTap extension pins the same TipTap and ProseMirror versions.
+      tiptap:
+        patterns:
+          - "@tiptap/*"
+          - "prosemirror-*"
+      # The plugin and parser are released together and peer on each other.
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/*"
+      # Majors stay as their own pull requests so one breaking tool cannot
+      # hold back every other dev bump.
+      dev-tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
