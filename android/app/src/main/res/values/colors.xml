@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's own colours, so nothing falls back to the Capacitor
+         library's indigo and pink. mw_canvas is the dark canvas (#0D0E11):
+         the launch screen, the window behind the WebView and the bars. -->
+    <color name="mw_canvas">#0D0E11</color>
+    <color name="colorPrimary">#0D0E11</color>
+    <color name="colorPrimaryDark">#0D0E11</color>
+    <color name="colorAccent">#BF3C22</color>
+</resources>

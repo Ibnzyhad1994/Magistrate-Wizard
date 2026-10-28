@@ -9,14 +9,21 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <!-- The window behind the WebView is the dark canvas, so there is no
+         white frame between the splash and the app's first paint. -->
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/mw_canvas</item>
     </style>
 
 
+    <!-- Android 12 and later draw the system splash from these (the icon is
+         the launcher icon); earlier versions draw @drawable/splash. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/mw_canvas</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

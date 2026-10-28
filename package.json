@@ -16,6 +16,7 @@
     "native:sync-version": "node scripts/native-sync-version.mjs",
     "native:android": "node scripts/native-platform.mjs android",
     "native:ios": "node scripts/native-platform.mjs ios",
+    "native:icons": "node scripts/native-icons.mjs",
     "native:electron": "npm run build && npm run native:sync-version && electron .",
     "native:electron:dev": "node scripts/electron-dev.mjs",
     "native:electron:dist": "npm run build && npm run native:sync-version && electron-builder --win nsis",
