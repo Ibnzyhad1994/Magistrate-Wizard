@@ -640,7 +640,7 @@ function LinkedMattersCard({ caseLawId }: { caseLawId: string }) {
                       {link.docket_matters.matter_title}
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      {link.docket_matters.case_number}
+                      <span className="identifier">{link.docket_matters.case_number}</span>
                       {link.docket_matters.status && (
                         <Badge
                           variant={statusBadgeVariant(link.docket_matters.status)}

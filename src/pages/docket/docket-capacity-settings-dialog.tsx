@@ -265,7 +265,7 @@ function OverrideHistory({ open }: { open: boolean }) {
                 </p>
                 {matter?.case_number ? (
                   <p className="text-xs text-muted-foreground">
-                    {matter.case_number}
+                    <span className="identifier">{matter.case_number}</span>
                     {matter.matter_title ? ` · ${matter.matter_title}` : ""}
                   </p>
                 ) : null}

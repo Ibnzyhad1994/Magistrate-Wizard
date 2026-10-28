@@ -16,6 +16,7 @@ import { LinkJudgmentDialog } from "@/pages/docket/link-judgment-dialog";
 import { useDocketMatterAccess } from "@/hooks/docket/use-docket-matter-access";
 import { toTitleCase } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
+import { cn } from "@/lib/utils";
 
 interface JudgmentsSectionProps {
   matterId: string;
@@ -82,7 +83,12 @@ export function JudgmentsSection({ matterId, frozen = false }: JudgmentsSectionP
               <CardContent className="flex flex-wrap items-center justify-between gap-2 p-4">
                 <div>
                   <p className="font-medium text-foreground">{judgment.title}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p
+                    className={cn(
+                      "text-sm text-muted-foreground",
+                      (judgment.case_number || judgment.citation) && "identifier",
+                    )}
+                  >
                     {[judgment.case_number, judgment.citation].filter(Boolean).join(" · ") ||
                       NOT_SET}
                   </p>

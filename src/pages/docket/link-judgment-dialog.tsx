@@ -134,7 +134,12 @@ export function LinkJudgmentDialog({
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-foreground">{j.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span
+                        className={cn(
+                          "block truncate text-xs text-muted-foreground",
+                          (j.case_number || j.citation) && "identifier",
+                        )}
+                      >
                         {[j.case_number, j.citation].filter(Boolean).join(" · ") || NOT_SET}
                       </span>
                     </span>

@@ -237,7 +237,7 @@ export default function CalendarPage() {
                             // in a guide: the surface says it is one item, the
                             // edge its kind. A hearing is ink; the accent stays
                             // for the commit action, so a full month is not red.
-                            "block w-full truncate rounded-sm border-l-2 border-foreground bg-surface-2 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-surface-3",
+                            "block w-full rounded-sm border-l-2 border-foreground bg-surface-2 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-surface-3",
                             isInactiveEventStatus(event.event_status) &&
                               "border-muted-foreground/40 bg-muted text-muted-foreground line-through",
                             event.pending &&
@@ -246,14 +246,20 @@ export default function CalendarPage() {
                           title={event.court_name ?? undefined}
                           aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${isCallover(event) ? " · Callover" : ""}${event.pending ? " (on this device)" : ""}`}
                         >
-                          {isCallover(event) && (
-                            <Gavel
-                              className="mr-1 inline h-2.5 w-2.5 align-[-1px]"
-                              aria-hidden="true"
-                            />
+                          {/* The time on its own line, so the case number below
+                              it has the chip's whole width and is not cut off. */}
+                          {(isCallover(event) || event.scheduled_time) && (
+                            <span className="block truncate">
+                              {isCallover(event) && (
+                                <Gavel
+                                  className="mr-1 inline h-2.5 w-2.5 align-[-1px]"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {event.scheduled_time ? formatTimeOnly(event.scheduled_time) : ""}
+                            </span>
                           )}
-                          {event.scheduled_time ? `${formatTimeOnly(event.scheduled_time)} · ` : ""}
-                          {event.case_number}
+                          <span className="identifier block truncate">{event.case_number}</span>
                         </button>
                       </li>
                     ))}
@@ -291,7 +297,7 @@ export default function CalendarPage() {
               >
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    {event.case_number} · {event.matter_title}
+                    <span className="identifier">{event.case_number}</span> · {event.matter_title}
                   </p>
                   {event.court_name && (
                     <span className={cn(badgeVariants({ variant: "tag" }), "mr-1 mt-0.5")}>
