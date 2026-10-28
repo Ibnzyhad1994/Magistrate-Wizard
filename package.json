@@ -173,7 +173,9 @@
     "test:input-validation-db": "node --import ./scripts/test-support/register.mjs scripts/tests/test-input-validation-db.mjs",
     "test:lazy-routes": "node --import ./scripts/test-support/register.mjs scripts/tests/test-lazy-routes.mjs",
     "test:native-config": "node --import ./scripts/test-support/register.mjs scripts/tests/test-native-config.mjs",
-    "test:safe-links": "node --import ./scripts/test-support/register.mjs scripts/tests/test-safe-links.mjs"
+    "test:safe-links": "node --import ./scripts/test-support/register.mjs scripts/tests/test-safe-links.mjs",
+    "test:keyset-pagination": "node --import ./scripts/test-support/register.mjs scripts/tests/test-keyset-pagination.mjs",
+    "test:list-keyset-paging": "node --import ./scripts/test-support/register.mjs scripts/tests/test-list-keyset-paging.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",
