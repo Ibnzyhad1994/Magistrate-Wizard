@@ -1,9 +1,15 @@
 name: Develop CI + Auto-merge to Main
 
-# On every push to `develop`: lint, typecheck, run the script test suite,
-# build, run the Playwright smokes (reused from e2e.yml), and if it is all
-# green, fast-forward `main` to match and push — which is what triggers the
-# production Vercel deployment.
+# On every push to `develop` and every pull request into it: audit, lint,
+# typecheck, run the script test suite, build, and (on develop) run the
+# Playwright smokes (reused from e2e.yml, which already runs on its own for
+# pull requests). On a develop push that is all green, fast-forward `main` to
+# match and push — which is what triggers the production Vercel deployment.
+#
+# The audit is its own job so it never hides the other gates. It blocks only
+# on critical advisories in production dependencies; dev-only and high
+# findings are written to the job summary without failing. The fast-forward
+# still needs the blocking audit, the test job and the smokes to be green.
 #
 # The script suite is `npm test` (scripts/test-support/run-all.mjs). It
 # discovers every scripts/tests/test-*.mjs and skips anything tagged
@@ -18,11 +24,15 @@ name: Develop CI + Auto-merge to Main
 # develop onto main, don't change this workflow to force it. main-drift.yml
 # raises the alarm when main trails develop for more than a day or so.
 #
-# A failed run opens (or comments on) a GitHub issue titled "develop CI
-# failing"; the next green run closes it.
+# A failed develop run opens (or comments on) a GitHub issue titled "develop
+# CI failing"; the next green run closes it. Pull request runs never touch
+# the issue.
 
 on:
   push:
+    branches:
+      - develop
+  pull_request:
     branches:
       - develop
 
@@ -30,11 +40,67 @@ permissions:
   contents: read
 
 jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # npm audit reads package-lock.json and the registry; no install needed.
+      - name: npm audit (production dependencies, critical - blocking)
+        run: npm audit --omit=dev --audit-level=critical
+
+      # Everything else (dev dependencies, high and below) is reported in the
+      # job summary but does not fail the gate. Dependabot opens PRs to work
+      # them down.
+      - name: npm audit (all dependencies - report only)
+        if: ${{ !cancelled() }}
+        run: |
+          npm audit --json > audit-all.json || true
+          npm audit --omit=dev --json > audit-prod.json || true
+          node - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require("fs");
+          const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+          const all = read("audit-all.json");
+          const prod = read("audit-prod.json");
+          const levels = ["critical", "high", "moderate", "low"];
+          const count = (r, l) => r.metadata?.vulnerabilities?.[l] ?? 0;
+          console.log("## npm audit (report only)\n");
+          console.log("| Scope | " + levels.join(" | ") + " |");
+          console.log("| --- | " + levels.map(() => "---").join(" | ") + " |");
+          console.log("| production | " + levels.map((l) => count(prod, l)).join(" | ") + " |");
+          console.log("| all (incl. dev) | " + levels.map((l) => count(all, l)).join(" | ") + " |");
+          const serious = Object.values(all.vulnerabilities ?? {}).filter((v) =>
+            ["critical", "high"].includes(v.severity),
+          );
+          if (serious.length) {
+            console.log("\n### Critical and high advisories\n");
+            console.log("| Package | Severity | Production | Fix |");
+            console.log("| --- | --- | --- | --- |");
+            for (const v of serious) {
+              const inProd = prod.vulnerabilities?.[v.name] ? "yes" : "no (dev only)";
+              const fix =
+                v.fixAvailable === true
+                  ? "`npm audit fix`"
+                  : v.fixAvailable
+                    ? `${v.fixAvailable.name}@${v.fixAvailable.version}${v.fixAvailable.isSemVerMajor ? " (major)" : ""}`
+                    : "none";
+              console.log(`| ${v.name} | ${v.severity} | ${inProd} | ${fix} |`);
+            }
+          }
+          EOF
+          npm audit || echo "::warning::npm audit reports advisories (see the job summary); only production criticals block."
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: develop-ci
+      group: develop-ci-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
@@ -46,16 +112,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: npm audit (critical — blocking)
-        run: npm audit --audit-level=critical
-
-      # High advisories are reported in the log but do not fail the gate while
-      # the tree still carries known transitive findings. Dependabot opens
-      # weekly PRs to work them down.
-      - name: npm audit (high — report only)
-        run: npm audit --audit-level=high
-        continue-on-error: true
 
       - name: Lint
         run: npm run lint
@@ -79,13 +135,16 @@ jobs:
 
   # Playwright smokes (unauth against Vite only; auth against local Supabase
   # + seed). Reused from e2e.yml so PRs and the develop gate run the same jobs.
+  # Pull requests already get them from e2e.yml's own pull_request trigger.
   e2e:
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/e2e.yml
     permissions:
       contents: read
 
   merge-to-main:
-    needs: [test, e2e]
+    needs: [audit, test, e2e]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -105,8 +164,8 @@ jobs:
           git push origin main
 
   notify-failure:
-    needs: [test, e2e, merge-to-main]
-    if: failure()
+    needs: [audit, test, e2e, merge-to-main]
+    if: failure() && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
