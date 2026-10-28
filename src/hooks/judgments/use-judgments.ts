@@ -1,11 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useKeysetList } from "@/hooks/use-keyset-list";
+import {
+  applyKeyset,
+  type KeysetCursor,
+  type KeysetSpec,
+  toKeysetPage,
+} from "@/lib/keyset-pagination";
 import { deleteThenCleanStorage } from "@/lib/storage-cleanup";
 import { toast } from "sonner";
-import type { TablesUpdate } from "@/types/database.types";
+import type { Database, TablesUpdate } from "@/types/database.types";
 
 export const judgmentsKeys = {
   all: ["judgments"] as const,
+  list: ["judgments", "list"] as const,
   detail: (id: string) => ["judgments", "detail", id] as const,
 };
 
@@ -13,27 +22,52 @@ export const judgmentVersionsKeys = {
   list: (judgmentId: string) => ["judgment-versions", judgmentId] as const,
 };
 
+/** Newest edit first; `id` breaks ties so paging never skips or repeats a row. */
+export const JUDGMENTS_LIST_PAGE: KeysetSpec = {
+  columns: [
+    { column: "updated_at", ascending: false },
+    { column: "id", ascending: false },
+  ],
+  pageSize: 200,
+};
+
 /**
+ * One page of `useJudgments`; the total is counted on the first page only.
+ *
  * Every Judgment the caller can currently see (RLS: owner OR
  * is_discoverable — never another user's private draft/final), split
  * client-side into the three list sections. No admin bypass, no
  * separate "all judgments" query.
  */
-/** `enabled` defaults to true -- pass `{ enabled: false }` to skip fetching (e.g. dashboard-page.tsx never queries Judgments for a clerk, who has no access to them). */
+export async function fetchJudgmentsPage(
+  client: SupabaseClient<Database>,
+  cursor: KeysetCursor | null,
+) {
+  const { data, error, count } = await applyKeyset(
+    client
+      .from("judgments")
+      .select(
+        "id, title, case_number, citation, court_name, judgment_date, status, is_discoverable, owner_id, updated_at, category_id, legal_case_categories(name)",
+        { count: cursor ? undefined : "exact" },
+      ),
+    JUDGMENTS_LIST_PAGE,
+    cursor,
+  );
+  if (error) throw error;
+  return toKeysetPage(data ?? [], JUDGMENTS_LIST_PAGE, count);
+}
+
+/**
+ * Keyset-paged (BE-15): `data` is every row loaded so far, starting with
+ * the first page of 200; `fetchNextPage`/`hasNextPage` load the rest and
+ * `totalCount` says how many there are. `enabled` defaults to true -- pass
+ * `{ enabled: false }` to skip fetching (e.g. dashboard-page.tsx never
+ * queries Judgments for a clerk, who has no access to them).
+ */
 export function useJudgments(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: judgmentsKeys.all,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("judgments")
-        .select(
-          "id, title, case_number, citation, court_name, judgment_date, status, is_discoverable, owner_id, updated_at, category_id, legal_case_categories(name)",
-        )
-        .order("updated_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data;
-    },
+  return useKeysetList({
+    queryKey: judgmentsKeys.list,
+    fetchPage: (cursor) => fetchJudgmentsPage(supabase, cursor),
     enabled: options?.enabled,
   });
 }
