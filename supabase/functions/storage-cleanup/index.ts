@@ -7,10 +7,16 @@
 // delete a Storage object, so this function removes queued files through
 // the Storage API with the service role, then drops their queue rows.
 // A file that a `documents` row references again is kept and dequeued.
-// A failed removal stays queued (attempts, last_error) for the next run.
+// A failed removal stays queued (attempts, last_error) and is retried with
+// a growing delay (next_attempt_at); after MAX_ATTEMPTS it is dead-lettered
+// (dead_lettered_at) for an operator, so failing rows never starve the rest.
 //
-// Auth: a signed-in user's JWT (the app calls this after every delete), or
-// the service-role key for an operator run. The platform's verify_jwt gate
+// Callers: the app after every delete, and pg_cron every minute through
+// request_storage_cleanup_run() (0167), which covers deletes the database
+// makes on its own, such as the hourly bin purge.
+//
+// Auth: a signed-in user's JWT (the app), or the service-role key (the
+// scheduled run, or an operator). The platform's verify_jwt gate
 // accepts the public anon key, so the caller is checked here. A caller
 // chooses nothing: the queue is written only by the database trigger, so
 // a run can only remove files that no `documents` row references.
@@ -21,6 +27,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BATCH_SIZE = 100;
+const MAX_ATTEMPTS = 8;
+const MAX_BACKOFF_MS = 24 * 60 * 60 * 1000;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 // The app invokes this from the browser, so the preflight must pass.
@@ -53,6 +61,10 @@ const isAuthorised = async (req: Request) => {
 
 type QueueRow = { bucket_id: string; object_name: string; attempts: number };
 
+// One minute after the first failure, doubling, capped at a day.
+const retryAt = (attempts: number) =>
+  new Date(Date.now() + Math.min(60_000 * 2 ** (attempts - 1), MAX_BACKOFF_MS)).toISOString();
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -67,7 +79,9 @@ Deno.serve(async (req) => {
   const { data: rows, error } = await admin
     .from("storage_cleanup_queue")
     .select("bucket_id, object_name, attempts")
-    .order("queued_at", { ascending: true })
+    .is("dead_lettered_at", null)
+    .lte("next_attempt_at", new Date().toISOString())
+    .order("next_attempt_at", { ascending: true })
     .limit(BATCH_SIZE);
   if (error) {
     return json({ error: error.message }, 500);
@@ -76,6 +90,7 @@ Deno.serve(async (req) => {
   let removed = 0;
   let kept = 0;
   let failed = 0;
+  let deadLettered = 0;
   const byBucket = new Map<string, QueueRow[]>();
   for (const row of (rows ?? []) as QueueRow[]) {
     byBucket.set(row.bucket_id, [...(byBucket.get(row.bucket_id) ?? []), row]);
@@ -112,9 +127,17 @@ Deno.serve(async (req) => {
     if (removeError) {
       failed += orphans.length;
       for (const row of orphans) {
+        const attempts = row.attempts + 1;
+        const dead = attempts >= MAX_ATTEMPTS;
+        if (dead) deadLettered += 1;
         await admin
           .from("storage_cleanup_queue")
-          .update({ attempts: row.attempts + 1, last_error: removeError.message })
+          .update({
+            attempts,
+            last_error: removeError.message,
+            next_attempt_at: retryAt(attempts),
+            dead_lettered_at: dead ? new Date().toISOString() : null,
+          })
           .eq("bucket_id", bucket)
           .eq("object_name", row.object_name);
       }
@@ -124,5 +147,5 @@ Deno.serve(async (req) => {
     removed += orphans.length;
   }
 
-  return json({ removed, kept, failed });
+  return json({ removed, kept, failed, dead_lettered: deadLettered });
 });

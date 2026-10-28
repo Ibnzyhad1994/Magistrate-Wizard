@@ -58,6 +58,21 @@ jobs:
             echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
           } | tee .env >> "$GITHUB_ENV"
 
+      # The storage-cleanup schedule (0167) calls the Edge Functions through
+      # pg_net, with the URL and key it reads from Vault. A hosted project's
+      # operator configures these once (supabase/README.md "Scheduled Edge
+      # Function calls"); here they point at this stack's own gateway.
+      - name: Configure scheduled Edge Function calls
+        run: |
+          eval "$(npx supabase status -o env)"
+          project_id=$(sed -n 's/^project_id = "\(.*\)"$/\1/p' supabase/config.toml)
+          psql "$DB_URL" -v ON_ERROR_STOP=1 \
+            -v url="http://supabase_kong_${project_id}:8000" -v key="${SERVICE_ROLE_KEY}" <<'SQL'
+          create extension if not exists pg_net;
+          select vault.create_secret(:'url', 'project_url');
+          select vault.create_secret(:'key', 'service_role_key');
+          SQL
+
       - name: Live scripts (npm run test:live)
         env:
           SCHEMA_ALIGN_SKIP_LIVE: "1"

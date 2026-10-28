@@ -466,12 +466,10 @@ async function main() {
       .from("storage_cleanup_queue")
       .insert({ bucket_id: "documents", object_name: doc.file_path });
     check("C-04 the cleanup queue exists", queuedLive.error?.message ?? null, null);
-    const { data } = await c1.functions.invoke("storage-cleanup", { method: "POST", body: {} });
-    check(
-      "C-04 the cleanup run keeps a file a documents row still references",
-      data?.kept >= 1,
-      true,
-    );
+    // The outcome, not this run's `kept` count: the every-minute scheduled
+    // run (0167) may take the same row first.
+    const { error } = await c1.functions.invoke("storage-cleanup", { method: "POST", body: {} });
+    check("C-04 a signed-in user's cleanup run succeeds", error?.message ?? null, null);
     check("C-04 that file is still stored", await stored(doc.file_path), true);
     check("C-04 and its queue entry is dropped", await queued([doc.file_path]), []);
   }

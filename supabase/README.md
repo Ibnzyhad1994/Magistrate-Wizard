@@ -84,6 +84,7 @@ supabase db push --dry-run     # shows exactly what would apply
 supabase db push               # applies every pending migration, in order
 supabase functions deploy clerk-access-notify
 supabase functions deploy webhook-dispatch
+supabase functions deploy storage-cleanup
 ```
 
 `<project-ref>` is the id in `https://<project-ref>.supabase.co`. The
@@ -131,6 +132,23 @@ the same commands inside the `production` GitHub Environment.
 6. **Point the frontend at the project**: `VITE_SUPABASE_URL` and
    `VITE_SUPABASE_ANON_KEY` in `.env` (local) or the Vercel project
    settings (hosted).
+
+7. **Scheduled Edge Function calls.** pg_cron asks the `storage-cleanup`
+   function for a run every minute while files are queued (0167), so files
+   of rows the database deletes on its own (the bin purge) leave Storage.
+   It sends nothing until pg_net is on and two Vault secrets exist. In the
+   SQL editor:
+
+   ```sql
+   create extension if not exists pg_net;
+   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+   select vault.create_secret('<service-role key>', 'service_role_key');
+   ```
+
+   Turning pg_net on also lets `dispatch_pending_webhooks()` (0156) post
+   any queued webhooks in the daily maintenance job. Locally,
+   `.github/workflows/live-db.yml` runs the same three statements against
+   the stack (`project_url` is the gateway, `http://supabase_kong_<project_id>:8000`).
 
 ## Design notes worth knowing before you build on this
 
