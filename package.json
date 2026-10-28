@@ -61,6 +61,7 @@
     "test:webhook-dispatch-schedule": "node --import ./scripts/test-support/register.mjs scripts/tests/test-webhook-dispatch-schedule.mjs",
     "test:edge-function-cors": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors.mjs",
     "test:edge-function-cors-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors-live.mjs",
+    "test:deploy-db": "node --import ./scripts/test-support/register.mjs scripts/tests/test-deploy-db.mjs",
     "test:pinned-versions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-pinned-versions.mjs",
     "test:judgment-drafts": "node --import ./scripts/test-support/register.mjs scripts/tests/test-judgment-drafts.mjs",
     "test:judgment-versions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-judgment-versions.mjs",

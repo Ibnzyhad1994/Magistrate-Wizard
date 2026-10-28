@@ -14,6 +14,11 @@ name: Migration CI
 # the public-schema artifact of the failed run, and commit it with the
 # migration.
 #
+# Then it runs deploy-db.yml's plan and verify steps (BE-03) against this
+# stack: with the newest migration's history row removed, the plan must list
+# exactly that file, verify must accept that plan, and verify must refuse a
+# plan that differs.
+#
 # Runs on EVERY develop push (not only when supabase/** changes): a frontend
 # commit that depends on a hosted-only schema change is otherwise never
 # caught. PRs keep the path filter.
@@ -24,6 +29,8 @@ on:
       - "supabase/migrations/**"
       - "supabase/config.toml"
       - "supabase/schema.sql"
+      - "scripts/db-push-plan.mjs"
+      - ".github/workflows/deploy-db.yml"
       - ".github/workflows/migration-ci.yml"
   push:
     branches:
@@ -66,6 +73,31 @@ jobs:
           if ! diff -u supabase/schema.sql "$RUNNER_TEMP/schema.sql" > "$RUNNER_TEMP/schema.diff"; then
             head -n 200 "$RUNNER_TEMP/schema.diff"
             echo "::error file=supabase/schema.sql::The applied public schema differs from supabase/schema.sql. Run npm run db:schema-snapshot on a freshly reset local stack (or take this run's public-schema artifact) and commit it."
+            exit 1
+          fi
+
+      - name: Deploy plan lists exactly what the database lacks
+        run: |
+          port=$(sed -n '/^\[db\]/,/^\[/s/^port = \([0-9]*\)$/\1/p' supabase/config.toml)
+          db_url="postgresql://postgres:postgres@127.0.0.1:${port}/postgres?sslmode=disable"
+          newest=$(basename "$(find supabase/migrations -name '*.sql' | sort | tail -n 1)")
+          psql "$db_url" -v ON_ERROR_STOP=1 -v version="${newest%%_*}" <<'SQL'
+          delete from supabase_migrations.schema_migrations where version = :'version';
+          SQL
+
+          GITHUB_OUTPUT="$RUNNER_TEMP/plan.out" DB_PUSH_TARGET="migration CI (local)" \
+            node scripts/db-push-plan.mjs plan --db-url "$db_url"
+          plan=$(sed -n 's/^plan=//p' "$RUNNER_TEMP/plan.out")
+          expected="{\"migrations\":[\"$newest\"],\"seeds\":[],\"roles\":[]}"
+          if [ "$plan" != "$expected" ]; then
+            echo "::error::The plan was $plan, expected $expected."
+            exit 1
+          fi
+
+          DB_PUSH_PLAN="$plan" node scripts/db-push-plan.mjs verify --db-url "$db_url"
+          if DB_PUSH_PLAN='{"migrations":[],"seeds":[],"roles":[]}' \
+            node scripts/db-push-plan.mjs verify --db-url "$db_url"; then
+            echo "::error::verify accepted a plan that differs from the database."
             exit 1
           fi
 
