@@ -122,7 +122,7 @@ function HeroBillboard({
             {identifier || eyebrow}
           </p>
         )}
-        <h1 className="w-fit text-4xl font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg sm:text-5xl lg:text-6xl">
+        <h1 className="w-fit text-display-xl text-foreground dark:text-primary-foreground dark:drop-shadow-lg">
           {title}
         </h1>
         {badges && badges.length > 0 && (

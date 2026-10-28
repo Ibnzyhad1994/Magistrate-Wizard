@@ -199,7 +199,7 @@ export function TopNav() {
               {moreGroups.map((section, index) => (
                 <DropdownMenuGroup key={section.id}>
                   {index > 0 ? <DropdownMenuSeparator className="bg-foreground/10" /> : null}
-                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <DropdownMenuLabel className="eyebrow text-muted-foreground">
                     {section.label}
                   </DropdownMenuLabel>
                   {section.items.map((item) => (

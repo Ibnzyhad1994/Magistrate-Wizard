@@ -586,9 +586,7 @@ function AssociationGroup({
 }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </p>
+      <p className="eyebrow mb-1 text-muted-foreground">{title}</p>
       {isPending ? (
         <Skeleton className="h-6 w-full" />
       ) : items.length === 0 ? (

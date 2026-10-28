@@ -20,9 +20,7 @@ export default function NotFoundPage() {
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-16 text-center">
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Lost your way?
-          </h1>
+          <h1 className="text-display text-foreground">Lost your way?</h1>
           <p className="max-w-md text-base text-foreground/70">
             That page doesn&apos;t exist or has moved. Try the home page.
           </p>

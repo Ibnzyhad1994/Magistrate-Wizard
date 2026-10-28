@@ -684,10 +684,7 @@ export function LegislationPdfViewer({
                     aria-labelledby={headingId}
                     className="rounded-sm border border-foreground/10 bg-card p-4"
                   >
-                    <h3
-                      id={headingId}
-                      className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
+                    <h3 id={headingId} className="eyebrow mb-2 text-muted-foreground">
                       Page {n}
                     </h3>
                     {lines.length === 0 ? (

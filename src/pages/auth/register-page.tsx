@@ -92,7 +92,7 @@ export default function RegisterPage() {
   return (
     <Card className={AUTH_PANEL_CLASS}>
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">Sign Up</h1>
+        <h1 className="text-display text-foreground">Sign Up</h1>
         <CardDescription className="text-foreground/70">
           Set up your {APP_NAME} account to start building your knowledge base.
         </CardDescription>

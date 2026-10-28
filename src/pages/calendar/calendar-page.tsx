@@ -183,13 +183,13 @@ export default function CalendarPage() {
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="eyebrow px-0.5 py-2.5 text-center text-[10px] text-muted-foreground sm:px-2"
+                className="eyebrow px-0.5 py-2.5 text-center text-muted-foreground sm:px-2"
               >
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 tabular-nums">
             {cells.map((date) => {
               const inMonth = date.startsWith(from.slice(0, 7));
               const dayEvents = byDate.get(date) ?? [];

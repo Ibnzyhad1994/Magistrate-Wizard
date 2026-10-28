@@ -129,7 +129,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               return (
                 <React.Fragment key={opt.value || `__empty-${index}`}>
                   {showGroup ? (
-                    <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    <DropdownMenuLabel className="eyebrow text-muted-foreground">
                       {opt.group}
                     </DropdownMenuLabel>
                   ) : null}
