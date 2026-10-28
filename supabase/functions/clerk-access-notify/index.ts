@@ -53,6 +53,7 @@
 // and need no manual configuration.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { preflight, withCors } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -112,7 +113,11 @@ async function sendEmail(to: string, subject: string, html: string) {
   return { sent: true as const };
 }
 
-Deno.serve(async (req) => {
+// The app invokes this from the browser, so the preflight must pass and
+// every answer, errors included, carries the CORS headers.
+Deno.serve(async (req) => preflight(req) ?? withCors(await handle(req)));
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -288,4 +293,4 @@ Deno.serve(async (req) => {
     .eq("id", request.id);
 
   return new Response(JSON.stringify({ notified: result.sent }), { status: 200 });
-});
+}

@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { sendClerkAccessNotice, type ClerkAccessNoticeEvent } from "@/lib/clerk-access-notify";
 
 /**
  * Clerk-side self-service surface: a clerk's own access requests (every
@@ -33,23 +34,11 @@ export const clerkAccessKeys = {
 
 /**
  * Best-effort: asks the clerk-access-notify Edge Function to send the
- * relevant email. Never blocks or fails the caller's own action — the
- * function independently re-verifies everything server-side (never
- * trusts this call's payload beyond "which request"), and is itself
- * idempotent (skips if already notified), so this is safe to call
- * whenever a request/decision is created, even more than once.
+ * relevant email. Never blocks or fails the caller's own action, and a
+ * failed call is reported, not swallowed (see sendClerkAccessNotice).
  */
-export async function notifyClerkAccess(
-  event: "request_created" | "decision_made",
-  requestId: string,
-) {
-  try {
-    await supabase.functions.invoke("clerk-access-notify", {
-      body: { event, request_id: requestId },
-    });
-  } catch (err) {
-    console.error("clerk-access-notify invocation failed (non-blocking):", err);
-  }
+export function notifyClerkAccess(event: ClerkAccessNoticeEvent, requestId: string) {
+  return sendClerkAccessNotice(supabase, event, requestId);
 }
 
 /** Every one of the signed-in clerk's own requests, any status, most recent first. */

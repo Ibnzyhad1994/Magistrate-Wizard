@@ -23,6 +23,7 @@
 // No email, no outbound call beyond Storage.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { CORS_HEADERS, preflight } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,13 +31,6 @@ const BATCH_SIZE = 100;
 const MAX_ATTEMPTS = 8;
 const MAX_BACKOFF_MS = 24 * 60 * 60 * 1000;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-// The app invokes this from the browser, so the preflight must pass.
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -66,9 +60,9 @@ const retryAt = (attempts: number) =>
   new Date(Date.now() + Math.min(60_000 * 2 ** (attempts - 1), MAX_BACKOFF_MS)).toISOString();
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS_HEADERS });
-  }
+  // The app invokes this from the browser, so the preflight must pass.
+  const answer = preflight(req);
+  if (answer) return answer;
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
