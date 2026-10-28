@@ -133,6 +133,26 @@ check(
   /rel="apple-touch-icon" href="\/apple-touch-icon\.png/.test(indexHtml),
   true,
 );
+// iOS implements only StatusBar.setStyle; setBackgroundColor rejects there,
+// so the style is set first and neither call can skip the other.
+const themeSrc = read("src/lib/theme.ts");
+const styleAt = themeSrc.indexOf("StatusBar.setStyle(");
+const colourAt = themeSrc.indexOf("StatusBar.setBackgroundColor(");
+check(
+  "status bar: the style is set before, and apart from, the Android-only colour",
+  [
+    styleAt > -1 && colourAt > styleAt,
+    /StatusBar\.setStyle\([\s\S]*?\)\.catch\(/.test(themeSrc),
+    /StatusBar\.setBackgroundColor\([\s\S]*?\)\.catch\(/.test(themeSrc),
+  ],
+  [true, true, true],
+);
+check(
+  "status bar: native-shell leaves style and colour to the theme",
+  /setStyle|setBackgroundColor|#[0-9a-f]{6}/i.test(read("src/lib/native-shell.ts")),
+  false,
+);
+
 // Each generated PNG is the size its slot expects and is not the template's.
 const pngSize = (rel) => {
   const buf = readFileSync(join(__dirname, "../../", rel));
@@ -154,8 +174,8 @@ for (const [rel, size] of Object.entries(launchPngs)) {
 }
 check(
   "png: the Android splash is no longer Capacitor's template",
-  readFileSync(join(__dirname, "../../", "android/app/src/main/res/drawable/splash.png"))
-    .length === TEMPLATE_SPLASH_BYTES,
+  readFileSync(join(__dirname, "../../", "android/app/src/main/res/drawable/splash.png")).length ===
+    TEMPLATE_SPLASH_BYTES,
   false,
 );
 

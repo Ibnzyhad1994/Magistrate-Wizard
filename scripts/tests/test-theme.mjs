@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { badgeVariants } from "@/components/ui/badge-variants";
 import { SEGMENT_ON_CLASS, SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
+import { THEME_COLOR } from "@/lib/theme";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -939,6 +940,44 @@ check(
     /stage-outcome-complete|ring-primary/.test(capacityStrip),
   ],
   [true, true, false],
+);
+
+// Browser chrome and the native status bar mirror each palette's canvas, so
+// there is no seam between the bar and the page (THEME_COLOR, and the
+// pre-paint script in index.html that sets the first frame's colour).
+const toHex = (rgb) =>
+  `#${rgb
+    .map((v) =>
+      Math.round(v * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+const RESOLVED_CASCADES = {
+  light: [rootBlock],
+  dark: [rootBlock, darkBlock],
+  "high-contrast-light": [rootBlock, hcLightBlock],
+  "high-contrast": [rootBlock, darkBlock, hcLightBlock, hcDarkBlock],
+  "colourblind-light": [rootBlock, cbLightBlock],
+  colourblind: [rootBlock, darkBlock, cbLightBlock, cbDarkBlock],
+};
+for (const [palette, blocks] of Object.entries(RESOLVED_CASCADES)) {
+  check(
+    `${palette}: THEME_COLOR is the canvas`,
+    THEME_COLOR[palette],
+    toHex(hslToRgb(resolved(blocks, "background"))),
+  );
+}
+const indexHtml = readFileSync("index.html", "utf8");
+check(
+  "index.html pre-paint theme colours are THEME_COLOR's",
+  [
+    THEME_COLOR.dark,
+    THEME_COLOR.light,
+    THEME_COLOR["high-contrast"],
+    THEME_COLOR["high-contrast-light"],
+  ].every((hex) => indexHtml.includes(`"${hex}"`)),
+  true,
 );
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

@@ -51,11 +51,11 @@ const THEME_SET = new Set<string>(THEMES);
 /** Browser chrome / PWA status bar, matching index.css canvases. */
 export const THEME_COLOR: Record<ResolvedTheme, string> = {
   dark: "#0d0e11",
-  light: "#f6f3ee",
+  light: "#f9f8f6",
   "high-contrast": "#000000",
   "high-contrast-light": "#ffffff",
   colourblind: "#0d0e11",
-  "colourblind-light": "#f6f3ee",
+  "colourblind-light": "#f9f8f6",
 };
 
 const PALETTE_CLASSES = ["light", "dark", "theme-high-contrast", "theme-colourblind"] as const;
@@ -134,13 +134,16 @@ export function applyResolvedTheme(
 }
 
 async function syncNativeStatusBar(resolved: ResolvedTheme) {
-  try {
-    const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-    if (!cap?.isNativePlatform?.()) return;
-    const { StatusBar, Style } = await import("@capacitor/status-bar");
-    await StatusBar.setBackgroundColor({ color: THEME_COLOR[resolved] });
-    await StatusBar.setStyle({ style: isDarkPalette(resolved) ? Style.Dark : Style.Light });
-  } catch {
-    /* Browser, Electron, or plugin unavailable. */
-  }
+  const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  if (!cap?.isNativePlatform?.()) return;
+  const plugin = await import("@capacitor/status-bar").catch(() => null);
+  if (!plugin) return; /* Plugin unavailable. */
+  const { StatusBar, Style } = plugin;
+  // The text style first and on its own: iOS implements only setStyle, and
+  // setBackgroundColor (Android only) rejects there, so sharing one try left
+  // an iPhone's status-bar text the wrong colour for the theme.
+  await StatusBar.setStyle({ style: isDarkPalette(resolved) ? Style.Dark : Style.Light }).catch(
+    () => undefined,
+  );
+  await StatusBar.setBackgroundColor({ color: THEME_COLOR[resolved] }).catch(() => undefined);
 }
