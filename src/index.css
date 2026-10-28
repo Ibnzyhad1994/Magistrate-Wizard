@@ -621,6 +621,14 @@
     @apply border-border;
   }
 
+  /* The page frame: a 4vw gutter, growing on an ultrawide screen so content
+     never runs wider than --page-max (lines and toolbars stay readable)
+     while tone bands and sticky bars still bleed edge to edge. */
+  :root {
+    --page-max: 1680px;
+    --gutter: max(4vw, calc((100vw - var(--page-max)) / 2));
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -767,17 +775,17 @@
   }
 
   .browse-gutter {
-    padding-left: 4vw;
-    padding-right: 4vw;
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
   }
 
   /* A band that must run edge to edge inside a gutter (page header
      washes, sticky bars) without the page giving up its gutter. */
   .browse-bleed {
-    margin-left: -4vw;
-    margin-right: -4vw;
-    padding-left: 4vw;
-    padding-right: 4vw;
+    margin-left: calc(var(--gutter) * -1);
+    margin-right: calc(var(--gutter) * -1);
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
   }
 
   /* Browse tiles, 16:9 stills or 2:3 posters. The column count per

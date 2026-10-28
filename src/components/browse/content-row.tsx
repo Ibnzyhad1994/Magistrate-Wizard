@@ -77,7 +77,7 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
             scroller, whose overflow would otherwise clip it top and bottom. */}
         <div
           ref={scrollerRef}
-          className="browse-gutter scrollbar-none still-rail flex snap-x snap-mandatory scroll-px-[4vw] overflow-x-auto overscroll-x-contain scroll-smooth py-1"
+          className="browse-gutter scrollbar-none still-rail flex snap-x snap-mandatory scroll-px-[var(--gutter)] overflow-x-auto overscroll-x-contain scroll-smooth py-1"
           style={stillColumnVars(tileSize, tileStyle) as CSSProperties}
         >
           {isLoading
