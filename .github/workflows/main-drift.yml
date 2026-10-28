@@ -1,7 +1,8 @@
 name: Main drift check
 
-# `main` is only ever fast-forwarded from `develop` by develop-ci-automerge.yml.
-# When that gate is red for a while, main silently trails develop and nobody
+# `main` is only ever fast-forwarded from `develop` by develop-ci-automerge.yml,
+# and only when someone runs it manually. When the gate is red, or nobody has
+# run the fast-forward for a while, main silently trails develop and nobody
 # is told. This scheduled check fails when origin/main is behind origin/develop
 # by more than MAX_BEHIND commits, and says so on the open "develop CI failing"
 # issue if there is one.
@@ -59,5 +60,5 @@ jobs:
       - name: Fail when main trails develop
         if: fromJSON(steps.count.outputs.behind) > fromJSON(env.MAX_BEHIND)
         run: |
-          echo "::error::origin/main is ${{ steps.count.outputs.behind }} commits behind origin/develop (limit $MAX_BEHIND). Check the develop CI gate."
+          echo "::error::origin/main is ${{ steps.count.outputs.behind }} commits behind origin/develop (limit $MAX_BEHIND). Check the develop CI gate, then run develop-ci-automerge.yml manually on develop to fast-forward main."
           exit 1

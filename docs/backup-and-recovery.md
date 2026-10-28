@@ -63,7 +63,8 @@ differently:
   last known-good Production deployment and **Promote to Production**
   (`vercel promote <deployment-url>` from the CLI does the same). This is
   instant and does not touch the database. Then fix forward on `develop`;
-  the next green develop run fast-forwards `main` and redeploys.
+  once develop is green, run `develop-ci-automerge.yml` manually on
+  `develop` to fast-forward `main` and redeploy.
 - **Database (migrations).** Migrations are forward-only
   (`DEVELOPMENT_WORKFLOW.md`): an applied migration is never reverted or
   edited. A bad migration is fixed by a **new forward migration** that

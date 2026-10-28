@@ -1,10 +1,17 @@
-name: Develop CI + Auto-merge to Main
+name: Develop CI + Fast-forward to Main
 
 # On every push to `develop` and every pull request into it: audit, lint,
 # typecheck, run the script test suite, build, and (on develop) run the
 # Playwright smokes (reused from e2e.yml, which already runs on its own for
-# pull requests). On a develop push that is all green, fast-forward `main` to
-# match and push — which is what triggers the production Vercel deployment.
+# pull requests).
+#
+# `main` is NOT moved by a push. Moving main deploys production: Vercel builds
+# the frontend from main, and deploy-db.yml runs `supabase db push` against the
+# production project when the push touches supabase/**. So the fast-forward
+# only runs when someone dispatches this workflow by hand on `develop`
+# (Actions → "Develop CI + Fast-forward to Main" → Run workflow), which runs
+# every gate below first. The production-database timing stays with whoever
+# presses that button.
 #
 # The audit is its own job so it never hides the other gates. It blocks only
 # on critical advisories in production dependencies; dev-only and high
@@ -24,9 +31,9 @@ name: Develop CI + Auto-merge to Main
 # develop onto main, don't change this workflow to force it. main-drift.yml
 # raises the alarm when main trails develop for more than a day or so.
 #
-# A failed develop run opens (or comments on) a GitHub issue titled "develop
-# CI failing"; the next green run closes it. Pull request runs never touch
-# the issue.
+# A failed develop run (push or dispatch) opens (or comments on) a GitHub
+# issue titled "develop CI failing"; the next green develop run closes it.
+# Pull request runs never touch the issue.
 
 on:
   push:
@@ -35,6 +42,7 @@ on:
   pull_request:
     branches:
       - develop
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -100,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: develop-ci-${{ github.ref }}
+      group: develop-ci-${{ github.event_name }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
@@ -142,9 +150,11 @@ jobs:
     permissions:
       contents: read
 
+  # Manual only: moving main deploys production (Vercel, and deploy-db.yml
+  # for supabase/** changes). Dispatch on develop to run it.
   merge-to-main:
     needs: [audit, test, e2e]
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -155,17 +165,19 @@ jobs:
           fetch-depth: 0
           ref: main
 
-      - name: Fast-forward main to develop
+      # Fast-forward to the commit this run tested, not whatever develop
+      # points at by the time the gates finish.
+      - name: Fast-forward main to the tested develop commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin develop
-          git merge --ff-only origin/develop
+          git merge --ff-only "$GITHUB_SHA"
           git push origin main
 
   notify-failure:
     needs: [audit, test, e2e, merge-to-main]
-    if: failure() && github.event_name == 'push'
+    if: failure() && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -181,7 +193,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "`main` will not be fast-forwarded until develop is green again.",
+              "`main` cannot be fast-forwarded until develop is green again.",
               "This issue is closed automatically by the next successful run.",
             ].join("\n");
             const { data: issues } = await github.rest.issues.listForRepo({
@@ -198,19 +210,31 @@ jobs:
               core.info(`Opened #${created.number}`);
             }
 
+  # Runs after a green push (merge-to-main skipped) or a green dispatch
+  # (merge-to-main succeeded).
   notify-recovered:
-    needs: [merge-to-main]
-    if: success()
+    needs: [audit, test, e2e, merge-to-main]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/develop' &&
+      needs.audit.result == 'success' && needs.test.result == 'success' &&
+      needs.e2e.result == 'success' &&
+      (needs.merge-to-main.result == 'success' || needs.merge-to-main.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       issues: write
     steps:
       - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          MERGED: ${{ needs.merge-to-main.result == 'success' }}
         with:
           script: |
             const title = "develop CI failing";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const outcome =
+              process.env.MERGED === "true"
+                ? "and main has been fast-forwarded."
+                : "(main was not moved: dispatch this workflow on develop to fast-forward it).";
             const { data: issues } = await github.rest.issues.listForRepo({
               ...context.repo,
               state: "open",
@@ -220,7 +244,7 @@ jobs:
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: issue.number,
-                body: `Develop CI is green again on \`${context.sha.slice(0, 7)}\` and main has been fast-forwarded. ${runUrl}`,
+                body: `Develop CI is green again on \`${context.sha.slice(0, 7)}\` ${outcome} ${runUrl}`,
               });
               await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: "closed" });
               core.info(`Closed #${issue.number}`);
