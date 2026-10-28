@@ -92,7 +92,9 @@ const bearerToken = (req: Request) => {
 
 async function sendEmail(to: string, subject: string, html: string) {
   if (!RESEND_API_KEY || !NOTIFY_FROM_EMAIL) {
-    console.log(`[clerk-access-notify] Email provider not configured — would have sent to ${to}: ${subject}`);
+    console.log(
+      `[clerk-access-notify] Email provider not configured — would have sent to ${to}: ${subject}`,
+    );
     return { sent: false as const };
   }
   const res = await fetch("https://api.resend.com/emails", {
@@ -248,12 +250,16 @@ Deno.serve(async (req) => {
       .update({ notified_magistrate_at: new Date().toISOString() })
       .eq("id", request.id);
 
-    return new Response(JSON.stringify({ notified: results.filter((r) => r.sent).length }), { status: 200 });
+    return new Response(JSON.stringify({ notified: results.filter((r) => r.sent).length }), {
+      status: 200,
+    });
   }
 
   // decision_made
   if (request.status !== "approved" && request.status !== "rejected") {
-    return new Response(JSON.stringify({ skipped: "request has no decision yet" }), { status: 200 });
+    return new Response(JSON.stringify({ skipped: "request has no decision yet" }), {
+      status: 200,
+    });
   }
   if (request.notified_clerk_at) {
     return new Response(JSON.stringify({ skipped: "already notified" }), { status: 200 });
@@ -271,7 +277,9 @@ Deno.serve(async (req) => {
     request.status === "approved"
       ? `<p>Your request for access to <strong>${courtName}</strong> has been approved. You can now open its docket in ${docketUrl ? `<a href="${docketUrl}">BenchBook</a>` : "BenchBook"}.</p>`
       : `<p>Your request for access to <strong>${courtName}</strong> was not approved.</p>` +
-        (request.rejection_reason ? `<p>Reason: ${escapeHtml(request.rejection_reason)}</p>` : ""),
+          (request.rejection_reason
+            ? `<p>Reason: ${escapeHtml(request.rejection_reason)}</p>`
+            : ""),
   );
 
   await admin
