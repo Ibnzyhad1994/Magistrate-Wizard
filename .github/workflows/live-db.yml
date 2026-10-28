@@ -1,0 +1,64 @@
+name: Live database suite
+
+# Runs every `// @live-db` script (`npm run test:live`) against a real local
+# Supabase stack: Postgres with every migration and the seed applied, Auth,
+# the Data API, Storage and the Edge Functions. These are the RLS and security
+# invariant tests (ADRs in docs/adr/), so a migration that reopens one fails
+# here instead of passing every other check.
+#
+# Runs on pull requests, and is reused (workflow_call) by
+# develop-ci-automerge.yml so main is never fast-forwarded past a failing
+# invariant. It starts its own stack rather than sharing e2e.yml's: the live
+# scripts create and delete their own fixtures, and the Playwright smokes must
+# not see them half way.
+#
+# `@slow` live scripts (the stress audit) stay on demand: `npm run test:slow`.
+# Hosted preview/prod drift is schema-alignment.yml's job, so the live run of
+# test-schema-alignment skips its hosted checks here.
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  live-db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Supabase CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.supabase
+          key: supabase-cli-${{ runner.os }}-${{ hashFiles('supabase/config.toml') }}
+
+      - name: Start local Supabase
+        run: npx supabase start
+
+      # Some scripts read the environment, others the .env file the app uses,
+      # so write both. These are the local stack's well-known demo keys.
+      - name: Export local Supabase env
+        run: |
+          eval "$(npx supabase status -o env)"
+          {
+            echo "VITE_SUPABASE_URL=${API_URL}"
+            echo "VITE_SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
+          } | tee .env >> "$GITHUB_ENV"
+
+      - name: Live scripts (npm run test:live)
+        env:
+          SCHEMA_ALIGN_SKIP_LIVE: "1"
+        run: npm run test:live

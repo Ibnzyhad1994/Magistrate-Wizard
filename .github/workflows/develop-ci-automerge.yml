@@ -2,8 +2,8 @@ name: Develop CI + Fast-forward to Main
 
 # On every push to `develop` and every pull request into it: audit, lint,
 # typecheck, run the script test suite, build, and (on develop) run the
-# Playwright smokes (reused from e2e.yml, which already runs on its own for
-# pull requests).
+# Playwright smokes and the live database suite (reused from e2e.yml and
+# live-db.yml, which already run on their own for pull requests).
 #
 # `main` is NOT moved by a push. Moving main deploys production: Vercel builds
 # the frontend from main, and deploy-db.yml runs `supabase db push` against the
@@ -16,13 +16,15 @@ name: Develop CI + Fast-forward to Main
 # The audit is its own job so it never hides the other gates. It blocks only
 # on critical advisories in production dependencies; dev-only and high
 # findings are written to the job summary without failing. The fast-forward
-# still needs the blocking audit, the test job and the smokes to be green.
+# still needs the blocking audit, the test job, the smokes and the live
+# database suite to be green.
 #
 # The script suite is `npm test` (scripts/test-support/run-all.mjs). It
 # discovers every scripts/tests/test-*.mjs and skips anything tagged
 # `// @live-db` (needs a real Supabase project) or `// @slow` (the "brutal"
-# stress variants). Those run on demand with `npm run test:live` /
-# `npm run test:slow`. Hosted preview/prod drift is checked read-only by
+# stress variants). The live scripts run in the `live-db` job below
+# (live-db.yml, against a local Supabase stack); the slow ones run on demand
+# with `npm run test:slow`. Hosted preview/prod drift is checked read-only by
 # schema-alignment.yml so a lagging remote cannot freeze this merge.
 #
 # The merge is fast-forward-only. If `main` has commits `develop` doesn't
@@ -150,10 +152,18 @@ jobs:
     permissions:
       contents: read
 
+  # The @live-db RLS and security invariant scripts against a local Supabase
+  # stack. Pull requests get them from live-db.yml's own pull_request trigger.
+  live-db:
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/live-db.yml
+    permissions:
+      contents: read
+
   # Manual only: moving main deploys production (Vercel, and deploy-db.yml
   # for supabase/** changes). Dispatch on develop to run it.
   merge-to-main:
-    needs: [audit, test, e2e]
+    needs: [audit, test, e2e, live-db]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -176,7 +186,7 @@ jobs:
           git push origin main
 
   notify-failure:
-    needs: [audit, test, e2e, merge-to-main]
+    needs: [audit, test, e2e, live-db, merge-to-main]
     if: failure() && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -213,11 +223,11 @@ jobs:
   # Runs after a green push (merge-to-main skipped) or a green dispatch
   # (merge-to-main succeeded).
   notify-recovered:
-    needs: [audit, test, e2e, merge-to-main]
+    needs: [audit, test, e2e, live-db, merge-to-main]
     if: >-
       !cancelled() && github.ref == 'refs/heads/develop' &&
       needs.audit.result == 'success' && needs.test.result == 'success' &&
-      needs.e2e.result == 'success' &&
+      needs.e2e.result == 'success' && needs.live-db.result == 'success' &&
       (needs.merge-to-main.result == 'success' || needs.merge-to-main.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 5
