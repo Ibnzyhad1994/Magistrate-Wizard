@@ -17,6 +17,7 @@ import {
 import { ROLE_LABELS, type UserRole } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
   regular: "Primary",
@@ -69,7 +70,11 @@ export function AdminSelfCourtCard() {
         </CardHeader>
         <CardContent className="space-y-4">
           {assignmentsPending ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <div role="status" className="space-y-2">
+              <span className="sr-only">Loading your court seats…</span>
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-40" />
+            </div>
           ) : (assignments ?? []).length > 0 ? (
             <ul className="divide-y divide-border">
               {(assignments ?? []).map((row) => (

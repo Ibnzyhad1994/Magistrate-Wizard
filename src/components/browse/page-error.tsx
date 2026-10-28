@@ -32,8 +32,8 @@ interface PageNotFoundProps {
 export function PageNotFound({ message, back }: PageNotFoundProps) {
   return (
     <BrowsePage>
-      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border px-6 py-10 text-center">
-        <SearchX className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-hairline px-6 py-10 text-center hc:border-border">
+        <SearchX className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
         <h1 className="text-sm font-medium text-foreground">Not found</h1>
         <p className="max-w-sm text-sm text-muted-foreground">{message}</p>
         <Button asChild size="sm" variant="outline" className="mt-2">

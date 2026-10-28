@@ -7,6 +7,7 @@ Short rules for anything user-facing. Primitives live in `src/components/ui`; if
 - **Skeleton** for a region whose shape is known (list, card grid, detail header). The wrapper carries `aria-busy="true"` or `role="status"` with `sr-only` text ("Loading docket…"); `<Skeleton>` itself is `aria-hidden`.
 - **Spinner** (`Loader2` + `sr-only` text) only for an action in flight (a button, a save indicator), never for a page.
 - **`PageLoader`** for a full-route first load only.
+- **`InlineError`** and `EmptyState` share one shape: `rounded-md`, a 32px icon. Inside a card or dialog that already frames it, pass `bare` rather than restyling it with `className`. A missing record is `PageNotFound`; a whole page that cannot open (not found, not authorised, a crash) is `FullPageError`.
 - **`EmptyState`** for "nothing here yet" — never a bare `<p>No … yet</p>`. Give it the one action that creates the first item.
 - **`Alert`** (`ui/alert.tsx`) for inline, persistent notices (a warning, a hint beside a form, a record in the bin), never a hand-built tinted `div`; pass `role="note"` or `role="status"` when the notice is not urgent, so it is not announced as an alert; **toast** for transient outcomes of an action. Never both for the same event.
 

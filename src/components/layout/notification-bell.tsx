@@ -22,6 +22,7 @@ import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { NOTIFICATION_TONE_ACCENT } from "@/lib/notification-tone-classes";
 import { ROUTES } from "@/routes/paths";
 import { isSafeInternalPath } from "@/lib/safe-navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Unread indicator and triage peek for the in-app notification system
@@ -116,7 +117,12 @@ export function NotificationBell({ className }: { className?: string }) {
         <DropdownMenuSeparator className="my-0" />
 
         {isPending ? (
-          <p className="px-3 py-6 text-center text-sm text-muted-foreground">Loading…</p>
+          <div role="status" className="space-y-2 px-3 py-4">
+            <span className="sr-only">Loading notices…</span>
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-44" />
+          </div>
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-1 px-3 py-8 text-center">
             <Inbox className="h-5 w-5 text-muted-foreground" aria-hidden="true" />

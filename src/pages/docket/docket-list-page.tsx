@@ -512,7 +512,7 @@ export default function DocketListPage() {
           <TitleCardSkeletonGallery layout="tiles" />
         )
       ) : isError ? (
-        <InlineError error={error} onRetry={() => void refetch()} className="border-0" />
+        <InlineError error={error} onRetry={() => void refetch()} bare />
       ) : !data || data.length === 0 ? (
         <div className="space-y-4">
           {/* During the walkthrough the example sheet IS the empty state:
