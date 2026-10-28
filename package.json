@@ -58,6 +58,7 @@
     "test:storage-cleanup-schedule": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-cleanup-schedule.mjs",
     "test:edge-function-cors": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors.mjs",
     "test:edge-function-cors-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors-live.mjs",
+    "test:pinned-versions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-pinned-versions.mjs",
     "test:judgment-drafts": "node --import ./scripts/test-support/register.mjs scripts/tests/test-judgment-drafts.mjs",
     "test:judgment-versions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-judgment-versions.mjs",
     "test:audit-ops": "node --import ./scripts/test-support/register.mjs scripts/tests/test-audit-ops.mjs",
@@ -247,6 +248,7 @@
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
     "rollup-plugin-visualizer": "^7.1.1",
+    "supabase": "2.122.0",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"

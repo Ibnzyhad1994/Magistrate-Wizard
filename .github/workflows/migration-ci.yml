@@ -40,8 +40,13 @@ jobs:
           path: ~/.supabase
           key: supabase-cli-${{ runner.os }}-${{ hashFiles('supabase/config.toml') }}
 
+      # This job skips npm ci, so name the CLI version package.json pins
+      # rather than let npx fetch whatever is newest.
+      - name: Pinned Supabase CLI
+        run: echo "SUPABASE_CLI=supabase@$(node -p "require('./package.json').devDependencies.supabase")" >> "$GITHUB_ENV"
+
       - name: Start local database
-        run: npx supabase db start
+        run: npx --yes "$SUPABASE_CLI" db start
 
       - name: Reset and apply all migrations (no seed)
-        run: npx supabase db reset --yes --no-seed
+        run: npx --yes "$SUPABASE_CLI" db reset --yes --no-seed

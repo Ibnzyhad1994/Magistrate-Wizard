@@ -22,7 +22,7 @@
 // a run can only remove files that no `documents` row references.
 // No email, no outbound call beyond Storage.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 import { CORS_HEADERS, preflight } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

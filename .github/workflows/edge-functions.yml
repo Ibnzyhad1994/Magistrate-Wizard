@@ -1,0 +1,42 @@
+name: Edge Functions
+
+# Type-checks and lints supabase/functions with the same pinned Deno on
+# every change, so a broken function fails here rather than at deploy.
+# Versions are exact on purpose (BE-21): each function's deno.json maps
+# @supabase/supabase-js to the exact version the app's lockfile holds, and
+# scripts/tests/test-pinned-versions.mjs keeps them in step. Each function
+# is checked from its own folder so Deno reads that function's deno.json,
+# as the Supabase CLI does when it bundles the function.
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/**"
+      - ".github/workflows/edge-functions.yml"
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.9.7
+
+      - name: Lint and type-check each function
+        run: |
+          for dir in supabase/functions/*/; do
+            [ -f "$dir/deno.json" ] || continue
+            echo "::group::$dir"
+            (cd "$dir" && deno lint && deno check index.ts)
+            echo "::endgroup::"
+          done
+          deno lint supabase/functions/_shared

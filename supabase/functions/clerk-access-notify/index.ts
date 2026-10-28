@@ -52,7 +52,7 @@
 // provided automatically by the Supabase platform to every Edge Function
 // and need no manual configuration.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 import { preflight, withCors } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
