@@ -33,6 +33,7 @@ function check(label, actual, expected) {
 // Deliberately not a word: it must not collide with seeded library text.
 const WORD = "zzqxbe14word";
 const magistrate = randomUUID();
+const curator = randomUUID();
 const district = randomUUID();
 const court = randomUUID();
 const claims = JSON.stringify({ sub: magistrate, role: "authenticated" });
@@ -43,13 +44,20 @@ insert into auth.users (instance_id, id, aud, role, email, encrypted_password, e
   confirmation_token, email_change, email_change_token_new, recovery_token)
 values ('00000000-0000-0000-0000-000000000000', '${magistrate}', 'authenticated', 'authenticated',
   'be14-magistrate-${magistrate.slice(0, 8)}@example.test', '', now(),
-  '{"provider":"email","providers":["email"]}', '{"full_name":"BE14 Magistrate"}', now(), now(), '', '', '', '');
+  '{"provider":"email","providers":["email"]}', '{"full_name":"BE14 Magistrate"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '${curator}', 'authenticated', 'authenticated',
+  'be14-curator-${curator.slice(0, 8)}@example.test', '', now(),
+  '{"provider":"email","providers":["email"]}', '{"full_name":"BE14 Curator"}', now(), now(), '', '', '', '');
+-- Only an admin may add canonical Case Law (case_law_ownership_guard).
+update public.profiles set role = 'admin' where id = '${curator}';
 insert into public.magisterial_districts (id, name) values ('${district}', 'BE14 District ${district.slice(0, 8)}');
 insert into public.courts (id, name, jurisdiction, district_id, is_active)
 values ('${court}', 'BE14 Court ${court.slice(0, 8)}', 'Test', '${district}', true);
 insert into public.magistrate_courts (profile_id, court_id) values ('${magistrate}', '${court}');
 
--- Thirty case-name hits: each ranks at least 0.5 (the substring floor).
+-- Thirty case-name hits, added by the curator: each ranks at least 0.5 (the
+-- substring floor).
+set local request.jwt.claims = '${JSON.stringify({ sub: curator, role: "authenticated" })}';
 insert into public.case_law (case_name, citation, court, jurisdiction, summary, review_status)
 select '${WORD} v Crown ' || g, '[2024] BE14 ' || g, 'Fixture Court', 'Fixture',
   'About ${WORD}.', 'published'

@@ -11,7 +11,8 @@
  *         stored trimmed;
  *   C-10  "%" and "_" in a search are literal characters, and a blank
  *         global search returns nothing;
- *   C-12  global_search clamps p_limit and refuses an over-long query;
+ *   C-12  global_search clamps p_limit (a cap per result type since 0172) and
+ *         refuses an over-long query;
  *         judgment titles and Quick Code content are capped; the finalised
  *         notice is spelt "finalised".
  *
@@ -451,10 +452,29 @@ async function main() {
   {
     const negative = await global(M1, WORD, -1);
     check("C-12 p_limit -1 is no longer a raw error", negative.error?.message ?? "ok", "ok");
-    check("C-12 p_limit -1 is clamped to one row", negative.rows?.length, 1);
-    check("C-12 p_limit 0 is clamped to one row", (await global(M1, WORD, 0)).rows?.length, 1);
+    // p_limit caps each result type (0172, BE-14).
+    const mostOfOneType = (rows) =>
+      Math.max(
+        0,
+        ...Object.values(
+          (rows ?? []).reduce(
+            (n, r) => ({ ...n, [r.entity_type]: (n[r.entity_type] ?? 0) + 1 }),
+            {},
+          ),
+        ),
+      );
+    check("C-12 p_limit -1 is clamped to one row per type", mostOfOneType(negative.rows), 1);
+    check(
+      "C-12 p_limit 0 is clamped to one row per type",
+      mostOfOneType((await global(M1, WORD, 0)).rows),
+      1,
+    );
     const huge = await global(M1, "police", 100_000);
-    check("C-12 p_limit 100000 is clamped to at most 100", (huge.rows?.length ?? 999) <= 100, true);
+    check(
+      "C-12 p_limit 100000 is clamped to at most 100 per type",
+      mostOfOneType(huge.error ? null : huge.rows) <= 100 && !huge.error,
+      true,
+    );
     const { data: unlimited, error } = await M1.rpc("global_search", {
       p_query: WORD,
       p_limit: null,
