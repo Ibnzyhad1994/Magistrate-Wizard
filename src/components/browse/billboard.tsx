@@ -7,12 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useRegisterCinematicNav } from "@/components/layout/use-cinematic-nav";
 import { useTheme } from "@/providers/use-theme";
 import { isDarkPalette } from "@/lib/theme";
-import {
-  TONE_GRADIENT_HERO,
-  TONE_HSL_VAR,
-  TONE_ICON,
-  type TitleCardTone,
-} from "@/lib/browse-tones";
+import { TONE_HSL_VAR, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
 
 interface BillboardAction {
   label: string;
@@ -79,11 +74,8 @@ function HeroBillboard({
   return (
     <section
       data-tour={tourId ?? "home-billboard"}
-      className={cn(
-        "relative isolate min-h-[78dvh] w-full overflow-hidden bg-gradient-to-br",
-        TONE_GRADIENT_HERO[tone],
-        className,
-      )}
+      className={cn("tone-art relative isolate min-h-[78dvh] w-full overflow-hidden", className)}
+      style={{ "--band": TONE_HSL_VAR[tone] } as CSSProperties}
     >
       {imageUrl ? (
         <img

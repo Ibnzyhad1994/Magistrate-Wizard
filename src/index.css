@@ -135,6 +135,14 @@
     --elevation-3: 0 12px 32px hsl(30 20% 10% / 0.16), 0 24px 64px hsl(30 20% 10% / 0.12);
     /* Opacity of a tone wash behind a page header on this canvas. */
     --tone-alpha: 0.18;
+    /* Browse tile and Home hero art (.tone-art): the tone over the canvas at
+       these three stops, a wash here strong enough that each workspace keeps
+       its hue. --art-ink draws the type label, icon and hover edge on it. */
+    --art-from: 0.44;
+    --art-via: 0.24;
+    --art-to: 0.1;
+    --art-ink: 0 0% 10%;
+    --art-glow: 0 0% 100% / 0.3;
 
     --radius: 0.25rem;
 
@@ -238,6 +246,13 @@
     --elevation-2: inset 0 1px 0 hsl(0 0% 100% / 0.035), 0 6px 16px hsl(0 0% 0% / 0.5);
     --elevation-3: inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 16px 40px hsl(0 0% 0% / 0.6);
     --tone-alpha: 0.34;
+    /* Cinematic depth on the dark canvas: the tone itself at the middle stop,
+       deepening to near black, with white ink on it. */
+    --art-from: 0.55;
+    --art-via: 1;
+    --art-to: 0.18;
+    --art-ink: 0 0% 100%;
+    --art-glow: 0 0% 100% / 0.12;
 
     --radius: 0.25rem;
 
@@ -835,6 +850,19 @@
       hsl(var(--band) / var(--tone-alpha)) 0%,
       hsl(var(--band) / calc(var(--tone-alpha) * 0.45)) 38%,
       transparent 72%
+    );
+  }
+
+  /* Browse tile and hero art: the tone (set as --band on the element) drawn
+     from its --tone-* token over this palette's canvas, so it follows the
+     palette: deep in dark, a light wash on the light canvas. */
+  .tone-art {
+    background-color: hsl(var(--background));
+    background-image: linear-gradient(
+      to bottom right,
+      hsl(var(--band) / var(--art-from)),
+      hsl(var(--band) / var(--art-via)),
+      hsl(var(--band) / var(--art-to))
     );
   }
 

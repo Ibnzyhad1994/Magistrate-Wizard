@@ -53,6 +53,8 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Ink on a browse tile's tone art (.tone-art).
+        "art-ink": "hsl(var(--art-ink))",
         brass: {
           DEFAULT: "hsl(var(--brass))",
           foreground: "hsl(var(--brass-foreground))",

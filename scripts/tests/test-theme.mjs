@@ -865,8 +865,8 @@ check(
 );
 check("desktop search input is tokenized", topNav.includes("bg-black/70"), false);
 check(
-  "poster tiles use always-white ink on cinematic art",
-  titleCard.includes("text-primary-foreground"),
+  "tile art draws its label and icon in the palette's art ink",
+  titleCard.includes("text-art-ink"),
   true,
 );
 check(
@@ -941,6 +941,40 @@ check(
   ],
   [true, true, false],
 );
+
+// Browse tile and hero art come from the --tone-* tokens over each palette's
+// canvas (.tone-art), never a fixed hex table, so the art follows the palette.
+// The type label on the art (--art-ink, full strength) keeps 4.5:1 against every stop
+// of every tone in every palette.
+const browseTones = readFileSync("src/lib/browse-tones.ts", "utf8");
+check(
+  "browse tile and hero art carry no hex colours",
+  /#[0-9a-f]{3,6}\b/i.test(browseTones.replace(/\/\*[\s\S]*?\*\//g, "")),
+  false,
+);
+const TONES = ["docket", "judgment", "case-law", "legislation", "note", "code", "bookmark"];
+const mix = (fg, alpha, bg) => fg.map((v, i) => alpha * v + (1 - alpha) * bg[i]);
+const artWeak = [];
+for (const [palette, blocks] of Object.entries({
+  light: [rootBlock],
+  dark: [rootBlock, darkBlock],
+  "high-contrast-light": [rootBlock, hcLightBlock],
+  "high-contrast": [rootBlock, darkBlock, hcLightBlock, hcDarkBlock],
+  "colourblind-light": [rootBlock, cbLightBlock],
+  colourblind: [rootBlock, darkBlock, cbLightBlock, cbDarkBlock],
+})) {
+  const canvas = hslToRgb(resolved(blocks, "background"));
+  const ink = hslToRgb(resolved(blocks, "art-ink"));
+  for (const tone of TONES) {
+    const band = hslToRgb(resolved(blocks, `tone-${tone}`));
+    for (const stop of ["art-from", "art-via", "art-to"]) {
+      const art = mix(band, Number(resolved(blocks, stop)), canvas);
+      const r = contrastRgb(ink, art);
+      if (r < 4.5) artWeak.push(`${palette} ${tone} ${stop}: ${r.toFixed(2)}`);
+    }
+  }
+}
+check("the tile type label clears 4.5:1 on every stop of the tone art", artWeak, []);
 
 // Browser chrome and the native status bar mirror each palette's canvas, so
 // there is no seam between the bar and the page (THEME_COLOR, and the
