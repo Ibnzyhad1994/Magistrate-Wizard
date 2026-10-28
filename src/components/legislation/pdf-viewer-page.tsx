@@ -8,6 +8,7 @@ import {
   pixelRectToNormalized,
   type RedactionBox,
 } from "@/lib/redaction";
+import { scrollBehavior } from "@/lib/motion";
 
 /** A box on this page, paired with its index in the viewer's full list. */
 export type PageRedactionEntry = { box: RedactionBox; index: number };
@@ -199,7 +200,7 @@ export function PdfViewerPage({
 
   useEffect(() => {
     if (scrollToActive) {
-      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      containerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, [scrollToActive]);
 

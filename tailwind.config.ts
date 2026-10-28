@@ -171,7 +171,6 @@ const config: Config = {
         180: "180ms",
         240: "240ms",
         250: "250ms",
-        400: "400ms",
       },
       // Named stacking tiers. Use these instead of `z-[NN]` so the order is
       // decided once: page chrome < modal < floating menus < hints < skip
@@ -186,31 +185,11 @@ const config: Config = {
         lock: "220",
       },
       keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        "spin-slow": {
-          from: { transform: "rotate(0deg)" },
-          to: { transform: "rotate(360deg)" },
-        },
-        "card-in": {
-          from: { opacity: "0", transform: "translateY(8px) scale(0.98)" },
-          to: { opacity: "1", transform: "translateY(0) scale(1)" },
-        },
-        // Route change: content rises 6px and fades in. Short enough to
-        // read as a cut, not a slide.
+        // Route change: an opacity cut with a 4px settle, 220ms. A magistrate
+        // changes route constantly, so it must read as a cut, not a slide.
         "page-in": {
-          from: { opacity: "0", transform: "translateY(6px)" },
+          from: { opacity: "0", transform: "translateY(4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "fade-in": {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
         },
         // Skeleton sheen sweeping left to right (background-position on a
         // 200%-wide gradient, see Skeleton).
@@ -220,12 +199,7 @@ const config: Config = {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "spin-slow": "spin-slow 1.2s linear infinite",
-        "card-in": "card-in 0.2s ease-out",
-        "page-in": "page-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in": "fade-in 0.25s ease-out both",
+        "page-in": "page-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both",
         shimmer: "shimmer 1.8s linear infinite",
       },
       fontFamily: {

@@ -609,6 +609,9 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* No grey flash on tap: every control draws its own pressed and focus
+       states. */
+    -webkit-tap-highlight-color: transparent;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     overflow-x: clip;

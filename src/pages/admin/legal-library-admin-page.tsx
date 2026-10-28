@@ -114,6 +114,7 @@ import { ROUTES } from "@/routes/paths";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { CaseLaw, Statute, LegalAuthorityCourt } from "@/types";
+import { scrollBehavior } from "@/lib/motion";
 
 type ReviewRow<T> = T & {
   duplicate_warning: string | null;
@@ -2561,7 +2562,7 @@ function CaseLawReviewCard({
   // potentially long Review Queue list.
   useEffect(() => {
     if (highlight && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      cardRef.current.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, [highlight]);
   const update = useUpdateCanonicalCaseLaw(row.id);
@@ -2986,7 +2987,7 @@ function StatuteReviewCard({
   // view and briefly outlined once, on arrival, mirroring CaseLawReviewCard.
   useEffect(() => {
     if (highlight && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      cardRef.current.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, [highlight]);
   const update = useUpdateCanonicalStatute(row.id);

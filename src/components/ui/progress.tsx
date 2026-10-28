@@ -43,13 +43,16 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         className={cn("relative h-2 w-full overflow-hidden rounded-sm bg-muted", className)}
         {...props}
       >
+        {/* The fill moves on transform, not width, so a step never relayouts. */}
         <div
           className={cn(
-            "h-full rounded-sm transition-[width] duration-300 ease-out",
+            "h-full rounded-sm",
             TONE_CLASS[tone],
-            !determinate && "w-1/3 animate-pulse",
+            determinate
+              ? "w-full transition-transform duration-300 ease-out-expo"
+              : "w-1/3 animate-pulse",
           )}
-          style={determinate ? { width: `${percent}%` } : undefined}
+          style={determinate ? { transform: `translateX(${(percent ?? 0) - 100}%)` } : undefined}
         />
       </div>
     );

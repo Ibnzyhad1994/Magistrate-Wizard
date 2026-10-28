@@ -35,6 +35,7 @@ import {
   type RedactionBox,
 } from "@/lib/redaction";
 import { burnRedactedPdf, redactedPdfFileName } from "@/lib/redaction-pdf";
+import { scrollBehavior } from "@/lib/motion";
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
@@ -210,7 +211,7 @@ export function LegislationPdfViewer({
   const goToPage = useCallback((n: number) => {
     const root = scrollRef.current;
     const target = root?.querySelector<HTMLElement>(`[data-page-number="${n}"]`);
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    target?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   }, []);
 
   function submitPageInput() {
