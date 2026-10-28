@@ -145,8 +145,17 @@ the same commands inside the `production` GitHub Environment.
    select vault.create_secret('<service-role key>', 'service_role_key');
    ```
 
-   Turning pg_net on also lets `dispatch_pending_webhooks()` (0156) post
-   any queued webhooks in the daily maintenance job. Locally,
+   The same two secrets let pg_cron ask the `webhook-dispatch` function for
+   a run every minute while a webhook is due (0180). It is the only sender:
+   it records each real HTTP result, retries failures with a growing delay
+   and dead-letters a row as `failed` after eight attempts (an admin can
+   retry it from the Operations page). Until the secrets exist, webhooks
+   stay queued as `pending` and nothing is sent or raised. An external
+   scheduler may call the function instead with an `x-cron-secret` header,
+   after `supabase secrets set WEBHOOK_DISPATCH_SECRET=<random value>`.
+   Receivers should dedupe on `X-Magistrate-Wizard-Delivery` and may check
+   `X-Magistrate-Wizard-Signature-V2`, an HMAC-SHA256 over
+   `<X-Magistrate-Wizard-Timestamp>.<delivery id>.<body>`. Locally,
    `.github/workflows/live-db.yml` runs the same three statements against
    the stack (`project_url` is the gateway, `http://supabase_kong_<project_id>:8000`).
 

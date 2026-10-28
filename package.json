@@ -57,6 +57,8 @@
     "test:storage-sharing-notices": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-sharing-notices.mjs",
     "test:storage-cleanup-schedule": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-cleanup-schedule.mjs",
     "test:storage-cleanup-retry": "node --import ./scripts/test-support/register.mjs scripts/tests/test-storage-cleanup-retry.mjs",
+    "test:webhook-delivery-rules": "node --import ./scripts/test-support/register.mjs scripts/tests/test-webhook-delivery-rules.mjs",
+    "test:webhook-dispatch-schedule": "node --import ./scripts/test-support/register.mjs scripts/tests/test-webhook-dispatch-schedule.mjs",
     "test:edge-function-cors": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors.mjs",
     "test:edge-function-cors-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-edge-function-cors-live.mjs",
     "test:pinned-versions": "node --import ./scripts/test-support/register.mjs scripts/tests/test-pinned-versions.mjs",

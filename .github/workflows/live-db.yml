@@ -58,10 +58,11 @@ jobs:
             echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
           } | tee .env >> "$GITHUB_ENV"
 
-      # The storage-cleanup schedule (0167) calls the Edge Functions through
-      # pg_net, with the URL and key it reads from Vault. A hosted project's
-      # operator configures these once (supabase/README.md "Scheduled Edge
-      # Function calls"); here they point at this stack's own gateway.
+      # The storage-cleanup (0167) and webhook-dispatch (0180) schedules call
+      # the Edge Functions through pg_net, with the URL and key they read
+      # from Vault. A hosted project's operator configures these once
+      # (supabase/README.md "Scheduled Edge Function calls"); here they point
+      # at this stack's own gateway.
       - name: Configure scheduled Edge Function calls
         run: |
           eval "$(npx supabase status -o env)"
