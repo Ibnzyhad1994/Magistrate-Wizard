@@ -3204,9 +3204,9 @@ function StatuteReviewCard({
               <Label htmlFor={fullTextId} className="sr-only">
                 Full text
               </Label>
-              <textarea
+              <Textarea
                 id={fullTextId}
-                className="min-h-40 w-full rounded-md border border-input bg-background p-2 text-base lg:text-xs"
+                className="min-h-40 lg:text-xs"
                 value={fullTextDraft}
                 onChange={(e) => setFullTextDraft(e.target.value)}
                 placeholder="Full text: paste the corrected/complete document text here, then Re-check extraction quality."

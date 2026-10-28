@@ -92,6 +92,7 @@ A view switch (Tiles / List, Month / Agenda, Weekly / Daily / Monthly) is a segm
 - Chrome carries no accent. The account avatar's initials sit on a neutral `bg-surface-3` chip with `text-foreground` and a `ring-hairline` edge, and the unread count is a `bg-foreground` chip with `text-background` ink, cut out from the bell by a `ring-background` notch. The count stays `aria-hidden`; the bell's label announces it. Both pairs are at least 4.5:1 in every palette (`npm run test:theme`). The accent belongs to commit actions and the active rule only.
 - Radius scale: `rounded-sm` 2px, `rounded-md` 4px (default — use this, not bare `rounded`), `rounded-lg` 6px. Cards and chips are `rounded-md`; a still is `rounded-lg`.
 - Tabs default to the underline rail (`data-[state=active]:border-primary`); the active nav link carries the same red rule, so "where am I" is one mark across the product.
+- Fields share one recipe: `Input`, `Textarea` and `Select` are `rounded-md`, `bg-card`, `border-input`, no shadow, and the one focus ring. Use the primitive rather than a raw `<input>` or `<textarea>` so a field cannot drift from it.
 - Sizes: inputs and buttons are 44px / 16px below `lg` (phones and tablets) and 36px / 14px from `lg` up (`Button size="sm"` is 44px below `lg`, 32px from it); the primitives do this, do not override heights. See "Phones and tablets".
 
 ## Phones and tablets

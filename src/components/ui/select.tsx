@@ -108,7 +108,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               aria-describedby={ariaDescribedBy}
               onBlur={onBlur as React.FocusEventHandler<HTMLButtonElement> | undefined}
               className={cn(
-                "relative flex min-h-11 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-left text-base shadow-sm transition-colors lg:min-h-9 lg:text-sm",
+                "relative flex min-h-11 w-full items-center rounded-md border border-input bg-card px-3 py-1 pr-8 text-left text-base shadow-none transition-colors lg:min-h-9 lg:text-sm",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 isPlaceholder ? "text-muted-foreground" : "text-foreground",
