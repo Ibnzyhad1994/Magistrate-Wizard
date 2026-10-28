@@ -114,6 +114,7 @@ const TOKENS = [
   "stage-dismissed-text",
   "stage-outcome-complete-text",
   "notice-action",
+  "notice-action-foreground",
   "notice-granted",
   "notice-revoked",
   "notice-outcome",
@@ -272,6 +273,7 @@ const CONTRAST_PAIRS = [
   // Amber is read as text in the docket stage cell and notification list.
   ["stage-progress", "background", 4.5],
   ["notice-action", "background", 4.5],
+  ["notice-action-foreground", "notice-action", 4.5],
   // Capacity tiles and chips print their counts on the fill itself.
   ["capacity-available-foreground", "capacity-available", 4.5],
   ["capacity-filling-foreground", "capacity-filling", 4.5],
@@ -367,6 +369,27 @@ for (const [label, block] of PALETTES) {
     )
     .filter(Boolean);
   check(`${label}: chip words meet 4.5:1 on their own tint`, chipFailing, []);
+  // The idle and offline banners: a warning wash at 10% over the canvas
+  // carries foreground words, muted detail lines and a warning button that
+  // keeps its words at 4.5:1 on hover (the fill at 95% over the wash).
+  const warning = hslToRgb(tokenValue(block, "notice-action"));
+  const band = canvas.map((v, i) => 0.1 * warning[i] + 0.9 * v);
+  const warningWords = hslToRgb(tokenValue(block, "notice-action-foreground"));
+  const bannerFailing = [
+    ["foreground", contrastRgb(ink, band)],
+    ["muted-foreground", contrastRgb(hslToRgb(tokenValue(block, "muted-foreground")), band)],
+    ["warning button", contrastRgb(warningWords, warning)],
+    [
+      "warning button hover",
+      contrastRgb(
+        warningWords,
+        band.map((v, i) => 0.95 * warning[i] + 0.05 * v),
+      ),
+    ],
+  ]
+    .map(([what, ratio]) => (ratio >= 4.5 ? null : `${what}: ${ratio.toFixed(2)}`))
+    .filter(Boolean);
+  check(`${label}: warning banner words meet 4.5:1`, bannerFailing, []);
   check(
     `${label}: over capacity is darker than full`,
     luminance(hslToRgb(tokenValue(block, "capacity-over"))) <
@@ -549,7 +572,7 @@ const BUTTON_VARIANTS = [
   "default",
   "destructive",
   "outline",
-  "onDark",
+  "warning",
   "secondary",
   "ghost",
   "link",
@@ -826,18 +849,26 @@ check("calendar out-of-month cells are not a black wash", calendar.includes("bg-
 check("header search field is not dark glass", navSearch.includes("bg-black/45"), false);
 check("header search field uses canvas tokens", navSearch.includes("bg-secondary"), true);
 
-// Always-dark amber strips (idle warning, offline sync) inherit
-// text-amber-50. Theme outline uses bg-background, so light mode paints
-// a cream chip with cream ink. Those actions must pin dark ink.
-const amberStripWithOutline = tsxFiles("src").filter((file) => {
-  const src = readFileSync(file, "utf8");
-  return /bg-amber-950\//.test(src) && src.includes('variant="outline"');
-});
-check("dark amber strips do not use theme outline buttons", amberStripWithOutline, []);
+// The idle and offline banners are a warning wash on the canvas, in every
+// palette, so they follow high contrast and colourblind like the rest.
+// Raw palette colours (amber-950, emerald-600) bypass all six palettes.
+const rawPaletteColour = tsxFiles("src")
+  .concat(["src/components/ui/button-variants.ts"])
+  .filter((file) => /\b(amber|emerald)-[0-9]/.test(readFileSync(file, "utf8")));
+check("no component paints with raw amber or emerald", rawPaletteColour, []);
 const idleWarning = readFileSync("src/components/auth/session-idle-warning.tsx", "utf8");
 const offlineBanner = readFileSync("src/components/layout/offline-sync-banner.tsx", "utf8");
-check("idle warning action is the on-dark chip", idleWarning.includes('variant="onDark"'), true);
-check("offline sync action is the on-dark chip", offlineBanner.includes('variant="onDark"'), true);
+for (const [label, src] of [
+  ["idle warning", idleWarning],
+  ["offline sync banner", offlineBanner],
+]) {
+  check(
+    `${label} is a warning wash on the canvas`,
+    src.includes("bg-background") && src.includes("bg-warning/10"),
+    true,
+  );
+  check(`${label} action is the warning button`, src.includes('variant="warning"'), true);
+}
 
 // Brand red is the one commit action. A status badge that paints a live
 // record red reads the same as a dismissed one, so live states come from

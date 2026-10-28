@@ -103,6 +103,8 @@
     --stage-outcome-complete-text: 210 90% 35%;
 
     --notice-action: 38 92% 31%;
+    /* Words on a filled warning (the offline and idle banners' action). */
+    --notice-action-foreground: 0 0% 100%;
     --notice-granted: 160 84% 26%;
     --notice-revoked: 357 80% 44%;
     --notice-outcome: 210 90% 40%;
@@ -214,6 +216,7 @@
        for progress/done/dismissed/complete, so a magistrate reads amber
        as "needs you" everywhere in the product, not just on the board. */
     --notice-action: 38 92% 50%;
+    --notice-action-foreground: 224 14% 6%;
     --notice-granted: 160 84% 39%;
     --notice-revoked: 357 92% 47%;
     --notice-outcome: 210 90% 58%;
@@ -301,6 +304,7 @@
     --stage-outcome-complete-text: 210 100% 28%;
 
     --notice-action: 38 100% 24%;
+    --notice-action-foreground: 0 0% 100%;
     --notice-granted: 160 100% 16%;
     --notice-revoked: 357 100% 32%;
     --notice-outcome: 210 100% 28%;
@@ -385,6 +389,7 @@
     --stage-outcome-complete-text: 210 100% 68%;
 
     --notice-action: 38 100% 60%;
+    --notice-action-foreground: 0 0% 0%;
     --notice-granted: 160 100% 55%;
     --notice-revoked: 357 100% 62%;
     --notice-outcome: 210 100% 68%;
@@ -475,6 +480,7 @@
     --stage-outcome-complete-text: 202 100% 29%;
 
     --notice-action: 41 100% 28%;
+    --notice-action-foreground: 0 0% 100%;
     --notice-granted: 163 100% 24%;
     --notice-revoked: 26 100% 36%;
     --notice-outcome: 202 100% 32%;
@@ -559,6 +565,7 @@
     --stage-outcome-complete-text: 202 77% 61%;
 
     --notice-action: 41 100% 50%;
+    --notice-action-foreground: 224 14% 6%;
     --notice-granted: 163 80% 48%;
     --notice-revoked: 26 100% 52%;
     --notice-outcome: 202 77% 58%;

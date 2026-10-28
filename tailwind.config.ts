@@ -95,7 +95,10 @@ const config: Config = {
         // Semantic aliases so generic UI (alerts, toasts) never hardcodes
         // amber/green and stays in step with the colourblind and
         // high-contrast palettes.
-        warning: "hsl(var(--notice-action))",
+        warning: {
+          DEFAULT: "hsl(var(--notice-action))",
+          foreground: "hsl(var(--notice-action-foreground))",
+        },
         success: "hsl(var(--notice-granted))",
         info: "hsl(var(--notice-outcome))",
         // Surface scale (index.css). 1 = raised card, 2 = nested / hover,
