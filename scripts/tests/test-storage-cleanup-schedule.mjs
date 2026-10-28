@@ -98,12 +98,12 @@ async function main() {
     "fixture user",
   ).user;
   created.users.push(user.id);
+  const signedIn = createClient(URL, ANON, noSession);
+  must(
+    await signedIn.auth.signInWithPassword({ email: user.email, password: PASSWORD }),
+    "sign in",
+  );
   {
-    const signedIn = createClient(URL, ANON, noSession);
-    must(
-      await signedIn.auth.signInWithPassword({ email: user.email, password: PASSWORD }),
-      "sign in",
-    );
     const { error } = await signedIn.rpc("request_storage_cleanup_run");
     check("BE-07 a signed-in user cannot call request_storage_cleanup_run", !!error, true);
   }
@@ -138,12 +138,17 @@ async function main() {
     "court",
   );
   created.courts.push(court.id);
+  must(
+    await admin.from("magistrate_courts").insert({ profile_id: user.id, court_id: court.id }),
+    "court assignment",
+  );
+  // Created by the magistrate, as in the app: created_by and the district
+  // come from the session and the court.
   const matter = must(
-    await admin
+    await signedIn
       .from("docket_matters")
       .insert({
         court_id: court.id,
-        district_id: district.id,
         case_number: `${MARK}-PURGE`,
         matter_title: `${MARK} purged by the bin job`,
       })
@@ -270,7 +275,10 @@ async function cleanup() {
       await admin.from("documents").delete().in("entity_id", created.matters);
       await admin.from("docket_matters").delete().in("id", created.matters);
     }
-    if (created.courts.length > 0) await admin.from("courts").delete().in("id", created.courts);
+    if (created.courts.length > 0) {
+      await admin.from("magistrate_courts").delete().in("court_id", created.courts);
+      await admin.from("courts").delete().in("id", created.courts);
+    }
     if (created.districtId) {
       await admin.from("magisterial_districts").delete().eq("id", created.districtId);
     }
