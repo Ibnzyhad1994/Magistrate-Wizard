@@ -10537,7 +10537,7 @@ CREATE INDEX "bench_note_tags_tag_id_idx" ON "public"."bench_note_tags" USING "b
 
 
 
-CREATE INDEX "bench_notes_author_id_idx" ON "public"."bench_notes" USING "btree" ("author_id");
+CREATE INDEX "bench_notes_author_updated_at_idx" ON "public"."bench_notes" USING "btree" ("author_id", "updated_at" DESC, "id" DESC);
 
 
 
@@ -10622,6 +10622,10 @@ CREATE INDEX "case_law_jurisdiction_idx" ON "public"."case_law" USING "btree" ("
 
 
 CREATE INDEX "case_law_owner_id_idx" ON "public"."case_law" USING "btree" ("owner_id");
+
+
+
+CREATE INDEX "case_law_published_updated_at_idx" ON "public"."case_law" USING "btree" ("updated_at" DESC, "id" DESC) WHERE ("review_status" = 'published'::"text");
 
 
 
@@ -10825,7 +10829,7 @@ CREATE INDEX "docket_events_scheduled_date_category_idx" ON "public"."docket_eve
 
 
 
-CREATE INDEX "docket_events_scheduled_date_idx" ON "public"."docket_events" USING "btree" ("scheduled_date");
+CREATE INDEX "docket_events_scheduled_idx" ON "public"."docket_events" USING "btree" ("scheduled_date", "scheduled_time" NULLS FIRST, "id");
 
 
 
@@ -10977,6 +10981,10 @@ CREATE INDEX "import_jobs_content_type_idx" ON "public"."import_jobs" USING "btr
 
 
 
+CREATE INDEX "import_jobs_created_at_idx" ON "public"."import_jobs" USING "btree" ("created_at" DESC, "id" DESC);
+
+
+
 CREATE INDEX "import_jobs_created_by_idx" ON "public"."import_jobs" USING "btree" ("created_by");
 
 
@@ -11042,6 +11050,10 @@ CREATE INDEX "judgments_owner_id_idx" ON "public"."judgments" USING "btree" ("ow
 
 
 CREATE INDEX "judgments_search_vector_idx" ON "public"."judgments" USING "gin" ("search_vector");
+
+
+
+CREATE INDEX "judgments_updated_at_idx" ON "public"."judgments" USING "btree" ("updated_at" DESC, "id" DESC);
 
 
 
@@ -11250,6 +11262,10 @@ CREATE INDEX "statutes_jurisdiction_id_idx" ON "public"."statutes" USING "btree"
 
 
 CREATE INDEX "statutes_jurisdiction_idx" ON "public"."statutes" USING "btree" ("jurisdiction");
+
+
+
+CREATE INDEX "statutes_published_current_title_idx" ON "public"."statutes" USING "btree" ("title", "id") WHERE (("review_status" = 'published'::"text") AND ("is_current_version" = true));
 
 
 
