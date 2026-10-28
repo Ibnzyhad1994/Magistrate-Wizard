@@ -121,6 +121,7 @@
     "test:docket-procedure": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-procedure.mjs",
     "test:docket-protocol-paper": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-protocol-paper.mjs",
     "test:docket-protocol-civil": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-protocol-civil.mjs",
+    "test:docket-board-groups": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-board-groups.mjs",
     "test:docket-week": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-week.mjs",
     "test:docket-board-params": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-board-params.mjs",
     "test:docket-capacity": "node --import ./scripts/test-support/register.mjs scripts/tests/test-docket-capacity.mjs",

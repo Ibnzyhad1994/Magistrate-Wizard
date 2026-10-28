@@ -320,21 +320,6 @@ export function isWorkflowProtocol(value: unknown): value is WorkflowProtocol {
   return typeof value === "string" && (WORKFLOW_PROTOCOLS as readonly string[]).includes(value);
 }
 
-export function visibleBoardColumns(
-  rows: Array<{ workflow_protocol?: string | null }>,
-): BoardColumn[] {
-  const protocols = new Set<WorkflowProtocol>();
-  for (const row of rows) {
-    protocols.add(
-      isWorkflowProtocol(row.workflow_protocol) ? row.workflow_protocol : "criminal_trial",
-    );
-  }
-  if (protocols.size === 0) protocols.add("criminal_trial");
-  return BOARD_COLUMNS.filter((column) =>
-    column.protocols.some((protocol) => protocols.has(protocol)),
-  );
-}
-
 function findColumn(key: ProcedureColumnKey): BoardColumn | undefined {
   return BOARD_COLUMNS.find((column) => column.key === key);
 }
