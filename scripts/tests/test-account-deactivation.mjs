@@ -483,20 +483,20 @@ async function main() {
                and p.permissive = 'RESTRICTIVE'
                and p.cmd = 'ALL'
                and p.roles = array['authenticated']::name[]
-               and p.qual like '%is_active_account()%'
-               and p.with_check like '%is_active_account()%'
+               and p.qual like '%active_account_id()%IS NOT NULL%'
+               and p.with_check like '%active_account_id()%IS NOT NULL%'
            );
          \\echo @@profiles
          select coalesce(json_agg(p.cmd order by p.cmd), '[]')
          from pg_policies p
          where p.schemaname = 'public' and p.tablename = 'profiles'
            and p.permissive = 'RESTRICTIVE'
-           and coalesce(p.qual, p.with_check) like '%is_active_account()%';
+           and coalesce(p.qual, p.with_check) like '%active_account_id()%IS NOT NULL%';
          \\echo @@storage
          select count(*) from pg_policies p
          where p.schemaname = 'storage' and p.tablename = 'objects'
            and p.permissive = 'RESTRICTIVE' and p.cmd = 'ALL'
-           and p.qual like '%is_active_account()%';`,
+           and p.qual like '%active_account_id()%IS NOT NULL%';`,
         "test-account-deactivation",
       ),
     );

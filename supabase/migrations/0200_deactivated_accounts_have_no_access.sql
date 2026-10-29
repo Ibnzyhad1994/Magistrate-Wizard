@@ -14,7 +14,8 @@
 --
 -- Change
 --   1. is_active_account(): the caller's profile exists and is active.
---      False for anon and for a caller with no profile.
+--      False for anon and for a caller with no profile. active_account_id()
+--      is the same fact as the caller's id or null, for the policies below.
 --   2. The role helpers (is_admin, is_magistrate, is_clerk), my_court_id()
 --      and the court and docket helpers (can_access_court,
 --      has_active_clerk_assignment, has_active_magistrate_court,
@@ -24,8 +25,8 @@
 --      otherwise unchanged; `create or replace` keeps their grants and
 --      comments.
 --   3. A RESTRICTIVE policy for authenticated on every public table with
---      RLS, and on storage.objects, ANDs is_active_account() into every
---      permissive policy. That covers the policies that key on ownership
+--      RLS, and on storage.objects, ANDs `active_account_id() is not null`
+--      into every permissive policy. That covers the policies that key on ownership
 --      alone (bench notes, judgments, bookmarks, notifications, including
 --      Realtime's notification feed) without touching each one. profiles
 --      is the one exception: a deactivated caller still reads their own
@@ -33,6 +34,14 @@
 --      than show an empty app; every write is refused.
 --   test-account-deactivation.mjs fails if a public table with RLS lacks
 --   the restrictive policy, so a new table cannot miss it.
+--
+--   The policies test an id for null rather than a boolean on purpose. The
+--   planner cannot see an InitPlan's value, so it guesses that a bare
+--   boolean keeps half the rows, on every table of a query: on the Docket
+--   appearances page that halved both sides of the join and traded the
+--   docket_events_scheduled_idx walk for a full sort (test-list-keyset-
+--   paging). It guesses that IS NOT NULL keeps 99.5%, which leaves every
+--   plan as it was.
 --
 -- What this does not cover
 --   A SECURITY DEFINER RPC that gates only on auth.uid() bypasses RLS. 0201
@@ -47,6 +56,9 @@
 --   through profiles' RLS; it takes no input and returns one boolean about
 --   the caller. anon may execute it because the INVOKER court helpers that
 --   policies applying to PUBLIC evaluate call it (0169's allowlist rule).
+--   active_account_id() is DEFINER for the same reason and returns only the
+--   caller's own id; the policies that call it apply to authenticated only,
+--   so anon cannot execute it.
 -- ============================================================================
 
 -- 1. The caller's account is active ------------------------------------------
@@ -65,10 +77,26 @@ as $$
 $$;
 
 comment on function public.is_active_account() is
-  'True when the caller has a profile and it is active (0200, BE-09). False for anon and for a deactivated account. Every role, court and docket helper ANDs it in, and the restrictive "Deactivated accounts have no access" policies call it.';
+  'True when the caller has a profile and it is active (0200, BE-09). False for anon and for a deactivated account. Every role, court and docket helper ANDs it in; the restrictive policies use active_account_id().';
 
 revoke all on function public.is_active_account() from public;
 grant execute on function public.is_active_account() to anon, authenticated;
+
+create or replace function public.active_account_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.id from public.profiles p where p.id = (select auth.uid()) and p.is_active;
+$$;
+
+comment on function public.active_account_id() is
+  'The caller''s id when their account is active, else null (0200, BE-09). The restrictive "Deactivated accounts have no access" policies test it for null, which the planner estimates as keeping almost every row, where a bare boolean would halve every estimate.';
+
+revoke all on function public.active_account_id() from public, anon;
+grant execute on function public.active_account_id() to authenticated;
 
 -- 2. Role helpers -------------------------------------------------------------
 
@@ -261,8 +289,8 @@ begin
     execute format(
       'create policy "Deactivated accounts have no access" on public.%I '
       'as restrictive for all to authenticated '
-      'using ((select public.is_active_account())) '
-      'with check ((select public.is_active_account()))',
+      'using ((select public.active_account_id()) is not null) '
+      'with check ((select public.active_account_id()) is not null)',
       v_table
     );
   end loop;
@@ -271,22 +299,22 @@ $$;
 
 create policy "Deactivated accounts see only their own profile" on public.profiles
   as restrictive for select to authenticated
-  using ((select public.is_active_account()) or id = (select auth.uid()));
+  using ((select public.active_account_id()) is not null or id = (select auth.uid()));
 
 create policy "Deactivated accounts cannot add profiles" on public.profiles
   as restrictive for insert to authenticated
-  with check ((select public.is_active_account()));
+  with check ((select public.active_account_id()) is not null);
 
 create policy "Deactivated accounts cannot change profiles" on public.profiles
   as restrictive for update to authenticated
-  using ((select public.is_active_account()))
-  with check ((select public.is_active_account()));
+  using ((select public.active_account_id()) is not null)
+  with check ((select public.active_account_id()) is not null);
 
 create policy "Deactivated accounts cannot delete profiles" on public.profiles
   as restrictive for delete to authenticated
-  using ((select public.is_active_account()));
+  using ((select public.active_account_id()) is not null);
 
 create policy "Deactivated accounts have no file access" on storage.objects
   as restrictive for all to authenticated
-  using ((select public.is_active_account()))
-  with check ((select public.is_active_account()));
+  using ((select public.active_account_id()) is not null)
+  with check ((select public.active_account_id()) is not null);
