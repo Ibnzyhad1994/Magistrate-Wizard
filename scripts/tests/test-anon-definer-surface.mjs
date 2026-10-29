@@ -45,6 +45,7 @@ const ANON_ALLOWLIST = new Set([
   "has_docket_matter_authority",
   "has_item_share",
   "has_item_share_authority",
+  "is_active_account",
   "is_admin",
   "is_clerk",
   "is_magistrate",
