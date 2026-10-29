@@ -1354,7 +1354,7 @@ CREATE OR REPLACE FUNCTION "public"."can_access_court"("p_court_id" "uuid") RETU
     LANGUAGE "sql" STABLE
     SET "search_path" TO 'public'
     AS $$
-  select exists (
+  select (select public.is_active_account()) and exists (
     select 1 from public.magistrate_courts mc
     where mc.court_id = p_court_id
       and mc.profile_id = auth.uid()
@@ -1476,7 +1476,7 @@ CREATE OR REPLACE FUNCTION "public"."can_manage_clerk_access"("p_court_id" "uuid
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select (select public.is_admin()) or exists (
+  select (select public.is_admin()) or ((select public.is_active_account()) and exists (
     select 1 from public.magistrate_courts mc
     where mc.court_id = p_court_id
       and mc.profile_id = (select auth.uid())
@@ -1497,7 +1497,7 @@ CREATE OR REPLACE FUNCTION "public"."can_manage_clerk_access"("p_court_id" "uuid
           ) = 1
         )
       )
-  );
+  ));
 $$;
 
 
@@ -4637,7 +4637,7 @@ CREATE OR REPLACE FUNCTION "public"."has_active_clerk_assignment"("p_court_id" "
     LANGUAGE "sql" STABLE
     SET "search_path" TO 'public'
     AS $$
-  select exists (
+  select (select public.is_active_account()) and exists (
     select 1 from public.clerk_courts cc
     where cc.court_id = p_court_id
       and cc.profile_id = auth.uid()
@@ -4657,7 +4657,7 @@ CREATE OR REPLACE FUNCTION "public"."has_active_magistrate_court"() RETURNS bool
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select exists (
+  select (select public.is_active_account()) and exists (
     select 1 from public.magistrate_courts
     where profile_id = (select auth.uid())
       and ended_at is null
@@ -4696,7 +4696,7 @@ CREATE OR REPLACE FUNCTION "public"."has_docket_share"("p_docket_matter_id" "uui
     LANGUAGE "sql" STABLE
     SET "search_path" TO 'public'
     AS $$
-  select exists (
+  select (select public.is_active_account()) and exists (
     select 1 from public.shares s
     where s.item_type = 'docket_matter'
       and s.item_id = p_docket_matter_id
@@ -4766,7 +4766,7 @@ CREATE OR REPLACE FUNCTION "public"."has_retained_assignment"("p_docket_matter_i
     LANGUAGE "sql" STABLE
     SET "search_path" TO 'public'
     AS $$
-  select exists (
+  select (select public.is_active_account()) and exists (
     select 1 from public.docket_matter_assignments dma
     where dma.docket_matter_id = p_docket_matter_id
       and dma.profile_id = auth.uid()
@@ -4782,13 +4782,31 @@ COMMENT ON FUNCTION "public"."has_retained_assignment"("p_docket_matter_id" "uui
 
 
 
+CREATE OR REPLACE FUNCTION "public"."is_active_account"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select coalesce(
+    (select p.is_active from public.profiles p where p.id = (select auth.uid())),
+    false
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_active_account"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."is_active_account"() IS 'True when the caller has a profile and it is active (0200, BE-09). False for anon and for a deactivated account. Every role, court and docket helper ANDs it in, and the restrictive "Deactivated accounts have no access" policies call it.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
+    where id = auth.uid() and role = 'admin' and is_active
   );
 $$;
 
@@ -4802,7 +4820,7 @@ CREATE OR REPLACE FUNCTION "public"."is_clerk"() RETURNS boolean
     AS $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'clerk'
+    where id = auth.uid() and role = 'clerk' and is_active
   );
 $$;
 
@@ -4853,7 +4871,7 @@ CREATE OR REPLACE FUNCTION "public"."is_magistrate"() RETURNS boolean
     AS $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'magistrate'
+    where id = auth.uid() and role = 'magistrate' and is_active
   );
 $$;
 
@@ -5475,6 +5493,7 @@ CREATE OR REPLACE FUNCTION "public"."my_court_id"() RETURNS "uuid"
   select p.court_id
   from public.profiles p
   where p.id = (select auth.uid())
+    and p.is_active
     and (
       exists (
         select 1 from public.magistrate_courts mc
@@ -5871,6 +5890,28 @@ ALTER FUNCTION "public"."profiles_identity_columns_guard"() OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."profiles_identity_columns_guard"() IS 'BEFORE UPDATE on profiles (0168): refuses a change to role, court_id or email from a client role (anon, authenticated), admins included, so they change only through SECURITY DEFINER RPCs, sign-up, the service role or the SQL editor. INVOKER on purpose: it reads current_user.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."profiles_is_active_guard"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if current_user in ('anon', 'authenticated') then
+    raise exception
+      'An account is deactivated or reactivated only through set_profile_active, which also signs it out.'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."profiles_is_active_guard"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."profiles_is_active_guard"() IS 'BEFORE UPDATE on profiles (0201): refuses an is_active change from a client role (anon, authenticated), admins included, so it changes only through set_profile_active, the service role or the SQL editor. INVOKER on purpose: it reads current_user.';
 
 
 
@@ -7966,6 +8007,135 @@ $$;
 
 
 ALTER FUNCTION "public"."set_legislation_review_status"("p_statute_id" "uuid", "p_status" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_profile_active"("p_profile_id" "uuid", "p_active" boolean, "p_reason" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_reason text := nullif(btrim(p_reason), '');
+  v_target public.profiles%rowtype;
+  v_changed boolean;
+  v_sessions integer := 0;
+  v_assignments jsonb;
+begin
+  if p_profile_id is null or p_active is null then
+    raise exception 'p_profile_id and p_active are required'
+      using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('public.set_profile_active'));
+
+  if not (select public.is_admin()) then
+    raise exception 'Only an active administrator can deactivate or reactivate an account'
+      using errcode = '42501';
+  end if;
+  if not p_active and v_reason is null then
+    raise exception 'Give a reason for deactivating this account'
+      using errcode = '22023';
+  end if;
+  if char_length(v_reason) > 500 then
+    raise exception 'Keep the reason to 500 characters or fewer'
+      using errcode = '22023';
+  end if;
+
+  select * into v_target from public.profiles where id = p_profile_id for update;
+  if not found then
+    raise exception 'Account % not found', p_profile_id
+      using errcode = 'P0002';
+  end if;
+
+  if not p_active
+    and v_target.role = 'admin'
+    and v_target.is_active
+    and not exists (
+      select 1 from public.profiles
+      where role = 'admin' and is_active and id <> p_profile_id
+    )
+  then
+    raise exception 'This is the last active administrator. Make another account an administrator before deactivating this one.'
+      using errcode = 'P0001';
+  end if;
+
+  v_changed := v_target.is_active is distinct from p_active;
+  if v_changed then
+    update public.profiles set is_active = p_active where id = p_profile_id;
+
+    insert into public.audit_log (actor_id, action, table_name, record_id, new_data)
+    values (
+      (select auth.uid()),
+      'update',
+      'profiles',
+      p_profile_id,
+      jsonb_build_object(
+        'event', case when p_active then 'account_reactivated' else 'account_deactivated' end,
+        'reason', v_reason
+      )
+    );
+  end if;
+
+  if p_active then
+    update auth.users set banned_until = null
+    where id = p_profile_id and banned_until is not null;
+  else
+    update auth.users set banned_until = timestamptz '9999-12-31 00:00:00+00'
+    where id = p_profile_id;
+    delete from auth.sessions where user_id = p_profile_id;
+    get diagnostics v_sessions = row_count;
+  end if;
+
+  select coalesce(jsonb_agg(a.assignment order by a.started_at, a.id), '[]'::jsonb)
+  into v_assignments
+  from (
+    select
+      mc.id,
+      mc.started_at,
+      jsonb_build_object(
+        'kind', 'magistrate',
+        'assignment_id', mc.id,
+        'court_id', mc.court_id,
+        'court_name', c.name,
+        'assignment_type', mc.assignment_type,
+        'occupies_primary_slot', mc.occupies_primary_slot,
+        'can_manage_clerks', mc.can_manage_clerks,
+        'started_at', mc.started_at
+      ) as assignment
+    from public.magistrate_courts mc
+    join public.courts c on c.id = mc.court_id
+    where mc.profile_id = p_profile_id and mc.ended_at is null
+    union all
+    select
+      cc.id,
+      cc.started_at,
+      jsonb_build_object(
+        'kind', 'clerk',
+        'assignment_id', cc.id,
+        'court_id', cc.court_id,
+        'court_name', c.name,
+        'started_at', cc.started_at
+      )
+    from public.clerk_courts cc
+    join public.courts c on c.id = cc.court_id
+    where cc.profile_id = p_profile_id and cc.ended_at is null
+  ) a;
+
+  return jsonb_build_object(
+    'profile_id', p_profile_id,
+    'is_active', p_active,
+    'changed', v_changed,
+    'sessions_revoked', v_sessions,
+    'court_assignments', v_assignments
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_profile_active"("p_profile_id" "uuid", "p_active" boolean, "p_reason" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."set_profile_active"("p_profile_id" "uuid", "p_active" boolean, "p_reason" "text") IS 'Deactivates or reactivates one account (0201, BE-09). Active administrators only. Deactivating needs a reason, is refused for the last active administrator, bans the user and deletes their sessions; reactivating lifts the ban. Never ends court assignments: returns { profile_id, is_active, changed, sessions_revoked, court_assignments[] } listing the open magistrate and clerk assignments to reassign. Audited; idempotent.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
@@ -11585,6 +11755,10 @@ CREATE OR REPLACE TRIGGER "profiles_identity_columns_guard" BEFORE UPDATE OF "ro
 
 
 
+CREATE OR REPLACE TRIGGER "profiles_is_active_guard" BEFORE UPDATE OF "is_active" ON "public"."profiles" FOR EACH ROW WHEN (("old"."is_active" IS DISTINCT FROM "new"."is_active")) EXECUTE FUNCTION "public"."profiles_is_active_guard"();
+
+
+
 CREATE OR REPLACE TRIGGER "protect_clerk_court_history_trigger" BEFORE UPDATE ON "public"."clerk_courts" FOR EACH ROW EXECUTE FUNCTION "public"."protect_clerk_court_history"();
 
 
@@ -12871,6 +13045,266 @@ CREATE POLICY "Current Docket-access holders can create Shares" ON "public"."sha
 
 
 
+CREATE POLICY "Deactivated accounts cannot add profiles" ON "public"."profiles" AS RESTRICTIVE FOR INSERT TO "authenticated" WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts cannot change profiles" ON "public"."profiles" AS RESTRICTIVE FOR UPDATE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts cannot delete profiles" ON "public"."profiles" AS RESTRICTIVE FOR DELETE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."audit_log" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."auth_event_log" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."bench_note_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."bench_notes" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."bookmarks" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law_annotations" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_parties" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."cases" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."clerk_access_requests" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."clerk_courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."comments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."court_non_sitting_days" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."data_retention_policies" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_callover_items" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_callovers" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_capacity_overrides" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_capacity_settings" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_event_calendar_links" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_events" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_assignments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_case_law" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_categories" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_judgments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_parties" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matters" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."documents" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."feature_flags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."import_batches" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."import_jobs" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."issue_reports" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_versions" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_authority_courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_case_categories" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_jurisdictions" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_regional_groups" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_sources" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."magisterial_districts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."magistrate_court_requests" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."magistrate_courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."notifications" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_case_law" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_docket_matters" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_judgments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_codes" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."rpc_rate_limit_buckets" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."shares" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."stale_draft_notices" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."statute_provisions" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."statute_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."statutes" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."storage_cleanup_queue" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."webhook_endpoints" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts have no access" ON "public"."webhook_outbox" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+
+
+
+CREATE POLICY "Deactivated accounts see only their own profile" ON "public"."profiles" AS RESTRICTIVE FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_active_account"() AS "is_active_account") OR ("id" = ( SELECT "auth"."uid"() AS "uid"))));
+
+
+
 CREATE POLICY "Docket matter categories are viewable by all authenticated user" ON "public"."docket_matter_categories" FOR SELECT TO "authenticated" USING (true);
 
 
@@ -14133,6 +14567,13 @@ GRANT ALL ON FUNCTION "public"."has_retained_assignment"("p_docket_matter_id" "u
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_active_account"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_active_account"() TO "anon";
+GRANT ALL ON FUNCTION "public"."is_active_account"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_active_account"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."is_admin"() TO "anon";
 GRANT ALL ON FUNCTION "public"."is_admin"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_admin"() TO "service_role";
@@ -14327,6 +14768,11 @@ GRANT ALL ON FUNCTION "public"."profile_has_completed_first_sign_in"("p_profile_
 
 REVOKE ALL ON FUNCTION "public"."profiles_identity_columns_guard"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."profiles_identity_columns_guard"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."profiles_is_active_guard"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."profiles_is_active_guard"() TO "service_role";
 
 
 
@@ -14609,6 +15055,12 @@ GRANT ALL ON FUNCTION "public"."set_docket_matter_next_date"("p_docket_matter_id
 REVOKE ALL ON FUNCTION "public"."set_legislation_review_status"("p_statute_id" "uuid", "p_status" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_legislation_review_status"("p_statute_id" "uuid", "p_status" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_legislation_review_status"("p_statute_id" "uuid", "p_status" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."set_profile_active"("p_profile_id" "uuid", "p_active" boolean, "p_reason" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_profile_active"("p_profile_id" "uuid", "p_active" boolean, "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_profile_active"("p_profile_id" "uuid", "p_active" boolean, "p_reason" "text") TO "service_role";
 
 
 
