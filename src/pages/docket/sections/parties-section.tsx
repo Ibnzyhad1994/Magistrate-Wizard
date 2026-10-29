@@ -46,6 +46,7 @@ import {
   PARTY_STATUSES,
   PARTY_TYPES,
   docketPartySchema,
+  type DocketPartyFormInput,
   type DocketPartyFormValues,
 } from "@/lib/validations/docket";
 import { toTitleCase } from "@/lib/utils";
@@ -191,7 +192,7 @@ function PartyDialog({
   const clearPhoto = useClearPartyPhoto(matterId);
   const isPending = createParty.isPending || updateParty.isPending;
 
-  const form = useForm<DocketPartyFormValues>({
+  const form = useForm<DocketPartyFormInput, unknown, DocketPartyFormValues>({
     resolver: zodResolver(docketPartySchema),
     defaultValues: {
       full_name: party?.full_name ?? "",

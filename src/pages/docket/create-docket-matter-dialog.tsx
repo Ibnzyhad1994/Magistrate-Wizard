@@ -32,6 +32,7 @@ import { useDocketMatterCategories } from "@/hooks/docket/use-docket-capacity";
 import {
   OTHER_MATTER_CATEGORY_NAME,
   docketMatterSchemaForCategories,
+  type DocketMatterFormInput,
   type DocketMatterFormValues,
 } from "@/lib/validations/docket";
 import { ROUTES } from "@/routes/paths";
@@ -123,7 +124,7 @@ export function CreateDocketMatterDialog({
   const otherCategoryId = categories?.find((c) => c.name === OTHER_MATTER_CATEGORY_NAME)?.id;
   const schema = useMemo(() => docketMatterSchemaForCategories(otherCategoryId), [otherCategoryId]);
 
-  const form = useForm<DocketMatterFormValues>({
+  const form = useForm<DocketMatterFormInput, unknown, DocketMatterFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       court_id: "",

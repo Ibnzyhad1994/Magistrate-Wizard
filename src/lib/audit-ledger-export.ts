@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { rowsToCsv } from "@/lib/audit-export";
 import { checkRpcResult } from "@/lib/rpc-results";
 
@@ -35,6 +35,8 @@ export type ContinueAuditExportArgs = {
 export type ExportAuditLogArgs = StartAuditExportArgs | ContinueAuditExportArgs;
 
 const id = z.number().int().positive();
+// Any 8-4-4-4-12 hex id; z.uuid() would also insist on RFC 9562 version bits.
+const guid = z.guid();
 const json = z.unknown();
 
 export const auditLedgerRowSchema = z.object({
@@ -42,8 +44,8 @@ export const auditLedgerRowSchema = z.object({
   created_at: z.string().min(1),
   action: z.enum(["insert", "update", "delete"]),
   table_name: z.string(),
-  record_id: z.string().uuid().nullable(),
-  actor_id: z.string().uuid().nullable(),
+  record_id: guid.nullable(),
+  actor_id: guid.nullable(),
   actor_name: z.string().nullable(),
   actor_email: z.string().nullable(),
   old_data: json,

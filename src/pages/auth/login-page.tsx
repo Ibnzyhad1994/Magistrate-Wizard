@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { useAuth } from "@/hooks/use-auth";
-import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
+import { loginSchema, type LoginFormInput, type LoginFormValues } from "@/lib/validations/auth";
 import { ROUTES } from "@/routes/paths";
 import { APP_NAME } from "@/lib/constants";
 import { pathFromLoginRedirect } from "@/lib/auth/session-policy";
@@ -33,7 +33,7 @@ export default function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const form = useForm<LoginFormValues>({
+  const form = useForm<LoginFormInput, unknown, LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", rememberMe: false },
   });

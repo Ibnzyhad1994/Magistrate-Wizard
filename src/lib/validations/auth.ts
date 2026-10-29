@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 export const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -6,6 +6,8 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().default(false),
 });
 export type LoginFormValues = z.infer<typeof loginSchema>;
+/** What the form holds before parsing: `rememberMe` may still be unset. */
+export type LoginFormInput = z.input<typeof loginSchema>;
 
 /**
  * `accountType` decides what this form collects and, via
@@ -23,9 +25,7 @@ export type LoginFormValues = z.infer<typeof loginSchema>;
  */
 export const registerSchema = z
   .object({
-    accountType: z.enum(["magistrate", "clerk"], {
-      errorMap: () => ({ message: "Choose Magistrate or Court Clerk" }),
-    }),
+    accountType: z.enum(["magistrate", "clerk"], { error: "Choose Magistrate or Court Clerk" }),
     fullName: z
       .string()
       .min(2, "Full name must be at least 2 characters")
@@ -50,14 +50,14 @@ export const registerSchema = z
   .superRefine((data, ctx) => {
     if (!data.districtId) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Select your Magisterial District",
         path: ["districtId"],
       });
     }
     if (!data.courtIds || data.courtIds.length === 0) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Select at least one court to request access to",
         path: ["courtIds"],
       });

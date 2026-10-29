@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import {
   APPEAL_STATUSES,
   ARRAIGNMENT_STATUSES,
@@ -165,6 +165,8 @@ export const docketMatterSchema = z.object({
   ...broughtForwardFields,
 });
 export type DocketMatterFormValues = z.infer<typeof docketMatterSchema>;
+/** What the form holds before parsing: defaulted fields may still be unset. */
+export type DocketMatterFormInput = z.input<typeof docketMatterSchema>;
 
 /** Identity fields editable after create. Court and district stay locked. */
 export const docketMatterIdentitySchema = docketMatterSchema.pick({
@@ -188,7 +190,7 @@ export const docketMatterSchemaForCategories = (otherCategoryId: string | undefi
       !values.category_other?.trim()
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Describe the matter type",
         path: ["category_other"],
       });
@@ -205,7 +207,7 @@ export const docketMatterClassificationSchemaForCategories = (
       !values.category_other?.trim()
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Describe the matter type",
         path: ["category_other"],
       });
@@ -232,16 +234,21 @@ export const docketEventSchema = z.object({
   category_id: z.string().optional().or(z.literal("")),
 });
 export type DocketEventFormValues = z.infer<typeof docketEventSchema>;
+export type DocketEventFormInput = z.input<typeof docketEventSchema>;
 
 export const docketPartySchema = z.object({
   full_name: z.string().min(1, "Name is required").max(300),
   party_type: z.enum(PARTY_TYPES).default("individual"),
-  role: z.enum(PARTY_ROLES, { required_error: "Role is required" }),
+  // Only a missing role gets this message; a value outside the list keeps zod's own.
+  role: z.enum(PARTY_ROLES, {
+    error: (issue) => (issue.input === undefined ? "Role is required" : undefined),
+  }),
   attorney_name: z.string().max(300).optional().or(z.literal("")),
   contact_info: z.string().max(1000).optional().or(z.literal("")),
   party_status: z.enum(PARTY_STATUSES).default("active"),
 });
 export type DocketPartyFormValues = z.infer<typeof docketPartySchema>;
+export type DocketPartyFormInput = z.input<typeof docketPartySchema>;
 
 export const docketTagSchema = z.object({
   tag_name: z.string().min(1, "Tag is required").max(60),

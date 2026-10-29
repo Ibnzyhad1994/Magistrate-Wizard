@@ -1,5 +1,14 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { isSafeHref } from "@/lib/html-sanitize";
+
+const isParseableUrl = (value: string) => {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Shared shape for creating/editing PERSONAL research (owner_id = caller).
@@ -12,9 +21,11 @@ export const caseLawFieldsSchema = z.object({
   court: z.string().min(1, "Court is required").max(300),
   jurisdiction: z.string().min(1, "Jurisdiction is required").max(200),
   decided_date: z.string().optional().or(z.literal("")),
+  // A refine, not .url(): zod 4's .url() also trims the value it returns, and
+  // the URL is saved exactly as typed.
   source_url: z
     .string()
-    .url("Enter a valid URL")
+    .refine(isParseableUrl, "Enter a valid URL")
     .refine(isSafeHref, "Enter an http(s) URL")
     .optional()
     .or(z.literal("")),

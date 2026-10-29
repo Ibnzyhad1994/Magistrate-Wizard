@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { reportError } from "@/lib/sentry";
 import { Constants, type Database } from "@/types/database.types";
 
@@ -24,7 +24,7 @@ type RowOf<N extends RpcName> = RpcReturns<N> extends (infer Row)[] ? Row : neve
 
 /** One schema per returned column: a column added to or dropped from the
  * generated type without updating its schema fails to compile. */
-type RowShape<N extends RpcName> = { [K in keyof RowOf<N>]-?: z.ZodTypeAny };
+type RowShape<N extends RpcName> = { [K in keyof RowOf<N>]-?: z.ZodType };
 
 const rows = <N extends RpcName>(shape: RowShape<N>) => z.array(z.object(shape));
 
@@ -32,9 +32,9 @@ const env = (import.meta.env ?? {}) as Record<string, unknown>;
 
 export class RpcResultError extends Error {
   readonly rpc: string;
-  readonly issues: z.ZodIssue[];
+  readonly issues: z.core.$ZodIssue[];
 
-  constructor(rpc: string, issues: z.ZodIssue[]) {
+  constructor(rpc: string, issues: z.core.$ZodIssue[]) {
     const first = issues
       .slice(0, 3)
       .map((issue) => `${issue.path.join(".") || "(result)"}: ${issue.message}`)
@@ -57,7 +57,7 @@ export interface CheckOptions {
  */
 export function checkRpcResult<T>(
   rpc: string,
-  schema: z.ZodTypeAny,
+  schema: z.ZodType,
   data: T,
   options: CheckOptions = {},
 ): T {
@@ -69,7 +69,8 @@ export function checkRpcResult<T>(
   return data;
 }
 
-const uuid = z.string().uuid();
+// Any 8-4-4-4-12 hex id, as before; z.uuid() would also insist on RFC 9562 version bits.
+const uuid = z.guid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected a YYYY-MM-DD date");
 const timestamp = z.string().min(1);
 const text = z.string();
@@ -182,7 +183,7 @@ export const RPC_RESULT_SCHEMAS = {
       subtitle: text.nullable(),
       headline: text.nullable(),
       rank: z.number(),
-    } satisfies Record<keyof RowOf<"global_search">, z.ZodTypeAny>),
+    } satisfies Record<keyof RowOf<"global_search">, z.ZodType>),
   ),
   // Case Law browse (0171).
   search_case_law_scoped: rows<"search_case_law_scoped">({
@@ -195,7 +196,7 @@ export const RPC_RESULT_SCHEMAS = {
     rank: z.number(),
     headline: text.nullable(),
   }),
-} satisfies Partial<Record<RpcName, z.ZodTypeAny>>;
+} satisfies Partial<Record<RpcName, z.ZodType>>;
 
 export type CheckedRpc = keyof typeof RPC_RESULT_SCHEMAS;
 

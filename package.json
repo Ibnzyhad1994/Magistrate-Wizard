@@ -127,6 +127,7 @@
     "test:global-search-per-type": "node --import ./scripts/test-support/register.mjs scripts/tests/test-global-search-per-type.mjs",
     "test:scheduled-maintenance": "node --import ./scripts/test-support/register.mjs scripts/tests/test-scheduled-maintenance.mjs",
     "test:rpc-results": "node --import ./scripts/test-support/register.mjs scripts/tests/test-rpc-results.mjs",
+    "test:zod-schemas": "node --import ./scripts/test-support/register.mjs scripts/tests/test-zod-schemas.mjs",
     "test:auth-event-anon-cap": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-event-anon-cap.mjs",
     "test:court-request-recovery-rpc": "node --import ./scripts/test-support/register.mjs scripts/tests/test-court-request-recovery-rpc.mjs",
     "test:pentest": "node --import ./scripts/test-support/register.mjs scripts/tests/pentest-security-audit.mjs",
@@ -189,7 +190,7 @@
     "@fontsource/cinzel": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
-    "@hookform/resolvers": "^3.9.1",
+    "@hookform/resolvers": "^5.9.2",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -226,7 +227,7 @@
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "tesseract.js": "^7.0.0",
-    "zod": "^3.23.8",
+    "zod": "^4.6.7",
     "zustand": "^5.0.1"
   },
   "overrides": {
