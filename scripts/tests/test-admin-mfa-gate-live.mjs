@@ -186,7 +186,7 @@ try {
 
   // --- gate on and off, in one rolled-back transaction -------------------------
   const claims = (value) =>
-    `select set_config('request.jwt.claims', $c$${JSON.stringify(value)}$c$, true);`;
+    `do $d$ begin perform set_config('request.jwt.claims', $c$${JSON.stringify(value)}$c$, true); end $d$;`;
   const aal1 = claims(claimsOf(aal1Token));
   const aal2 = claims(aal2Claims);
   const magistrateAal2 = claims({ sub: magistrateId, role: "authenticated", aal: "aal2" });
@@ -262,7 +262,7 @@ ${asClient(aal1)}
 select public.is_admin();
 
 reset role;
-select set_config('request.jwt.claims', '', true);
+do $d$ begin perform set_config('request.jwt.claims', '', true); end $d$;
 \\echo @@sql_editor_turns_on
 select pg_temp.set_gate(true);
 \\echo @@sql_editor_turns_off

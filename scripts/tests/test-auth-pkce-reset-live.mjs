@@ -162,10 +162,13 @@ try {
     `${APP_ORIGIN}/reset-password`,
   );
   check("the return carries a one-time code", Boolean(landing.searchParams.get("code")), true);
+  // This Auth version does not echo auth-js's sb_flow_id back, so the
+  // exchange below finds the verifier under the fixed key auth-js mirrors
+  // for the latest flow; the app passes a flow id only when one is present.
   check(
-    "the return carries the PKCE flow id",
-    Boolean(landing.searchParams.get("sb_flow_id")),
-    true,
+    "the return carries only Auth's code (and at most the flow id)",
+    [...landing.searchParams.keys()].filter((k) => k !== "code" && k !== "sb_flow_id"),
+    [],
   );
   check("no access or refresh token anywhere in the return URL", hasToken(location), false);
   check("no fragment on the return URL", landing.hash, "");
@@ -185,9 +188,10 @@ try {
   check("the code with a wrong verifier is refused", stolen.ok, false);
 
   const browser = pkceClient(browserLocal);
-  const exchanged = await browser.auth.exchangeCodeForSession(callback.code, {
-    flowId: callback.flowId,
-  });
+  const exchanged = await browser.auth.exchangeCodeForSession(
+    callback.code,
+    callback.flowId ? { flowId: callback.flowId } : undefined,
+  );
   check(
     "a new tab of the same browser exchanges the code for a session",
     exchanged.error?.message ?? null,
