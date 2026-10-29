@@ -235,7 +235,7 @@ from public.audit_log a
 where a.table_name = 'judgments' and a.record_id = '${JT}' and a.action = 'update'
   and (a.new_data ? 'event' or a.old_data ->> 'owner_id' is distinct from a.new_data ->> 'owner_id');
 \\echo @@notices
-select coalesce(json_agg(json_build_object('user', n.user_id, 'link', n.link) order by n.link), '[]')
+select coalesce(json_agg(json_build_object('user', n.user_id, 'link', n.link) order by n.link collate "C"), '[]')
 from public.notifications n
 where n.type = 'judgment_transferred' and n.link like '%${JT}';
 
