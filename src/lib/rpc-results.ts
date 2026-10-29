@@ -1,6 +1,7 @@
 import { z } from "@/lib/zod";
 import { reportError } from "@/lib/sentry";
 import { Constants, type Database } from "@/types/database.types";
+import { relinquishPreflightSchema } from "@/lib/court-handover";
 
 /**
  * Runtime checks on what an RPC returns, at the data-access boundary.
@@ -196,6 +197,8 @@ export const RPC_RESULT_SCHEMAS = {
     rank: z.number(),
     headline: text.nullable(),
   }),
+  // Court hand-over (0220): what ending an assignment leaves behind.
+  relinquish_preflight: relinquishPreflightSchema,
 } satisfies Partial<Record<RpcName, z.ZodType>>;
 
 export type CheckedRpc = keyof typeof RPC_RESULT_SCHEMAS;

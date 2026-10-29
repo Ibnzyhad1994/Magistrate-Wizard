@@ -14,6 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { RelinquishPreflightSummary } from "@/components/court-handover/relinquish-preflight";
+import { preflightRefused } from "@/lib/court-handover";
+import { useRelinquishPreflight } from "@/hooks/use-court-handover";
 import { useCourts } from "@/hooks/docket/use-lookups";
 import {
   courtAssignmentKeys,
@@ -73,6 +76,7 @@ export default function CourtAssignmentsPage() {
   const [assignmentType, setAssignmentType] = useState<CourtAssignmentType>("regular");
   const [assignResolution, setAssignResolution] = useState<OccupiedCourtResolution | "">("");
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
+  const endPreflight = useRelinquishPreflight(endTarget?.id ?? null);
   const rosterTab = searchParams.get("tab") === "roster" ? "roster" : "requests";
 
   // Was firing one `ilike` against `profiles` per keystroke — the same
@@ -592,6 +596,7 @@ export default function CourtAssignmentsPage() {
         confirmLabel="End assignment"
         confirmVariant="destructive"
         isConfirming={endAssignment.isPending}
+        confirmDisabled={endPreflight.isPending || preflightRefused(endPreflight)}
         onConfirm={() => {
           if (!endTarget) return;
           const target = endTarget;
@@ -599,7 +604,9 @@ export default function CourtAssignmentsPage() {
             onSuccess: () => setEndTarget(null),
           });
         }}
-      />
+      >
+        {endTarget ? <RelinquishPreflightSummary preflight={endPreflight} mode="admin" /> : null}
+      </AlertDialog>
     </BrowsePage>
   );
 }

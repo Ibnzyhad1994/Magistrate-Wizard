@@ -30,6 +30,9 @@ import {
 import { OCCUPIED_COURT_EXCEPTION_LABEL } from "@/lib/occupied-court-exception";
 import { formatDate } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
+import { RelinquishPreflightSummary } from "@/components/court-handover/relinquish-preflight";
+import { preflightRefused } from "@/lib/court-handover";
+import { useRelinquishPreflight } from "@/hooks/use-court-handover";
 
 const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
   regular: "Primary",
@@ -72,6 +75,7 @@ export default function CourtAssignmentsPage() {
     null,
   );
   const [relinquishReason, setRelinquishReason] = useState("");
+  const relinquishPreflight = useRelinquishPreflight(relinquishTarget?.id ?? null);
 
   const pendingRequests = (requests ?? []).filter((r) => r.status === "pending");
   const decidedRequests = (requests ?? []).filter((r) => r.status !== "pending");
@@ -364,32 +368,7 @@ export default function CourtAssignmentsPage() {
         title="Relinquish this court?"
         confirmLabel="Relinquish court"
         isConfirming={relinquish.isPending}
-        description={
-          relinquishTarget ? (
-            <div className="space-y-3">
-              <div className="text-sm">
-                <p className="font-medium text-foreground">{relinquishTarget.courts?.name}</p>
-                <p className="text-muted-foreground">
-                  {relinquishTarget.courts?.magisterial_districts?.name ??
-                    relinquishTarget.courts?.jurisdiction}{" "}
-                  · Since {formatDate(relinquishTarget.started_at)} ·{" "}
-                  {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ??
-                    relinquishTarget.assignment_type}
-                </p>
-              </div>
-              <p className="rounded-md border border-l-2 border-border border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
-                You&apos;ll lose access to this court&apos;s docket. Its files and history stay with
-                the court for the next magistrate.
-              </p>
-              <Textarea
-                placeholder="Reason (optional)"
-                aria-label="Reason for relinquishing (optional)"
-                value={relinquishReason}
-                onChange={(e) => setRelinquishReason(e.target.value)}
-              />
-            </div>
-          ) : undefined
-        }
+        confirmDisabled={relinquishPreflight.isPending || preflightRefused(relinquishPreflight)}
         onConfirm={() => {
           if (!relinquishTarget) return;
           relinquish.mutate(
@@ -397,7 +376,33 @@ export default function CourtAssignmentsPage() {
             { onSuccess: () => setRelinquishTarget(null) },
           );
         }}
-      />
+      >
+        {relinquishTarget ? (
+          <div className="space-y-4">
+            <div className="text-sm">
+              <p className="font-medium text-foreground">{relinquishTarget.courts?.name}</p>
+              <p className="text-muted-foreground">
+                {relinquishTarget.courts?.magisterial_districts?.name ??
+                  relinquishTarget.courts?.jurisdiction}{" "}
+                · Since {formatDate(relinquishTarget.started_at)} ·{" "}
+                {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ??
+                  relinquishTarget.assignment_type}
+              </p>
+            </div>
+            <RelinquishPreflightSummary preflight={relinquishPreflight} mode="self" />
+            <p className="rounded-md border border-l-2 border-border border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+              You&apos;ll lose access to this court&apos;s docket. Its files and history stay with
+              the court for the next magistrate.
+            </p>
+            <Textarea
+              placeholder="Reason (optional)"
+              aria-label="Reason for relinquishing (optional)"
+              value={relinquishReason}
+              onChange={(e) => setRelinquishReason(e.target.value)}
+            />
+          </div>
+        ) : null}
+      </AlertDialog>
     </BrowsePage>
   );
 }

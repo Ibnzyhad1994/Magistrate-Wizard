@@ -40,6 +40,7 @@
     "test:session-idle": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-idle.mjs",
     "test:session-lock": "node --import ./scripts/test-support/register.mjs scripts/tests/test-session-lock-security.mjs",
     "test:notifications-rls": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-rls.mjs",
+    "test:court-handover-screens": "node --import ./scripts/test-support/register.mjs scripts/tests/test-court-handover-screens.mjs",
     "test:theme": "node --import ./scripts/test-support/register.mjs scripts/tests/test-theme.mjs",
     "test:still-scale": "node --import ./scripts/test-support/register.mjs scripts/tests/test-still-scale.mjs",
     "test:tile-style": "node --import ./scripts/test-support/register.mjs scripts/tests/test-tile-style.mjs",
