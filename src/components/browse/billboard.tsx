@@ -7,12 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useRegisterCinematicNav } from "@/components/layout/use-cinematic-nav";
 import { useTheme } from "@/providers/use-theme";
 import { isDarkPalette } from "@/lib/theme";
-import {
-  TONE_GRADIENT_HERO,
-  TONE_HSL_VAR,
-  TONE_ICON,
-  type TitleCardTone,
-} from "@/lib/browse-tones";
+import { TONE_HSL_VAR, TONE_ICON, type TitleCardTone } from "@/lib/browse-tones";
 
 interface BillboardAction {
   label: string;
@@ -79,11 +74,8 @@ function HeroBillboard({
   return (
     <section
       data-tour={tourId ?? "home-billboard"}
-      className={cn(
-        "relative isolate min-h-[78vh] w-full overflow-hidden bg-gradient-to-br",
-        TONE_GRADIENT_HERO[tone],
-        className,
-      )}
+      className={cn("tone-art relative isolate min-h-[78dvh] w-full overflow-hidden", className)}
+      style={{ "--band": TONE_HSL_VAR[tone] } as CSSProperties}
     >
       {imageUrl ? (
         <img
@@ -97,7 +89,7 @@ function HeroBillboard({
         <>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--primary)/0.08),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_70%_30%,hsl(var(--foreground)/0.14),transparent_55%)]" />
           <Icon
-            className="absolute right-[6%] top-[18%] h-[55vh] w-[55vh] max-w-[46vw] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10"
+            className="absolute right-[6%] top-[18%] h-[55dvh] w-[55dvh] max-w-[46vw] rotate-[-12deg] text-foreground/10 dark:text-primary-foreground/10"
             strokeWidth={1}
             aria-hidden="true"
           />
@@ -108,7 +100,7 @@ function HeroBillboard({
 
       <div
         className={cn(
-          "browse-gutter relative flex min-h-[78vh] max-w-3xl flex-col justify-end pt-32",
+          "browse-gutter relative flex min-h-[78dvh] max-w-3xl flex-col justify-end pt-32",
           caption ? "pb-32" : "pb-24",
         )}
       >
@@ -122,7 +114,7 @@ function HeroBillboard({
             {identifier || eyebrow}
           </p>
         )}
-        <h1 className="w-fit text-4xl font-extrabold tracking-tight text-foreground dark:text-primary-foreground dark:drop-shadow-lg sm:text-5xl lg:text-6xl">
+        <h1 className="w-fit text-display-xl text-foreground dark:text-primary-foreground dark:drop-shadow-lg">
           {title}
         </h1>
         {badges && badges.length > 0 && (

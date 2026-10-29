@@ -7,6 +7,8 @@ export interface InlineErrorProps {
   error: unknown;
   onRetry?: () => void;
   className?: string;
+  /** Inside a card or dialog that already frames it: no edge, no tint. */
+  bare?: boolean;
 }
 
 /**
@@ -14,7 +16,7 @@ export interface InlineErrorProps {
  * card, tab panel, or list — pairs with `EmptyState` and the global
  * `RouteErrorBoundary`, which stays reserved for render-time crashes.
  */
-export function InlineError({ error, onRetry, className }: InlineErrorProps) {
+export function InlineError({ error, onRetry, className, bare = false }: InlineErrorProps) {
   const message = getErrorMessage(error);
   // Retry is deliberately withheld here: the limiter refuses on a window, so
   // an immediate retry only re-trips it.
@@ -23,11 +25,13 @@ export function InlineError({ error, onRetry, className }: InlineErrorProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-10 text-center",
+        // The same shape as EmptyState: rounded-md, a 32px icon.
+        "flex flex-col items-center justify-center gap-2 rounded-md px-6 py-10 text-center",
+        !bare && "border border-destructive/30 bg-destructive/5",
         className,
       )}
     >
-      <AlertTriangle className="h-6 w-6 text-destructive-text" aria-hidden="true" />
+      <AlertTriangle className="h-8 w-8 text-destructive-text" aria-hidden="true" />
       <p className="text-sm font-medium text-foreground">
         {rateLimited ? "Too many requests" : "Couldn't load this data"}
       </p>

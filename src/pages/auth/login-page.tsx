@@ -54,7 +54,7 @@ export default function LoginPage() {
   return (
     <Card className={AUTH_PANEL_CLASS}>
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">Sign In</h1>
+        <h1 className="text-display text-foreground">Sign In</h1>
         <CardDescription className="text-foreground/70">
           Enter your credentials to access your {APP_NAME} workspace.
         </CardDescription>

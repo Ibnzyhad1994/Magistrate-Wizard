@@ -1,8 +1,8 @@
 import { createServer } from "node:http";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, shell } from "electron";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
@@ -27,6 +27,26 @@ const MIME = {
 // brings Supabase Auth email links (magistratewizard://auth/...) back to
 // the running app, which holds the PKCE code verifier (BE-27).
 const APP_URL_SCHEME = "magistratewizard";
+
+// The window's first colour and its title bar follow the theme the app last
+// applied (the renderer reports it on every change), so a light-theme user
+// never sees a dark frame. Until the first report: the dark canvas.
+const THEME_FILE = () => join(app.getPath("userData"), "window-theme.json");
+const DEFAULT_WINDOW_THEME = { canvas: "#0d0e11", scheme: "dark" };
+const isWindowTheme = (value) =>
+  value !== null &&
+  typeof value === "object" &&
+  typeof value.canvas === "string" &&
+  /^#[0-9a-f]{6}$/i.test(value.canvas) &&
+  (value.scheme === "dark" || value.scheme === "light");
+const readWindowTheme = () => {
+  try {
+    const stored = JSON.parse(readFileSync(THEME_FILE(), "utf8"));
+    return isWindowTheme(stored) ? stored : DEFAULT_WINDOW_THEME;
+  } catch {
+    return DEFAULT_WINDOW_THEME;
+  }
+};
 
 let staticServer = null;
 let mainWindow = null;
@@ -146,12 +166,17 @@ const focusMainWindow = () => {
 };
 
 const createWindow = async () => {
+  const theme = readWindowTheme();
+  nativeTheme.themeSource = theme.scheme;
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1024,
     minHeight: 640,
-    backgroundColor: "#0d0e11",
+    backgroundColor: theme.canvas,
+    icon: join(ROOT, "electron", "icon.png"),
+    // Shown on its first paint, not before, so it never opens blank.
+    show: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(dirname(fileURLToPath(import.meta.url)), "preload.cjs"),
@@ -172,6 +197,7 @@ const createWindow = async () => {
     pendingDeepLink = null;
     deliverDeepLink(url);
   });
+  win.once("ready-to-show", () => win.show());
 
   if (isDev) {
     appOrigin = originOf(DEV_URL);
@@ -225,6 +251,17 @@ ipcMain.handle("google-oauth-loopback", async (_event, authUrl) => {
     throw new Error("Invalid Google authorization URL.");
   }
   return startGoogleLoopback(authUrl);
+});
+
+ipcMain.on("window-theme", (event, theme) => {
+  if (!isWindowTheme(theme)) return;
+  BrowserWindow.fromWebContents(event.sender)?.setBackgroundColor(theme.canvas);
+  nativeTheme.themeSource = theme.scheme;
+  try {
+    writeFileSync(THEME_FILE(), JSON.stringify({ canvas: theme.canvas, scheme: theme.scheme }));
+  } catch {
+    /* Read-only profile: the next launch opens on the dark canvas. */
+  }
 });
 
 // One running app: a deep link opened while it runs reaches this instance

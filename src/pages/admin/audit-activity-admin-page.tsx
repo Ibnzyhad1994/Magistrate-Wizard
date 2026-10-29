@@ -23,6 +23,7 @@ import { useAuditActivity, type ActivityRow } from "@/hooks/admin/use-audit-acti
 import { useVerifyAuditHashChain } from "@/hooks/admin/use-operations";
 import { activityRowsToCsv } from "@/lib/audit-export";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { filterPillClass } from "@/components/ui/filter-pill";
 
 const FILTERS: { id: ActivityFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -135,11 +136,7 @@ const AuditActivityAdminPage = () => {
               type="button"
               onClick={() => setFilter(item.id)}
               aria-pressed={filter === item.id}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                filter === item.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-foreground/70 hover:bg-foreground/5"
-              }`}
+              className={filterPillClass(filter === item.id)}
             >
               {item.label}
             </button>

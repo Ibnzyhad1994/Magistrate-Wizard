@@ -14,6 +14,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
 import { AlertDialog } from "@/components/ui/alert-dialog";
+import { RelinquishPreflightSummary } from "@/components/court-handover/relinquish-preflight";
+import {
+  preflightRefused,
+  type PinnedJudgment,
+  type RelinquishPreflight,
+} from "@/lib/court-handover";
+import { HandoverReviewDialog } from "@/pages/admin/handover-review-dialog";
+import {
+  TransferJudgmentDialog,
+  type TransferJudgmentTarget,
+} from "@/pages/admin/transfer-judgment-dialog";
+import { useRelinquishPreflight } from "@/hooks/use-court-handover";
 import { useCourts } from "@/hooks/docket/use-lookups";
 import {
   courtAssignmentKeys,
@@ -73,6 +85,28 @@ export default function CourtAssignmentsPage() {
   const [assignmentType, setAssignmentType] = useState<CourtAssignmentType>("regular");
   const [assignResolution, setAssignResolution] = useState<OccupiedCourtResolution | "">("");
   const [endTarget, setEndTarget] = useState<{ id: string; courtName: string } | null>(null);
+  const endPreflight = useRelinquishPreflight(endTarget?.id ?? null);
+  const [handoverTarget, setHandoverTarget] = useState<{ id: string; courtName: string } | null>(
+    null,
+  );
+  const [transferTarget, setTransferTarget] = useState<TransferJudgmentTarget | null>(null);
+  const renderTransfer = (pin: PinnedJudgment, preflight: RelinquishPreflight) => (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={() =>
+        setTransferTarget({
+          courtId: preflight.court_id,
+          courtName: preflight.court_name,
+          judgmentId: pin.judgment_id,
+          fromProfileId: preflight.profile_id,
+        })
+      }
+    >
+      Transfer
+    </Button>
+  );
   const rosterTab = searchParams.get("tab") === "roster" ? "roster" : "requests";
 
   // Was firing one `ilike` against `profiles` per keystroke — the same
@@ -556,14 +590,34 @@ export default function CourtAssignmentsPage() {
                     ) : (
                       <ul className="divide-y divide-border">
                         {history.map((a) => (
-                          <li key={a.id} className="py-2 text-sm">
-                            <p className="font-medium text-foreground">
-                              {a.courts?.name ?? "Unknown court"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(a.started_at)} –{" "}
-                              {a.ended_at ? formatDate(a.ended_at) : ""}
-                            </p>
+                          <li
+                            key={a.id}
+                            className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                          >
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {a.courts?.name ?? "Unknown court"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDate(a.started_at)} –{" "}
+                                {a.ended_at ? formatDate(a.ended_at) : ""}
+                              </p>
+                            </div>
+                            {!isClerkProfile && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setHandoverTarget({
+                                    id: a.id,
+                                    courtName: a.courts?.name ?? "Unknown court",
+                                  })
+                                }
+                              >
+                                Hand-over
+                              </Button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -592,6 +646,7 @@ export default function CourtAssignmentsPage() {
         confirmLabel="End assignment"
         confirmVariant="destructive"
         isConfirming={endAssignment.isPending}
+        confirmDisabled={endPreflight.isPending || preflightRefused(endPreflight)}
         onConfirm={() => {
           if (!endTarget) return;
           const target = endTarget;
@@ -599,6 +654,25 @@ export default function CourtAssignmentsPage() {
             onSuccess: () => setEndTarget(null),
           });
         }}
+      >
+        {endTarget ? (
+          <RelinquishPreflightSummary
+            preflight={endPreflight}
+            mode="admin"
+            renderTransfer={renderTransfer}
+          />
+        ) : null}
+      </AlertDialog>
+
+      <HandoverReviewDialog
+        assignment={handoverTarget}
+        onOpenChange={(open) => !open && setHandoverTarget(null)}
+        renderTransfer={renderTransfer}
+      />
+      <TransferJudgmentDialog
+        key={transferTarget ? `${transferTarget.courtId}:${transferTarget.judgmentId}` : "closed"}
+        target={transferTarget}
+        onOpenChange={(open) => !open && setTransferTarget(null)}
       />
     </BrowsePage>
   );

@@ -169,7 +169,7 @@ export function DocketStageCell({
             onChange={(e) => setReasonDraft(e.target.value)}
             placeholder="e.g. awaiting documentation"
             aria-label="Adjournment reason"
-            className="h-8 text-xs"
+            className="h-8 lg:text-xs"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />
@@ -215,7 +215,7 @@ export function DocketStageCell({
             value={amountDraft}
             onChange={(e) => setAmountDraft(e.target.value)}
             aria-label={decisionAmountCaption(categoryName)}
-            className="h-8 text-xs"
+            className="h-8 lg:text-xs"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               e.stopPropagation();

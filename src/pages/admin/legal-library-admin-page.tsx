@@ -114,6 +114,8 @@ import { ROUTES } from "@/routes/paths";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import type { CaseLaw, Statute, LegalAuthorityCourt } from "@/types";
+import { scrollBehavior } from "@/lib/motion";
+import { filterPillClass } from "@/components/ui/filter-pill";
 
 type ReviewRow<T> = T & {
   duplicate_warning: string | null;
@@ -569,15 +571,11 @@ function TagReviewEditor({
               aria-pressed={selected.has(name)}
               aria-label={`${selected.has(name) ? "Deselect" : "Select"} tag ${name}${conf ? `, ${conf} confidence` : ""}`}
               title={title}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                selected.has(name)
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              }`}
+              className={filterPillClass(selected.has(name))}
             >
               {selected.has(name) ? "✓ " : "+ "}
               {name}
-              {conf ? <span className="ml-1 text-[10px] opacity-70">{conf}</span> : null}
+              {conf ? <span className="ml-1 text-[11px] font-normal">{conf}</span> : null}
             </button>
           );
         })}
@@ -593,7 +591,7 @@ function TagReviewEditor({
             }
           }}
           placeholder="Add a tag…"
-          className="h-8 text-xs"
+          className="h-8 lg:text-xs"
           aria-label="Add a custom tag"
         />
         <Button size="sm" variant="outline" className="h-8" onClick={addCustom}>
@@ -2561,7 +2559,7 @@ function CaseLawReviewCard({
   // potentially long Review Queue list.
   useEffect(() => {
     if (highlight && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      cardRef.current.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, [highlight]);
   const update = useUpdateCanonicalCaseLaw(row.id);
@@ -2986,7 +2984,7 @@ function StatuteReviewCard({
   // view and briefly outlined once, on arrival, mirroring CaseLawReviewCard.
   useEffect(() => {
     if (highlight && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      cardRef.current.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, [highlight]);
   const update = useUpdateCanonicalStatute(row.id);
@@ -3204,9 +3202,9 @@ function StatuteReviewCard({
               <Label htmlFor={fullTextId} className="sr-only">
                 Full text
               </Label>
-              <textarea
+              <Textarea
                 id={fullTextId}
-                className="min-h-40 w-full rounded-md border border-border bg-background p-2 text-xs"
+                className="min-h-40 lg:text-xs"
                 value={fullTextDraft}
                 onChange={(e) => setFullTextDraft(e.target.value)}
                 placeholder="Full text: paste the corrected/complete document text here, then Re-check extraction quality."

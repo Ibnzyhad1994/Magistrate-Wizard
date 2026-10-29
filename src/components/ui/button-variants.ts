@@ -27,7 +27,7 @@ export const buttonVariants = cva(
         ghost: "font-medium hover:bg-foreground/10 hover:text-foreground hc:hover:bg-accent",
         link: "font-medium text-link underline-offset-4 hover:underline",
         play: "bg-white font-bold text-black shadow-elevation-1 hover:bg-white/85",
-        more: "bg-white/30 font-semibold text-white shadow-sm backdrop-blur-sm hover:bg-white/20",
+        more: "bg-white/30 font-semibold text-white backdrop-blur-sm hover:bg-white/20",
       },
       // Touch targets: 44px below lg (phones and tablets), the compact
       // desktop height from lg up. min-h rather than h so a wrapped label

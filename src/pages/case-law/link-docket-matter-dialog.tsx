@@ -89,7 +89,7 @@ export function LinkDocketMatterDialog({
             </div>
           ) : candidates.length === 0 ? (
             <EmptyState
-              className="border-0 py-8"
+              className="py-8"
               title={
                 search
                   ? "No matching matters"

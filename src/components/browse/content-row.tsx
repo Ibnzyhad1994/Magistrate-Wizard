@@ -6,6 +6,7 @@ import { TitleCardSkeleton } from "@/components/browse/title-card-skeleton";
 import { useHScroll } from "@/hooks/use-h-scroll";
 import { stillColumnVars } from "@/lib/browse-prefs";
 import { useUiStore } from "@/store/ui-store";
+import { scrollBehavior } from "@/lib/motion";
 
 interface ContentRowProps {
   title: string;
@@ -31,7 +32,7 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
   const handleScroll = (direction: -1 | 1) => {
     const node = scrollerRef.current;
     if (!node) return;
-    node.scrollBy({ left: direction * node.clientWidth * 0.8, behavior: "smooth" });
+    node.scrollBy({ left: direction * node.clientWidth * 0.8, behavior: scrollBehavior() });
   };
 
   return (
@@ -76,7 +77,7 @@ export function ContentRow({ title, href, children, isLoading, className }: Cont
             scroller, whose overflow would otherwise clip it top and bottom. */}
         <div
           ref={scrollerRef}
-          className="browse-gutter scrollbar-none still-rail flex snap-x snap-mandatory scroll-px-[4vw] overflow-x-auto overscroll-x-contain scroll-smooth py-1"
+          className="browse-gutter scrollbar-none still-rail flex snap-x snap-mandatory scroll-px-[var(--gutter)] overflow-x-auto overscroll-x-contain scroll-smooth py-1"
           style={stillColumnVars(tileSize, tileStyle) as CSSProperties}
         >
           {isLoading

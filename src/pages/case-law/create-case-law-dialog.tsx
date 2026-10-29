@@ -87,7 +87,7 @@ export function CreateCaseLawDialog({ open, onOpenChange }: CreateCaseLawDialogP
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
+            className="max-h-[70dvh] space-y-4 overflow-y-auto pr-1"
           >
             <FormField
               control={form.control}

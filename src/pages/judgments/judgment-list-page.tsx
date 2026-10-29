@@ -4,10 +4,15 @@ import { Plus, Scale, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { InlineError } from "@/components/common/inline-error";
-import { BrowseHeader, BrowsePage, TitleCard, TitleGallery } from "@/components/browse";
+import {
+  BrowseHeader,
+  BrowsePage,
+  TitleCard,
+  TitleCardSkeletonGallery,
+  TitleGallery,
+} from "@/components/browse";
 import { useAuth } from "@/hooks/use-auth";
 import { useJudgments } from "@/hooks/judgments/use-judgments";
 import { useScopedSearchIds } from "@/hooks/use-scoped-search";
@@ -85,7 +90,10 @@ export default function JudgmentListPage() {
       </div>
 
       {isPending ? (
-        <Skeleton className="h-64 w-full" />
+        <div role="status" className="mt-8">
+          <span className="sr-only">Loading judgments…</span>
+          <TitleCardSkeletonGallery />
+        </div>
       ) : isError ? (
         <InlineError error={error} onRetry={() => void refetch()} />
       ) : (

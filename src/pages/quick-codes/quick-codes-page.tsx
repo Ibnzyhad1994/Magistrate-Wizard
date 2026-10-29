@@ -65,6 +65,7 @@ import {
 import type { QuickCode } from "@/types";
 import { cn } from "@/lib/utils";
 import { NOT_SET } from "@/lib/empty-display";
+import { scrollBehavior } from "@/lib/motion";
 
 export default function QuickCodesPage() {
   const { data, isPending, isError, error, refetch } = useQuickCodes();
@@ -89,7 +90,7 @@ export default function QuickCodesPage() {
     if (!highlightId || !data) return;
     const row = rowRefs.current.get(highlightId);
     if (row) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
       setFlashId(highlightId);
       const timeout = setTimeout(() => setFlashId(null), 2500);
       // Clear the param so refreshing/reordering later doesn't re-trigger
@@ -586,9 +587,7 @@ function AssociationGroup({
 }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </p>
+      <p className="eyebrow mb-1 text-muted-foreground">{title}</p>
       {isPending ? (
         <Skeleton className="h-6 w-full" />
       ) : items.length === 0 ? (

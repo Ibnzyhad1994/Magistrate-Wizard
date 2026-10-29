@@ -93,10 +93,7 @@ export function MobileNav() {
               aria-labelledby={`mobile-nav-${section.id}`}
               className="space-y-1"
             >
-              <h2
-                id={`mobile-nav-${section.id}`}
-                className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-              >
+              <h2 id={`mobile-nav-${section.id}`} className="eyebrow px-3 text-muted-foreground">
                 {section.label}
               </h2>
               <div className="space-y-0.5">

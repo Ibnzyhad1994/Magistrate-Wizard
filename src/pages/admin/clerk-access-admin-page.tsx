@@ -48,10 +48,7 @@ export default function ClerkAccessAdminPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(requests ?? []).map((r) => (
-            <Card
-              key={r.id}
-              className="border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]"
-            >
+            <Card key={r.id} className="border-l-2 border-l-warning">
               <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">

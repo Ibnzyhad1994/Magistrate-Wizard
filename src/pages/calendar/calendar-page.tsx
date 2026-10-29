@@ -22,6 +22,7 @@ import {
   toTitleCase,
 } from "@/lib/utils";
 import { isInactiveEventStatus } from "@/lib/google-calendar/map-event";
+import { badgeVariants } from "@/components/ui/badge-variants";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -183,13 +184,13 @@ export default function CalendarPage() {
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="eyebrow px-0.5 py-2.5 text-center text-[10px] text-muted-foreground sm:px-2"
+                className="eyebrow px-0.5 py-2.5 text-center text-muted-foreground sm:px-2"
               >
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 tabular-nums">
             {cells.map((date) => {
               const inMonth = date.startsWith(from.slice(0, 7));
               const dayEvents = byDate.get(date) ?? [];
@@ -205,7 +206,7 @@ export default function CalendarPage() {
                   <div
                     className={cn(
                       "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                      isToday && "bg-primary font-bold text-primary-foreground",
+                      isToday && "bg-foreground font-bold text-background",
                     )}
                   >
                     {Number(date.slice(8))}
@@ -218,7 +219,7 @@ export default function CalendarPage() {
                       <span
                         key={event.id}
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full bg-primary",
+                          "h-1.5 w-1.5 rounded-full bg-foreground",
                           event.pending && "bg-notice-action",
                           isInactiveEventStatus(event.event_status) && "bg-foreground/30",
                         )}
@@ -232,10 +233,11 @@ export default function CalendarPage() {
                           type="button"
                           onClick={() => handleOpenEvent(event)}
                           className={cn(
-                            // A chip with a coloured leading edge, the way an
-                            // event reads in a streaming guide: colour says what
-                            // kind of thing it is, the surface says it is one item.
-                            "block w-full truncate rounded-sm border-l-2 border-primary bg-primary/10 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-primary/20",
+                            // A chip with a leading edge, the way an event reads
+                            // in a guide: the surface says it is one item, the
+                            // edge its kind. A hearing is ink; the accent stays
+                            // for the commit action, so a full month is not red.
+                            "block w-full rounded-sm border-l-2 border-foreground bg-surface-2 px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-surface-3",
                             isInactiveEventStatus(event.event_status) &&
                               "border-muted-foreground/40 bg-muted text-muted-foreground line-through",
                             event.pending &&
@@ -244,14 +246,20 @@ export default function CalendarPage() {
                           title={event.court_name ?? undefined}
                           aria-label={`${event.case_number} ${event.matter_title}${event.court_name ? ` · ${event.court_name}` : ""}${isCallover(event) ? " · Callover" : ""}${event.pending ? " (on this device)" : ""}`}
                         >
-                          {isCallover(event) && (
-                            <Gavel
-                              className="mr-1 inline h-2.5 w-2.5 align-[-1px]"
-                              aria-hidden="true"
-                            />
+                          {/* The time on its own line, so the case number below
+                              it has the chip's whole width and is not cut off. */}
+                          {(isCallover(event) || event.scheduled_time) && (
+                            <span className="block truncate">
+                              {isCallover(event) && (
+                                <Gavel
+                                  className="mr-1 inline h-2.5 w-2.5 align-[-1px]"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {event.scheduled_time ? formatTimeOnly(event.scheduled_time) : ""}
+                            </span>
                           )}
-                          {event.scheduled_time ? `${formatTimeOnly(event.scheduled_time)} · ` : ""}
-                          {event.case_number}
+                          <span className="identifier block truncate">{event.case_number}</span>
                         </button>
                       </li>
                     ))}
@@ -282,17 +290,17 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => handleOpenEvent(event)}
                 className={cn(
-                  "flex w-full flex-col gap-1 border-l-2 border-primary px-4 py-3 text-left transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:justify-between",
+                  "flex w-full flex-col gap-1 border-l-2 border-foreground px-4 py-3 text-left transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:justify-between",
                   isInactiveEventStatus(event.event_status) && "opacity-45",
                   event.pending && "text-notice-action",
                 )}
               >
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    {event.case_number} · {event.matter_title}
+                    <span className="identifier">{event.case_number}</span> · {event.matter_title}
                   </p>
                   {event.court_name && (
-                    <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+                    <span className={cn(badgeVariants({ variant: "tag" }), "mr-1 mt-0.5")}>
                       {event.court_name}
                     </span>
                   )}

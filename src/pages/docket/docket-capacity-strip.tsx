@@ -45,7 +45,7 @@ const loadPillClass = (band: CapacityBand) =>
 
 function WeekdayRow() {
   return (
-    <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="eyebrow grid grid-cols-7 gap-1 text-center text-muted-foreground">
       {WEEKDAY_LABELS.map((w) => (
         <span key={w}>
           <span className="hidden sm:inline">{w}</span>
@@ -141,7 +141,7 @@ function DayTile({
       aria-pressed={selected}
       aria-label={hint}
       className={cn(
-        "relative flex w-full flex-col items-center justify-center gap-0.5 rounded-md border border-hairline text-xs transition-[background-color,box-shadow] duration-150 ease-out-expo hover:shadow-elevation-1 hc:border-border",
+        "relative flex w-full flex-col items-center justify-center gap-0.5 rounded-md border border-hairline text-xs tabular-nums transition-[background-color,box-shadow] duration-150 ease-out-expo hover:shadow-elevation-1 hc:border-border",
         size === "day" ? "h-24 sm:h-28" : "h-16 sm:h-20",
         style.textClass,
         today &&

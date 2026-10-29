@@ -58,9 +58,14 @@ export function MetricStat({
   );
 }
 
+// Two a row on a phone; from md the row takes as many as fit, so four or six
+// figures fill whole rows instead of leaving a 4 + 2 hole.
 export function MetricLedger({ children }: { children: ReactNode }) {
   return (
-    <div data-tour="dashboard-metrics" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div
+      data-tour="dashboard-metrics"
+      className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]"
+    >
       {children}
     </div>
   );

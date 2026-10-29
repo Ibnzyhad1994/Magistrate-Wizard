@@ -135,7 +135,7 @@ export function DocketStageStrip({
                   adjourned,
                   reason,
                 );
-                void onPatch({ stage_adjournments: next as Json }, matter.updated_at);
+                void onPatch({ stage_adjournments: next as NonNullable<Json> }, matter.updated_at);
               },
             };
           }}
@@ -143,9 +143,7 @@ export function DocketStageStrip({
           onChange={(column, next) => void handleChange(column, next)}
         />
         <div className="mt-3 min-w-0 space-y-1 sm:max-w-[6.5rem]">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Outcome
-          </p>
+          <p className="eyebrow text-muted-foreground">Outcome</p>
           <DocketOutcomeCell
             value={matter.outcome_status}
             outcomeAdjourned={matter.outcome_adjourned}

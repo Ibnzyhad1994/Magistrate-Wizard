@@ -3,6 +3,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";
 import { hScrollMask, useHScroll } from "@/hooks/use-h-scroll";
 import { SEGMENT_TRACK_CLASS } from "@/components/ui/segmented";
+import { scrollBehavior } from "@/lib/motion";
 
 /**
  * `underline` (default) is the browse-page rail: text on the canvas with
@@ -64,7 +65,7 @@ const TabsTrigger = React.forwardRef<
     target.scrollIntoView({
       inline: "center",
       block: "nearest",
-      behavior: "smooth",
+      behavior: scrollBehavior(),
     });
   };
 
