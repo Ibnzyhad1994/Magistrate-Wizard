@@ -84,8 +84,8 @@ const registration = (overrides = {}) => ({
   accountType: "clerk",
   fullName: "Jane Clerk",
   email: "jane@court.gov.tt",
-  password: "GoodPass1",
-  confirmPassword: "GoodPass1",
+  password: "Good-Pass-2026",
+  confirmPassword: "Good-Pass-2026",
   districtId: "district-1",
   courtIds: ["court-1"],
   ...overrides,
@@ -117,9 +117,10 @@ check(
   "register: the password rules all report",
   issues(registerSchema, registration({ password: "abc", confirmPassword: "abc" })),
   [
-    "password: Password must be at least 8 characters",
+    "password: Password must be at least 12 characters",
     "password: Password must contain an uppercase letter",
     "password: Password must contain a number",
+    "password: Password must contain a symbol, such as ! ? # or -",
   ],
 );
 check(

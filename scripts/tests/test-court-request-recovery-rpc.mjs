@@ -18,7 +18,10 @@ const SERVICE =
 assertLocalSupabase(URL, "test:court-request-recovery-rpc");
 
 const ADMIN_EMAIL = "admin@magistrate-wizard.local";
-const PASSWORD = "password123";
+// supabase/seed.sql accounts keep their seeded password; a created fixture needs
+// one Supabase Auth accepts (minimum 12, lower, upper, digit and symbol).
+const SEED_PASSWORD = "password123";
+const PASSWORD = "Recovery-fixture-pass-123!";
 const STAMP = Date.now().toString(36);
 const TEST_EMAIL = `rpc-recovery-${STAMP}@magistrate-wizard.local`;
 
@@ -60,7 +63,7 @@ let testUserId = null;
 try {
   const { data: session, error: loginError } = await anon.auth.signInWithPassword({
     email: ADMIN_EMAIL,
-    password: PASSWORD,
+    password: SEED_PASSWORD,
   });
   if (loginError || !session.session) throw loginError ?? new Error("admin login failed");
   const adminClient = asUser(session.session.access_token);

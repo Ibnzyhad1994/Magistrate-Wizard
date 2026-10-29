@@ -1,4 +1,16 @@
 import { z } from "@/lib/zod";
+import { PASSWORD_RULES } from "@/lib/auth/password-policy";
+
+/**
+ * A password someone is choosing (registration, reset). Every rule reports,
+ * so the form lists all that is missing at once, and the rules are the ones
+ * Supabase Auth enforces (password-policy.ts), so a password the form
+ * accepts is never refused as weak by the server.
+ */
+const newPasswordSchema = PASSWORD_RULES.reduce(
+  (schema, rule) => schema.refine(rule.test, rule.message),
+  z.string(),
+);
 
 export const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -31,12 +43,7 @@ export const registerSchema = z
       .min(2, "Full name must be at least 2 characters")
       .max(100, "Full name is too long"),
     email: z.string().min(1, "Email is required").email("Enter a valid email address"),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain an uppercase letter")
-      .regex(/[a-z]/, "Password must contain a lowercase letter")
-      .regex(/[0-9]/, "Password must contain a number"),
+    password: newPasswordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
     staffId: z.string().max(50, "Staff ID is too long").optional(),
     districtId: z.string().optional(),
@@ -70,15 +77,10 @@ export const forgotPasswordSchema = z.object({
 });
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
-/** Same password policy as registerSchema, kept as its own schema since this form has no other fields to share it with. */
+/** Same password policy as registerSchema (newPasswordSchema). */
 export const resetPasswordSchema = z
   .object({
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain an uppercase letter")
-      .regex(/[a-z]/, "Password must contain a lowercase letter")
-      .regex(/[0-9]/, "Password must contain a number"),
+    password: newPasswordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {

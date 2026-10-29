@@ -46,6 +46,8 @@
     "test:schema-alignment": "node scripts/tests/test-schema-alignment.mjs",
     "test:notifications-ui": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-ui.mjs",
     "test:password-reset": "node --import ./scripts/test-support/register.mjs scripts/tests/test-password-reset.mjs",
+    "test:password-policy": "node --import ./scripts/test-support/register.mjs scripts/tests/test-password-policy.mjs",
+    "test:auth-password-policy-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-password-policy-live.mjs",
     "test:export-pdf": "node --import ./scripts/test-support/register.mjs scripts/tests/test-export-pdf.mjs",
     "test:redaction-pdf": "node --import ./scripts/test-support/register.mjs scripts/tests/test-redaction-pdf.mjs",
     "test:rpc-rate-limit": "node --import ./scripts/test-support/register.mjs scripts/tests/test-rpc-rate-limit.mjs",

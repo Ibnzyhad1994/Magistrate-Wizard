@@ -22,7 +22,9 @@ const ANON =
 const SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
-const PASSWORD = "password123";
+// A created fixture needs a password Supabase Auth accepts (minimum 12,
+// lower, upper, digit and symbol; supabase/config.toml).
+const PASSWORD = "Persona-fixture-pass-123!";
 const RUN = `E2E${Date.now().toString(36).slice(-5).toUpperCase()}`;
 const SEED_ADMIN_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
 
