@@ -17,6 +17,8 @@
  *
  *   npm run test:foreign-key-indexes
  */
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { runSql, sections } from "../test-support/psql.mjs";
 
 let failures = 0;
@@ -85,12 +87,38 @@ check(
   [],
 );
 
+const planRows = [];
 for (const [table, column] of LOOKUPS) {
   const plan = out[`plan:${table}.${column}`];
   const index = `${table}_${column}_idx`;
   console.log(`--- ${table}.${column}\n${plan}`);
+  planRows.push(
+    `| ${table}.${column} | ${plan
+      .split("\n")
+      .map((l) => l.trim())
+      .join("; ")} |`,
+  );
   check(`a parent delete finds ${table}.${column} by ${index}`, plan.includes(index), true);
   check(`a parent delete does not scan all of ${table}`, /Seq Scan/.test(plan), false);
+}
+
+// Also written to LIVE_REPORT_DIR when set: live-db.yml prints those files
+// (the runner prints a script's output only when it fails).
+if (process.env.LIVE_REPORT_DIR) {
+  mkdirSync(process.env.LIVE_REPORT_DIR, { recursive: true });
+  writeFileSync(
+    path.join(process.env.LIVE_REPORT_DIR, "foreign-key-indexes.md"),
+    [
+      "### Foreign-key indexes (0230): the lookup each parent delete runs",
+      "",
+      "| Column | Plan (sequential scans off) |",
+      "| --- | --- |",
+      ...planRows,
+      "",
+      `Unindexed foreign keys left: ${remaining.length}, all \`*_by -> profiles\` audit columns.`,
+      "",
+    ].join("\n"),
+  );
 }
 
 if (failures > 0) {

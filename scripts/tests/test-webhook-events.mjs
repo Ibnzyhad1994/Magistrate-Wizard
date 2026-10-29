@@ -29,6 +29,8 @@
  *   npm run test:webhook-events
  */
 import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { runSql, sections } from "../test-support/psql.mjs";
 
 let failures = 0;
@@ -251,6 +253,38 @@ const sameEvent = (list) => new Set(list.map((row) => row.payload.id)).size === 
 }
 
 check("no payload carries a title, case number or notice body", Number(out.content_leaks), 0);
+
+// Also written to LIVE_REPORT_DIR when set: live-db.yml prints those files
+// (the runner prints a script's output only when it fails).
+if (process.env.LIVE_REPORT_DIR) {
+  const row = (action, notified, label) => {
+    const list = rows(label);
+    const endpointsHit = byEndpoint(list).join(", ") || "none";
+    return `| ${action} | ${notified} | ${list.length} (${endpointsHit}) | ${list[0]?.payload.court_id ? "yes" : "no"} | ${list[0]?.payload.recipient_ids.length ?? 0} |`;
+  };
+  mkdirSync(process.env.LIVE_REPORT_DIR, { recursive: true });
+  writeFileSync(
+    path.join(process.env.LIVE_REPORT_DIR, "webhook-events.md"),
+    [
+      "### Webhook events (0232): one per action per endpoint (every-court, court C, court D, inactive)",
+      "",
+      "| Action | Notices | Events queued (endpoints) | Court | Recipients |",
+      "| --- | --- | --- | --- | --- |",
+      row("share a court C docket matter", 1, "share_granted"),
+      row("revoke that share", 1, "share_revoked"),
+      row("finalise a judgment shared with two", Number(out.judgment_notices), "judgment_final"),
+      row(
+        "hearing tomorrow at court C (job run twice)",
+        Number(out.hearing_notices),
+        "hearing_twice",
+      ),
+      row("clerk asks for court C", "staff and admins", "clerk_request"),
+      "",
+      `Payloads carrying a title, case number or body: ${out.content_leaks}.`,
+      "",
+    ].join("\n"),
+  );
+}
 check(
   "a notice by itself queues no webhook",
   Number(out.after_bare_notice),
