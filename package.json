@@ -47,6 +47,8 @@
     "test:notifications-ui": "node --import ./scripts/test-support/register.mjs scripts/tests/test-notifications-ui.mjs",
     "test:password-reset": "node --import ./scripts/test-support/register.mjs scripts/tests/test-password-reset.mjs",
     "test:password-policy": "node --import ./scripts/test-support/register.mjs scripts/tests/test-password-policy.mjs",
+    "test:auth-redirect": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-redirect.mjs",
+    "test:auth-pkce-reset-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-pkce-reset-live.mjs",
     "test:auth-password-policy-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-password-policy-live.mjs",
     "test:export-pdf": "node --import ./scripts/test-support/register.mjs scripts/tests/test-export-pdf.mjs",
     "test:redaction-pdf": "node --import ./scripts/test-support/register.mjs scripts/tests/test-redaction-pdf.mjs",

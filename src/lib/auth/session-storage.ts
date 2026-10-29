@@ -131,6 +131,15 @@ export function prepareAuthStorage(options: {
   }
 }
 
+/**
+ * auth-js keeps each PKCE code verifier under a key ending
+ * `-code-verifier` (BE-27). A reset or confirmation link opens in a new
+ * tab, which never sees this tab's sessionStorage, so verifiers always go
+ * to localStorage whatever Remember me says. Each one is single-use and
+ * worthless without the emailed code; it is not a session.
+ */
+const isCodeVerifierKey = (key: string) => key.endsWith("-code-verifier");
+
 export function createAuthStorage(options?: {
   local?: SyncStorage;
   session?: SyncStorage;
@@ -150,11 +159,16 @@ export function createAuthStorage(options?: {
 
   return {
     getItem: (key) => {
+      if (isCodeVerifierKey(key)) return local.getItem(key);
       const pref = readRememberPreference(local);
       if (pref.rememberMe) return local.getItem(key);
       return session.getItem(key);
     },
     setItem: (key, value) => {
+      if (isCodeVerifierKey(key)) {
+        local.setItem(key, value);
+        return;
+      }
       const pref = readRememberPreference(local);
       if (pref.rememberMe) {
         local.setItem(key, value);

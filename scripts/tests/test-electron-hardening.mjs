@@ -81,6 +81,40 @@ check(
   false,
 );
 
+// Auth email deep links (BE-27): the app's scheme brings a PKCE ?code= back
+// to the one running instance, whose renderer decides what it may load.
+const builder = readFileSync(join(__dirname, "../../electron-builder.yml"), "utf8");
+check(
+  "registers the magistratewizard scheme",
+  main.includes('const APP_URL_SCHEME = "magistratewizard"') &&
+    main.includes("app.setAsDefaultProtocolClient(APP_URL_SCHEME)"),
+  true,
+);
+check(
+  "the installer registers the scheme too",
+  /schemes:\s*\n\s*- magistratewizard/.test(builder),
+  true,
+);
+check("holds the single-instance lock", main.includes("app.requestSingleInstanceLock()"), true);
+check(
+  "a link reaches the running instance on every platform",
+  main.includes('app.on("second-instance"') && main.includes('app.on("open-url"'),
+  true,
+);
+check(
+  "main forwards only scheme links, never navigates to them itself",
+  main.includes("arg.startsWith(`${APP_URL_SCHEME}://`)") &&
+    main.includes('webContents.send("deep-link", url)'),
+  true,
+);
+check(
+  "preload exposes deep links as a callback, not the IPC channel",
+  preload.includes(
+    'onDeepLink: (callback) => ipcRenderer.on("deep-link", (_event, url) => callback(url))',
+  ),
+  true,
+);
+
 // Deprecated-API sweep for the 34 → 44 upgrade (none of these may appear)
 for (const api of [
   "enableRemoteModule",

@@ -6,11 +6,42 @@ import { toast } from "sonner";
 import { APP_NAME } from "@/lib/constants";
 import { isQueueableError } from "@/lib/offline/is-queueable-error";
 import { getCachedProfile, hydrateOfflineStore, setCachedProfile } from "@/lib/offline/store";
-import { isPasswordRecoveryUrl } from "@/lib/auth/session-policy";
+import {
+  isRecoveryAccessToken,
+  readAuthCallback,
+  urlWithoutAuthCallback,
+} from "@/lib/auth/auth-redirect";
+import { ROUTES } from "@/routes/paths";
 import { setSentryUser } from "@/lib/sentry";
 
 interface AuthProviderProps {
   children: ReactNode;
+}
+
+/**
+ * Trades an Auth email return's one-time `?code=` for a session (PKCE,
+ * BE-27) and clears every Auth parameter from the address bar, so a reload
+ * cannot replay it. The client has detectSessionInUrl off, so this is the
+ * only place a URL ever becomes a session. A failure on the login page is
+ * told here; the reset page shows its own "link expired" card.
+ */
+async function completeAuthCallback() {
+  const callback = readAuthCallback(window.location);
+  if (!callback) return;
+  window.history.replaceState(window.history.state, "", urlWithoutAuthCallback(window.location));
+  if (callback.kind === "code") {
+    const { flowId } = callback;
+    const { error } = await supabase.auth.exchangeCodeForSession(
+      callback.code,
+      flowId ? { flowId } : undefined,
+    );
+    if (!error) return;
+  }
+  if (window.location.pathname === ROUTES.login) {
+    toast.error(
+      "That email link works only in the browser or app that asked for it. If you were confirming your email, sign in with your password.",
+    );
+  }
 }
 
 /**
@@ -60,25 +91,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // round of storage reads in front of the first paint for nothing.
       const [, sessionResult] = await Promise.all([
         hydrateOfflineStore(),
-        supabase.auth.getSession(),
+        completeAuthCallback().then(() => supabase.auth.getSession()),
       ]);
 
       if (!isMounted) return;
-
-      // Supabase's client parses a password-recovery link's URL fragment
-      // (#access_token=...&type=recovery&...) into a real session during
-      // its own internal initialization, before this effect even runs --
-      // confirmed against a real recovery email in this app's configured
-      // (implicit) flow. Without this check, the getSession() call below
-      // would pick that session up and promote it exactly like a normal
-      // login, which is the bug: nothing would ever ask for a new
-      // password. ResetPasswordPage reads the same session directly via
-      // its own getSession() call, independent of this store, so it still
-      // works -- this only stops the app treating it as a real sign-in.
-      if (isPasswordRecoveryUrl(window.location.hash, window.location.search)) {
-        setSession(null);
-        return;
-      }
 
       const {
         data: { session },
@@ -87,6 +103,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (error) {
         toast.error("Couldn't restore your session. Please sign in again.");
+        setSession(null);
+        return;
+      }
+
+      // A password-recovery link's session is not a sign-in. Without this
+      // check it would be promoted exactly like a normal login, which is
+      // the bug: nothing would ever ask for a new password. Read from the
+      // token rather than the URL, so a reload of the reset page (the
+      // code is gone by then) is caught too. ResetPasswordPage reads the
+      // same session directly via its own getSession() call, independent
+      // of this store, so it still works.
+      if (session && isRecoveryAccessToken(session.access_token)) {
         setSession(null);
         return;
       }
@@ -126,6 +154,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // the recovery session itself via getSession(), independent of this
       // store, exactly like it would if this listener never fired at all.
       if (event === "PASSWORD_RECOVERY") return;
+      // TOKEN_REFRESHED and USER_UPDATED carry the same recovery session,
+      // so the check is on the session, not only the event.
+      if (session && isRecoveryAccessToken(session.access_token)) return;
       if (!session) {
         // Local sign-out during idle lock must not wipe profile or bounce
         // ProtectedRoute to /login — that unmounts in-progress drafts.

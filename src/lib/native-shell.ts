@@ -1,10 +1,25 @@
+import { inAppPathFromAuthDeepLink } from "@/lib/auth/auth-redirect";
+
 /**
- * Capacitor-only chrome: status bar colour, OAuth deep-link return,
- * and flush queued hearings when the app comes back to the foreground.
- * No-ops in the browser and in Electron.
+ * Loads the in-app page for a `magistratewizard://auth/...` deep link (a
+ * Supabase Auth email return, BE-27). A full load, so AuthProvider sees the
+ * code on start-up and exchanges it. False for any other link.
+ */
+const openAuthDeepLink = (url: string) => {
+  const path = inAppPathFromAuthDeepLink(url);
+  if (path) window.location.assign(path);
+  return path !== null;
+};
+
+/**
+ * Native chrome. Electron: Auth email deep links. Capacitor: status bar
+ * colour, Auth and OAuth deep-link returns, and flush queued hearings when
+ * the app comes back to the foreground. No-op in the browser.
  */
 export const initNativeShell = async () => {
-  const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  window.magistrateWizard?.onDeepLink?.(openAuthDeepLink);
+
+  const cap = window.Capacitor;
   if (!cap?.isNativePlatform?.()) return;
 
   try {
@@ -25,6 +40,7 @@ export const initNativeShell = async () => {
   try {
     const { App } = await import("@capacitor/app");
     App.addListener("appUrlOpen", ({ url }) => {
+      if (openAuthDeepLink(url)) return;
       if (!url.includes("oauth/google") && !url.includes("code=")) return;
       const parsed = new URL(url.replace(/^magistratewizard:/, "http://localhost"));
       const next = `/settings${parsed.search}`;

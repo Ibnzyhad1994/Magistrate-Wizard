@@ -1,13 +1,12 @@
 /**
  * Security-audit fix: the password reset flow used to sign the user back
- * in from the recovery link without ever asking for a new password. These
- * cover the two pure pieces of that fix: detecting a recovery-link
- * landing (so AuthProvider never promotes it to a real sign-in) and the
- * new-password validation ResetPasswordPage enforces.
+ * in from the recovery link without ever asking for a new password. This
+ * covers the new-password validation ResetPasswordPage enforces; spotting
+ * the recovery session (so AuthProvider never promotes it to a real
+ * sign-in) is test:auth-redirect's.
  *
  *   npm run test:password-reset
  */
-import { isPasswordRecoveryUrl } from "../../src/lib/auth/session-policy.ts";
 import { resetPasswordSchema } from "../../src/lib/validations/auth.ts";
 
 let failures = 0;
@@ -20,30 +19,6 @@ function check(label, actual, expected) {
     failures += 1;
   }
 }
-
-// --- isPasswordRecoveryUrl --------------------------------------------------
-// Confirmed empirically against a real recovery email from this app's
-// configured (implicit) flow: type=recovery lands in the hash fragment.
-
-check(
-  "a real recovery hash is detected",
-  isPasswordRecoveryUrl(
-    "#access_token=eyJ...&refresh_token=abc&expires_at=1&expires_in=3600&token_type=bearer&type=recovery",
-    "",
-  ),
-  true,
-);
-check(
-  "type=recovery in the query string is also detected (PKCE flow, if ever enabled)",
-  isPasswordRecoveryUrl("", "?code=abc&type=recovery"),
-  true,
-);
-check("an ordinary sign-in has neither and is not detected", isPasswordRecoveryUrl("", ""), false);
-check(
-  "an email-confirmation hash (type=signup) is not mistaken for recovery",
-  isPasswordRecoveryUrl("#access_token=eyJ...&type=signup", ""),
-  false,
-);
 
 // --- resetPasswordSchema ----------------------------------------------------
 // The policy Supabase Auth enforces (password-policy.ts, mirrored from

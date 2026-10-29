@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
-import { dirname, extname, join, normalize } from "node:path";
+import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 
@@ -23,7 +23,15 @@ const MIME = {
   ".wasm": "application/wasm",
 };
 
+// The app's own URL scheme. Android and iOS register it too; here it
+// brings Supabase Auth email links (magistratewizard://auth/...) back to
+// the running app, which holds the PKCE code verifier (BE-27).
+const APP_URL_SCHEME = "magistratewizard";
+
 let staticServer = null;
+let mainWindow = null;
+// A deep link that arrived before the renderer could take it.
+let pendingDeepLink = null;
 // The only origin the app window may ever navigate to: the local static
 // server in production, the Vite dev server in development. Set once the
 // window is created, before loadURL.
@@ -81,7 +89,8 @@ export const isAllowedExternalUrl = (url, allowedHttpOrigin) => {
     return false;
   }
   if (parsed.protocol === "https:" || parsed.protocol === "mailto:") return true;
-  if (parsed.protocol === "http:") return allowedHttpOrigin !== null && parsed.origin === allowedHttpOrigin;
+  if (parsed.protocol === "http:")
+    return allowedHttpOrigin !== null && parsed.origin === allowedHttpOrigin;
   return false;
 };
 
@@ -115,6 +124,27 @@ const hardenWebContents = (contents) => {
   contents.on("will-attach-webview", (event) => event.preventDefault());
 };
 
+const deepLinkFrom = (argv) => argv.find((arg) => arg.startsWith(`${APP_URL_SCHEME}://`)) ?? null;
+
+/**
+ * Hands a `magistratewizard://` link to the renderer, which loads the page
+ * it names only if it is an Auth return (src/lib/auth/auth-redirect.ts).
+ */
+const deliverDeepLink = (url) => {
+  if (!url) return;
+  if (!mainWindow || mainWindow.webContents.isLoading()) {
+    pendingDeepLink = url;
+    return;
+  }
+  mainWindow.webContents.send("deep-link", url);
+};
+
+const focusMainWindow = () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+};
+
 const createWindow = async () => {
   const win = new BrowserWindow({
     width: 1440,
@@ -133,6 +163,15 @@ const createWindow = async () => {
   });
 
   hardenWebContents(win.webContents);
+  mainWindow = win;
+  win.on("closed", () => {
+    if (mainWindow === win) mainWindow = null;
+  });
+  win.webContents.on("did-finish-load", () => {
+    const url = pendingDeepLink;
+    pendingDeepLink = null;
+    deliverDeepLink(url);
+  });
 
   if (isDev) {
     appOrigin = originOf(DEV_URL);
@@ -188,12 +227,36 @@ ipcMain.handle("google-oauth-loopback", async (_event, authUrl) => {
   return startGoogleLoopback(authUrl);
 });
 
-app.whenReady().then(() => {
-  void createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+// One running app: a deep link opened while it runs reaches this instance
+// (second-instance on Windows and Linux, open-url on macOS), not a second
+// copy that has neither the window nor the code verifier.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  if (process.defaultApp && process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(APP_URL_SCHEME, process.execPath, [resolve(process.argv[1])]);
+  } else {
+    app.setAsDefaultProtocolClient(APP_URL_SCHEME);
+  }
+  pendingDeepLink = deepLinkFrom(process.argv);
+
+  app.on("second-instance", (_event, argv) => {
+    focusMainWindow();
+    deliverDeepLink(deepLinkFrom(argv));
   });
-});
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    focusMainWindow();
+    deliverDeepLink(url);
+  });
+
+  app.whenReady().then(() => {
+    void createWindow();
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   staticServer?.close();

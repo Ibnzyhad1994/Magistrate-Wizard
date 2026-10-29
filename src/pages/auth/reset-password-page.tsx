@@ -30,15 +30,16 @@ const headerClassName = "space-y-2 px-8 pt-10 sm:px-16 sm:pt-12";
 const contentClassName = "px-8 pb-10 sm:px-16 sm:pb-12";
 
 /**
- * Reached only from the "Reset your password" email link. That link
- * authenticates the Supabase client with a one-time recovery session --
- * AuthProvider deliberately never promotes it to a real app sign-in (see
- * its PASSWORD_RECOVERY handling), so this page reads that session
- * directly and independently, exactly as if the app-wide auth state
- * didn't exist. No session here means the link was never followed, has
- * already been used, or has expired -- not a login problem this page can
- * fix, so it points back to requesting a fresh one instead of a form
- * that would just fail.
+ * Reached only from the "Reset your password" email link. AuthProvider
+ * trades that link's one-time code for a recovery session (PKCE, so it
+ * works only where the reset was requested) and deliberately never
+ * promotes it to a real app sign-in (see its recovery-session handling),
+ * so this page reads that session directly and independently, exactly as
+ * if the app-wide auth state didn't exist. No session here means the link
+ * was never followed, has already been used, has expired, or was opened in
+ * another browser or app -- not a login problem this page can fix, so it
+ * points back to requesting a fresh one instead of a form that would just
+ * fail.
  */
 export default function ResetPasswordPage() {
   usePageTitle("Reset password");
@@ -89,7 +90,8 @@ export default function ResetPasswordPage() {
             Link expired
           </h1>
           <CardDescription className="text-foreground/70">
-            This link has expired or was already used. Request a new one.
+            This link has expired, was already used, or was opened outside the browser or app that
+            asked for it. Request a new one.
           </CardDescription>
         </CardHeader>
         <CardContent className={contentClassName}>

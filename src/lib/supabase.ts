@@ -21,7 +21,12 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    // PKCE (BE-27): an Auth email link returns a one-time ?code=, never
+    // tokens in the URL. AuthProvider exchanges it on the login and reset
+    // routes only (auth-redirect.ts), so the URL is not scanned here; that
+    // would also catch Google Calendar's ?code= on Settings.
+    flowType: "pkce",
+    detectSessionInUrl: false,
     storageKey: AUTH_STORAGE_KEY,
     storage: createAuthStorage(),
   },
