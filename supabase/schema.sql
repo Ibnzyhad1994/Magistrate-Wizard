@@ -178,6 +178,21 @@ CREATE TYPE "public"."user_role" AS ENUM (
 
 ALTER TYPE "public"."user_role" OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."active_account_id"() RETURNS "uuid"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select p.id from public.profiles p where p.id = (select auth.uid()) and p.is_active;
+$$;
+
+
+ALTER FUNCTION "public"."active_account_id"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."active_account_id"() IS 'The caller''s id when their account is active, else null (0200, BE-09). The restrictive "Deactivated accounts have no access" policies test it for null, which the planner estimates as keeping almost every row, where a bare boolean would halve every estimate.';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -4822,7 +4837,7 @@ $$;
 ALTER FUNCTION "public"."is_active_account"() OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."is_active_account"() IS 'True when the caller has a profile and it is active (0200, BE-09). False for anon and for a deactivated account. Every role, court and docket helper ANDs it in, and the restrictive "Deactivated accounts have no access" policies call it.';
+COMMENT ON FUNCTION "public"."is_active_account"() IS 'True when the caller has a profile and it is active (0200, BE-09). False for anon and for a deactivated account. Every role, court and docket helper ANDs it in; the restrictive policies use active_account_id().';
 
 
 
@@ -13086,263 +13101,263 @@ CREATE POLICY "Current Docket-access holders can create Shares" ON "public"."sha
 
 
 
-CREATE POLICY "Deactivated accounts cannot add profiles" ON "public"."profiles" AS RESTRICTIVE FOR INSERT TO "authenticated" WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts cannot add profiles" ON "public"."profiles" AS RESTRICTIVE FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts cannot change profiles" ON "public"."profiles" AS RESTRICTIVE FOR UPDATE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts cannot change profiles" ON "public"."profiles" AS RESTRICTIVE FOR UPDATE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts cannot delete profiles" ON "public"."profiles" AS RESTRICTIVE FOR DELETE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts cannot delete profiles" ON "public"."profiles" AS RESTRICTIVE FOR DELETE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."audit_log" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."audit_log" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."auth_event_log" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."auth_event_log" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."bench_note_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."bench_note_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."bench_notes" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."bench_notes" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."bookmarks" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."bookmarks" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law_annotations" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law_annotations" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_law_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."case_parties" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_parties" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."case_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."case_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."cases" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."cases" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."clerk_access_requests" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."clerk_access_requests" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."clerk_courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."clerk_courts" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."comments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."comments" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."court_non_sitting_days" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."court_non_sitting_days" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."courts" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."data_retention_policies" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."data_retention_policies" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_callover_items" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_callover_items" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_callovers" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_callovers" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_capacity_overrides" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_capacity_overrides" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_capacity_settings" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_capacity_settings" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_event_calendar_links" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_event_calendar_links" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_events" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_events" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_assignments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_assignments" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_case_law" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_case_law" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_categories" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_categories" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_judgments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_judgments" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_parties" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_parties" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matter_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matters" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."docket_matters" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."documents" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."documents" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."feature_flags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."feature_flags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."import_batches" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."import_batches" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."import_jobs" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."import_jobs" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."issue_reports" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."issue_reports" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_versions" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_versions" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."judgments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgments" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_authority_courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_authority_courts" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_case_categories" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_case_categories" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_jurisdictions" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_jurisdictions" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_regional_groups" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_regional_groups" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_sources" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."legal_sources" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."magisterial_districts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."magisterial_districts" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."magistrate_court_requests" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."magistrate_court_requests" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."magistrate_courts" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."magistrate_courts" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."notifications" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."notifications" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_case_law" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_case_law" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_docket_matters" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_docket_matters" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_judgments" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_code_judgments" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_codes" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."quick_codes" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."rpc_rate_limit_buckets" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."rpc_rate_limit_buckets" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."shares" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."shares" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."stale_draft_notices" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."stale_draft_notices" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."statute_provisions" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."statute_provisions" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."statute_tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."statute_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."statutes" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."statutes" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."storage_cleanup_queue" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."storage_cleanup_queue" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."tags" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."webhook_endpoints" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."webhook_endpoints" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts have no access" ON "public"."webhook_outbox" AS RESTRICTIVE TO "authenticated" USING (( SELECT "public"."is_active_account"() AS "is_active_account")) WITH CHECK (( SELECT "public"."is_active_account"() AS "is_active_account"));
+CREATE POLICY "Deactivated accounts have no access" ON "public"."webhook_outbox" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
 
-CREATE POLICY "Deactivated accounts see only their own profile" ON "public"."profiles" AS RESTRICTIVE FOR SELECT TO "authenticated" USING ((( SELECT "public"."is_active_account"() AS "is_active_account") OR ("id" = ( SELECT "auth"."uid"() AS "uid"))));
+CREATE POLICY "Deactivated accounts see only their own profile" ON "public"."profiles" AS RESTRICTIVE FOR SELECT TO "authenticated" USING (((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL) OR ("id" = ( SELECT "auth"."uid"() AS "uid"))));
 
 
 
@@ -13972,6 +13987,12 @@ GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."active_account_id"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."active_account_id"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."active_account_id"() TO "service_role";
 
 
 
