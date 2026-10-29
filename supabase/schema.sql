@@ -2259,6 +2259,53 @@ COMMENT ON FUNCTION "public"."clerk_access_request_email_confirmed"("p_request_i
 
 
 
+CREATE OR REPLACE FUNCTION "public"."clerk_access_requests_enqueue_webhook"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_recipients uuid[];
+begin
+  if new.status <> 'pending'
+     or not public.webhook_event_wanted('clerk_request.created') then
+    return new;
+  end if;
+
+  -- The people clerk_access_requests_notify() (0123) tells: the court's
+  -- staff and every active administrator.
+  v_recipients := public.court_staff_ids(new.court_id)
+    || coalesce(
+      (select array_agg(p.id) from public.profiles p where p.role = 'admin' and p.is_active),
+      '{}'
+    );
+
+  if cardinality(v_recipients) = 0 then
+    return new;
+  end if;
+
+  perform public.enqueue_webhook_event(
+    'clerk_request.created',
+    new.court_id,
+    v_recipients,
+    jsonb_build_object(
+      'clerk_access_request_id', new.id,
+      'profile_id', new.profile_id,
+      'requested_at', new.requested_at,
+      'link', '/clerk-access-requests'
+    )
+  );
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."clerk_access_requests_enqueue_webhook"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."clerk_access_requests_enqueue_webhook"() IS 'AFTER INSERT on clerk_access_requests (0232): one clerk_request.created webhook event per pending request, with its court and the court staff and administrators it notifies. SECURITY DEFINER: reads assignments and writes webhook_outbox.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."clerk_access_requests_notify"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -2501,6 +2548,32 @@ ALTER FUNCTION "public"."court_has_no_clerk_approver"("p_court_id" "uuid") OWNER
 
 
 COMMENT ON FUNCTION "public"."court_has_no_clerk_approver"("p_court_id" "uuid") IS 'True if NO currently-assigned magistrate at this court would satisfy can_manage_clerk_access() for it today (no current magistrate, several coverings with no unique primary and none flagged can_manage_clerks, or several primaries with none flagged). Used only to flag orphaned pending requests for the admin fallback view -- never used to auto-approve anything.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."court_staff_ids"("p_court_id" "uuid") RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select coalesce(array_agg(distinct s.profile_id order by s.profile_id), '{}')
+  from (
+    select mc.profile_id
+    from public.magistrate_courts mc
+    where mc.court_id = p_court_id
+      and mc.ended_at is null
+    union
+    select cc.profile_id
+    from public.clerk_courts cc
+    where cc.court_id = p_court_id
+      and cc.ended_at is null
+  ) s;
+$$;
+
+
+ALTER FUNCTION "public"."court_staff_ids"("p_court_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."court_staff_ids"("p_court_id" "uuid") IS 'The court''s current magistrates and clerks, the people notify_court_staff() addresses (0232). SECURITY DEFINER; executable by no client role.';
 
 
 
@@ -3564,6 +3637,79 @@ COMMENT ON FUNCTION "public"."documents_queue_storage_cleanup"() IS 'AFTER DELET
 
 
 
+CREATE OR REPLACE FUNCTION "public"."documents_storage_quota_bytes"("p_profile_id" "uuid") RETURNS bigint
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select case
+    when exists (
+      select 1 from public.profiles p
+      where p.id = p_profile_id
+        and p.role = 'admin'
+    ) then 53687091200::bigint -- 50 GiB
+    else 5368709120::bigint -- 5 GiB
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."documents_storage_quota_bytes"("p_profile_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."documents_storage_quota_bytes"("p_profile_id" "uuid") IS 'Storage quota for one person''s folder in the documents bucket (0231): 5 GiB, or 50 GiB for an administrator, who curates the legal library from their own folder. Recommended defaults; change them with a migration. SECURITY DEFINER; executable by no client role.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."documents_storage_used_bytes"("p_profile_id" "uuid") RETURNS bigint
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $_$
+  select coalesce(sum(
+    case when o.metadata ->> 'size' ~ '^[0-9]{1,18}$' then (o.metadata ->> 'size')::bigint else 0 end
+  ), 0)::bigint
+  from storage.objects o
+  where o.bucket_id = 'documents'
+    and o.name like p_profile_id::text || '/%';
+$_$;
+
+
+ALTER FUNCTION "public"."documents_storage_used_bytes"("p_profile_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."documents_storage_used_bytes"("p_profile_id" "uuid") IS 'Bytes stored in one person''s folder of the documents bucket, from the sizes Storage records (0231). Counts every object there, with or without a documents row. SECURITY DEFINER: reads storage.objects past the caller''s read policy; executable by no client role.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."documents_upload_within_quota"("p_metadata" "jsonb") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $_$
+declare
+  v_uid uuid := auth.uid();
+  v_incoming bigint;
+begin
+  if v_uid is null then
+    return false;
+  end if;
+
+  v_incoming := case
+    when p_metadata ->> 'size' ~ '^[0-9]{1,18}$' then (p_metadata ->> 'size')::bigint
+    when p_metadata ->> 'contentLength' ~ '^[0-9]{1,18}$' then (p_metadata ->> 'contentLength')::bigint
+    else 0
+  end;
+
+  return public.documents_storage_used_bytes(v_uid) + v_incoming
+    <= public.documents_storage_quota_bytes(v_uid);
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."documents_upload_within_quota"("p_metadata" "jsonb") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."documents_upload_within_quota"("p_metadata" "jsonb") IS 'True when the caller''s documents-bucket usage plus the incoming object''s size (metadata size or contentLength, as Storage passes them) stays within their quota (0231). Evaluated by the documents upload policy as the caller. SECURITY DEFINER: reads storage.objects and the caller''s role.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."download_my_data"() RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3895,18 +4041,33 @@ COMMENT ON FUNCTION "public"."enforce_rpc_rate_limit"("p_rpc" "text", "p_max" in
 
 
 
-CREATE OR REPLACE FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_payload" "jsonb") RETURNS integer
+CREATE OR REPLACE FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_court_id" "uuid", "p_recipient_ids" "uuid"[], "p_data" "jsonb") RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
+  v_payload jsonb;
   v_count integer := 0;
 begin
+  v_payload := jsonb_build_object(
+    'id', gen_random_uuid(),
+    'event', p_event,
+    'occurred_at', now(),
+    'court_id', p_court_id,
+    'recipient_ids', coalesce(
+      (select jsonb_agg(r order by r) from (select distinct unnest(p_recipient_ids) as r) u
+       where r is not null),
+      '[]'::jsonb
+    ),
+    'data', coalesce(p_data, '{}'::jsonb)
+  );
+
   insert into public.webhook_outbox (endpoint_id, event, payload)
-  select e.id, p_event, p_payload
+  select e.id, p_event, v_payload
   from public.webhook_endpoints e
   where e.active
-    and p_event = any (e.events);
+    and p_event = any (e.events)
+    and (e.court_id is null or e.court_id = p_court_id);
 
   get diagnostics v_count = row_count;
   return v_count;
@@ -3914,7 +4075,11 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_payload" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_court_id" "uuid", "p_recipient_ids" "uuid"[], "p_data" "jsonb") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_court_id" "uuid", "p_recipient_ids" "uuid"[], "p_data" "jsonb") IS 'Queues one webhook event for each active endpoint subscribed to it whose court_id is null or the event''s court (0232). Payload: id (shared by every endpoint''s copy), event, occurred_at, court_id, recipient_ids (sorted, distinct) and data (ids and the in-app link only, never content). Returns the number of rows queued. SECURITY DEFINER; executable by no client role.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."escape_like_pattern"("p_text" "text") RETURNS "text"
@@ -5156,6 +5321,55 @@ $$;
 ALTER FUNCTION "public"."judgment_tags_guard"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."judgments_enqueue_webhook"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_recipients uuid[];
+begin
+  if old.status is not distinct from new.status
+     or new.status is distinct from 'final'
+     or not public.webhook_event_wanted('judgment.final') then
+    return new;
+  end if;
+
+  -- The recipients judgments_notify_final() (0165) tells.
+  select array_agg(s.recipient_id) into v_recipients
+  from public.shares s
+  where s.item_type = 'judgment'
+    and s.item_id = new.id
+    and s.revoked_at is null
+    and s.recipient_id is not null
+    and public.can_receive_research_share(s.recipient_id);
+
+  if coalesce(cardinality(v_recipients), 0) = 0 then
+    return new;
+  end if;
+
+  perform public.enqueue_webhook_event(
+    'judgment.final',
+    null,
+    v_recipients,
+    jsonb_build_object(
+      'judgment_id', new.id,
+      'owner_id', new.owner_id,
+      'finalized_at', new.finalized_at,
+      'link', '/judgments/' || new.id::text
+    )
+  );
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."judgments_enqueue_webhook"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."judgments_enqueue_webhook"() IS 'AFTER UPDATE OF status on judgments (0232): one judgment.final webhook event when a judgment with recipients who can read it becomes final, listing them. No court (judgments are never court-owned) and no content. SECURITY DEFINER: reads shares and writes webhook_outbox.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."judgments_guard"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -5729,6 +5943,23 @@ COMMENT ON FUNCTION "public"."my_court_id"() IS 'The caller''s legacy profiles.c
 
 
 
+CREATE OR REPLACE FUNCTION "public"."my_documents_storage"() RETURNS TABLE("used_bytes" bigint, "quota_bytes" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select public.documents_storage_used_bytes(auth.uid()),
+         public.documents_storage_quota_bytes(auth.uid())
+  where auth.uid() is not null;
+$$;
+
+
+ALTER FUNCTION "public"."my_documents_storage"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."my_documents_storage"() IS 'The caller''s own documents-bucket usage and quota in bytes (0231). No row without a signed-in caller.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."new_docket_event_presiding_magistrate"("p_docket_matter_id" "uuid", "p_prior_event_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -5790,41 +6021,6 @@ ALTER FUNCTION "public"."new_docket_event_presiding_magistrate"("p_docket_matter
 
 COMMENT ON FUNCTION "public"."new_docket_event_presiding_magistrate"("p_docket_matter_id" "uuid", "p_prior_event_id" "uuid") IS 'The presiding magistrate a new hearing on this matter gets when the caller lists it (0163). A magistrate presides over what they list. A clerk never presides: their hearing goes to the magistrate of p_prior_event_id (the sitting it supersedes), else of the matter''s latest sitting, while that magistrate still sits at the court or holds the matter; else to the court''s only sitting magistrate; else null (unassigned, claimable). Returns null when the caller cannot edit the matter. Used by docket_events_guard() and both scheduling RPCs, so the guard and the capacity check agree.';
 
-
-
-CREATE OR REPLACE FUNCTION "public"."notifications_enqueue_webhook"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_event text;
-begin
-  v_event := case new.type
-    when 'share_granted' then 'share.granted'
-    when 'share_revoked' then 'share.revoked'
-    when 'judgment_final' then 'judgment.final'
-    when 'hearing_tomorrow' then 'hearing.tomorrow'
-    when 'clerk_request' then 'clerk_request.created'
-    else null
-  end;
-  if v_event is not null then
-    perform public.enqueue_webhook_event(
-      v_event,
-      jsonb_build_object(
-        'type', new.type,
-        'title', new.title,
-        'body', new.body,
-        'link', new.link,
-        'created_at', new.created_at
-      )
-    );
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."notifications_enqueue_webhook"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."notifications_protect"() RETURNS "trigger"
@@ -5942,6 +6138,8 @@ declare
   v_count integer := 0;
   r record;
   v_tomorrow date := public.guyana_today() + 1;
+  v_wanted boolean := public.webhook_event_wanted('hearing.tomorrow');
+  v_staff uuid[];
 begin
   for r in
     select
@@ -5963,6 +6161,30 @@ begin
       coalesce(r.case_number || ' — ', '') || coalesce(r.matter_title, 'A matter is listed tomorrow.'),
       '/docket/' || r.docket_matter_id::text
     );
+
+    if v_wanted then
+      v_staff := public.court_staff_ids(r.court_id);
+      if cardinality(v_staff) > 0 and not exists (
+        select 1
+        from public.webhook_outbox o
+        where o.event = 'hearing.tomorrow'
+          and (o.payload #>> '{data,docket_event_id}') = r.id::text
+          and (o.payload #>> '{data,scheduled_date}') = v_tomorrow::text
+      ) then
+        perform public.enqueue_webhook_event(
+          'hearing.tomorrow',
+          r.court_id,
+          v_staff,
+          jsonb_build_object(
+            'docket_event_id', r.id,
+            'docket_matter_id', r.docket_matter_id,
+            'scheduled_date', v_tomorrow,
+            'link', '/docket/' || r.docket_matter_id::text
+          )
+        );
+      end if;
+    end if;
+
     v_count := v_count + 1;
   end loop;
   return v_count;
@@ -6057,6 +6279,24 @@ ALTER FUNCTION "public"."populate_callover_from_date"("p_callover_id" "uuid", "p
 
 
 COMMENT ON FUNCTION "public"."populate_callover_from_date"("p_callover_id" "uuid", "p_date" "date") IS 'Adds every live matter at the callover''s court with an appearance on the given date (defaults to the callover''s own date). SECURITY INVOKER -- RLS and can_edit_docket_matter() still apply to every row. Idempotent: re-running adds only what is missing.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."preview_derivative_source_id"("p_name" "text") RETURNS "uuid"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $_$
+  select case
+    when p_name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/preview-derivatives/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.html$'
+    then substring(p_name from '/preview-derivatives/([0-9a-f-]{36})\.html$')::uuid
+  end;
+$_$;
+
+
+ALTER FUNCTION "public"."preview_derivative_source_id"("p_name" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."preview_derivative_source_id"("p_name" "text") IS 'The source document id in a DOCX preview path, `<uid>/preview-derivatives/<source document id>.html` (the path generateAndCacheDocxPreview writes); null for any other object name (0231).';
 
 
 
@@ -8570,6 +8810,65 @@ $$;
 ALTER FUNCTION "public"."shares_delete_for_parent"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."shares_enqueue_webhook"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_event text;
+  v_court_id uuid;
+begin
+  if new.recipient_id is null then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' and new.revoked_at is null then
+    v_event := 'share.granted';
+  elsif tg_op = 'UPDATE' and old.revoked_at is null and new.revoked_at is not null then
+    v_event := 'share.revoked';
+  else
+    return new;
+  end if;
+
+  if not public.webhook_event_wanted(v_event) then
+    return new;
+  end if;
+
+  if new.item_type = 'docket_matter' then
+    select dm.court_id into v_court_id
+    from public.docket_matters dm
+    where dm.id = new.item_id;
+  end if;
+
+  perform public.enqueue_webhook_event(
+    v_event,
+    v_court_id,
+    array[new.recipient_id],
+    jsonb_build_object(
+      'share_id', new.id,
+      'item_type', new.item_type,
+      'item_id', new.item_id,
+      'permission', new.permission,
+      'granted_by', new.granted_by,
+      'link', case new.item_type
+        when 'docket_matter' then '/docket/' || new.item_id::text
+        when 'judgment' then '/judgments/' || new.item_id::text
+        when 'case_law' then '/case-law/' || new.item_id::text
+      end
+    )
+  );
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."shares_enqueue_webhook"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."shares_enqueue_webhook"() IS 'AFTER INSERT OR UPDATE OF revoked_at on shares (0232): one share.granted or share.revoked webhook event per share with a recipient, with the docket matter''s court (null for a judgment or Case Law) and the recipient. SECURITY DEFINER: writes webhook_outbox.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."shares_guard"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -9335,6 +9634,25 @@ ALTER FUNCTION "public"."verify_audit_hash_chain"() OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."verify_audit_hash_chain"() IS 'Walks audit_log in id order and reports the first broken hash link. Callable by admins via RLS on the page that displays it; the function itself does not leak row bodies.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."webhook_event_wanted"("p_event" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists (
+    select 1 from public.webhook_endpoints e
+    where e.active
+      and p_event = any (e.events)
+  );
+$$;
+
+
+ALTER FUNCTION "public"."webhook_event_wanted"("p_event" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."webhook_event_wanted"("p_event" "text") IS 'True when an active webhook endpoint subscribes to the event (0232), so a producer can skip building its payload. SECURITY DEFINER; executable by no client role.';
 
 
 
@@ -11620,11 +11938,19 @@ CREATE INDEX "comments_case_id_idx" ON "public"."comments" USING "btree" ("case_
 
 
 
+CREATE INDEX "court_non_sitting_days_court_id_idx" ON "public"."court_non_sitting_days" USING "btree" ("court_id");
+
+
+
 CREATE UNIQUE INDEX "court_non_sitting_days_court_idx" ON "public"."court_non_sitting_days" USING "btree" ("holiday_date", "name", "court_id") WHERE ("court_id" IS NOT NULL);
 
 
 
 CREATE INDEX "court_non_sitting_days_date_idx" ON "public"."court_non_sitting_days" USING "btree" ("holiday_date");
+
+
+
+CREATE INDEX "court_non_sitting_days_district_id_idx" ON "public"."court_non_sitting_days" USING "btree" ("district_id");
 
 
 
@@ -11668,6 +11994,14 @@ CREATE UNIQUE INDEX "docket_callovers_open_per_court_date_idx" ON "public"."dock
 
 
 
+CREATE INDEX "docket_capacity_overrides_category_id_idx" ON "public"."docket_capacity_overrides" USING "btree" ("category_id");
+
+
+
+CREATE INDEX "docket_capacity_overrides_docket_event_id_idx" ON "public"."docket_capacity_overrides" USING "btree" ("docket_event_id");
+
+
+
 CREATE INDEX "docket_capacity_overrides_magistrate_date_idx" ON "public"."docket_capacity_overrides" USING "btree" ("magistrate_profile_id", "scheduled_date");
 
 
@@ -11677,6 +12011,10 @@ CREATE INDEX "docket_capacity_overrides_matter_id_idx" ON "public"."docket_capac
 
 
 CREATE INDEX "docket_capacity_overrides_overridden_by_idx" ON "public"."docket_capacity_overrides" USING "btree" ("overridden_by");
+
+
+
+CREATE INDEX "docket_capacity_settings_category_id_idx" ON "public"."docket_capacity_settings" USING "btree" ("category_id");
 
 
 
@@ -12180,6 +12518,10 @@ CREATE INDEX "statutes_jurisdiction_idx" ON "public"."statutes" USING "btree" ("
 
 
 
+CREATE INDEX "statutes_primary_document_id_idx" ON "public"."statutes" USING "btree" ("primary_document_id");
+
+
+
 CREATE INDEX "statutes_published_current_title_idx" ON "public"."statutes" USING "btree" ("title", "id") WHERE (("review_status" = 'published'::"text") AND ("is_current_version" = true));
 
 
@@ -12212,11 +12554,19 @@ CREATE UNIQUE INDEX "tags_name_idx" ON "public"."tags" USING "btree" ("lower"("n
 
 
 
+CREATE INDEX "webhook_endpoints_court_id_idx" ON "public"."webhook_endpoints" USING "btree" ("court_id");
+
+
+
 CREATE INDEX "webhook_outbox_due_idx" ON "public"."webhook_outbox" USING "btree" ("next_attempt_at") WHERE ("status" = 'pending'::"text");
 
 
 
 CREATE INDEX "webhook_outbox_endpoint_id_idx" ON "public"."webhook_outbox" USING "btree" ("endpoint_id");
+
+
+
+CREATE INDEX "webhook_outbox_hearing_tomorrow_idx" ON "public"."webhook_outbox" USING "btree" ((("payload" #>> '{data,docket_event_id}'::"text"[]))) WHERE ("event" = 'hearing.tomorrow'::"text");
 
 
 
@@ -12368,6 +12718,10 @@ CREATE OR REPLACE TRIGGER "claim_primary_slot_on_first_sign_in_trigger" AFTER IN
 
 
 
+CREATE OR REPLACE TRIGGER "clerk_access_requests_enqueue_webhook_trigger" AFTER INSERT ON "public"."clerk_access_requests" FOR EACH ROW EXECUTE FUNCTION "public"."clerk_access_requests_enqueue_webhook"();
+
+
+
 CREATE OR REPLACE TRIGGER "clerk_access_requests_notify_trigger" AFTER INSERT OR UPDATE ON "public"."clerk_access_requests" FOR EACH ROW EXECUTE FUNCTION "public"."clerk_access_requests_notify"();
 
 
@@ -12476,6 +12830,10 @@ CREATE OR REPLACE TRIGGER "judgment_tags_guard_trigger" BEFORE INSERT ON "public
 
 
 
+CREATE OR REPLACE TRIGGER "judgments_enqueue_webhook_trigger" AFTER UPDATE OF "status" ON "public"."judgments" FOR EACH ROW EXECUTE FUNCTION "public"."judgments_enqueue_webhook"();
+
+
+
 CREATE OR REPLACE TRIGGER "judgments_guard_trigger" BEFORE INSERT OR UPDATE ON "public"."judgments" FOR EACH ROW EXECUTE FUNCTION "public"."judgments_guard"();
 
 
@@ -12497,10 +12855,6 @@ CREATE OR REPLACE TRIGGER "magistrate_courts_notify_trigger" AFTER INSERT ON "pu
 
 
 CREATE OR REPLACE TRIGGER "magistrate_courts_unlink_orphaned_judgment_pins" AFTER UPDATE OF "ended_at" ON "public"."magistrate_courts" FOR EACH ROW WHEN ((("old"."ended_at" IS NULL) AND ("new"."ended_at" IS NOT NULL))) EXECUTE FUNCTION "public"."unlink_judgment_pins_on_court_end"();
-
-
-
-CREATE OR REPLACE TRIGGER "notifications_enqueue_webhook_trigger" AFTER INSERT ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "public"."notifications_enqueue_webhook"();
 
 
 
@@ -12681,6 +13035,10 @@ CREATE OR REPLACE TRIGGER "shares_delete_for_case_law_trigger" BEFORE DELETE ON 
 
 
 CREATE OR REPLACE TRIGGER "shares_delete_for_judgment_trigger" BEFORE DELETE ON "public"."judgments" FOR EACH ROW EXECUTE FUNCTION "public"."shares_delete_for_parent"('judgment');
+
+
+
+CREATE OR REPLACE TRIGGER "shares_enqueue_webhook_trigger" AFTER INSERT OR UPDATE OF "revoked_at" ON "public"."shares" FOR EACH ROW EXECUTE FUNCTION "public"."shares_enqueue_webhook"();
 
 
 
@@ -15028,6 +15386,11 @@ GRANT ALL ON FUNCTION "public"."clerk_access_request_email_confirmed"("p_request
 
 
 
+REVOKE ALL ON FUNCTION "public"."clerk_access_requests_enqueue_webhook"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."clerk_access_requests_enqueue_webhook"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."clerk_access_requests_notify"() TO "anon";
 GRANT ALL ON FUNCTION "public"."clerk_access_requests_notify"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."clerk_access_requests_notify"() TO "service_role";
@@ -15056,6 +15419,11 @@ GRANT ALL ON FUNCTION "public"."court_has_active_primary_magistrate"("p_court_id
 REVOKE ALL ON FUNCTION "public"."court_has_no_clerk_approver"("p_court_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."court_has_no_clerk_approver"("p_court_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."court_has_no_clerk_approver"("p_court_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."court_staff_ids"("p_court_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."court_staff_ids"("p_court_id" "uuid") TO "service_role";
 
 
 
@@ -15229,6 +15597,22 @@ GRANT ALL ON FUNCTION "public"."documents_queue_storage_cleanup"() TO "service_r
 
 
 
+REVOKE ALL ON FUNCTION "public"."documents_storage_quota_bytes"("p_profile_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."documents_storage_quota_bytes"("p_profile_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."documents_storage_used_bytes"("p_profile_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."documents_storage_used_bytes"("p_profile_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."documents_upload_within_quota"("p_metadata" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."documents_upload_within_quota"("p_metadata" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."documents_upload_within_quota"("p_metadata" "jsonb") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."download_my_data"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."download_my_data"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."download_my_data"() TO "service_role";
@@ -15246,8 +15630,8 @@ GRANT ALL ON FUNCTION "public"."enforce_rpc_rate_limit"("p_rpc" "text", "p_max" 
 
 
 
-REVOKE ALL ON FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_payload" "jsonb") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_payload" "jsonb") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_court_id" "uuid", "p_recipient_ids" "uuid"[], "p_data" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."enqueue_webhook_event"("p_event" "text", "p_court_id" "uuid", "p_recipient_ids" "uuid"[], "p_data" "jsonb") TO "service_role";
 
 
 
@@ -15425,6 +15809,11 @@ GRANT ALL ON FUNCTION "public"."judgment_tags_guard"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."judgments_enqueue_webhook"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."judgments_enqueue_webhook"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."judgments_guard"() TO "anon";
 GRANT ALL ON FUNCTION "public"."judgments_guard"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."judgments_guard"() TO "service_role";
@@ -15521,15 +15910,15 @@ GRANT ALL ON FUNCTION "public"."my_court_id"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."my_documents_storage"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_documents_storage"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_documents_storage"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."new_docket_event_presiding_magistrate"("p_docket_matter_id" "uuid", "p_prior_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."new_docket_event_presiding_magistrate"("p_docket_matter_id" "uuid", "p_prior_event_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."new_docket_event_presiding_magistrate"("p_docket_matter_id" "uuid", "p_prior_event_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."notifications_enqueue_webhook"() TO "anon";
-GRANT ALL ON FUNCTION "public"."notifications_enqueue_webhook"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."notifications_enqueue_webhook"() TO "service_role";
 
 
 
@@ -15567,6 +15956,12 @@ GRANT ALL ON FUNCTION "public"."notify_user"("p_user_id" "uuid", "p_type" "text"
 REVOKE ALL ON FUNCTION "public"."populate_callover_from_date"("p_callover_id" "uuid", "p_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."populate_callover_from_date"("p_callover_id" "uuid", "p_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."populate_callover_from_date"("p_callover_id" "uuid", "p_date" "date") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."preview_derivative_source_id"("p_name" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."preview_derivative_source_id"("p_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."preview_derivative_source_id"("p_name" "text") TO "service_role";
 
 
 
@@ -15890,6 +16285,11 @@ GRANT ALL ON FUNCTION "public"."shares_delete_for_parent"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."shares_enqueue_webhook"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."shares_enqueue_webhook"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."shares_guard"() TO "anon";
 GRANT ALL ON FUNCTION "public"."shares_guard"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."shares_guard"() TO "service_role";
@@ -15990,6 +16390,11 @@ GRANT ALL ON FUNCTION "public"."validate_bookmark_entity"() TO "service_role";
 REVOKE ALL ON FUNCTION "public"."verify_audit_hash_chain"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."verify_audit_hash_chain"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."verify_audit_hash_chain"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."webhook_event_wanted"("p_event" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."webhook_event_wanted"("p_event" "text") TO "service_role";
 
 
 
