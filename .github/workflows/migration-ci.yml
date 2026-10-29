@@ -6,6 +6,19 @@ name: Migration CI
 # Hosted preview/prod drift is a separate read-only workflow
 # (.github/workflows/schema-alignment.yml), not this apply job.
 #
+# After applying, it dumps the public schema and fails when the dump differs
+# from the committed supabase/schema.sql (BE-20), so every commit carries one
+# readable copy of every table, policy and function body, including those
+# that migrations rewrite in place. After a schema change, regenerate it with
+# `npm run db:schema-snapshot` against a freshly reset local stack, or take
+# the public-schema artifact of the failed run, and commit it with the
+# migration.
+#
+# Then it runs deploy-db.yml's plan and verify steps (BE-03) against this
+# stack: with the newest migration's history row removed, the plan must list
+# exactly that file, verify must accept that plan, and verify must refuse a
+# plan that differs.
+#
 # Runs on EVERY develop push (not only when supabase/** changes): a frontend
 # commit that depends on a hosted-only schema change is otherwise never
 # caught. PRs keep the path filter.
@@ -15,6 +28,9 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
+      - "supabase/schema.sql"
+      - "scripts/db-push-plan.mjs"
+      - ".github/workflows/deploy-db.yml"
       - ".github/workflows/migration-ci.yml"
   push:
     branches:
@@ -28,20 +44,67 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
 
       - name: Cache Supabase CLI
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.supabase
           key: supabase-cli-${{ runner.os }}-${{ hashFiles('supabase/config.toml') }}
 
+      # This job skips npm ci, so name the CLI version package.json pins
+      # rather than let npx fetch whatever is newest.
+      - name: Pinned Supabase CLI
+        run: echo "SUPABASE_CLI=supabase@$(node -p "require('./package.json').devDependencies.supabase")" >> "$GITHUB_ENV"
+
       - name: Start local database
-        run: npx supabase db start
+        run: npx --yes "$SUPABASE_CLI" db start
 
       - name: Reset and apply all migrations (no seed)
-        run: npx supabase db reset --yes --no-seed
+        run: npx --yes "$SUPABASE_CLI" db reset --yes --no-seed
+
+      - name: Public schema matches supabase/schema.sql
+        run: |
+          npx --yes "$SUPABASE_CLI" db dump --local --schema public -f "$RUNNER_TEMP/schema.sql"
+          if ! diff -u supabase/schema.sql "$RUNNER_TEMP/schema.sql" > "$RUNNER_TEMP/schema.diff"; then
+            head -n 200 "$RUNNER_TEMP/schema.diff"
+            echo "::error file=supabase/schema.sql::The applied public schema differs from supabase/schema.sql. Run npm run db:schema-snapshot on a freshly reset local stack (or take this run's public-schema artifact) and commit it."
+            exit 1
+          fi
+
+      - name: Deploy plan lists exactly what the database lacks
+        run: |
+          port=$(sed -n '/^\[db\]/,/^\[/s/^port = \([0-9]*\)$/\1/p' supabase/config.toml)
+          db_url="postgresql://postgres:postgres@127.0.0.1:${port}/postgres?sslmode=disable"
+          newest=$(basename "$(find supabase/migrations -name '*.sql' | sort | tail -n 1)")
+          psql "$db_url" -v ON_ERROR_STOP=1 -v version="${newest%%_*}" <<'SQL'
+          delete from supabase_migrations.schema_migrations where version = :'version';
+          SQL
+
+          GITHUB_OUTPUT="$RUNNER_TEMP/plan.out" DB_PUSH_TARGET="migration CI (local)" \
+            node scripts/db-push-plan.mjs plan --db-url "$db_url"
+          plan=$(sed -n 's/^plan=//p' "$RUNNER_TEMP/plan.out")
+          expected="{\"migrations\":[\"$newest\"],\"seeds\":[],\"roles\":[]}"
+          if [ "$plan" != "$expected" ]; then
+            echo "::error::The plan was $plan, expected $expected."
+            exit 1
+          fi
+
+          DB_PUSH_PLAN="$plan" node scripts/db-push-plan.mjs verify --db-url "$db_url"
+          if DB_PUSH_PLAN='{"migrations":[],"seeds":[],"roles":[]}' \
+            node scripts/db-push-plan.mjs verify --db-url "$db_url"; then
+            echo "::error::verify accepted a plan that differs from the database."
+            exit 1
+          fi
+
+      - name: Upload the applied public schema
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: public-schema
+          path: ${{ runner.temp }}/schema.sql
+          if-no-files-found: ignore

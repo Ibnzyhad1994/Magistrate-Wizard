@@ -13,6 +13,12 @@ directories:
 files:
   - dist/**/*
   - electron/**/*
+# The app's URL scheme, registered by the installer so Supabase Auth email
+# links (magistratewizard://auth/...) open the desktop app (BE-27).
+protocols:
+  - name: Magistrate Wizard
+    schemes:
+      - magistratewizard
 win:
   target:
     - nsis

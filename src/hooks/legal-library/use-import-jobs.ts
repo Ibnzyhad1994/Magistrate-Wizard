@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useKeysetList } from "@/hooks/use-keyset-list";
+import {
+  applyKeyset,
+  type KeysetCursor,
+  type KeysetSpec,
+  toKeysetPage,
+} from "@/lib/keyset-pagination";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { formatCaseLawTitle } from "@/lib/case-law-title";
@@ -35,7 +43,7 @@ import {
 import { downloadDocumentAsFile, uploadDocumentToEntity } from "@/hooks/use-documents";
 import { caseLawKeys } from "@/hooks/case-law/use-case-law";
 import { legislationKeys } from "@/hooks/legislation/use-legislation";
-import type { Json, TablesUpdate } from "@/types/database.types";
+import type { Database, Json, TablesUpdate } from "@/types/database.types";
 
 /**
  * Admin-only CRUD + orchestration over `import_jobs`/`import_batches`
@@ -83,6 +91,7 @@ import type { Json, TablesUpdate } from "@/types/database.types";
  */
 export const importJobKeys = {
   all: ["import-jobs"] as const,
+  list: ["import-jobs", "list"] as const,
 };
 
 /**
@@ -695,18 +704,38 @@ export function useImportBatchDetail(batchId: string | null) {
   });
 }
 
+/** Newest first; `id` breaks ties between jobs a batch created together. */
+export const IMPORT_JOBS_LIST_PAGE: KeysetSpec = {
+  columns: [
+    { column: "created_at", ascending: false },
+    { column: "id", ascending: false },
+  ],
+  pageSize: 200,
+};
+
+/** One page of `useImportJobs` (admin-only per RLS); the total is counted on the first page only. */
+export async function fetchImportJobsPage(
+  client: SupabaseClient<Database>,
+  cursor: KeysetCursor | null,
+) {
+  const { data, error, count } = await applyKeyset(
+    client.from("import_jobs").select("*", { count: cursor ? undefined : "exact" }),
+    IMPORT_JOBS_LIST_PAGE,
+    cursor,
+  );
+  if (error) throw error;
+  return toKeysetPage(data ?? [], IMPORT_JOBS_LIST_PAGE, count);
+}
+
+/**
+ * Keyset-paged (BE-15): `data` is every job loaded so far, starting with
+ * the first page of 200; `fetchNextPage`/`hasNextPage` load the rest and
+ * `totalCount` says how many there are.
+ */
 export function useImportJobs() {
-  return useQuery({
-    queryKey: importJobKeys.all,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("import_jobs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data;
-    },
+  return useKeysetList({
+    queryKey: importJobKeys.list,
+    fetchPage: (cursor) => fetchImportJobsPage(supabase, cursor),
   });
 }
 

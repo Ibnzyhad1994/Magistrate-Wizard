@@ -5,6 +5,11 @@
 --   admin@magistrate-wizard.local      / password123  (admin + acting at Georgetown Court 1)
 --   magistrate@magistrate-wizard.local / password123  (magistrate + primary at Georgetown Court 1)
 --   calendar@magistrate-wizard.local   / password123  (magistrate at Vigilance 1 + Kamarang; 2053/26 on 9 Sep 2026)
+--
+-- These passwords are written straight into auth.users, so they predate the
+-- password policy in config.toml (minimum 12, lower, upper, digit, symbol).
+-- Auth checks the policy only when a password is set, never at sign-in, so
+-- they keep working; any account a script creates needs a compliant one.
 
 create extension if not exists pgcrypto;
 

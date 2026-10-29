@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { checkRpcResult, searchIdRowsSchema } from "@/lib/rpc-results";
 
 /**
  * Module-scoped full-text search, shared by every list page that has its
@@ -34,7 +35,7 @@ export function useScopedSearchIds(
     queryFn: async () => {
       const { data, error } = await supabase.rpc(rpcName, { p_query: trimmed, p_limit: 100 });
       if (error) throw error;
-      return new Set((data ?? []).map((row) => row.id));
+      return new Set(checkRpcResult(rpcName, searchIdRowsSchema, data ?? []).map((row) => row.id));
     },
     enabled: trimmed.length > 0,
   });

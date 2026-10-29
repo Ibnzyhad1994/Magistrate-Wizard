@@ -63,19 +63,21 @@ differently:
   last known-good Production deployment and **Promote to Production**
   (`vercel promote <deployment-url>` from the CLI does the same). This is
   instant and does not touch the database. Then fix forward on `develop`;
-  the next green develop run fast-forwards `main` and redeploys.
+  once develop is green, run `develop-ci-automerge.yml` manually on
+  `develop` to fast-forward `main` and redeploy.
 - **Database (migrations).** Migrations are forward-only
   (`DEVELOPMENT_WORKFLOW.md`): an applied migration is never reverted or
   edited. A bad migration is fixed by a **new forward migration** that
   repairs it, taken through the same 13-stage workflow and applied by
-  `deploy-db.yml` (or `supabase db push`). If the frontend cannot run
+  the next release (`supabase/README.md` "Release order"). If the frontend cannot run
   against the current schema, promote the previous Vercel deployment first
   so users are on a build that matches. Restoring a PITR snapshot is the
   last resort and loses every write after the timestamp.
 - **Edge functions.** Redeploy the previous version:
   `git checkout <previous-tag-or-sha> -- supabase/functions && supabase functions deploy <name>`
-  from a linked checkout, or run `deploy-db.yml` manually from the
-  previous commit via workflow_dispatch on a branch that carries it.
+  from a linked checkout, or revert the function change on `develop` and
+  release it (`deploy-db.yml` deploys every function in the release, and
+  by hand only from `main`).
 
 Record what was rolled back and why in the "develop CI failing" issue (if
 open) or a new issue, so the forward fix has a trail.

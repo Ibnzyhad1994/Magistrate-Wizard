@@ -1,69 +1,147 @@
 name: Deploy database (production)
 
 # Applies committed migrations and redeploys the edge functions to the
-# PRODUCTION Supabase project when they land on `main`. Until this workflow
-# existed, migrations reached production by someone running `supabase db push`
-# by hand, so a frontend depending on a new migration could deploy (via
-# Vercel, on the same push to main) before the schema did.
+# PRODUCTION Supabase project. Until this workflow existed, migrations reached
+# production by someone running `supabase db push` by hand, so a frontend
+# depending on a new migration could deploy (via Vercel, on the same push to
+# main) before the schema did.
 #
-# Gate: the job runs in the GitHub Environment `production`. Configure that
-# environment in Settings → Environments → production with REQUIRED REVIEWERS
-# so a human approves every production schema change (this cannot be
-# verified or set from the repository — it lives in repo settings). The
-# environment also scopes the secrets below so they are never exposed to
-# PR or develop runs.
+# It never runs on its own (BE-03). It used to run on every push to main
+# touching supabase/**, with its dry run behind the environment approval, so
+# the approver signed off blind. Two things start it:
 #
-# Steps: link → `db push --dry-run` (lists exactly what would apply; a
-# migration that already exists remotely under a different name fails here,
-# before anything is written) → `db push` → `functions deploy`.
+#   - the release: develop-ci-automerge.yml, dispatched on develop, calls it
+#     for the commit it tested once every gate is green, and fast-forwards
+#     main only after it succeeds. main is the production frontend (Vercel
+#     builds it), so the frontend never goes live ahead of its schema;
+#   - by hand: Actions → "Deploy database (production)" → Run workflow, to see
+#     production's plan, or (from main, "apply" ticked) to apply main again,
+#     for example to redeploy the functions.
+#
+# It runs in two jobs:
+#
+#   plan   `db push --dry-run` against production, written to the job summary.
+#          Runs in the reviewer-free environment `production-plan`, so anyone
+#          can see what production lacks without an approval. A migration
+#          that already exists remotely under a different name fails here,
+#          before anything is written.
+#   apply  In the release, or by hand from main with "apply" ticked. Runs in
+#          the environment `production`, whose required reviewers approve
+#          after reading the plan. It plans again and stops unless production
+#          still lacks exactly the planned list, then `db push` and
+#          `functions deploy`.
+#
+# Leave "apply" unticked to see production's state without changing it.
+#
+# Between the apply and Vercel's build of main the live frontend is the
+# previous one, so every migration must keep that frontend working (expand
+# now, contract in a later release: supabase/README.md "Release order").
+#
+# Environments (Settings → Environments; this cannot be verified or set from
+# the repository). Both hold the three secrets below and allow only the
+# branches that deploy, `develop` (the release) and `main`:
+#   production-plan  no reviewers
+#   production       REQUIRED REVIEWERS, so a human approves every
+#                    production schema change after reading the plan
 #
 # Migrations are forward-only (DEVELOPMENT_WORKFLOW.md): there is no
 # rollback step. A bad migration is fixed by a new forward migration.
 #
-# Secrets (environment `production`):
+# Secrets (in both environments):
 #   SUPABASE_ACCESS_TOKEN  personal/CI access token (supabase.com → Account → Access Tokens)
 #   SUPABASE_PROJECT_REF   the production project ref (the id in <ref>.supabase.co)
 #   SUPABASE_DB_PASSWORD   the database password (Project Settings → Database)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/functions/**"
-      - ".github/workflows/deploy-db.yml"
   workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply the plan to production (from main, after the production environment's approval). Unticked: plan only."
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      release:
+        description: "Called by the release on develop: apply, then the caller moves main."
+        type: boolean
+        required: true
 
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-db-production
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production-plan
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+    steps:
+      - name: Apply runs only from main, or in the release on develop
+        if: >-
+          (inputs.apply && github.ref != 'refs/heads/main') ||
+          (inputs.release && github.ref != 'refs/heads/develop')
+        run: |
+          echo "::error::Apply was requested on $GITHUB_REF. By hand, production is applied from main only; the release runs on develop. Untick apply to plan."
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Pinned Supabase CLI
+        run: echo "SUPABASE_CLI=supabase@$(node -p "require('./package.json').devDependencies.supabase")" >> "$GITHUB_ENV"
+
+      - name: Check secrets are configured
+        run: |
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name is not set on the 'production-plan' environment."
+              exit 1
+            fi
+          done
+
+      - name: Link to the production project
+        run: npx --yes "$SUPABASE_CLI" link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Plan (what db push would apply)
+        id: plan
+        env:
+          DB_PUSH_TARGET: production
+        run: node scripts/db-push-plan.mjs plan --linked
+
+  apply:
+    needs: plan
+    if: >-
+      (inputs.apply && github.ref == 'refs/heads/main') ||
+      (inputs.release && github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
       name: production
+    concurrency:
+      group: deploy-db-production
+      cancel-in-progress: false
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
 
-      - name: Cache Supabase CLI
-        uses: actions/cache@v4
-        with:
-          path: ~/.supabase
-          key: supabase-cli-${{ runner.os }}-${{ hashFiles('supabase/config.toml') }}
+      - name: Pinned Supabase CLI
+        run: echo "SUPABASE_CLI=supabase@$(node -p "require('./package.json').devDependencies.supabase")" >> "$GITHUB_ENV"
 
       - name: Check secrets are configured
         run: |
@@ -75,19 +153,21 @@ jobs:
           done
 
       - name: Link to the production project
-        run: npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        run: npx --yes "$SUPABASE_CLI" link --project-ref "$SUPABASE_PROJECT_REF"
 
-      - name: Dry run (what would be applied)
-        run: npx supabase db push --dry-run
+      - name: Production still lacks exactly the plan
+        env:
+          DB_PUSH_PLAN: ${{ needs.plan.outputs.plan }}
+        run: node scripts/db-push-plan.mjs verify --linked
 
       - name: Apply migrations
-        run: npx supabase db push
+        run: npx --yes "$SUPABASE_CLI" db push --linked --yes
 
       - name: Deploy edge function clerk-access-notify
-        run: npx supabase functions deploy clerk-access-notify --project-ref "$SUPABASE_PROJECT_REF"
+        run: npx --yes "$SUPABASE_CLI" functions deploy clerk-access-notify --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Deploy edge function webhook-dispatch
-        run: npx supabase functions deploy webhook-dispatch --project-ref "$SUPABASE_PROJECT_REF"
+        run: npx --yes "$SUPABASE_CLI" functions deploy webhook-dispatch --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Deploy edge function storage-cleanup
-        run: npx supabase functions deploy storage-cleanup --project-ref "$SUPABASE_PROJECT_REF"
+        run: npx --yes "$SUPABASE_CLI" functions deploy storage-cleanup --project-ref "$SUPABASE_PROJECT_REF"

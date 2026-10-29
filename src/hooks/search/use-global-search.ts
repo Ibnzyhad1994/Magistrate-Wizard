@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { checkRpc } from "@/lib/rpc-results";
 
 /**
  * Single entry point for the Search page — `global_search()` is a plain
@@ -20,7 +21,7 @@ export function useGlobalSearch(query: string) {
         p_limit: 40,
       });
       if (error) throw error;
-      return data;
+      return checkRpc("global_search", data);
     },
     enabled: trimmed.length > 0,
     // Keeps the previous result set on screen while a refined search

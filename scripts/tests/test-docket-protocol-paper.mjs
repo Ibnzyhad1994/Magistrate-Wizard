@@ -9,7 +9,7 @@ import {
   EMPTY_PROTOCOL_SNAPSHOT,
   protocolFromCategoryName,
 } from "../../src/lib/docket-protocols.ts";
-import { protocolColumns, visibleBoardColumns } from "../../src/lib/docket-procedure.ts";
+import { protocolColumns } from "../../src/lib/docket-procedure.ts";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -89,17 +89,6 @@ const paperKeys = protocolColumns("paper_committal").map((c) => c.key);
 check("paper board has no sentence column", paperKeys.includes("sentence_status"), false);
 check("paper board has no criminal trial column", paperKeys.includes("trial_status"), false);
 check("paper board has paper_committal_status", paperKeys.includes("paper_committal_status"), true);
-
-const mixed = visibleBoardColumns([
-  { workflow_protocol: "criminal_trial" },
-  { workflow_protocol: "paper_committal" },
-]);
-check(
-  "mixed criminal+paper union includes Paper Committal and Sentence",
-  mixed.map((c) => c.key).includes("paper_committal_status") &&
-    mixed.map((c) => c.key).includes("sentence_status"),
-  true,
-);
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

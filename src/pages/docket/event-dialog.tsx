@@ -37,6 +37,7 @@ import {
   EVENT_STAGES,
   EVENT_TYPES,
   docketEventSchema,
+  type DocketEventFormInput,
   type DocketEventFormValues,
 } from "@/lib/validations/docket";
 import { getLocalDateOnly, toTitleCase } from "@/lib/utils";
@@ -69,7 +70,7 @@ export function DocketEventDialog({
     values: DocketEventFormValues;
   } | null>(null);
 
-  const form = useForm<DocketEventFormValues>({
+  const form = useForm<DocketEventFormInput, unknown, DocketEventFormValues>({
     resolver: zodResolver(docketEventSchema),
     defaultValues: {
       scheduled_date: event?.scheduled_date ?? defaults?.scheduled_date ?? getLocalDateOnly(),

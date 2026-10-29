@@ -27,7 +27,8 @@ web app is deployed continuously from `main` and does not wait for a tag.
    `chore(release): v0.4.0-alpha.1`.
 3. Move the **Unreleased** section of `CHANGELOG.md` under the new version
    heading in the same commit.
-4. Push `develop`; wait for the develop gate to fast-forward `main`.
+4. Push `develop`; once the develop gate is green, run `develop-ci-automerge.yml`
+   manually on `develop` so it fast-forwards `main`.
 5. Tag the merged commit on `main` and push the tag:
    `git tag v0.4.0-alpha.1 <sha> && git push origin v0.4.0-alpha.1`.
 6. Watch the tag workflows. The APK is attached to a GitHub Release only

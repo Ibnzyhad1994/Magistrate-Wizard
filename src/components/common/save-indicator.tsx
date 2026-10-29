@@ -35,7 +35,7 @@ export function SaveIndicator({ state, onRetry, className }: SaveIndicatorProps)
       <span
         className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}
       >
-        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
+        <Check className="h-3.5 w-3.5 text-success" />
         Saved
       </span>
     );

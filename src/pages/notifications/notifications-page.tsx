@@ -248,7 +248,7 @@ export default function NotificationsPage() {
                           {notificationTypeLabel(row.type)}
                         </Badge>
                         {unreadRow && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-link">
                             New
                           </span>
                         )}

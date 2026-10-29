@@ -41,6 +41,20 @@ npm run supabase:types    # writes src/types/database.types.ts from the LOCAL sc
 That file is pure generator output; hand-written aliases live in
 `src/types/db-aliases.ts`, so regenerating is always safe.
 
+Then refresh the public-schema snapshot from a freshly reset stack and
+commit it with the migration:
+
+```bash
+npm run db:reset && npm run db:schema-snapshot    # writes supabase/schema.sql
+```
+
+`supabase/schema.sql` is `supabase db dump --schema public` output: every
+table, policy and whole function body as the migrations leave them,
+including bodies that a migration rewrites in place. Migration CI dumps the
+same schema after applying every migration and fails when it differs from
+the committed file; the failed run uploads its dump as the `public-schema`
+artifact.
+
 Live-database tests (`npm run test:live`) run against this local stack and
 refuse a remote host unless `ALLOW_REMOTE_SUPABASE=1` is set.
 
@@ -59,17 +73,21 @@ time.
 3. **Design and threat-model it.** Who can read/write what afterwards? Any
    new `SECURITY DEFINER` function needs an explicit note: why DEFINER,
    fixed `search_path`, EXECUTE grants, what it exposes.
+   A changed function is restated whole (`create or replace` with the full
+   body), never patched by rewriting `pg_get_functiondef()` output, so the
+   migration and `supabase/schema.sql` show the code that runs.
 4. **Pretest locally.** `npm run db:reset` must apply cleanly from 0001.
    Run the behavioural pretest with disposable fixtures only — never the
    real admin profile. Migration CI does the same apply on every develop
    push.
 5. **Review / approve**, then **apply** (`supabase db push` against the
-   linked project, or `deploy-db.yml` for production from `main`).
+   linked preview project; production gets it in the release, see
+   "Release order" below).
 6. **Verify live**: structure, behavioural regression (RLS/privacy changes
    get a rollback-only pass), Supabase advisors (security + performance) —
    call out any _new_ finding explicitly.
-7. **Update the architecture spec** (`docs/architecture/`), regenerate types,
-   add the `CHANGELOG.md` line, commit the migration + spec + related docs
+7. **Update the architecture spec** (`docs/architecture/`), regenerate types
+   and `supabase/schema.sql`, add the `CHANGELOG.md` line, commit the migration + spec + related docs
    together. Frontend changes go in a separate commit where practical.
 8. **Never commit an unapplied migration to `main` as if it were live.**
    `main` must always reconstruct what is actually on production.
@@ -77,19 +95,58 @@ time.
 ## Hosted projects
 
 ```bash
-npm install -g supabase        # or use npx
-supabase login
-supabase link --project-ref <project-ref>
-supabase db push --dry-run     # shows exactly what would apply
-supabase db push               # applies every pending migration, in order
-supabase functions deploy clerk-access-notify
-supabase functions deploy webhook-dispatch
+npm ci                             # installs the CLI version package.json pins
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push --dry-run     # shows exactly what would apply
+npx supabase db push               # applies every pending migration, in order
+npx supabase functions deploy clerk-access-notify
+npx supabase functions deploy webhook-dispatch
+npx supabase functions deploy storage-cleanup
 ```
 
 `<project-ref>` is the id in `https://<project-ref>.supabase.co`. The
 production and develop-preview refs, and which branch feeds which, are in
-`docs/environments.md`. On `main`, `.github/workflows/deploy-db.yml` runs
-the same commands inside the `production` GitHub Environment.
+`docs/environments.md`. For production, `.github/workflows/deploy-db.yml`
+runs the same commands; it never starts on its own.
+
+### Release order
+
+A release is one manual run of `develop-ci-automerge.yml` on `develop`
+(Actions → "Develop CI + Fast-forward to Main" → Run workflow). In order:
+
+1. every gate (audit, lint, typecheck, tests, build, Playwright smokes, the
+   live database suite);
+2. `deploy-db.yml`'s **plan** job: `db push --dry-run` against production,
+   listed in the run's summary, in the reviewer-free `production-plan`
+   environment;
+3. its **apply** job, in the `production` environment: a reviewer reads the
+   plan and approves; the job plans again, stops unless production still
+   lacks exactly that list, then pushes the migrations and deploys the
+   edge functions;
+4. the fast-forward of `main` to the tested commit, which Vercel builds as
+   the production frontend.
+
+So the frontend never goes live ahead of its schema. A rejected approval or
+a failed apply leaves `main`, and the live frontend, where they were. If
+the apply succeeds but the fast-forward fails (someone pushed to `main` out
+of band), production's schema is ahead of `main` until it is fixed: rebase
+`develop` onto `main` and release again.
+
+To see what production lacks without changing it, run "Deploy database
+(production)" by hand with "apply" unticked. With "apply" ticked, from
+`main` only, it applies `main` again (for example to redeploy the
+functions).
+
+**Expand, then contract.** Between the apply (step 3) and Vercel finishing
+its build (step 4), and again after any Vercel rollback, the live frontend
+is the previous release running on the new schema. So a migration never
+breaks the frontend that is live when it applies: add columns, tables and
+functions (nullable or defaulted), and drop, rename or tighten them only in
+a later release, once no live frontend uses the old shape.
+
+Apply to the develop preview first (above), and let the live suite and a
+preview check pass there, before releasing a migration to production.
 
 ## After the first migration run on a new project
 
@@ -132,6 +189,37 @@ the same commands inside the `production` GitHub Environment.
    `VITE_SUPABASE_ANON_KEY` in `.env` (local) or the Vercel project
    settings (hosted).
 
+7. **Scheduled Edge Function calls.** pg_cron asks the `storage-cleanup`
+   function for a run every minute while files are queued (0167), so files
+   of rows the database deletes on its own (the bin purge) leave Storage.
+   It sends nothing until pg_net is on and two Vault secrets exist. In the
+   SQL editor:
+
+   ```sql
+   create extension if not exists pg_net;
+   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+   select vault.create_secret('<service-role key>', 'service_role_key');
+   ```
+
+   The same two secrets let pg_cron ask the `webhook-dispatch` function for
+   a run every minute while a webhook is due (0180). It is the only sender:
+   it records each real HTTP result, retries failures with a growing delay
+   and dead-letters a row as `failed` after eight attempts (an admin can
+   retry it from the Operations page). Until the secrets exist, webhooks
+   stay queued as `pending` and nothing is sent or raised. An external
+   scheduler may call the function instead with an `x-cron-secret` header,
+   after `supabase secrets set WEBHOOK_DISPATCH_SECRET=<random value>`.
+   Receivers should dedupe on `X-Magistrate-Wizard-Delivery` and may check
+   `X-Magistrate-Wizard-Signature-V2`, an HMAC-SHA256 over
+   `<X-Magistrate-Wizard-Timestamp>.<delivery id>.<body>`. Each domain
+   action queues one event (0232): the body is `{ id, event, occurred_at,
+court_id, recipient_ids, data }`, where `id` is the same for every
+   endpoint's copy and `data` holds ids, dates and the in-app link only,
+   never a title, case number or body. An endpoint with a `court_id`
+   receives only that court's events. Locally,
+   `.github/workflows/live-db.yml` runs the same three statements against
+   the stack (`project_url` is the gateway, `http://supabase_kong_<project_id>:8000`).
+
 ## Design notes worth knowing before you build on this
 
 - **Court-anchored access.** Docket matter access is the three-path
@@ -143,7 +231,9 @@ the same commands inside the `production` GitHub Environment.
   (`docket_matter_case_law` vs `quick_code_docket_matters`).
 - **`ON DELETE RESTRICT` on judicial content.** You cannot delete an auth
   user who has authored matters, judgments, notes or documents. Deactivate
-  via `profiles.is_active = false` instead.
+  the account with `set_profile_active` instead (ADR 0010): it locks the
+  account out, signs it out everywhere and keeps its court assignments for
+  an administrator to reassign.
 - **Curated library.** `statutes`, `case_law` (canonical), `legal_sources`
   and the taxonomy tables are shared across courts and writable only by
   admins; ingestion goes through `import_batches` / `import_jobs`.

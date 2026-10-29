@@ -1,5 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useKeysetList } from "@/hooks/use-keyset-list";
+import {
+  applyKeyset,
+  type KeysetCursor,
+  type KeysetSpec,
+  toKeysetPage,
+} from "@/lib/keyset-pagination";
+import type { Database } from "@/types/database.types";
 import { getLocalDateOnly } from "@/lib/utils";
 
 /**
@@ -113,48 +122,79 @@ export type DashboardEventPulseRow = {
   matter_title: string | null;
 };
 
+/** Earliest first, untimed appearances first within a day, `id` breaking ties. */
+export const DASHBOARD_EVENT_PULSE_PAGE: KeysetSpec = {
+  columns: [
+    { column: "scheduled_date", ascending: true },
+    { column: "scheduled_time", ascending: true, nullsFirst: true },
+    { column: "id", ascending: true },
+  ],
+  pageSize: 400,
+};
+
+/**
+ * One page of `useDashboardEventPulse`; the total is counted on the first
+ * page only. Appearances of deleted matters are left out in the database
+ * (`!inner` plus the `deleted_at` filter), so the count and every page
+ * hold only rows the dashboard shows. `spec` is overridable only so the
+ * live test can force many page boundaries.
+ */
+export async function fetchDashboardEventPulsePage(
+  client: SupabaseClient<Database>,
+  from: string,
+  to: string,
+  cursor: KeysetCursor | null,
+  spec: KeysetSpec = DASHBOARD_EVENT_PULSE_PAGE,
+) {
+  const { data, error, count } = await applyKeyset(
+    client
+      .from("docket_events")
+      .select(
+        "id, docket_matter_id, scheduled_date, scheduled_time, event_status, event_type, outcome_at_event, orders_made_at_event, docket_matters!inner(case_number, matter_title, deleted_at)",
+        { count: cursor ? undefined : "exact" },
+      )
+      .gte("scheduled_date", from)
+      .lte("scheduled_date", to)
+      .is("docket_matters.deleted_at", null),
+    spec,
+    cursor,
+  );
+  if (error) throw error;
+  const rows = (data ?? []).flatMap((row): DashboardEventPulseRow[] => {
+    const matter = Array.isArray(row.docket_matters) ? row.docket_matters[0] : row.docket_matters;
+    if (!matter) return [];
+    return [
+      {
+        id: row.id,
+        docket_matter_id: row.docket_matter_id,
+        scheduled_date: row.scheduled_date,
+        scheduled_time: row.scheduled_time,
+        event_status: row.event_status,
+        event_type: row.event_type,
+        outcome_at_event: row.outcome_at_event,
+        orders_made_at_event: row.orders_made_at_event,
+        case_number: matter.case_number,
+        matter_title: matter.matter_title,
+      },
+    ];
+  });
+  return toKeysetPage(rows, spec, count);
+}
+
 /**
  * Appearances in a date window, including outcome/orders so the briefing
  * can tell a logged sitting from one still marked scheduled. RLS
  * (`can_view_docket_matter`) is the only access filter.
+ *
+ * Keyset-paged (BE-15): `data` is every row loaded so far, starting with
+ * the first page of 400; `fetchNextPage`/`hasNextPage` load the rest and
+ * `totalCount` says how many appearances the window holds.
  */
 export function useDashboardEventPulse(from: string, to: string, options?: { enabled?: boolean }) {
-  return useQuery({
+  return useKeysetList({
     queryKey: ["dashboard", "event-pulse", from, to],
     enabled: options?.enabled ?? true,
-    queryFn: async (): Promise<DashboardEventPulseRow[]> => {
-      const { data, error } = await supabase
-        .from("docket_events")
-        .select(
-          "id, docket_matter_id, scheduled_date, scheduled_time, event_status, event_type, outcome_at_event, orders_made_at_event, docket_matters(case_number, matter_title, deleted_at)",
-        )
-        .gte("scheduled_date", from)
-        .lte("scheduled_date", to)
-        .order("scheduled_date", { ascending: true })
-        .order("scheduled_time", { ascending: true, nullsFirst: true })
-        .limit(400);
-      if (error) throw error;
-      return (data ?? []).flatMap((row) => {
-        const matter = Array.isArray(row.docket_matters)
-          ? row.docket_matters[0]
-          : row.docket_matters;
-        if (!matter || matter.deleted_at) return [];
-        return [
-          {
-            id: row.id,
-            docket_matter_id: row.docket_matter_id,
-            scheduled_date: row.scheduled_date,
-            scheduled_time: row.scheduled_time,
-            event_status: row.event_status,
-            event_type: row.event_type,
-            outcome_at_event: row.outcome_at_event,
-            orders_made_at_event: row.orders_made_at_event,
-            case_number: matter.case_number,
-            matter_title: matter.matter_title,
-          },
-        ];
-      });
-    },
+    fetchPage: (cursor) => fetchDashboardEventPulsePage(supabase, from, to, cursor),
   });
 }
 

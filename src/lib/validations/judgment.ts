@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 export const judgmentCreateSchema = z.object({
   title: z.string().min(1, "Title is required").max(300),

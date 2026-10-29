@@ -6,9 +6,10 @@
  * every one of their files that is still stored. SQL cannot delete a
  * Storage object, so the storage-cleanup Edge Function removes queued
  * files with the service role. The app asks for that run after each
- * delete. The request is best-effort: the queue keeps the paths, so a
- * missed or failed run is picked up by the next one and never fails the
- * delete the person asked for.
+ * delete, and pg_cron asks every minute while files are queued (0167). The
+ * request is best-effort: the queue keeps the paths, so a missed or failed
+ * run is picked up by the next one and never fails the delete the person
+ * asked for.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 

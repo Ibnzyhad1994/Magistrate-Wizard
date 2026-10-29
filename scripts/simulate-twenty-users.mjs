@@ -17,7 +17,14 @@ const ANON =
 const SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
-const PASSWORD = "password123";
+// supabase/seed.sql accounts keep their seeded password; a created user needs
+// one Supabase Auth accepts (minimum 12, lower, upper, digit and symbol).
+const SEED_PASSWORD = "password123";
+const SEED_EMAILS = new Set([
+  "admin@magistrate-wizard.local",
+  "magistrate@magistrate-wizard.local",
+]);
+const PASSWORD = "Simulate-fixture-pass-123!";
 const RUN = `R${Date.now().toString(36).slice(-6).toUpperCase()}`;
 
 const admin = createClient(URL, SERVICE, {
@@ -55,7 +62,7 @@ function clientAs(accessToken) {
 async function signIn(email) {
   const { data, error } = await anon.auth.signInWithPassword({
     email,
-    password: PASSWORD,
+    password: SEED_EMAILS.has(email) ? SEED_PASSWORD : PASSWORD,
   });
   if (error) throw error;
   return { user: data.user, token: data.session.access_token };

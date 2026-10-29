@@ -13,21 +13,18 @@ import {
 import { DocketStageCell } from "@/pages/docket/docket-stage-cell";
 import { DocketOutcomeCell } from "@/pages/docket/docket-outcome-cell";
 import { NextDateCell } from "@/pages/docket/next-date-cell";
-import {
-  columnApplies,
-  visibleBoardColumns,
-  type BoardColumn,
-  type ProcedureColumnKey,
-} from "@/lib/docket-procedure";
+import type { BoardColumn, ProcedureColumnKey } from "@/lib/docket-procedure";
 import { logProcedurePatch } from "@/lib/docket-procedure-log";
 import {
   adjournmentForStage,
   boardCellValue,
   boardColumnPatch,
+  boardWorkflowGroups,
   matterProtocol,
   matterProtocolStage,
   mergeStageAdjournment,
   outcomeBoardPatch,
+  protocolLabel,
 } from "@/lib/docket-protocols";
 import { ROUTES } from "@/routes/paths";
 import { CalloverChip } from "@/components/common/callover-chip";
@@ -187,7 +184,7 @@ function DocketStageRow({
             <span
               className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                 row.appearance_status === "scheduled"
-                  ? "bg-primary/20 text-primary"
+                  ? "bg-primary/15 text-link"
                   : row.appearance_status === "completed"
                     ? "bg-foreground/10 text-muted-foreground"
                     : "bg-foreground/5 text-muted-foreground"
@@ -203,7 +200,6 @@ function DocketStageRow({
         </Link>
       </TableCell>
       {columns.map((column) => {
-        const applicable = columnApplies(column, protocol);
         const purpose = ATTACHMENT_PURPOSE[column.key];
         const uploadMutation =
           purpose === "ruling" ? uploadRuling : purpose === "judgment" ? uploadJudgment : null;
@@ -213,14 +209,13 @@ function DocketStageRow({
             <DocketStageCell
               column={column.key}
               value={boardCellValue(row, column.key)}
-              canEdit={row.can_edit && applicable}
-              isCurrent={applicable && stage === column.stage}
-              applicable={applicable}
+              canEdit={row.can_edit}
+              isCurrent={stage === column.stage}
               protocol={protocol}
               categoryName={row.category_name}
               onChange={(next) => void handleChange(column.key, next)}
               adjournment={
-                applicable && protocol === "civil_summons"
+                protocol === "civil_summons"
                   ? {
                       ...adjournment,
                       onSave: (nextAdjourned, reason) =>
@@ -229,7 +224,7 @@ function DocketStageRow({
                   : undefined
               }
               attachments={
-                applicable && purpose && uploadMutation && row.can_edit
+                purpose && uploadMutation && row.can_edit
                   ? {
                       hasFile:
                         purpose === "ruling" ? row.has_ruling_document : row.has_judgment_document,
@@ -300,77 +295,109 @@ export function DocketStageSheet({
   const pendingMatters = usePendingMatterIds();
   const caseColBase =
     "sticky left-0 w-[8.75rem] max-w-[8.75rem] overflow-hidden border-r border-border sm:w-56 sm:max-w-56 md:w-[14rem] md:max-w-[14rem]";
-  const columns = visibleBoardColumns(rows);
+  // A table per workflow, each with only its own stages: one shared table
+  // filled every civil row with N/A under the criminal columns (and the
+  // reverse), and that dead width pushed the real stages off screen.
+  const groups = boardWorkflowGroups(rows);
+  const titled = groups.length > 1;
 
   return (
-    <div className="relative" data-tour="docket-board">
-      <div className="relative overflow-hidden rounded-md border border-hairline shadow-elevation-1 hc:border-border">
-        <Table
-          className="min-w-[56rem] border-separate border-spacing-0 sm:min-w-[72rem]"
-          aria-label="Docket board"
-        >
-          <TableHeader className="[&>tr>th]:border-b [&>tr>th]:border-border">
-            <TableRow className="hover:bg-transparent">
-              {selection && (
-                <TableHead className="w-9 px-2">
-                  <Checkbox
-                    checked={selection.allSelected}
-                    onCheckedChange={selection.onToggleAll}
-                    aria-label="Select every file you can edit"
-                  />
-                </TableHead>
-              )}
-              <TableHead className={`${caseColBase} z-30 bg-surface-1`}>Case</TableHead>
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
-                  data-tour-focus={column.key === "arraignment_status" ? "" : undefined}
-                >
-                  <ProcedureColumnHeading columnKey={column.key} label={column.label} />
-                </TableHead>
-              ))}
-              <TableHead
-                className={`${OUTCOME_COL} top-0 z-30 whitespace-nowrap bg-surface-1`}
-                data-tour="docket-outcome"
+    <div className="relative flex flex-col gap-4" data-tour="docket-board">
+      {groups.map((group, groupIndex) => {
+        const label = protocolLabel(group.protocol);
+        const headingId = `docket-board-${group.protocol}`;
+        const isFirstGroup = groupIndex === 0;
+        return (
+          <section key={group.protocol} aria-labelledby={titled ? headingId : undefined}>
+            {titled && (
+              <h3
+                id={headingId}
+                className="mb-1.5 flex items-baseline gap-2 text-sm font-semibold text-foreground"
               >
-                Outcome
-              </TableHead>
-              <TableHead
-                className={`${NEXT_DATE_COL} top-0 z-30 whitespace-nowrap bg-surface-1`}
-                data-tour="docket-next-date"
+                {label}
+                <span className="text-xs font-normal tabular-nums text-muted-foreground">
+                  {group.rows.length} {group.rows.length === 1 ? "file" : "files"}
+                </span>
+              </h3>
+            )}
+            <div className="relative overflow-hidden rounded-md border border-hairline shadow-elevation-1 hc:border-border">
+              <Table
+                className="border-separate border-spacing-0"
+                aria-label={titled ? `Docket board: ${label}` : "Docket board"}
               >
-                Next date
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="tabular-nums [&>tr:last-child>td]:border-b-0 [&>tr>td]:border-b [&>tr>td]:border-border">
-            {rows.map((row, index) => (
-              <DocketStageRow
-                key={row.id}
-                row={row}
-                columns={columns}
-                showCourt={showCourt}
-                isTourNextDate={index === 0}
-                isTourOutcome={index === 0}
-                isTourFirstMatter={index === 0}
-                onPatch={onPatch}
-                onLogAppearance={onLogAppearance}
-                pending={pendingMatters.has(row.id)}
-                onCallover={calloverMatterIds?.has(row.id) ?? false}
-                selection={
-                  selection
-                    ? {
-                        isSelected: selection.selected.has(row.id),
-                        onToggle: () => selection.onToggle(row.id),
-                      }
-                    : undefined
-                }
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                <TableHeader className="[&>tr>th]:border-b [&>tr>th]:border-border">
+                  <TableRow className="hover:bg-transparent">
+                    {selection && (
+                      <TableHead className="w-9 px-2">
+                        {/* One select-all for the whole list, not per table. */}
+                        {isFirstGroup && (
+                          <Checkbox
+                            checked={selection.allSelected}
+                            onCheckedChange={selection.onToggleAll}
+                            aria-label="Select every file you can edit"
+                          />
+                        )}
+                      </TableHead>
+                    )}
+                    <TableHead className={`${caseColBase} z-30 bg-surface-1`}>Case</TableHead>
+                    {group.columns.map((column) => (
+                      <TableHead
+                        key={column.key}
+                        className="sticky top-0 z-20 min-w-[5.75rem] whitespace-nowrap bg-surface-1 sm:min-w-[7rem]"
+                        data-tour-focus={
+                          isFirstGroup && column.key === "arraignment_status" ? "" : undefined
+                        }
+                      >
+                        <ProcedureColumnHeading columnKey={column.key} label={column.label} />
+                      </TableHead>
+                    ))}
+                    <TableHead
+                      className={`${OUTCOME_COL} top-0 z-30 whitespace-nowrap bg-surface-1`}
+                      data-tour={isFirstGroup ? "docket-outcome" : undefined}
+                    >
+                      Outcome
+                    </TableHead>
+                    <TableHead
+                      className={`${NEXT_DATE_COL} top-0 z-30 whitespace-nowrap bg-surface-1`}
+                      data-tour={isFirstGroup ? "docket-next-date" : undefined}
+                    >
+                      Next date
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="tabular-nums [&>tr:last-child>td]:border-b-0 [&>tr>td]:border-b [&>tr>td]:border-border">
+                  {group.rows.map((row, index) => {
+                    const isTourRow = isFirstGroup && index === 0;
+                    return (
+                      <DocketStageRow
+                        key={row.id}
+                        row={row}
+                        columns={group.columns}
+                        showCourt={showCourt}
+                        isTourNextDate={isTourRow}
+                        isTourOutcome={isTourRow}
+                        isTourFirstMatter={isTourRow}
+                        onPatch={onPatch}
+                        onLogAppearance={onLogAppearance}
+                        pending={pendingMatters.has(row.id)}
+                        onCallover={calloverMatterIds?.has(row.id) ?? false}
+                        selection={
+                          selection
+                            ? {
+                                isSelected: selection.selected.has(row.id),
+                                onToggle: () => selection.onToggle(row.id),
+                              }
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

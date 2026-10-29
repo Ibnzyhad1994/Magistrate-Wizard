@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 /**
  * Lightweight, illustrative grouping labels for Quick Codes — a UI

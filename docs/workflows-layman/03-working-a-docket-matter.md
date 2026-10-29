@@ -51,7 +51,8 @@ The sheet (and the strip on Overview) is the live record of where the file is. C
 
 Click a cell to set the result. That does **not** create an Event. After a change you can optionally **Log appearance** to record the date. Completing the board does not mark the matter Completed — that status is still separate. Next date still records the return date.
 
-On a mixed list (All My Courts) a cell that does not belong to that file's board reads **N/A**, never under the wrong stage name.
+When a list mixes boards (for example criminal and civil files on the same day, or All My Courts), the desktop board shows one table per board (Criminal trial, Paper Committal, Civil summons), each with only its own stage columns, so no file carries boxes for stages that do not apply to it.
+Files keep their list order within each table.
 
 Setting **Judgment** to Delivered does not pin a written ruling. Pin your reasons on the **Judgments** tab.
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { checkRpc } from "@/lib/rpc-results";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { ConcurrentEditError, HEARING_CONFLICT_MESSAGE } from "@/lib/concurrency";
@@ -143,7 +144,7 @@ export function useDocketCapacitySnapshot(date: string | undefined) {
         p_scheduled_date: date as string,
       });
       if (error) throw error;
-      return data;
+      return checkRpc("get_docket_capacity_snapshot", data);
     },
     enabled: !!date,
   });
@@ -171,7 +172,7 @@ export function useNextAvailableDocketDate() {
         p_docket_matter_id: matterId,
       });
       if (error) throw error;
-      return data;
+      return checkRpc("find_next_available_docket_date", data);
     },
   });
 }
@@ -299,7 +300,7 @@ export function useSetDocketMatterNextDate() {
         p_override_reason: input.overrideReason ?? undefined,
       });
       if (error) throw error;
-      const row = data?.[0];
+      const row = checkRpc("set_docket_matter_next_date", data)?.[0];
       if (!row) throw new Error("No response from the scheduling function.");
       return row;
     },
@@ -361,6 +362,7 @@ export function useBulkSetNextDate() {
             p_override_reason: input.overrideReason ?? undefined,
           });
           if (error) throw error;
+          checkRpc("set_docket_matter_next_date", data);
           outcomes.push({ matterId, status: data?.[0]?.status ?? "created" });
         } catch (error) {
           outcomes.push({ matterId, status: "failed", message: getErrorMessage(error) });

@@ -6,8 +6,11 @@
 
 import {
   BOARD_COLUMNS,
+  WORKFLOW_PROTOCOLS,
   currentStage as criminalCurrentStage,
   isWorkflowProtocol,
+  protocolColumns,
+  type BoardColumn,
   type AppealStatus,
   type ArraignmentStatus,
   type CustodyStatus,
@@ -166,6 +169,34 @@ export function matterProtocol(matter: {
 }): WorkflowProtocol {
   if (isWorkflowProtocol(matter.workflow_protocol)) return matter.workflow_protocol;
   return protocolFromCategoryName(matter.category_name);
+}
+
+export type BoardWorkflowGroup<Row> = {
+  protocol: WorkflowProtocol;
+  columns: BoardColumn[];
+  rows: Row[];
+};
+
+/**
+ * One group per workflow present in `rows`, in WORKFLOW_PROTOCOLS order,
+ * each with only its own stage columns and its rows in their list order.
+ * The board draws a table per group: a shared table gave every civil file
+ * a run of N/A boxes under the criminal columns, and the reverse.
+ */
+export function boardWorkflowGroups<
+  Row extends { workflow_protocol?: string | null; category_name?: string | null },
+>(rows: readonly Row[]): BoardWorkflowGroup<Row>[] {
+  const byProtocol = new Map<WorkflowProtocol, Row[]>();
+  for (const row of rows) {
+    const protocol = matterProtocol(row);
+    const group = byProtocol.get(protocol);
+    if (group) group.push(row);
+    else byProtocol.set(protocol, [row]);
+  }
+  return WORKFLOW_PROTOCOLS.flatMap((protocol) => {
+    const groupRows = byProtocol.get(protocol);
+    return groupRows ? [{ protocol, columns: protocolColumns(protocol), rows: groupRows }] : [];
+  });
 }
 
 export function matterProtocolStage(matter: {

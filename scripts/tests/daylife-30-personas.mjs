@@ -24,7 +24,10 @@ const ANON =
 const SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
-const PASSWORD = "password123";
+// supabase/seed.sql accounts keep their seeded password; a created fixture needs
+// one Supabase Auth accepts (minimum 12, lower, upper, digit and symbol).
+const SEED_PASSWORD = "password123";
+const PASSWORD = "Daylife-fixture-pass-123!";
 const ADMIN_EMAIL = "admin@magistrate-wizard.local";
 const RUN = `DL${Date.now().toString(36).slice(-5).toUpperCase()}`;
 const DOMAIN = "magistrate-wizard.local";
@@ -60,8 +63,8 @@ const clientAs = (token) =>
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-async function signIn(email) {
-  const { data, error } = await anon.auth.signInWithPassword({ email, password: PASSWORD });
+async function signIn(email, password = PASSWORD) {
+  const { data, error } = await anon.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return {
     user: data.user,
@@ -390,7 +393,7 @@ async function main() {
   );
 
   // --- Phase 2: admin + magistrate decisions ---
-  const adminSession = await signIn(ADMIN_EMAIL);
+  const adminSession = await signIn(ADMIN_EMAIL, SEED_PASSWORD);
   log(true, "admin", "login seed admin");
 
   async function approveMag(key, label = key) {

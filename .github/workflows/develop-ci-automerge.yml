@@ -1,15 +1,31 @@
-name: Develop CI + Auto-merge to Main
+name: Develop CI + Fast-forward to Main
 
-# On every push to `develop`: lint, typecheck, run the script test suite,
-# build, run the Playwright smokes (reused from e2e.yml), and if it is all
-# green, fast-forward `main` to match and push — which is what triggers the
-# production Vercel deployment.
+# On every push to `develop` and every pull request into it: audit, lint,
+# typecheck, run the script test suite, build, and (on develop) run the
+# Playwright smokes and the live database suite (reused from e2e.yml and
+# live-db.yml, which already run on their own for pull requests).
+#
+# `main` is NOT moved by a push. Moving main deploys the production frontend
+# (Vercel builds main). So the release only runs when someone dispatches this
+# workflow by hand on `develop` (Actions → "Develop CI + Fast-forward to Main"
+# → Run workflow): every gate below, then the production database
+# (deploy-db.yml: its plan in the job summary, then the apply once the
+# `production` environment's reviewers approve), then the fast-forward. The
+# frontend therefore never goes live ahead of the schema it needs (BE-03); a
+# rejected or failed database apply leaves main where it was.
+#
+# The audit is its own job so it never hides the other gates. It blocks only
+# on critical advisories in production dependencies; dev-only and high
+# findings are written to the job summary without failing. The fast-forward
+# still needs the blocking audit, the test job, the smokes and the live
+# database suite to be green.
 #
 # The script suite is `npm test` (scripts/test-support/run-all.mjs). It
 # discovers every scripts/tests/test-*.mjs and skips anything tagged
 # `// @live-db` (needs a real Supabase project) or `// @slow` (the "brutal"
-# stress variants). Those run on demand with `npm run test:live` /
-# `npm run test:slow`. Hosted preview/prod drift is checked read-only by
+# stress variants). The live scripts run in the `live-db` job below
+# (live-db.yml, against a local Supabase stack); the slow ones run on demand
+# with `npm run test:slow`. Hosted preview/prod drift is checked read-only by
 # schema-alignment.yml so a lagging remote cannot freeze this merge.
 #
 # The merge is fast-forward-only. If `main` has commits `develop` doesn't
@@ -18,44 +34,95 @@ name: Develop CI + Auto-merge to Main
 # develop onto main, don't change this workflow to force it. main-drift.yml
 # raises the alarm when main trails develop for more than a day or so.
 #
-# A failed run opens (or comments on) a GitHub issue titled "develop CI
-# failing"; the next green run closes it.
+# A failed develop run (push or dispatch) opens (or comments on) a GitHub
+# issue titled "develop CI failing"; the next green develop run closes it.
+# Pull request runs never touch the issue.
 
 on:
   push:
     branches:
       - develop
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # npm audit reads package-lock.json and the registry; no install needed.
+      - name: npm audit (production dependencies, critical - blocking)
+        run: npm audit --omit=dev --audit-level=critical
+
+      # Everything else (dev dependencies, high and below) is reported in the
+      # job summary but does not fail the gate. Dependabot opens PRs to work
+      # them down.
+      - name: npm audit (all dependencies - report only)
+        if: ${{ !cancelled() }}
+        run: |
+          npm audit --json > audit-all.json || true
+          npm audit --omit=dev --json > audit-prod.json || true
+          node - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require("fs");
+          const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+          const all = read("audit-all.json");
+          const prod = read("audit-prod.json");
+          const levels = ["critical", "high", "moderate", "low"];
+          const count = (r, l) => r.metadata?.vulnerabilities?.[l] ?? 0;
+          console.log("## npm audit (report only)\n");
+          console.log("| Scope | " + levels.join(" | ") + " |");
+          console.log("| --- | " + levels.map(() => "---").join(" | ") + " |");
+          console.log("| production | " + levels.map((l) => count(prod, l)).join(" | ") + " |");
+          console.log("| all (incl. dev) | " + levels.map((l) => count(all, l)).join(" | ") + " |");
+          const serious = Object.values(all.vulnerabilities ?? {}).filter((v) =>
+            ["critical", "high"].includes(v.severity),
+          );
+          if (serious.length) {
+            console.log("\n### Critical and high advisories\n");
+            console.log("| Package | Severity | Production | Fix |");
+            console.log("| --- | --- | --- | --- |");
+            for (const v of serious) {
+              const inProd = prod.vulnerabilities?.[v.name] ? "yes" : "no (dev only)";
+              const fix =
+                v.fixAvailable === true
+                  ? "`npm audit fix`"
+                  : v.fixAvailable
+                    ? `${v.fixAvailable.name}@${v.fixAvailable.version}${v.fixAvailable.isSemVerMajor ? " (major)" : ""}`
+                    : "none";
+              console.log(`| ${v.name} | ${v.severity} | ${inProd} | ${fix} |`);
+            }
+          }
+          EOF
+          npm audit || echo "::warning::npm audit reports advisories (see the job summary); only production criticals block."
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: develop-ci
+      group: develop-ci-${{ github.event_name }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
         run: npm ci
-
-      - name: npm audit (critical — blocking)
-        run: npm audit --audit-level=critical
-
-      # High advisories are reported in the log but do not fail the gate while
-      # the tree still carries known transitive findings. Dependabot opens
-      # weekly PRs to work them down.
-      - name: npm audit (high — report only)
-        run: npm audit --audit-level=high
-        continue-on-error: true
 
       - name: Lint
         run: npm run lint
@@ -79,40 +146,65 @@ jobs:
 
   # Playwright smokes (unauth against Vite only; auth against local Supabase
   # + seed). Reused from e2e.yml so PRs and the develop gate run the same jobs.
+  # Pull requests already get them from e2e.yml's own pull_request trigger.
   e2e:
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/e2e.yml
     permissions:
       contents: read
 
+  # The @live-db RLS and security invariant scripts against a local Supabase
+  # stack. Pull requests get them from live-db.yml's own pull_request trigger.
+  live-db:
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/live-db.yml
+    permissions:
+      contents: read
+
+  # The release, manual only: the production database first, for the commit
+  # this run tested. Its plan is in the run summary before anyone approves.
+  database:
+    needs: [audit, test, e2e, live-db]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'
+    uses: ./.github/workflows/deploy-db.yml
+    with:
+      release: true
+    permissions:
+      contents: read
+
+  # Then the frontend: moving main deploys it (Vercel builds main).
   merge-to-main:
-    needs: [test, e2e]
+    needs: [audit, test, e2e, live-db, database]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: main
 
-      - name: Fast-forward main to develop
+      # Fast-forward to the commit this run tested, not whatever develop
+      # points at by the time the gates finish.
+      - name: Fast-forward main to the tested develop commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin develop
-          git merge --ff-only origin/develop
+          git merge --ff-only "$GITHUB_SHA"
           git push origin main
 
   notify-failure:
-    needs: [test, e2e, merge-to-main]
-    if: failure()
+    needs: [audit, test, e2e, live-db, database, merge-to-main]
+    if: failure() && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       issues: write
     steps:
-      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const title = "develop CI failing";
@@ -122,7 +214,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "`main` will not be fast-forwarded until develop is green again.",
+              "`main` cannot be fast-forwarded until develop is green again.",
               "This issue is closed automatically by the next successful run.",
             ].join("\n");
             const { data: issues } = await github.rest.issues.listForRepo({
@@ -139,19 +231,32 @@ jobs:
               core.info(`Opened #${created.number}`);
             }
 
+  # Runs after a green push (database and merge-to-main skipped) or a green
+  # dispatch (both succeeded).
   notify-recovered:
-    needs: [merge-to-main]
-    if: success()
+    needs: [audit, test, e2e, live-db, database, merge-to-main]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/develop' &&
+      needs.audit.result == 'success' && needs.test.result == 'success' &&
+      needs.e2e.result == 'success' && needs.live-db.result == 'success' &&
+      (needs.database.result == 'success' || needs.database.result == 'skipped') &&
+      (needs.merge-to-main.result == 'success' || needs.merge-to-main.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       issues: write
     steps:
-      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          MERGED: ${{ needs.merge-to-main.result == 'success' }}
         with:
           script: |
             const title = "develop CI failing";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const outcome =
+              process.env.MERGED === "true"
+                ? "and main has been fast-forwarded."
+                : "(main was not moved: dispatch this workflow on develop to fast-forward it).";
             const { data: issues } = await github.rest.issues.listForRepo({
               ...context.repo,
               state: "open",
@@ -161,7 +266,7 @@ jobs:
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: issue.number,
-                body: `Develop CI is green again on \`${context.sha.slice(0, 7)}\` and main has been fast-forwarded. ${runUrl}`,
+                body: `Develop CI is green again on \`${context.sha.slice(0, 7)}\` ${outcome} ${runUrl}`,
               });
               await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: "closed" });
               core.info(`Closed #${issue.number}`);

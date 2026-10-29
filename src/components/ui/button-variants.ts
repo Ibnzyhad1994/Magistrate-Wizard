@@ -9,6 +9,7 @@ import { cva } from "class-variance-authority";
  *   outline   — the same weight with an edge, for when it sits on a card.
  *   ghost     — text only; icon buttons and inline controls.
  *   link      — inline text link.
+ *   warning   — the one action on a warning banner (Sync pending, Continue working).
  */
 export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-[background-color,color,box-shadow,transform,opacity] duration-150 ease-out-expo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -20,8 +21,7 @@ export const buttonVariants = cva(
           "bg-destructive text-destructive-foreground shadow-elevation-1 hover:bg-destructive/90",
         outline:
           "border border-input bg-transparent text-foreground hover:bg-foreground/10 hc:hover:bg-accent",
-        onDark:
-          "border border-amber-200/80 bg-amber-50 text-amber-950 shadow-sm hover:bg-amber-100 hover:text-amber-950",
+        warning: "bg-warning text-warning-foreground shadow-elevation-1 hover:bg-warning/95",
         secondary:
           "bg-foreground/10 text-foreground hover:bg-foreground/15 hc:bg-secondary hc:hover:bg-accent",
         ghost: "font-medium hover:bg-foreground/10 hover:text-foreground hc:hover:bg-accent",

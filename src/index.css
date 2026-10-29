@@ -93,8 +93,18 @@
     --stage-remand: 347 70% 44%;
     --stage-dismissed: 357 80% 44%;
     --stage-outcome-complete: 210 90% 40%;
+    /* Chip words: each stage's text on its own tint (the board's stage and
+       outcome cells), at least 4.5:1 over the canvas and every surface step.
+       Darker than the stage colour in light, lighter in dark. */
+    --stage-progress-text: 38 92% 25%;
+    --stage-done-text: 160 84% 22%;
+    --stage-remand-text: 347 70% 37%;
+    --stage-dismissed-text: 357 80% 38%;
+    --stage-outcome-complete-text: 210 90% 35%;
 
     --notice-action: 38 92% 31%;
+    /* Words on a filled warning (the offline and idle banners' action). */
+    --notice-action-foreground: 0 0% 100%;
     --notice-granted: 160 84% 26%;
     --notice-revoked: 357 80% 44%;
     --notice-outcome: 210 90% 40%;
@@ -196,11 +206,17 @@
        palette, so it's a deliberately new hue, not a reuse. */
     --stage-dismissed: 357 92% 47%;
     --stage-outcome-complete: 210 90% 58%;
+    --stage-progress-text: 38 92% 50%;
+    --stage-done-text: 160 84% 40%;
+    --stage-remand-text: 347 77% 73%;
+    --stage-dismissed-text: 357 92% 69%;
+    --stage-outcome-complete-text: 210 90% 66%;
     /* Notification tones (notificationTone()). Reused rather than
        reinvented: these are the same four hues the docket already uses
        for progress/done/dismissed/complete, so a magistrate reads amber
        as "needs you" everywhere in the product, not just on the board. */
     --notice-action: 38 92% 50%;
+    --notice-action-foreground: 224 14% 6%;
     --notice-granted: 160 84% 39%;
     --notice-revoked: 357 92% 47%;
     --notice-outcome: 210 90% 58%;
@@ -281,8 +297,14 @@
     --stage-remand: 347 100% 32%;
     --stage-dismissed: 357 100% 32%;
     --stage-outcome-complete: 210 100% 28%;
+    --stage-progress-text: 38 100% 24%;
+    --stage-done-text: 160 100% 16%;
+    --stage-remand-text: 347 100% 32%;
+    --stage-dismissed-text: 357 100% 32%;
+    --stage-outcome-complete-text: 210 100% 28%;
 
     --notice-action: 38 100% 24%;
+    --notice-action-foreground: 0 0% 100%;
     --notice-granted: 160 100% 16%;
     --notice-revoked: 357 100% 32%;
     --notice-outcome: 210 100% 28%;
@@ -360,8 +382,14 @@
     --stage-remand: 347 100% 70%;
     --stage-dismissed: 357 100% 62%;
     --stage-outcome-complete: 210 100% 68%;
+    --stage-progress-text: 38 100% 60%;
+    --stage-done-text: 160 100% 55%;
+    --stage-remand-text: 347 100% 72%;
+    --stage-dismissed-text: 357 100% 68%;
+    --stage-outcome-complete-text: 210 100% 68%;
 
     --notice-action: 38 100% 60%;
+    --notice-action-foreground: 0 0% 0%;
     --notice-granted: 160 100% 55%;
     --notice-revoked: 357 100% 62%;
     --notice-outcome: 210 100% 68%;
@@ -445,8 +473,14 @@
     --stage-remand: 326 55% 38%;
     --stage-dismissed: 26 100% 36%;
     --stage-outcome-complete: 202 100% 32%;
+    --stage-progress-text: 41 100% 24%;
+    --stage-done-text: 163 100% 20%;
+    --stage-remand-text: 326 55% 37%;
+    --stage-dismissed-text: 26 100% 29%;
+    --stage-outcome-complete-text: 202 100% 29%;
 
     --notice-action: 41 100% 28%;
+    --notice-action-foreground: 0 0% 100%;
     --notice-granted: 163 100% 24%;
     --notice-revoked: 26 100% 36%;
     --notice-outcome: 202 100% 32%;
@@ -524,8 +558,14 @@
     --stage-remand: 326 47% 64%;
     --stage-dismissed: 26 100% 52%;
     --stage-outcome-complete: 202 77% 58%;
+    --stage-progress-text: 41 100% 50%;
+    --stage-done-text: 163 80% 48%;
+    --stage-remand-text: 326 47% 72%;
+    --stage-dismissed-text: 26 100% 56%;
+    --stage-outcome-complete-text: 202 77% 61%;
 
     --notice-action: 41 100% 50%;
+    --notice-action-foreground: 224 14% 6%;
     --notice-granted: 163 80% 48%;
     --notice-revoked: 26 100% 52%;
     --notice-outcome: 202 77% 58%;

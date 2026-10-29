@@ -58,6 +58,8 @@ These access-control decisions are established and must not be casually reopened
 - Docket Matter access is the three-path predicate (current Court assignment OR retained assignment OR active Docket share).
 - Share `view` vs `edit` distinction is preserved wherever it currently gates behavior.
 - Established "no admin bypass" decisions (Judgment, Case Law personal rows, Quick Codes) are not reopened merely because a helper function or audit mechanism would be simpler with one.
+- A judgment's owner changes only through `transfer_judgment_ownership`: an active administrator, with a reason, to an active magistrate of a court the owner sat at, keeping the original author on record. It returns ids only; no admin read path exists (ADR 0011).
+- A deactivated account (`profiles.is_active = false`) has no access: every public table with RLS carries the restrictive "Deactivated accounts have no access" policy, and every access helper ANDs in `is_active_account()` (ADR 0010).
 - Deliberately asymmetric association-table designs (e.g. `docket_matter_case_law` vs `quick_code_docket_matters`) are not "normalized" without an explicit design review — they were built asymmetric on purpose.
 
 ## Commit policy going forward

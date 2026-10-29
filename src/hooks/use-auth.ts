@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { clearDeviceWorkForProfile } from "@/lib/offline/sign-out-guard";
 import { recordAuthEvent } from "@/lib/record-auth-event";
 import { setRememberMeFlag } from "@/lib/auth/session-storage";
+import { authRedirectUrl } from "@/lib/auth/auth-redirect";
+import { detectOAuthPlatform } from "@/lib/google-calendar/platform";
 
 interface SignInParams {
   email: string;
@@ -29,6 +31,18 @@ interface SignUpParams {
   requestedCourtIds?: string[];
   staffId?: string;
   note?: string;
+}
+
+/**
+ * Where an Auth email returns to: this origin on the web, the app's own
+ * scheme in the Android, iOS and desktop shells, so the link reopens the
+ * app that holds the PKCE code verifier (auth-redirect.ts).
+ */
+function authReturnUrl(path: string) {
+  return authRedirectUrl(path, {
+    native: detectOAuthPlatform() !== "web",
+    origin: window.location.origin,
+  });
 }
 
 /**
@@ -115,7 +129,7 @@ export function useAuth() {
           // from. Must also be present in that project's Auth redirect
           // allow-list, or Supabase silently ignores it and falls back
           // to Site URL anyway.
-          emailRedirectTo: `${window.location.origin}${ROUTES.login}`,
+          emailRedirectTo: authReturnUrl(ROUTES.login),
           data: {
             full_name: fullName,
             ...(requestedRole ? { requested_role: requestedRole } : {}),
@@ -172,7 +186,7 @@ export function useAuth() {
         // auto-authenticated the user from the recovery link and left the
         // "forgotten" password untouched -- nothing in the app ever called
         // updateUser(). ResetPasswordPage is the form that actually does.
-        redirectTo: `${window.location.origin}${ROUTES.resetPassword}`,
+        redirectTo: authReturnUrl(ROUTES.resetPassword),
       });
       if (error) throw error;
       void recordAuthEvent("password_reset_requested", email);

@@ -174,6 +174,33 @@ check("missing from uses fallback", pathFromLoginRedirect(null, "/dashboard"), "
   check("removeItem clears session", session.getItem(AUTH_STORAGE_KEY), null);
 }
 
+{
+  // BE-27: a reset link opens in a new tab, which cannot read this tab's
+  // sessionStorage, so the PKCE verifier must not follow Remember me.
+  const local = createMemoryStorage();
+  const session = createMemoryStorage();
+  const storage = createAuthStorage({ local, session, now: () => t0 });
+  setRememberMeFlag(false, { local, now: t0 });
+  const slot = `${AUTH_STORAGE_KEY}-flow-f1-code-verifier`;
+  storage.setItem(slot, "verifier/recovery");
+  storage.setItem(`${AUTH_STORAGE_KEY}-code-verifier`, "verifier/recovery");
+  check(
+    "session-only still keeps a PKCE verifier in localStorage",
+    local.getItem(slot),
+    "verifier/recovery",
+  );
+  check("the verifier is not left in sessionStorage", session.getItem(slot), null);
+  const otherTab = createAuthStorage({ local, session: createMemoryStorage(), now: () => t0 });
+  check("another tab reads the verifier", otherTab.getItem(slot), "verifier/recovery");
+  check(
+    "the legacy fixed verifier key is shared too",
+    otherTab.getItem(`${AUTH_STORAGE_KEY}-code-verifier`),
+    "verifier/recovery",
+  );
+  otherTab.removeItem(slot);
+  check("removing the verifier clears it", local.getItem(slot), null);
+}
+
 if (failures > 0) {
   console.error(`${failures} session idle checks failed`);
   process.exit(1);

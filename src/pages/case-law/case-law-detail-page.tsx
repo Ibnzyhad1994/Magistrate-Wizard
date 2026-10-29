@@ -343,7 +343,7 @@ function FieldsCard({ caseLaw, isEditable }: { caseLaw: CaseLawDetail; isEditabl
             <p>
               <SafeExternalLink
                 href={caseLaw.source_url}
-                className="inline-flex min-h-11 items-center gap-1 text-primary hover:underline lg:min-h-0"
+                className="inline-flex min-h-11 items-center gap-1 text-link hover:underline lg:min-h-0"
               >
                 Source <ExternalLink className="h-3.5 w-3.5" />
               </SafeExternalLink>

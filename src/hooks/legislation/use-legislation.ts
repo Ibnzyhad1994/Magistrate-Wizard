@@ -1,9 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useKeysetList } from "@/hooks/use-keyset-list";
+import {
+  applyKeyset,
+  type KeysetCursor,
+  type KeysetSpec,
+  toKeysetPage,
+} from "@/lib/keyset-pagination";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
 import { uploadDocumentToEntity } from "@/hooks/use-documents";
-import type { TablesInsert, TablesUpdate } from "@/types/database.types";
+import type { Database, TablesInsert, TablesUpdate } from "@/types/database.types";
 
 // Mirrors importJobKeys.all in use-import-jobs.ts (that module imports
 // legislationKeys FROM this one -- a circular import back here for one
@@ -25,6 +33,7 @@ const importJobsQueryKey = ["import-jobs"] as const;
  */
 export const legislationKeys = {
   all: ["legislation"] as const,
+  list: ["legislation", "list"] as const,
   detail: (id: string) => ["legislation", "detail", id] as const,
   reviewQueue: ["legislation", "review-queue"] as const,
   provisions: (statuteId: string) => ["legislation", "provisions", statuteId] as const,
@@ -33,34 +42,59 @@ export const legislationKeys = {
   provision: (provisionId: string) => ["legislation", "provision", provisionId] as const,
 };
 
+/** Alphabetical by title; `id` breaks ties between Acts with the same title. */
+export const STATUTES_LIST_PAGE: KeysetSpec = {
+  columns: [
+    { column: "title", ascending: true },
+    { column: "id", ascending: true },
+  ],
+  pageSize: 500,
+};
+
 /**
- * Published Legislation only — draft/needs_review rows (in-progress
- * ingestion) are excluded from the ordinary browse experience, same
- * pattern as `useCaseLawList`. Surfaced separately via
- * `useLegislationReviewQueue` for admins.
+ * One page of `useStatutes`; the total is counted on the first page only.
+ *
+ * Published, current Legislation only -- draft/needs_review rows
+ * (in-progress ingestion) are excluded from the ordinary browse
+ * experience, same pattern as `useCaseLawList`, and surfaced separately
+ * via `useLegislationReviewQueue` for admins. A superseded row
+ * (is_current_version = false, 0098) stays fully reachable from the
+ * superseding record's detail page, but drops out of the ordinary library
+ * view -- only the current version of each Act belongs in the main list.
+ * Both filters run in the database, so a page is always full of rows the
+ * list actually shows. `spec` is overridable only so the live test can
+ * force many page boundaries.
+ */
+export async function fetchStatutesPage(
+  client: SupabaseClient<Database>,
+  cursor: KeysetCursor | null,
+  spec: KeysetSpec = STATUTES_LIST_PAGE,
+) {
+  const { data, error, count } = await applyKeyset(
+    client
+      .from("statutes")
+      .select(
+        "id, code, title, short_title, jurisdiction, effective_date, chapter_number, act_number, enactment_year, instrument_type, review_status, updated_at, primary_document_id, page_count, is_current_version",
+        { count: cursor ? undefined : "exact" },
+      )
+      .eq("review_status", "published")
+      .eq("is_current_version", true),
+    spec,
+    cursor,
+  );
+  if (error) throw error;
+  return toKeysetPage(data ?? [], spec, count);
+}
+
+/**
+ * Keyset-paged (BE-15): `data` is every row loaded so far, starting with
+ * the first page of 500; `fetchNextPage`/`hasNextPage` load the rest and
+ * `totalCount` says how many there are.
  */
 export function useStatutes() {
-  return useQuery({
-    queryKey: legislationKeys.all,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("statutes")
-        .select(
-          "id, code, title, short_title, jurisdiction, effective_date, chapter_number, act_number, enactment_year, instrument_type, review_status, updated_at, primary_document_id, page_count, is_current_version",
-        )
-        .order("title", { ascending: true })
-        .limit(500);
-      if (error) throw error;
-      // A superseded row (is_current_version === false, 0098) stays fully
-      // reachable from the superseding record's detail page, but drops out
-      // of the ordinary library view -- only the current version of each
-      // Act belongs in the main list. Legacy rows predating 0055 have
-      // is_current_version defaulting true, so `!== false` (not `=== true`)
-      // correctly treats a missing/null value as current.
-      return (data ?? []).filter(
-        (row) => row.review_status === "published" && row.is_current_version !== false,
-      );
-    },
+  return useKeysetList({
+    queryKey: legislationKeys.list,
+    fetchPage: (cursor) => fetchStatutesPage(supabase, cursor),
   });
 }
 

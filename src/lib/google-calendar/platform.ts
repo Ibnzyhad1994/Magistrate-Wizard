@@ -7,6 +7,8 @@ declare global {
       startGoogleOAuth: (
         authUrl: string,
       ) => Promise<{ code: string; state?: string | null; redirectUri: string }>;
+      /** Electron: `magistratewizard://` links the OS opened the app with. */
+      onDeepLink?: (callback: (url: string) => void) => void;
     };
     Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string };
   }

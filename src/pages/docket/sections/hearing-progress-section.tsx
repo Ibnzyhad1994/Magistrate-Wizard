@@ -259,7 +259,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
                       <span
                         className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                           entry.event_status === "scheduled"
-                            ? "bg-primary/20 text-primary"
+                            ? "bg-primary/15 text-link"
                             : entry.event_status === "completed"
                               ? "bg-muted text-muted-foreground"
                               : "bg-muted/50 text-muted-foreground"
