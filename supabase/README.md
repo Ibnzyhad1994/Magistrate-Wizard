@@ -211,7 +211,12 @@ preview check pass there, before releasing a migration to production.
    after `supabase secrets set WEBHOOK_DISPATCH_SECRET=<random value>`.
    Receivers should dedupe on `X-Magistrate-Wizard-Delivery` and may check
    `X-Magistrate-Wizard-Signature-V2`, an HMAC-SHA256 over
-   `<X-Magistrate-Wizard-Timestamp>.<delivery id>.<body>`. Locally,
+   `<X-Magistrate-Wizard-Timestamp>.<delivery id>.<body>`. Each domain
+   action queues one event (0232): the body is `{ id, event, occurred_at,
+court_id, recipient_ids, data }`, where `id` is the same for every
+   endpoint's copy and `data` holds ids, dates and the in-app link only,
+   never a title, case number or body. An endpoint with a `court_id`
+   receives only that court's events. Locally,
    `.github/workflows/live-db.yml` runs the same three statements against
    the stack (`project_url` is the gateway, `http://supabase_kong_<project_id>:8000`).
 

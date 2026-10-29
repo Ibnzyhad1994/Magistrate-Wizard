@@ -133,6 +133,7 @@
     "test:subject-access-export": "node --import ./scripts/test-support/register.mjs scripts/tests/test-subject-access-export.mjs",
     "test:foreign-key-indexes": "node --import ./scripts/test-support/register.mjs scripts/tests/test-foreign-key-indexes.mjs",
     "test:documents-bucket-guard": "node --import ./scripts/test-support/register.mjs scripts/tests/test-documents-bucket-guard.mjs",
+    "test:webhook-events": "node --import ./scripts/test-support/register.mjs scripts/tests/test-webhook-events.mjs",
     "test:search-index-plans": "node --import ./scripts/test-support/register.mjs scripts/tests/test-search-index-plans.mjs",
     "test:global-search-per-type": "node --import ./scripts/test-support/register.mjs scripts/tests/test-global-search-per-type.mjs",
     "test:scheduled-maintenance": "node --import ./scripts/test-support/register.mjs scripts/tests/test-scheduled-maintenance.mjs",
