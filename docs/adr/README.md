@@ -23,6 +23,7 @@ never by editing the old one.
 | [0008](0008-asymmetric-association-tables.md)             | Deliberately asymmetric association tables are not normalised without design review                |
 | [0009](0009-district-wide-case-numbers.md)                | Case numbers are unique across a Magisterial District, disclosing only that a number is in use     |
 | [0010](0010-deactivated-accounts-have-no-access.md)       | A deactivated account has no access; deactivation keeps its court assignments for reassignment     |
+| [0011](0011-judgment-ownership-transfer.md)               | An administrator may transfer a judgment's ownership within a court's bench, never read it         |
 
 Adding one: copy the shortest existing file, take the next number, add a
 row here, and link it from the migration or PR that relies on it.
