@@ -87,6 +87,8 @@ This document supersedes the original Reconciliation Report, Addendum 2, and Add
 
 **Governing principle (unchanged from Revision 2):** `is_admin()` is valid for administrative/system/reference functions. It is **never** used, by itself, to grant read or write access to another magistrate's private judicial content — and as of this revision, that explicitly includes Docket Matters, whose _ordinary_ access path changed (court assignment instead of ownership) but whose _admin-exclusion_ rule did not.
 
+**Administrator second factor (`0210`, BE-25).** `is_admin()` is also true only at assurance level `aal2` (a verified TOTP factor, the access token's `aal` claim) while the `require_admin_mfa` feature flag is on; with it off, `is_admin()` is exactly 0200's. Every admin-only RPC and policy goes through `is_admin()`, so the one flag covers them all. The flag is seeded off and a trigger refuses turning it on from a client session below `aal2`, so whoever turns it on can still pass it, and no app session can turn it on before the enrolment and challenge screens exist. The SQL editor and the service role are the recovery path for an administrator who loses their only factor.
+
 ---
 
 ## 4. Final Docket Architecture (Court-Anchored — supersedes the owner-based design in full)

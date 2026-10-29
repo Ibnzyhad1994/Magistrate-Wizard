@@ -49,6 +49,7 @@
     "test:password-policy": "node --import ./scripts/test-support/register.mjs scripts/tests/test-password-policy.mjs",
     "test:auth-redirect": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-redirect.mjs",
     "test:auth-pkce-reset-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-pkce-reset-live.mjs",
+    "test:admin-mfa-gate-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-admin-mfa-gate-live.mjs",
     "test:auth-password-policy-live": "node --import ./scripts/test-support/register.mjs scripts/tests/test-auth-password-policy-live.mjs",
     "test:export-pdf": "node --import ./scripts/test-support/register.mjs scripts/tests/test-export-pdf.mjs",
     "test:redaction-pdf": "node --import ./scripts/test-support/register.mjs scripts/tests/test-redaction-pdf.mjs",

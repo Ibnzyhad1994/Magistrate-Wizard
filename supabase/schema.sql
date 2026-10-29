@@ -3953,6 +3953,32 @@ COMMENT ON FUNCTION "public"."export_audit_log"("p_from" timestamp with time zon
 
 
 
+CREATE OR REPLACE FUNCTION "public"."feature_flags_admin_mfa_guard"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if new.key = 'require_admin_mfa'
+    and new.enabled
+    and not (tg_op = 'UPDATE' and old.key = 'require_admin_mfa' and old.enabled)
+    and current_user in ('anon', 'authenticated')
+    and coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+  then
+    raise exception 'Verify a second factor before requiring one for administrators'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."feature_flags_admin_mfa_guard"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."feature_flags_admin_mfa_guard"() IS 'Refuses turning require_admin_mfa on from a client session below aal2, so the administrator who turns the gate on can still pass it (0210).';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."finalize_legislation_document"("p_statute_id" "uuid", "p_document_id" "uuid", "p_page_count" integer DEFAULT NULL::integer, "p_has_text_layer" boolean DEFAULT NULL::boolean) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -4807,11 +4833,22 @@ CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
   select exists (
     select 1 from public.profiles
     where id = auth.uid() and role = 'admin' and is_active
+  )
+  and (
+    coalesce(auth.jwt() ->> 'aal', '') = 'aal2'
+    or not coalesce(
+      (select f.enabled from public.feature_flags f where f.key = 'require_admin_mfa'),
+      false
+    )
   );
 $$;
 
 
 ALTER FUNCTION "public"."is_admin"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."is_admin"() IS 'True when the caller''s profile is an active administrator (0200) and, while the require_admin_mfa feature flag is on, the session has verified a second factor (aal2, 0210). The gate of every admin-only RPC and policy.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."is_clerk"() RETURNS boolean
@@ -11715,6 +11752,10 @@ CREATE OR REPLACE TRIGGER "documents_queue_storage_cleanup_trigger" AFTER DELETE
 
 
 
+CREATE OR REPLACE TRIGGER "feature_flags_admin_mfa_guard" BEFORE INSERT OR UPDATE ON "public"."feature_flags" FOR EACH ROW EXECUTE FUNCTION "public"."feature_flags_admin_mfa_guard"();
+
+
+
 CREATE OR REPLACE TRIGGER "issue_reports_notify_status_trigger" AFTER UPDATE OF "status" ON "public"."issue_reports" FOR EACH ROW EXECUTE FUNCTION "public"."issue_reports_notify_status"();
 
 
@@ -14456,6 +14497,11 @@ GRANT ALL ON FUNCTION "public"."escape_like_pattern"("p_text" "text") TO "servic
 REVOKE ALL ON FUNCTION "public"."export_audit_log"("p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_tables" "text"[], "p_export_id" bigint, "p_after_id" bigint, "p_limit" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."export_audit_log"("p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_tables" "text"[], "p_export_id" bigint, "p_after_id" bigint, "p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."export_audit_log"("p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_tables" "text"[], "p_export_id" bigint, "p_after_id" bigint, "p_limit" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."feature_flags_admin_mfa_guard"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."feature_flags_admin_mfa_guard"() TO "service_role";
 
 
 
