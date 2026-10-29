@@ -226,7 +226,9 @@ preview check pass there, before releasing a migration to production.
   (`docket_matter_case_law` vs `quick_code_docket_matters`).
 - **`ON DELETE RESTRICT` on judicial content.** You cannot delete an auth
   user who has authored matters, judgments, notes or documents. Deactivate
-  via `profiles.is_active = false` instead.
+  the account with `set_profile_active` instead (ADR 0010): it locks the
+  account out, signs it out everywhere and keeps its court assignments for
+  an administrator to reassign.
 - **Curated library.** `statutes`, `case_law` (canonical), `legal_sources`
   and the taxonomy tables are shared across courts and writable only by
   admins; ingestion goes through `import_batches` / `import_jobs`.

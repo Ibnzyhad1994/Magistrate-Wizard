@@ -123,6 +123,7 @@
     "test:clerk-access-security": "node --import ./scripts/test-support/register.mjs scripts/tests/test-clerk-access-security.mjs",
     "test:anon-auth-surface": "node --import ./scripts/test-support/register.mjs scripts/tests/test-anon-auth-surface.mjs",
     "test:anon-definer-surface": "node --import ./scripts/test-support/register.mjs scripts/tests/test-anon-definer-surface.mjs",
+    "test:account-deactivation": "node --import ./scripts/test-support/register.mjs scripts/tests/test-account-deactivation.mjs",
     "test:search-index-plans": "node --import ./scripts/test-support/register.mjs scripts/tests/test-search-index-plans.mjs",
     "test:global-search-per-type": "node --import ./scripts/test-support/register.mjs scripts/tests/test-global-search-per-type.mjs",
     "test:scheduled-maintenance": "node --import ./scripts/test-support/register.mjs scripts/tests/test-scheduled-maintenance.mjs",
