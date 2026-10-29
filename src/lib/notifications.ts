@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPES = [
   "docket_matter_binned",
   "docket_matter_purged",
   "maintenance_failed",
+  "judgment_transferred",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -110,6 +111,8 @@ export const notificationTypeLabel = (type: string) => {
       return "Matter permanently deleted";
     case "maintenance_failed":
       return "Maintenance problem";
+    case "judgment_transferred":
+      return "Judgment transferred";
     default:
       return "Notice";
   }
