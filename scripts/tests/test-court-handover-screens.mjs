@@ -239,5 +239,46 @@ check(
   [true, true],
 );
 
+// --- the owner's cleanup of older orphan pins ----------------------------------
+
+check(
+  "unlink_my_orphaned_judgment_pins returns a whole count",
+  [
+    (() => {
+      try {
+        checkRpc("unlink_my_orphaned_judgment_pins", 2, { strict: true });
+        return true;
+      } catch {
+        return false;
+      }
+    })(),
+    (() => {
+      try {
+        checkRpc("unlink_my_orphaned_judgment_pins", "2", { strict: true });
+        return false;
+      } catch {
+        return true;
+      }
+    })(),
+  ],
+  [true, true],
+);
+const hooks = readFileSync("src/hooks/use-court-handover.ts", "utf8");
+check(
+  "the count is a dry run; only the confirmed action clears",
+  [/p_dry_run: true/.test(hooks), /p_dry_run: false/.test(hooks)],
+  [true, true],
+);
+const linksCard = readFileSync("src/pages/settings/judgment-links-card.tsx", "utf8");
+check(
+  "the cleanup asks before it removes, and offers nothing when there is nothing to remove",
+  [
+    /<AlertDialog/.test(linksCard),
+    /onConfirm=\{\(\) => unlink\.mutate/.test(linksCard),
+    /pins === 0 \?/.test(linksCard),
+  ],
+  [true, true, true],
+);
+
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

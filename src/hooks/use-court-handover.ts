@@ -8,6 +8,7 @@ import { getErrorMessage } from "@/lib/utils";
 export const courtHandoverKeys = {
   preflight: (assignmentId: string) => ["court-handover", "preflight", assignmentId] as const,
   bench: (courtId: string) => ["court-handover", "bench", courtId] as const,
+  orphanPins: ["court-handover", "my-orphan-pins"] as const,
 };
 
 /**
@@ -136,5 +137,43 @@ export function useTransferJudgmentOwnership() {
       void queryClient.invalidateQueries({ queryKey: ["court-handover", "preflight"] });
     },
     meta: { silent: true },
+  });
+}
+
+/**
+ * The caller's judgment pins left on matters they can no longer open by
+ * hand-overs before 0220. A dry run counts them; nothing changes.
+ */
+export function useMyOrphanPinCount(enabled = true) {
+  return useQuery({
+    queryKey: courtHandoverKeys.orphanPins,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc("unlink_my_orphaned_judgment_pins", {
+        p_dry_run: true,
+      });
+      if (error) throw error;
+      return checkRpc("unlink_my_orphaned_judgment_pins", data);
+    },
+    enabled,
+  });
+}
+
+/** Clear those pins; returns how many were removed. */
+export function useUnlinkMyOrphanPins() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc("unlink_my_orphaned_judgment_pins", {
+        p_dry_run: false,
+      });
+      if (error) throw error;
+      return checkRpc("unlink_my_orphaned_judgment_pins", data);
+    },
+    onSuccess: (removed) => {
+      toast.success(removed === 1 ? "1 link removed." : `${removed} links removed.`);
+      void queryClient.invalidateQueries({ queryKey: courtHandoverKeys.orphanPins });
+    },
+    meta: { silent: true },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 }

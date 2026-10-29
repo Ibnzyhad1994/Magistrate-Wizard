@@ -197,10 +197,12 @@ export const RPC_RESULT_SCHEMAS = {
     rank: z.number(),
     headline: text.nullable(),
   }),
-  // Court hand-over (0220): what ending an assignment leaves behind, and an
-  // administrator's judgment transfer (ids only).
+  // Court hand-over (0220): what ending an assignment leaves behind, an
+  // administrator's judgment transfer (ids only), and the owner's count of
+  // pins left on matters they can no longer open.
   relinquish_preflight: relinquishPreflightSchema,
   transfer_judgment_ownership: judgmentTransferSchema,
+  unlink_my_orphaned_judgment_pins: count,
 } satisfies Partial<Record<RpcName, z.ZodType>>;
 
 export type CheckedRpc = keyof typeof RPC_RESULT_SCHEMAS;

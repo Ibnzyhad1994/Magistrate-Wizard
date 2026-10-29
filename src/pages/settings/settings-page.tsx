@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ThemeSelect } from "@/components/theme/theme-select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { JudgmentLinksCard } from "@/pages/settings/judgment-links-card";
 import {
   BROWSE_VIEW_LABELS,
   TILE_SIZE_LABELS,
@@ -279,6 +280,8 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {profile && profile.role !== "clerk" && <JudgmentLinksCard />}
             </SettingsSection>
           )}
 
