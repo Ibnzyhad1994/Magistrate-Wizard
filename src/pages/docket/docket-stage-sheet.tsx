@@ -120,7 +120,7 @@ function DocketStageRow({
   async function handleAdjournment(column: BoardColumn, adjourned: boolean, reason: string) {
     try {
       const next = mergeStageAdjournment(row.stage_adjournments, column.stage, adjourned, reason);
-      await onPatch(row.id, { stage_adjournments: next as Json }, row.updated_at);
+      await onPatch(row.id, { stage_adjournments: next as NonNullable<Json> }, row.updated_at);
       toast.success(adjourned ? "Stage adjourned." : "Adjournment cleared.");
     } catch {
       // Mutation cache toast subscriber.

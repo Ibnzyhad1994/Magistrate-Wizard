@@ -135,7 +135,7 @@ export function DocketStageStrip({
                   adjourned,
                   reason,
                 );
-                void onPatch({ stage_adjournments: next as Json }, matter.updated_at);
+                void onPatch({ stage_adjournments: next as NonNullable<Json> }, matter.updated_at);
               },
             };
           }}

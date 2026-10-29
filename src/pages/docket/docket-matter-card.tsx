@@ -180,7 +180,11 @@ export function DocketMatterCard({
                 adjourned,
                 reason,
               );
-              void onPatch(row.id, { stage_adjournments: next as Json }, row.updated_at);
+              void onPatch(
+                row.id,
+                { stage_adjournments: next as NonNullable<Json> },
+                row.updated_at,
+              );
             },
           };
         }}
