@@ -2,9 +2,9 @@ import { z } from "@/lib/zod";
 
 /**
  * Court hand-over (BE-26, 0220): the pre-flight a magistrate or an
- * administrator sees before an assignment ends. The RPC returns `json`, so
- * this schema is the shape the screens rely on, checked at the data-access
- * boundary.
+ * administrator sees before an assignment ends, and the administrator's
+ * judgment transfer. The RPCs return `json`, so these schemas are the shape
+ * the screens rely on, checked at the data-access boundary.
  *
  * Case numbers and matter and judgment titles come back only to the
  * magistrate whose assignment it is; an administrator gets ids, statuses and
@@ -46,9 +46,23 @@ export const relinquishPreflightSchema = z.object({
   pinned_judgments: z.array(pinnedJudgmentSchema),
 });
 
+export const judgmentTransferSchema = z.object({
+  transfer_id: uuid,
+  judgment_id: uuid,
+  from_owner_id: uuid,
+  to_owner_id: uuid,
+  original_author_id: uuid,
+  court_id: uuid,
+  transferred_at: z.string(),
+});
+
 export type PartHeardMatter = z.infer<typeof partHeardMatterSchema>;
 export type PinnedJudgment = z.infer<typeof pinnedJudgmentSchema>;
 export type RelinquishPreflight = z.infer<typeof relinquishPreflightSchema>;
+export type JudgmentTransfer = z.infer<typeof judgmentTransferSchema>;
+
+/** The longest transfer reason the backend accepts. */
+export const TRANSFER_REASON_MAX = 500;
 
 /** The pins that ending the assignment will remove, in the order listed. */
 export function pinsToUnlink(preflight: RelinquishPreflight): PinnedJudgment[] {
@@ -80,6 +94,15 @@ export function pinFate(pin: PinnedJudgment): string {
   return "Stays: you keep access";
 }
 
+export type TransferReasonProblem = "missing" | "too-long" | null;
+
+export function transferReasonProblem(reason: string): TransferReasonProblem {
+  const trimmed = reason.trim();
+  if (!trimmed) return "missing";
+  if (trimmed.length > TRANSFER_REASON_MAX) return "too-long";
+  return null;
+}
+
 const errorCode = (error: unknown): string | undefined =>
   error && typeof error === "object" && "code" in error
     ? String((error as { code: unknown }).code)
@@ -108,4 +131,20 @@ export function preflightErrorMessage(error: unknown): string | null {
  */
 export function preflightRefused(query: { isError: boolean; error: unknown }): boolean {
   return query.isError && preflightErrorMessage(query.error) !== null;
+}
+
+/** The transfer's refusals, in the screen's words; null for anything else. */
+export function transferErrorMessage(error: unknown): string | null {
+  switch (errorCode(error)) {
+    case "42501":
+      return "Only an administrator can transfer a judgment.";
+    case "22023":
+      return `The reason is required and at most ${TRANSFER_REASON_MAX} characters, and the magistrate you picked must not already own this judgment.`;
+    case "P0002":
+      return "There is no judgment with that id.";
+    case "P0001":
+      return "The magistrate you picked doesn't sit at this court now, or the judgment's owner never sat there.";
+    default:
+      return null;
+  }
 }

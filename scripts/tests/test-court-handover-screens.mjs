@@ -8,13 +8,17 @@
  */
 import { readFileSync } from "node:fs";
 import {
+  TRANSFER_REASON_MAX,
   judgmentLabel,
+  judgmentTransferSchema,
   matterLabel,
   pinFate,
   pinsToUnlink,
   preflightErrorMessage,
   preflightRefused,
   relinquishPreflightSchema,
+  transferErrorMessage,
+  transferReasonProblem,
 } from "@/lib/court-handover";
 import { checkRpc } from "@/lib/rpc-results";
 
@@ -172,6 +176,67 @@ check(
   "only the magistrate's own view offers Retain",
   /mode === "self" && \(\s*<Button/.test(summary),
   true,
+);
+
+// --- the administrator's judgment transfer -----------------------------------
+
+check(
+  "a transfer reason is required and at most 500 characters",
+  [
+    transferReasonProblem("   "),
+    transferReasonProblem("x".repeat(TRANSFER_REASON_MAX)),
+    transferReasonProblem("x".repeat(TRANSFER_REASON_MAX + 1)),
+  ],
+  ["missing", null, "too-long"],
+);
+check(
+  "each transfer refusal has its own sentence",
+  ["42501", "22023", "P0002", "P0001"].map((code) => transferErrorMessage({ code }) !== null),
+  [true, true, true, true],
+);
+check(
+  "the target-not-at-court refusal names the court, not a permission problem",
+  /sit at this court/.test(transferErrorMessage({ code: "P0001" }) ?? ""),
+  true,
+);
+const transferResult = {
+  transfer_id: id(30),
+  judgment_id: id(120),
+  from_owner_id: id(2),
+  to_owner_id: id(4),
+  original_author_id: id(2),
+  court_id: id(3),
+  transferred_at: "2026-10-29T15:00:00Z",
+};
+check(
+  "the transfer result is ids and a time, nothing more",
+  Object.keys(judgmentTransferSchema.shape).sort(),
+  Object.keys(transferResult).sort(),
+);
+check(
+  "transfer_judgment_ownership is a registered checked RPC",
+  (() => {
+    try {
+      checkRpc(
+        "transfer_judgment_ownership",
+        { ...transferResult, to_owner_id: 7 },
+        { strict: true },
+      );
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+  true,
+);
+const transferDialog = readFileSync("src/pages/admin/transfer-judgment-dialog.tsx", "utf8");
+check(
+  "the transfer picks its new owner from the court's bench, never the departing magistrate",
+  [
+    /useCourtBench\(/.test(transferDialog),
+    /profileId !== target\?\.fromProfileId/.test(transferDialog),
+  ],
+  [true, true],
 );
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

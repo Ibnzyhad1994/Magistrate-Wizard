@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { checkRpc } from "@/lib/rpc-results";
-import type { RelinquishPreflight } from "@/lib/court-handover";
+import type { JudgmentTransfer, RelinquishPreflight } from "@/lib/court-handover";
 import { getErrorMessage } from "@/lib/utils";
 
 export const courtHandoverKeys = {
   preflight: (assignmentId: string) => ["court-handover", "preflight", assignmentId] as const,
+  bench: (courtId: string) => ["court-handover", "bench", courtId] as const,
 };
 
 /**
@@ -64,5 +65,76 @@ export function useRetainPartHeardMatter(assignmentId: string) {
     },
     meta: { silent: true },
     onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
+
+export interface BenchMember {
+  profileId: string;
+  fullName: string;
+}
+
+/**
+ * The court's bench now: active people with an open magistrate assignment
+ * there, the only valid targets of a judgment transfer. Administrator-only
+ * (it reads other people's assignments and names).
+ */
+export function useCourtBench(courtId: string | null) {
+  return useQuery({
+    queryKey: courtHandoverKeys.bench(courtId ?? ""),
+    queryFn: async (): Promise<BenchMember[]> => {
+      const { data: seats, error } = await supabase
+        .from("magistrate_courts")
+        .select("profile_id")
+        .eq("court_id", courtId as string)
+        .is("ended_at", null);
+      if (error) throw error;
+      const ids = [...new Set((seats ?? []).map((seat) => seat.profile_id))];
+      if (ids.length === 0) return [];
+      const { data: people, error: peopleError } = await supabase
+        .from("profiles")
+        .select("id, full_name, is_active")
+        .in("id", ids)
+        .eq("is_active", true)
+        .order("full_name");
+      if (peopleError) throw peopleError;
+      return (people ?? []).map((person) => ({
+        profileId: person.id,
+        fullName: person.full_name || "Unnamed magistrate",
+      }));
+    },
+    enabled: !!courtId,
+  });
+}
+
+export interface TransferJudgmentInput {
+  judgmentId: string;
+  toProfileId: string;
+  courtId: string;
+  reason: string;
+}
+
+/**
+ * An administrator moves a judgment to a magistrate sitting at the court
+ * now (transfer_judgment_ownership, ADR 0011). Only `owner_id` changes; the
+ * result holds ids only.
+ */
+export function useTransferJudgmentOwnership() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TransferJudgmentInput): Promise<JudgmentTransfer> => {
+      const { data, error } = await supabase.rpc("transfer_judgment_ownership", {
+        p_judgment_id: input.judgmentId,
+        p_to_profile_id: input.toProfileId,
+        p_court_id: input.courtId,
+        p_reason: input.reason.trim(),
+      });
+      if (error) throw error;
+      return checkRpc("transfer_judgment_ownership", data) as JudgmentTransfer;
+    },
+    // The dialog shows the result and any refusal itself, so no toast.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["court-handover", "preflight"] });
+    },
+    meta: { silent: true },
   });
 }
