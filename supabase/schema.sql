@@ -3570,11 +3570,14 @@ CREATE OR REPLACE FUNCTION "public"."download_my_data"() RETURNS "jsonb"
     AS $$
 declare
   uid uuid := auth.uid();
+  v_email text;
 begin
   perform public.enforce_rpc_rate_limit('download_my_data', 5, 60);
   if uid is null then
     raise exception 'Not authenticated';
   end if;
+
+  select lower(p.email) into v_email from public.profiles p where p.id = uid;
 
   return jsonb_build_object(
     'exported_at', now(),
@@ -3584,49 +3587,200 @@ begin
       where p.id = uid
     ),
     'judgments', coalesce((
-      select jsonb_agg(to_jsonb(j) - 'content' - 'search_vector' order by j.updated_at desc)
+      select jsonb_agg(to_jsonb(j) - 'search_vector' order by j.updated_at desc, j.id)
       from public.judgments j
       where j.owner_id = uid
     ), '[]'::jsonb),
+    'judgment_versions', coalesce((
+      select jsonb_agg(to_jsonb(v) order by v.judgment_id, v.version_number)
+      from public.judgment_versions v
+      join public.judgments j on j.id = v.judgment_id
+      where j.owner_id = uid
+    ), '[]'::jsonb),
+    'judgment_tags', coalesce((
+      select jsonb_agg(to_jsonb(t) order by t.created_at, t.id)
+      from public.judgment_tags t
+      where t.created_by = uid
+        or exists (select 1 from public.judgments j where j.id = t.judgment_id and j.owner_id = uid)
+    ), '[]'::jsonb),
+    'judgment_docket_links', coalesce((
+      select jsonb_agg(to_jsonb(l) order by l.created_at, l.id)
+      from public.docket_matter_judgments l
+      where l.created_by = uid
+        or exists (select 1 from public.judgments j where j.id = l.judgment_id and j.owner_id = uid)
+    ), '[]'::jsonb),
+    'judgment_ownership_transfers', coalesce((
+      select jsonb_agg(to_jsonb(t) order by t.created_at, t.id)
+      from public.judgment_ownership_transfers t
+      where uid in (t.from_owner_id, t.to_owner_id, t.original_author_id, t.transferred_by)
+    ), '[]'::jsonb),
     'bench_notes', coalesce((
-      select jsonb_agg(to_jsonb(b) - 'content' - 'search_vector' order by b.updated_at desc)
+      select jsonb_agg(to_jsonb(b) - 'search_vector' order by b.updated_at desc, b.id)
       from public.bench_notes b
       where b.author_id = uid
     ), '[]'::jsonb),
+    'bench_note_tags', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'bench_note_id', bt.bench_note_id,
+          'tag_id', bt.tag_id,
+          'tag_name', tg.name,
+          'created_at', bt.created_at
+        )
+        order by bt.created_at, bt.bench_note_id, bt.tag_id
+      )
+      from public.bench_note_tags bt
+      join public.bench_notes b on b.id = bt.bench_note_id
+      join public.tags tg on tg.id = bt.tag_id
+      where b.author_id = uid
+    ), '[]'::jsonb),
+    'comments', coalesce((
+      select jsonb_agg(to_jsonb(c) order by c.created_at, c.id)
+      from public.comments c
+      where c.author_id = uid
+    ), '[]'::jsonb),
     'case_law', coalesce((
-      select jsonb_agg(to_jsonb(c) - 'full_text' - 'summary' - 'key_passages' - 'search_vector' order by c.updated_at desc)
+      select jsonb_agg(to_jsonb(c) - 'search_vector' order by c.updated_at desc, c.id)
       from public.case_law c
       where c.owner_id = uid
     ), '[]'::jsonb),
+    'case_law_tags', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'case_law_id', ct.case_law_id,
+          'tag_id', ct.tag_id,
+          'tag_name', tg.name,
+          'created_at', ct.created_at
+        )
+        order by ct.created_at, ct.case_law_id, ct.tag_id
+      )
+      from public.case_law_tags ct
+      join public.case_law c on c.id = ct.case_law_id
+      join public.tags tg on tg.id = ct.tag_id
+      where c.owner_id = uid
+    ), '[]'::jsonb),
+    'case_law_annotations', coalesce((
+      select jsonb_agg(to_jsonb(a) order by a.created_at, a.id)
+      from public.case_law_annotations a
+      where a.owner_id = uid
+    ), '[]'::jsonb),
+    'quick_codes', coalesce((
+      select jsonb_agg(to_jsonb(q) - 'search_vector' order by q.updated_at desc, q.id)
+      from public.quick_codes q
+      where q.owner_id = uid
+    ), '[]'::jsonb),
+    'quick_code_judgments', coalesce((
+      select jsonb_agg(to_jsonb(l) order by l.created_at, l.id)
+      from public.quick_code_judgments l
+      where l.created_by = uid
+        or exists (select 1 from public.quick_codes q where q.id = l.quick_code_id and q.owner_id = uid)
+    ), '[]'::jsonb),
+    'quick_code_docket_matters', coalesce((
+      select jsonb_agg(to_jsonb(l) order by l.created_at, l.id)
+      from public.quick_code_docket_matters l
+      where l.created_by = uid
+        or exists (select 1 from public.quick_codes q where q.id = l.quick_code_id and q.owner_id = uid)
+    ), '[]'::jsonb),
+    'quick_code_case_law', coalesce((
+      select jsonb_agg(to_jsonb(l) order by l.created_at, l.id)
+      from public.quick_code_case_law l
+      where l.created_by = uid
+        or exists (select 1 from public.quick_codes q where q.id = l.quick_code_id and q.owner_id = uid)
+    ), '[]'::jsonb),
     'bookmarks', coalesce((
-      select jsonb_agg(to_jsonb(b) order by b.created_at desc)
+      select jsonb_agg(to_jsonb(b) order by b.created_at desc, b.id)
       from public.bookmarks b
       where b.user_id = uid
     ), '[]'::jsonb),
     'shares', coalesce((
-      select jsonb_agg(to_jsonb(s) order by s.created_at desc)
+      select jsonb_agg(to_jsonb(s) order by s.created_at desc, s.id)
       from public.shares s
       where s.granted_by = uid or s.recipient_id = uid
     ), '[]'::jsonb),
     'notifications', coalesce((
-      select jsonb_agg(to_jsonb(n) order by n.created_at desc)
+      select jsonb_agg(to_jsonb(n) order by n.created_at desc, n.id)
       from public.notifications n
       where n.user_id = uid
     ), '[]'::jsonb),
+    'documents', coalesce((
+      select jsonb_agg(to_jsonb(d) order by d.created_at desc, d.id)
+      from public.documents d
+      where d.uploaded_by = uid
+    ), '[]'::jsonb),
     'clerk_access_requests', coalesce((
-      select jsonb_agg(to_jsonb(r) order by r.created_at desc)
+      select jsonb_agg(to_jsonb(r) order by r.created_at desc, r.id)
       from public.clerk_access_requests r
       where r.profile_id = uid
     ), '[]'::jsonb),
+    'clerk_courts', coalesce((
+      select jsonb_agg(to_jsonb(c) order by c.started_at desc, c.id)
+      from public.clerk_courts c
+      where c.profile_id = uid
+    ), '[]'::jsonb),
     'magistrate_court_requests', coalesce((
-      select jsonb_agg(to_jsonb(r) order by r.created_at desc)
+      select jsonb_agg(to_jsonb(r) order by r.created_at desc, r.id)
       from public.magistrate_court_requests r
       where r.profile_id = uid
     ), '[]'::jsonb),
     'magistrate_courts', coalesce((
-      select jsonb_agg(to_jsonb(m) order by m.started_at desc)
+      select jsonb_agg(to_jsonb(m) order by m.started_at desc, m.id)
       from public.magistrate_courts m
       where m.profile_id = uid
+    ), '[]'::jsonb),
+    'docket_matter_assignments', coalesce((
+      select jsonb_agg(to_jsonb(a) order by a.started_at desc, a.id)
+      from public.docket_matter_assignments a
+      where a.profile_id = uid
+    ), '[]'::jsonb),
+    'docket_capacity_settings', coalesce((
+      select jsonb_agg(to_jsonb(s) order by s.created_at, s.id)
+      from public.docket_capacity_settings s
+      where s.owner_id = uid
+    ), '[]'::jsonb),
+    'docket_capacity_overrides', coalesce((
+      select jsonb_agg(to_jsonb(o) order by o.created_at desc, o.id)
+      from public.docket_capacity_overrides o
+      where o.magistrate_profile_id = uid
+    ), '[]'::jsonb),
+    'docket_event_calendar_links', coalesce((
+      select jsonb_agg(to_jsonb(l) order by l.created_at desc, l.id)
+      from public.docket_event_calendar_links l
+      where l.profile_id = uid
+    ), '[]'::jsonb),
+    'issue_reports', coalesce((
+      select jsonb_agg(to_jsonb(r) order by r.created_at desc, r.id)
+      from public.issue_reports r
+      where r.reporter_id = uid
+    ), '[]'::jsonb),
+    'auth_events', coalesce((
+      select jsonb_agg(to_jsonb(e) order by e.created_at desc, e.id)
+      from (
+        select a.* from public.auth_event_log a where a.actor_id = uid
+        union all
+        select a.* from public.auth_event_log a
+        where a.actor_id is null
+          and a.event_type = any (enum_range(null::public.auth_event_type))
+          and a.email = v_email
+      ) e
+    ), '[]'::jsonb),
+    'activity', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', a.id,
+          'created_at', a.created_at,
+          'action', a.action,
+          'table_name', a.table_name,
+          'record_id', a.record_id
+        )
+        order by a.id
+      )
+      from public.audit_log a
+      where a.actor_id = uid
+    ), '[]'::jsonb),
+    'rpc_rate_limits', coalesce((
+      select jsonb_agg(to_jsonb(r) order by r.window_start desc, r.rpc_name)
+      from public.rpc_rate_limit_buckets r
+      where r.user_id = uid
     ), '[]'::jsonb)
   );
 end;
@@ -3636,7 +3790,7 @@ $$;
 ALTER FUNCTION "public"."download_my_data"() OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."download_my_data"() IS 'JSON export of the caller''s own profile-scoped records. 0137: enforce_rpc_rate_limit 5/60s.';
+COMMENT ON FUNCTION "public"."download_my_data"() IS 'JSON export of everything the caller owns, authored, holds, received or is the subject of, with its content (0221, BE-19): profile, judgments and their versions, tags, pins and transfers, bench notes, comments, personal case law and annotations, quick codes and their links, bookmarks, shares, notifications, document metadata, court requests and assignments, retained assignments, capacity settings, calendar links, issue reports, sign-in events, the caller''s audit_log activity (no values) and rate-limit counters. Court and library records the caller only created are not exported. enforce_rpc_rate_limit 5/60s (0137).';
 
 
 
@@ -5010,8 +5164,13 @@ begin
   if tg_op = 'INSERT' then
     new.owner_id := (select auth.uid());
   elsif tg_op = 'UPDATE' then
-    if new.owner_id is distinct from old.owner_id then
-      raise exception 'A Judgment''s owner_id is immutable; ownership cannot be transferred by UPDATE.';
+    -- transfer_judgment_ownership is SECURITY DEFINER, so a client or the
+    -- service role here means the change did not come through it.
+    if new.owner_id is distinct from old.owner_id
+      and current_user in ('anon', 'authenticated', 'service_role')
+    then
+      raise exception 'A Judgment''s owner changes only through an administrator''s transfer (transfer_judgment_ownership).'
+        using errcode = '42501';
     end if;
   end if;
   return new;
@@ -5020,6 +5179,10 @@ $$;
 
 
 ALTER FUNCTION "public"."judgments_guard"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."judgments_guard"() IS 'BEFORE INSERT OR UPDATE on judgments: forces owner_id to auth.uid() at creation, and refuses an owner_id change from anon, authenticated or the service role, so it changes only through transfer_judgment_ownership (0220, ADR 0011), which records it.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."judgments_notify_final"() RETURNS "trigger"
@@ -6805,7 +6968,194 @@ $$;
 ALTER FUNCTION "public"."relinquish_magistrate_court"("p_assignment_id" "uuid", "p_reason" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."relinquish_magistrate_court"("p_assignment_id" "uuid", "p_reason" "text") IS 'Ends exactly one magistrate''s active court assignment (ended_at set; ended_by force-set by protect_magistrate_court_history()''s trigger, 0104, never trusted from any input here). Serves both "magistrate relinquishes their own court" (profile_id = auth.uid()) and "administrator ends an incorrect assignment" (is_admin()) -- the same function, distinguished only by who is calling, mirroring revoke_clerk_court_access() (0089). Never deletes the row, never touches docket_matters/docket_matter_assignments/clerk_courts -- the institutional Docket, retained/part-heard access, and the clerk roster are all completely untouched by this call. Idempotent: relinquishing an already-ended assignment returns it unchanged. Ending one court has no effect on any other court the same magistrate holds. The court becomes available for a successor the instant this commits (court_has_active_primary_magistrate() re-evaluates live) -- this IS how succession works; there is no separate succession RPC.';
+COMMENT ON FUNCTION "public"."relinquish_magistrate_court"("p_assignment_id" "uuid", "p_reason" "text") IS 'Ends exactly one magistrate''s active court assignment (ended_at set; ended_by force-set by protect_magistrate_court_history()''s trigger, 0104, never trusted from any input here). Serves both "magistrate relinquishes their own court" (profile_id = auth.uid()) and "administrator ends an incorrect assignment" (is_admin()) -- the same function, distinguished only by who is calling, mirroring revoke_clerk_court_access() (0089). Never deletes the row, never touches docket_matters/docket_matter_assignments/clerk_courts. Ending the assignment unlinks the magistrate''s judgment pins at that court that are now visible to nobody (magistrate_courts_unlink_orphaned_judgment_pins, 0220); relinquish_preflight lists them, and the un-retained part-heard matters, beforehand. Idempotent: relinquishing an already-ended assignment returns it unchanged. Ending one court has no effect on any other court the same magistrate holds. The court becomes available for a successor the instant this commits (court_has_active_primary_magistrate() re-evaluates live) -- this IS how succession works; there is no separate succession RPC.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."relinquish_preflight"("p_assignment_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_row public.magistrate_courts;
+  v_self boolean;
+  v_court_name text;
+  v_part_heard jsonb;
+  v_pins jsonb;
+begin
+  select * into v_row from public.magistrate_courts where id = p_assignment_id;
+  if not found then
+    raise exception 'Court assignment not found'
+      using errcode = 'P0002';
+  end if;
+
+  v_self := v_row.profile_id = (select auth.uid()) and (select public.is_active_account());
+  if not (v_self or (select public.is_admin())) then
+    raise exception 'You are not authorized to review this court assignment'
+      using errcode = '42501';
+  end if;
+
+  select c.name into v_court_name from public.courts c where c.id = v_row.court_id;
+
+  with held as (
+    select
+      e.docket_matter_id,
+      e.scheduled_date,
+      e.presiding_magistrate_id,
+      (
+        coalesce(e.witnesses_completed, 0) > 0
+        or coalesce(e.witnesses_partly_heard, 0) > 0
+        or coalesce(e.outcome_at_event, '') ~* '^\s*part[- ]?heard'
+      ) as took_evidence,
+      row_number() over (
+        partition by e.docket_matter_id
+        order by e.scheduled_date desc, e.scheduled_time desc nulls last, e.created_at desc
+      ) as recency
+    from public.docket_events e
+    join public.docket_matters dm on dm.id = e.docket_matter_id
+    where dm.court_id = v_row.court_id
+      and dm.deleted_at is null
+      and dm.status in ('active', 'stayed')
+      and e.event_status not in ('cancelled', 'entered_in_error')
+      and e.scheduled_date <= current_date
+  ),
+  part_heard as (
+    select
+      dm.id,
+      dm.case_number,
+      dm.matter_title,
+      dm.status,
+      max(h.scheduled_date) filter (where h.presiding_magistrate_id = v_row.profile_id)
+        as last_heard_on
+    from public.docket_matters dm
+    join held h on h.docket_matter_id = dm.id
+    group by dm.id
+    having bool_or(
+      h.presiding_magistrate_id = v_row.profile_id
+      and (
+        h.took_evidence
+        or (
+          h.recency = 1
+          and (dm.trial_status = 'partial' or dm.paper_committal_status in ('commenced', 'partial'))
+        )
+      )
+    )
+  )
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'docket_matter_id', ph.id,
+        'status', ph.status,
+        'last_heard_on', ph.last_heard_on
+      )
+      || case
+        when v_self then jsonb_build_object(
+          'case_number', ph.case_number,
+          'matter_title', ph.matter_title
+        )
+        else '{}'::jsonb
+      end
+      order by ph.last_heard_on desc, ph.id
+    ),
+    '[]'::jsonb
+  )
+  into v_part_heard
+  from part_heard ph
+  where not exists (
+    select 1 from public.docket_matter_assignments a
+    where a.docket_matter_id = ph.id
+      and a.profile_id = v_row.profile_id
+      and a.ended_at is null
+  );
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'pin_id', p.pin_id,
+        'judgment_id', p.judgment_id,
+        'docket_matter_id', p.docket_matter_id,
+        'pinned_at', p.pinned_at,
+        'judgment_status', p.judgment_status,
+        'is_discoverable', p.is_discoverable,
+        'shared', p.shared,
+        'will_unlink', not p.is_discoverable and not p.shared and not p.keeps_access
+      )
+      || case
+        when v_self then jsonb_build_object('judgment_title', p.judgment_title)
+        else '{}'::jsonb
+      end
+      order by p.pinned_at, p.pin_id
+    ),
+    '[]'::jsonb
+  )
+  into v_pins
+  from (
+    select
+      dmj.id as pin_id,
+      dmj.judgment_id,
+      dmj.docket_matter_id,
+      dmj.created_at as pinned_at,
+      j.status as judgment_status,
+      j.is_discoverable,
+      j.title as judgment_title,
+      exists (
+        select 1 from public.shares s
+        where s.item_type = 'judgment'
+          and s.item_id = j.id
+          and s.recipient_id is not null
+          and s.revoked_at is null
+      ) as shared,
+      (
+        exists (
+          select 1 from public.magistrate_courts mc
+          where mc.profile_id = v_row.profile_id
+            and mc.court_id = dm.court_id
+            and mc.ended_at is null
+            and mc.id <> v_row.id
+        )
+        or exists (
+          select 1 from public.docket_matter_assignments a
+          where a.profile_id = v_row.profile_id
+            and a.docket_matter_id = dm.id
+            and a.ended_at is null
+        )
+        or exists (
+          select 1 from public.shares s
+          where s.item_type = 'docket_matter'
+            and s.item_id = dm.id
+            and s.recipient_id = v_row.profile_id
+            and s.revoked_at is null
+        )
+      ) as keeps_access
+    from public.docket_matter_judgments dmj
+    join public.judgments j on j.id = dmj.judgment_id
+    join public.docket_matters dm on dm.id = dmj.docket_matter_id
+    where j.owner_id = v_row.profile_id
+      and dm.court_id = v_row.court_id
+  ) p;
+
+  return jsonb_build_object(
+    'assignment_id', v_row.id,
+    'profile_id', v_row.profile_id,
+    'court_id', v_row.court_id,
+    'court_name', v_court_name,
+    'ended', v_row.ended_at is not null,
+    'part_heard_unretained', v_part_heard,
+    'part_heard_unretained_count', jsonb_array_length(v_part_heard),
+    'pinned_judgments', v_pins,
+    'pinned_judgment_count', jsonb_array_length(v_pins),
+    'pins_to_unlink_count', (
+      select count(*) from jsonb_array_elements(v_pins) e where (e ->> 'will_unlink')::boolean
+    )
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."relinquish_preflight"("p_assignment_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."relinquish_preflight"("p_assignment_id" "uuid") IS 'Read-only check before ending a magistrate''s court assignment (0220, BE-26). For the assignment''s magistrate or an administrator: the open matters at that court the magistrate heard evidence in and has not retained (part_heard_unretained), and the magistrate''s judgments pinned to that court''s matters with will_unlink for the pins that ending the assignment unlinks. Case numbers, matter titles and judgment titles go to the magistrate only; an administrator gets ids, statuses and dates (ADR 0005, 0007).';
 
 
 
@@ -8558,6 +8908,298 @@ $$;
 ALTER FUNCTION "public"."sync_magistrate_court_occupies_primary_slot"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."transfer_judgment_ownership"("p_judgment_id" "uuid", "p_to_profile_id" "uuid", "p_court_id" "uuid", "p_reason" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_actor uuid := (select auth.uid());
+  v_reason text := nullif(btrim(p_reason), '');
+  v_from uuid;
+  v_original uuid;
+  v_transfer public.judgment_ownership_transfers;
+begin
+  if p_judgment_id is null or p_to_profile_id is null or p_court_id is null then
+    raise exception 'p_judgment_id, p_to_profile_id and p_court_id are required'
+      using errcode = '22023';
+  end if;
+  if not (select public.is_admin()) then
+    raise exception 'Only an active administrator can transfer a judgment'
+      using errcode = '42501';
+  end if;
+  if v_reason is null then
+    raise exception 'Give a reason for this transfer'
+      using errcode = '22023';
+  end if;
+  if char_length(v_reason) > 500 then
+    raise exception 'Keep the reason to 500 characters or fewer'
+      using errcode = '22023';
+  end if;
+
+  select j.owner_id into v_from
+  from public.judgments j
+  where j.id = p_judgment_id
+  for update;
+  if not found then
+    raise exception 'Judgment % not found', p_judgment_id
+      using errcode = 'P0002';
+  end if;
+
+  if v_from = p_to_profile_id then
+    raise exception 'This magistrate already owns the judgment'
+      using errcode = '22023';
+  end if;
+
+  if not exists (
+    select 1 from public.magistrate_courts mc
+    where mc.profile_id = v_from and mc.court_id = p_court_id
+  ) then
+    raise exception 'The judgment''s owner has never sat at this court'
+      using errcode = 'P0001';
+  end if;
+
+  if not exists (
+    select 1
+    from public.profiles p
+    join public.magistrate_courts mc on mc.profile_id = p.id
+    where p.id = p_to_profile_id
+      and p.is_active
+      and p.role in ('magistrate', 'admin')
+      and mc.court_id = p_court_id
+      and mc.ended_at is null
+  ) then
+    raise exception 'A judgment can be transferred only to an active magistrate who sits at this court'
+      using errcode = 'P0001';
+  end if;
+
+  select t.original_author_id into v_original
+  from public.judgment_ownership_transfers t
+  where t.judgment_id = p_judgment_id
+  order by t.created_at, t.id
+  limit 1;
+  v_original := coalesce(v_original, v_from);
+
+  update public.judgments set owner_id = p_to_profile_id where id = p_judgment_id;
+
+  insert into public.judgment_ownership_transfers (
+    judgment_id, from_owner_id, to_owner_id, original_author_id, transferred_by, court_id, reason
+  )
+  values (p_judgment_id, v_from, p_to_profile_id, v_original, v_actor, p_court_id, v_reason)
+  returning * into v_transfer;
+
+  insert into public.audit_log (actor_id, action, table_name, record_id, new_data)
+  values (
+    v_actor,
+    'update',
+    'judgments',
+    p_judgment_id,
+    jsonb_build_object(
+      'event', 'judgment_ownership_transferred',
+      'transfer_id', v_transfer.id,
+      'from_owner_id', v_from,
+      'to_owner_id', p_to_profile_id,
+      'original_author_id', v_original,
+      'court_id', p_court_id,
+      'reason', v_reason
+    )
+  );
+
+  perform public.notify_user(
+    p_to_profile_id,
+    'judgment_transferred',
+    'A judgment was transferred to you',
+    'An administrator made you the owner of a judgment. Its original author stays on record.',
+    '/judgments/' || p_judgment_id::text
+  );
+  perform public.notify_user(
+    v_from,
+    'judgment_transferred',
+    'A judgment you owned was transferred',
+    'An administrator transferred one of your judgments to another magistrate of the court. Its original author stays on record.',
+    '/judgments?transferred=' || p_judgment_id::text
+  );
+
+  return jsonb_build_object(
+    'transfer_id', v_transfer.id,
+    'judgment_id', p_judgment_id,
+    'from_owner_id', v_from,
+    'to_owner_id', p_to_profile_id,
+    'original_author_id', v_original,
+    'court_id', p_court_id,
+    'transferred_at', v_transfer.created_at
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."transfer_judgment_ownership"("p_judgment_id" "uuid", "p_to_profile_id" "uuid", "p_court_id" "uuid", "p_reason" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."transfer_judgment_ownership"("p_judgment_id" "uuid", "p_to_profile_id" "uuid", "p_court_id" "uuid", "p_reason" "text") IS 'Moves a judgment to another owner (0220, BE-26, ADR 0011). Active administrators only, with a reason (500 characters at most). The new owner must be an active magistrate (or administrator) who sits at p_court_id, and the current owner must sit or have sat there. Changes owner_id only: content, status, finalisation, versions, tags, shares, pins and documents stay as they are and nothing is deleted. Records the transfer with the original author in judgment_ownership_transfers, writes an audit_log event and notifies both magistrates (judgment_transferred). Returns ids only, never content.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."unlink_judgment_pins_on_court_end"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  perform public.unlink_orphaned_judgment_pins(
+    new.profile_id, new.court_id, null, 'court_assignment_ended'
+  );
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."unlink_judgment_pins_on_court_end"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."unlink_judgment_pins_on_court_end"() IS 'AFTER UPDATE OF ended_at on magistrate_courts (0220, BE-26): when an assignment ends, by relinquish, an administrator or the first-sign-in rule, unlinks that magistrate''s judgment pins at that court that are now visible to nobody (unlink_orphaned_judgment_pins). Executable by no client role.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."unlink_judgment_pins_on_retained_end"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  perform public.unlink_orphaned_judgment_pins(
+    new.profile_id, null, new.docket_matter_id, 'retained_assignment_ended'
+  );
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."unlink_judgment_pins_on_retained_end"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."unlink_judgment_pins_on_retained_end"() IS 'AFTER UPDATE OF ended_at on docket_matter_assignments (0220, BE-26): when a retained assignment ends, unlinks that magistrate''s judgment pins on that matter that are now visible to nobody (unlink_orphaned_judgment_pins). A profile already removed (profile_id null) has nothing to unlink. Executable by no client role.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."unlink_my_orphaned_judgment_pins"("p_dry_run" boolean DEFAULT false) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if (select auth.uid()) is null or not (select public.is_active_account()) then
+    raise exception 'Not authenticated'
+      using errcode = '42501';
+  end if;
+
+  return public.unlink_orphaned_judgment_pins(
+    (select auth.uid()), null, null, 'owner_unlinked', coalesce(p_dry_run, false)
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."unlink_my_orphaned_judgment_pins"("p_dry_run" boolean) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."unlink_my_orphaned_judgment_pins"("p_dry_run" boolean) IS 'The caller''s own judgment pins that nobody else can see, on matters the caller can no longer see (0220, BE-26): p_dry_run counts them, otherwise they are unlinked and audited. For pins left by hand-overs before 0220; since 0220 ending an assignment unlinks them itself.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."unlink_orphaned_judgment_pins"("p_owner_id" "uuid", "p_court_id" "uuid" DEFAULT NULL::"uuid", "p_docket_matter_id" "uuid" DEFAULT NULL::"uuid", "p_reason" "text" DEFAULT NULL::"text", "p_dry_run" boolean DEFAULT false) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ids uuid[];
+  v_count integer;
+begin
+  if p_owner_id is null then
+    return 0;
+  end if;
+
+  -- A pin is visible to someone who can see both its matter and its
+  -- judgment. A judgment that is not discoverable and has no active share
+  -- is visible only to its owner, so once the owner cannot see the matter
+  -- either, nobody can see the pin.
+  select coalesce(array_agg(dmj.id order by dmj.created_at, dmj.id), '{}')
+  into v_ids
+  from public.docket_matter_judgments dmj
+  join public.judgments j on j.id = dmj.judgment_id
+  join public.docket_matters dm on dm.id = dmj.docket_matter_id
+  where j.owner_id = p_owner_id
+    and (p_court_id is null or dm.court_id = p_court_id)
+    and (p_docket_matter_id is null or dm.id = p_docket_matter_id)
+    and not j.is_discoverable
+    and not exists (
+      select 1 from public.shares s
+      where s.item_type = 'judgment'
+        and s.item_id = j.id
+        and s.recipient_id is not null
+        and s.revoked_at is null
+    )
+    and not exists (
+      select 1 from public.magistrate_courts mc
+      where mc.profile_id = p_owner_id
+        and mc.court_id = dm.court_id
+        and mc.ended_at is null
+    )
+    and not exists (
+      select 1 from public.docket_matter_assignments a
+      where a.profile_id = p_owner_id
+        and a.docket_matter_id = dm.id
+        and a.ended_at is null
+    )
+    and not exists (
+      select 1 from public.shares s
+      where s.item_type = 'docket_matter'
+        and s.item_id = dm.id
+        and s.recipient_id = p_owner_id
+        and s.revoked_at is null
+    );
+
+  if p_dry_run or cardinality(v_ids) = 0 then
+    return cardinality(v_ids);
+  end if;
+
+  with gone as (
+    delete from public.docket_matter_judgments dmj
+    where dmj.id = any (v_ids)
+    returning dmj.id, dmj.docket_matter_id, dmj.judgment_id, dmj.created_by, dmj.created_at
+  ),
+  logged as (
+    insert into public.audit_log (actor_id, action, table_name, record_id, old_data, new_data)
+    select
+      (select auth.uid()),
+      'delete',
+      'docket_matter_judgments',
+      g.id,
+      jsonb_build_object(
+        'id', g.id,
+        'docket_matter_id', g.docket_matter_id,
+        'judgment_id', g.judgment_id,
+        'created_by', g.created_by,
+        'created_at', g.created_at
+      ),
+      jsonb_build_object(
+        'event', 'judgment_pin_unlinked',
+        'owner_id', p_owner_id,
+        'reason', p_reason
+      )
+    from gone g
+    returning 1
+  )
+  select count(*) into v_count from logged;
+
+  return v_count;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."unlink_orphaned_judgment_pins"("p_owner_id" "uuid", "p_court_id" "uuid", "p_docket_matter_id" "uuid", "p_reason" "text", "p_dry_run" boolean) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."unlink_orphaned_judgment_pins"("p_owner_id" "uuid", "p_court_id" "uuid", "p_docket_matter_id" "uuid", "p_reason" "text", "p_dry_run" boolean) IS 'Internal (0220, BE-26). Unlinks, or with p_dry_run counts, the pins of p_owner_id''s judgments that nobody else can see (not discoverable, no active share) on matters p_owner_id can no longer see (no current court or retained assignment, no docket share), optionally within one court or one matter. Writes one audit_log row per unlinked pin (ids only). Executable by no client role.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."user_can_access_bench_note"("p_note_id" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -9632,6 +10274,28 @@ CREATE TABLE IF NOT EXISTS "public"."issue_reports" (
 ALTER TABLE "public"."issue_reports" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."judgment_ownership_transfers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "judgment_id" "uuid" NOT NULL,
+    "from_owner_id" "uuid" NOT NULL,
+    "to_owner_id" "uuid" NOT NULL,
+    "original_author_id" "uuid" NOT NULL,
+    "transferred_by" "uuid" NOT NULL,
+    "court_id" "uuid" NOT NULL,
+    "reason" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "judgment_ownership_transfers_other_owner" CHECK (("from_owner_id" <> "to_owner_id")),
+    CONSTRAINT "judgment_ownership_transfers_reason_length" CHECK ((("char_length"("btrim"("reason")) >= 1) AND ("char_length"("btrim"("reason")) <= 500)))
+);
+
+
+ALTER TABLE "public"."judgment_ownership_transfers" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."judgment_ownership_transfers" IS 'Append-only record of judgment ownership transfers (0220, BE-26, ADR 0011). Written only by transfer_judgment_ownership. original_author_id is the judgment''s first owner, carried on every transfer, so authorship survives any number of hand-overs. Ids and the administrator''s reason only, never judgment content. A judgment''s owner may still delete it while it is a draft; its transfer rows go with it, and audit_log keeps the event.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."judgment_tags" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "judgment_id" "uuid" NOT NULL,
@@ -9710,11 +10374,11 @@ CREATE TABLE IF NOT EXISTS "public"."judgments" (
 ALTER TABLE "public"."judgments" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."judgments" IS 'Individually owned Judgment records. Never Court-owned; ownership never transfers when a magistrate leaves a Court. Private to owner by default; is_discoverable (owner-controlled) grants other magistrates read-only access, never edit. No admin bypass. Fully independent from Docket/Court access -- linking to a Docket Matter (future docket_matter_judgments) is association only and never confers access. Owner-only DELETE in this migration is explicitly provisional pending the future judgment_lifecycle_locking migration.';
+COMMENT ON TABLE "public"."judgments" IS 'Individually owned Judgment records. Never Court-owned. Private to owner by default; is_discoverable (owner-controlled) grants other magistrates read-only access, never edit. No admin bypass: an administrator can transfer ownership (transfer_judgment_ownership, 0220, ADR 0011) but never read the content. Fully independent from Docket/Court access -- linking to a Docket Matter (docket_matter_judgments) is association only and never confers access.';
 
 
 
-COMMENT ON COLUMN "public"."judgments"."owner_id" IS 'Ownership AND authorship identity combined for 0027. Forced to auth.uid() at creation by a guard trigger (cannot be forged) and immutable thereafter -- an owner cannot transfer a Judgment to another profile by UPDATE. Future collaboration uses explicit sharing (the future shares migration), never ownership transfer. ON DELETE RESTRICT matches the docket_matters.created_by provenance convention -- a profile that owns a Judgment cannot be hard-deleted.';
+COMMENT ON COLUMN "public"."judgments"."owner_id" IS 'The current owner. Forced to auth.uid() at creation by a guard trigger (cannot be forged). Changes only through transfer_judgment_ownership (0220, ADR 0011): an administrator moves it to an active magistrate of a court the owner sat at, and judgment_ownership_transfers keeps the original author. ON DELETE RESTRICT matches the docket_matters.created_by provenance convention.';
 
 
 
@@ -9883,7 +10547,7 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "link" "text",
     "read_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['share_granted'::"text", 'share_revoked'::"text", 'judgment_final'::"text", 'court_assigned'::"text", 'court_ended'::"text", 'clerk_request'::"text", 'clerk_request_decided'::"text", 'court_request'::"text", 'court_request_decided'::"text", 'account_type_corrected'::"text", 'hearing_tomorrow'::"text", 'stale_draft'::"text", 'issue_report_decided'::"text", 'docket_matter_binned'::"text", 'docket_matter_purged'::"text", 'maintenance_failed'::"text"])))
+    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['share_granted'::"text", 'share_revoked'::"text", 'judgment_final'::"text", 'court_assigned'::"text", 'court_ended'::"text", 'clerk_request'::"text", 'clerk_request_decided'::"text", 'court_request'::"text", 'court_request_decided'::"text", 'account_type_corrected'::"text", 'hearing_tomorrow'::"text", 'stale_draft'::"text", 'issue_report_decided'::"text", 'docket_matter_binned'::"text", 'docket_matter_purged'::"text", 'maintenance_failed'::"text", 'judgment_transferred'::"text"])))
 );
 
 
@@ -10553,6 +11217,11 @@ ALTER TABLE ONLY "public"."import_jobs"
 
 ALTER TABLE ONLY "public"."issue_reports"
     ADD CONSTRAINT "issue_reports_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_pkey" PRIMARY KEY ("id");
 
 
 
@@ -11239,6 +11908,30 @@ CREATE INDEX "issue_reports_status_idx" ON "public"."issue_reports" USING "btree
 
 
 
+CREATE INDEX "judgment_ownership_transfers_court_id_idx" ON "public"."judgment_ownership_transfers" USING "btree" ("court_id");
+
+
+
+CREATE INDEX "judgment_ownership_transfers_from_owner_id_idx" ON "public"."judgment_ownership_transfers" USING "btree" ("from_owner_id");
+
+
+
+CREATE INDEX "judgment_ownership_transfers_judgment_id_idx" ON "public"."judgment_ownership_transfers" USING "btree" ("judgment_id", "created_at");
+
+
+
+CREATE INDEX "judgment_ownership_transfers_original_author_id_idx" ON "public"."judgment_ownership_transfers" USING "btree" ("original_author_id");
+
+
+
+CREATE INDEX "judgment_ownership_transfers_to_owner_id_idx" ON "public"."judgment_ownership_transfers" USING "btree" ("to_owner_id");
+
+
+
+CREATE INDEX "judgment_ownership_transfers_transferred_by_idx" ON "public"."judgment_ownership_transfers" USING "btree" ("transferred_by");
+
+
+
 CREATE INDEX "judgment_tags_created_by_idx" ON "public"."judgment_tags" USING "btree" ("created_by");
 
 
@@ -11699,6 +12392,10 @@ CREATE OR REPLACE TRIGGER "docket_events_guard_trigger" BEFORE INSERT OR UPDATE 
 
 
 
+CREATE OR REPLACE TRIGGER "docket_matter_assignments_unlink_orphaned_judgment_pins" AFTER UPDATE OF "ended_at" ON "public"."docket_matter_assignments" FOR EACH ROW WHEN ((("old"."ended_at" IS NULL) AND ("new"."ended_at" IS NOT NULL))) EXECUTE FUNCTION "public"."unlink_judgment_pins_on_retained_end"();
+
+
+
 CREATE OR REPLACE TRIGGER "docket_matter_case_law_guard_trigger" BEFORE INSERT ON "public"."docket_matter_case_law" FOR EACH ROW EXECUTE FUNCTION "public"."docket_matter_case_law_guard"();
 
 
@@ -11796,6 +12493,10 @@ CREATE OR REPLACE TRIGGER "magistrate_court_requests_notify_trigger" AFTER INSER
 
 
 CREATE OR REPLACE TRIGGER "magistrate_courts_notify_trigger" AFTER INSERT ON "public"."magistrate_courts" FOR EACH ROW EXECUTE FUNCTION "public"."magistrate_courts_notify"();
+
+
+
+CREATE OR REPLACE TRIGGER "magistrate_courts_unlink_orphaned_judgment_pins" AFTER UPDATE OF "ended_at" ON "public"."magistrate_courts" FOR EACH ROW WHEN ((("old"."ended_at" IS NULL) AND ("new"."ended_at" IS NOT NULL))) EXECUTE FUNCTION "public"."unlink_judgment_pins_on_court_end"();
 
 
 
@@ -12468,6 +13169,36 @@ ALTER TABLE ONLY "public"."issue_reports"
 
 ALTER TABLE ONLY "public"."issue_reports"
     ADD CONSTRAINT "issue_reports_resolved_by_fkey" FOREIGN KEY ("resolved_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_court_id_fkey" FOREIGN KEY ("court_id") REFERENCES "public"."courts"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_from_owner_id_fkey" FOREIGN KEY ("from_owner_id") REFERENCES "public"."profiles"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_judgment_id_fkey" FOREIGN KEY ("judgment_id") REFERENCES "public"."judgments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_original_author_id_fkey" FOREIGN KEY ("original_author_id") REFERENCES "public"."profiles"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_to_owner_id_fkey" FOREIGN KEY ("to_owner_id") REFERENCES "public"."profiles"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."judgment_ownership_transfers"
+    ADD CONSTRAINT "judgment_ownership_transfers_transferred_by_fkey" FOREIGN KEY ("transferred_by") REFERENCES "public"."profiles"("id") ON DELETE RESTRICT;
 
 
 
@@ -13253,6 +13984,10 @@ CREATE POLICY "Deactivated accounts have no access" ON "public"."issue_reports" 
 
 
 
+CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_ownership_transfers" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
+
+
+
 CREATE POLICY "Deactivated accounts have no access" ON "public"."judgment_tags" AS RESTRICTIVE TO "authenticated" USING ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL)) WITH CHECK ((( SELECT "public"."active_account_id"() AS "active_account_id") IS NOT NULL));
 
 
@@ -13623,6 +14358,10 @@ CREATE POLICY "Owners can view their own Case Law Annotations" ON "public"."case
 
 
 
+CREATE POLICY "Parties to a transfer and administrators can view it" ON "public"."judgment_ownership_transfers" FOR SELECT TO "authenticated" USING (((((( SELECT "auth"."uid"() AS "uid") = "from_owner_id") OR (( SELECT "auth"."uid"() AS "uid") = "to_owner_id")) OR (( SELECT "auth"."uid"() AS "uid") = "original_author_id")) OR ( SELECT "public"."is_admin"() AS "is_admin")));
+
+
+
 CREATE POLICY "Profiles are editable by owner or admin" ON "public"."profiles" FOR UPDATE USING (((( SELECT "auth"."uid"() AS "uid") = "id") OR ( SELECT "public"."is_admin"() AS "is_admin"))) WITH CHECK ((((( SELECT "auth"."uid"() AS "uid") = "id") AND ("role" = ( SELECT "public"."current_profile_role"() AS "current_profile_role")) AND (NOT ("court_id" IS DISTINCT FROM ( SELECT "public"."current_profile_court_id"() AS "current_profile_court_id"))) AND (NOT ("is_active" IS DISTINCT FROM ( SELECT "public"."current_profile_is_active"() AS "current_profile_is_active"))) AND (NOT ("email" IS DISTINCT FROM ( SELECT "public"."current_profile_email"() AS "current_profile_email")))) OR ( SELECT "public"."is_admin"() AS "is_admin")));
 
 
@@ -13900,6 +14639,9 @@ ALTER TABLE "public"."import_jobs" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."issue_reports" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."judgment_ownership_transfers" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."judgment_tags" ENABLE ROW LEVEL SECURITY;
@@ -14961,6 +15703,12 @@ GRANT ALL ON FUNCTION "public"."relinquish_magistrate_court"("p_assignment_id" "
 
 
 
+REVOKE ALL ON FUNCTION "public"."relinquish_preflight"("p_assignment_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."relinquish_preflight"("p_assignment_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."relinquish_preflight"("p_assignment_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."request_edge_function_run"("p_function" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."request_edge_function_run"("p_function" "text") TO "service_role";
 
@@ -15195,6 +15943,33 @@ GRANT ALL ON FUNCTION "public"."sync_magistrate_court_occupies_primary_slot"() T
 
 
 
+REVOKE ALL ON FUNCTION "public"."transfer_judgment_ownership"("p_judgment_id" "uuid", "p_to_profile_id" "uuid", "p_court_id" "uuid", "p_reason" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."transfer_judgment_ownership"("p_judgment_id" "uuid", "p_to_profile_id" "uuid", "p_court_id" "uuid", "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."transfer_judgment_ownership"("p_judgment_id" "uuid", "p_to_profile_id" "uuid", "p_court_id" "uuid", "p_reason" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."unlink_judgment_pins_on_court_end"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."unlink_judgment_pins_on_court_end"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."unlink_judgment_pins_on_retained_end"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."unlink_judgment_pins_on_retained_end"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."unlink_my_orphaned_judgment_pins"("p_dry_run" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."unlink_my_orphaned_judgment_pins"("p_dry_run" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."unlink_my_orphaned_judgment_pins"("p_dry_run" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."unlink_orphaned_judgment_pins"("p_owner_id" "uuid", "p_court_id" "uuid", "p_docket_matter_id" "uuid", "p_reason" "text", "p_dry_run" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."unlink_orphaned_judgment_pins"("p_owner_id" "uuid", "p_court_id" "uuid", "p_docket_matter_id" "uuid", "p_reason" "text", "p_dry_run" boolean) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."user_can_access_bench_note"("p_note_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."user_can_access_bench_note"("p_note_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."user_can_access_bench_note"("p_note_id" "uuid") TO "service_role";
@@ -15425,6 +16200,11 @@ GRANT ALL ON TABLE "public"."import_jobs" TO "service_role";
 GRANT ALL ON TABLE "public"."issue_reports" TO "anon";
 GRANT ALL ON TABLE "public"."issue_reports" TO "authenticated";
 GRANT ALL ON TABLE "public"."issue_reports" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."judgment_ownership_transfers" TO "service_role";
+GRANT SELECT ON TABLE "public"."judgment_ownership_transfers" TO "authenticated";
 
 
 
