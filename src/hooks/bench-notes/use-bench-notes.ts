@@ -130,7 +130,13 @@ export function useUpdateBenchNoteFields(id: string) {
 export function useUpdateBenchNoteContent(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, content_text }: { content: Json; content_text: string }) => {
+    mutationFn: async ({
+      content,
+      content_text,
+    }: {
+      content: NonNullable<Json>;
+      content_text: string;
+    }) => {
       const { error } = await supabase
         .from("bench_notes")
         .update({ content, content_text })

@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn, toTitleCase } from "@/lib/utils";
 import {
   POSTER_INK,
   POSTER_SCRIM_CLASS,
   POSTER_SCRIM_FADE_CLASS,
-  TONE_GRADIENT,
+  TONE_HSL_VAR,
   TONE_ICON,
   TONE_LABEL,
   type TitleCardTone,
@@ -70,17 +70,18 @@ export function TitleCard({
   const kicker = identifier || eyebrow;
   const kickerClass = identifier ? "identifier" : "uppercase tracking-[0.12em]";
 
+  const toneStyle = { "--band": TONE_HSL_VAR[tone] } as CSSProperties;
   const toneArt = (
     <>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--foreground)/0.12),transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--art-glow)),transparent_55%)]" />
       <Icon
         className={cn(
           "absolute",
           layout === "list"
             ? "right-[-18%] top-[12%] h-[70%] w-[70%] rotate-[-16deg] text-foreground/15"
             : tileStyle === "posters"
-              ? "right-[-6%] top-[18%] h-[46%] w-[46%] rotate-[-16deg] text-primary-foreground/20"
-              : "right-[6%] top-[26%] h-[60%] w-auto rotate-[-16deg] text-primary-foreground/20",
+              ? "right-[-6%] top-[18%] h-[46%] w-[46%] rotate-[-16deg] text-art-ink/20"
+              : "right-[6%] top-[26%] h-[60%] w-auto rotate-[-16deg] text-art-ink/20",
         )}
         strokeWidth={1.25}
         aria-hidden="true"
@@ -97,11 +98,8 @@ export function TitleCard({
         )}
       >
         <div
-          className={cn(
-            "relative shrink-0 overflow-hidden bg-gradient-to-br",
-            LIST_THUMB_CLASS[tileSize],
-            TONE_GRADIENT[tone],
-          )}
+          className={cn("tone-art relative shrink-0 overflow-hidden", LIST_THUMB_CLASS[tileSize])}
+          style={toneStyle}
         >
           {hasPhoto ? (
             <img
@@ -146,11 +144,14 @@ export function TitleCard({
     ) : tileStyle === "posters" ? (
       <article
         className={cn(
-          "relative aspect-[2/3] overflow-hidden rounded-md bg-gradient-to-br ring-1 ring-inset ring-transparent transition-[box-shadow] duration-120 ease-out-expo hc:ring-border",
-          "hover-fine:group-hover/still:shadow-elevation-3 hover-fine:group-hover/still:ring-primary-foreground/40",
-          TONE_GRADIENT[tone],
+          // A poster's words sit on its art, on a black scrim, so a poster is
+          // cinematic in every palette: `dark` resolves its tone art (and the
+          // flag chip on it) to the dark stops even on the light canvas.
+          "dark tone-art relative aspect-[2/3] overflow-hidden rounded-md ring-1 ring-inset ring-transparent transition-[box-shadow] duration-120 ease-out-expo hc:ring-border",
+          "hover-fine:group-hover/still:shadow-elevation-3 hover-fine:group-hover/still:ring-art-ink/40",
           className,
         )}
+        style={toneStyle}
       >
         {toneArt}
         {/* A cover is an identification photo of a party: on a poster too
@@ -161,12 +162,12 @@ export function TitleCard({
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute left-2 top-9 aspect-[3/4] h-[26%] w-auto rounded-sm object-cover shadow-elevation-1 ring-1 ring-primary-foreground/30"
+            className="absolute left-2 top-9 aspect-[3/4] h-[26%] w-auto rounded-sm object-cover shadow-elevation-1 ring-1 ring-art-ink/30"
           />
         )}
 
         <div className="absolute inset-x-2 top-2 flex flex-row-reverse flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">
+          <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.18em] text-art-ink">
             {TONE_LABEL[tone]}
           </span>
 
@@ -214,10 +215,8 @@ export function TitleCard({
         )}
       >
         <div
-          className={cn(
-            "relative aspect-video shrink-0 overflow-hidden bg-gradient-to-br",
-            TONE_GRADIENT[tone],
-          )}
+          className={cn("tone-art relative aspect-video shrink-0 overflow-hidden")}
+          style={toneStyle}
         >
           {toneArt}
           {/* A cover is an identification photo of a party: it is shown
@@ -228,12 +227,12 @@ export function TitleCard({
               alt=""
               loading="lazy"
               decoding="async"
-              className="absolute bottom-2 left-2 aspect-[3/4] h-[46%] w-auto rounded-sm object-cover shadow-elevation-1 ring-1 ring-primary-foreground/30"
+              className="absolute bottom-2 left-2 aspect-[3/4] h-[46%] w-auto rounded-sm object-cover shadow-elevation-1 ring-1 ring-art-ink/30"
             />
           )}
 
           <div className="absolute inset-x-2 top-2 flex flex-row-reverse flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">
+            <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.18em] text-art-ink">
               {TONE_LABEL[tone]}
             </span>
 

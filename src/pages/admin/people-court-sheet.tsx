@@ -27,6 +27,7 @@ import { ASSIGNMENT_TYPE_LABEL } from "@/lib/court-assignment-roster";
 import { ROLE_LABELS } from "@/lib/constants";
 import type { OccupiedCourtResolution } from "@/lib/occupied-court-exception";
 import { useRevokeClerkCourtAccess } from "@/hooks/clerk/use-clerk-access-review";
+import { Alert } from "@/components/ui/alert";
 
 export function PeopleCourtSheet(props: { person: AdminPersonRow | null; onClose: () => void }) {
   const person = props.person;
@@ -150,10 +151,10 @@ export function PeopleCourtSheet(props: { person: AdminPersonRow | null; onClose
             {canManageMagistrate && (
               <>
                 {neverSignedIn && (
-                  <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+                  <Alert role="note" className="py-2 text-xs text-muted-foreground">
                     This person has not signed in yet, so they do not occupy a court slot and will
                     not appear as blocking that court for someone else.
-                  </p>
+                  </Alert>
                 )}
 
                 <section className="space-y-3">

@@ -143,7 +143,7 @@ export function DocketCapacitySettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-left">
           <div className="flex items-center gap-0.5 pr-8">
             <DialogTitle>Docket Capacity Settings</DialogTitle>
@@ -265,7 +265,7 @@ function OverrideHistory({ open }: { open: boolean }) {
                 </p>
                 {matter?.case_number ? (
                   <p className="text-xs text-muted-foreground">
-                    {matter.case_number}
+                    <span className="identifier">{matter.case_number}</span>
                     {matter.matter_title ? ` · ${matter.matter_title}` : ""}
                   </p>
                 ) : null}

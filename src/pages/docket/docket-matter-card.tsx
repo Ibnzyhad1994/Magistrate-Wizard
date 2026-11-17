@@ -22,6 +22,8 @@ import type { Json, TablesUpdate } from "@/types/database.types";
 import { matterClassificationLabel } from "@/lib/validations/docket";
 import type { LogAppearanceRequest } from "@/pages/docket/docket-stage-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { badgeVariants } from "@/components/ui/badge-variants";
+import { cn } from "@/lib/utils";
 
 const ATTACHMENT_PURPOSE: Partial<Record<ProcedureColumnKey, "ruling" | "judgment">> = {
   ruling_status: "ruling",
@@ -139,12 +141,12 @@ export function DocketMatterCard({
           </p>
           <p className="text-sm text-foreground">{row.matter_title}</p>
           {classification && (
-            <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+            <span className={cn(badgeVariants({ variant: "tag" }), "mr-1 mt-0.5")}>
               {classification}
             </span>
           )}
           {showCourt && row.court_name && (
-            <span className="mr-1 mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+            <span className={cn(badgeVariants({ variant: "tag" }), "mr-1 mt-0.5")}>
               {row.court_name}
             </span>
           )}
@@ -178,7 +180,11 @@ export function DocketMatterCard({
                 adjourned,
                 reason,
               );
-              void onPatch(row.id, { stage_adjournments: next as Json }, row.updated_at);
+              void onPatch(
+                row.id,
+                { stage_adjournments: next as NonNullable<Json> },
+                row.updated_at,
+              );
             },
           };
         }}

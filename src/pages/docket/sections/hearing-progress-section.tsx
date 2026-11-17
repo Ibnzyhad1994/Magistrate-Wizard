@@ -341,7 +341,7 @@ export function HearingProgressSection({ matter }: { matter: DocketMatter }) {
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="eyebrow text-muted-foreground">{label}</p>
       <p className="font-medium text-foreground">{value}</p>
     </div>
   );
@@ -459,10 +459,7 @@ function HearingProgressDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        preventDismissWhenDirty={form.formState.isDirty}
-        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
-      >
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{entry ? "Edit hearing progress" : "Record hearing progress"}</DialogTitle>
           <DialogDescription>

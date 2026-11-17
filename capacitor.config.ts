@@ -19,11 +19,12 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: isDev,
   },
+  // The WebView paints the dark canvas before the app's first frame, so the
+  // native splash hands over without a white flash. The launch screen itself
+  // is native (android/app/src/main/res, ios/App/App/Base.lproj), drawn by
+  // `npm run native:icons`; no splash-screen plugin is installed.
+  backgroundColor: "#0d0e11",
   plugins: {
-    SplashScreen: {
-      launchAutoHide: true,
-      backgroundColor: "#0d0e11",
-    },
     StatusBar: {
       style: "DARK",
       backgroundColor: "#0d0e11",

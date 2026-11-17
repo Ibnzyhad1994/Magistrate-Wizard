@@ -12,9 +12,11 @@ const openAuthDeepLink = (url: string) => {
 };
 
 /**
- * Native chrome. Electron: Auth email deep links. Capacitor: status bar
- * colour, Auth and OAuth deep-link returns, and flush queued hearings when
- * the app comes back to the foreground. No-op in the browser.
+ * Native chrome. Electron: Auth email deep links. Capacitor: the status
+ * bar's place, Auth and OAuth deep-link returns, and flush queued hearings
+ * when the app comes back to the foreground. The status bar's style and
+ * colour follow the theme in `applyResolvedTheme` (`src/lib/theme.ts`).
+ * No-op in the browser.
  */
 export const initNativeShell = async () => {
   window.magistrateWizard?.onDeepLink?.(openAuthDeepLink);
@@ -23,13 +25,7 @@ export const initNativeShell = async () => {
   if (!cap?.isNativePlatform?.()) return;
 
   try {
-    const { StatusBar, Style } = await import("@capacitor/status-bar");
-    const root = document.documentElement;
-    const dark = root.classList.contains("dark");
-    const highContrast = root.classList.contains("theme-high-contrast");
-    const color = highContrast ? (dark ? "#000000" : "#ffffff") : dark ? "#0d0e11" : "#f6f3ee";
-    await StatusBar.setBackgroundColor({ color });
-    await StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light });
+    const { StatusBar } = await import("@capacitor/status-bar");
     // Keep the WebView below the status bar / punch-hole so the hamburger
     // is not sitting under the Galaxy S22 camera cutout.
     await StatusBar.setOverlaysWebView({ overlay: false });

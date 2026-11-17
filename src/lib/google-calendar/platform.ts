@@ -9,6 +9,8 @@ declare global {
       ) => Promise<{ code: string; state?: string | null; redirectUri: string }>;
       /** Electron: `magistratewizard://` links the OS opened the app with. */
       onDeepLink?: (callback: (url: string) => void) => void;
+      /** The desktop window's background and title bar follow the theme. */
+      setWindowTheme?: (canvas: string, scheme: "light" | "dark") => void;
     };
     Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string };
   }

@@ -95,7 +95,7 @@ export function DocketCloseoutPanel({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-foreground">
-                      {entry.case_number} · {entry.matter_title}
+                      <span className="identifier">{entry.case_number}</span> · {entry.matter_title}
                     </p>
                     <p
                       className={cn(

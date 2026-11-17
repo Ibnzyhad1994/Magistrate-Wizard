@@ -71,10 +71,24 @@ export function useWebhookEndpoints() {
   });
 }
 
+/** The outbox columns the Operations page shows. */
+export type WebhookOutboxRow = Pick<
+  Tables<"webhook_outbox">,
+  | "id"
+  | "endpoint_id"
+  | "event"
+  | "payload"
+  | "status"
+  | "attempts"
+  | "last_error"
+  | "created_at"
+  | "delivered_at"
+>;
+
 export function useWebhookOutbox() {
   return useQuery({
     queryKey: operationsKeys.outbox,
-    queryFn: async (): Promise<Tables<"webhook_outbox">[]> => {
+    queryFn: async (): Promise<WebhookOutboxRow[]> => {
       const { data, error } = await supabase
         .from("webhook_outbox")
         .select(

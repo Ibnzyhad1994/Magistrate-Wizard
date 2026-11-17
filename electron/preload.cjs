@@ -4,4 +4,5 @@ contextBridge.exposeInMainWorld("magistrateWizard", {
   isElectron: true,
   startGoogleOAuth: (authUrl) => ipcRenderer.invoke("google-oauth-loopback", authUrl),
   onDeepLink: (callback) => ipcRenderer.on("deep-link", (_event, url) => callback(url)),
+  setWindowTheme: (canvas, scheme) => ipcRenderer.send("window-theme", { canvas, scheme }),
 });

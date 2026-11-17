@@ -26,6 +26,11 @@ export interface AlertDialogProps {
   onConfirm: () => void;
   isConfirming?: boolean;
   confirmDisabled?: boolean;
+  /**
+   * Content between the description and the buttons: a list, a form field.
+   * The description is a paragraph, so block content goes here instead.
+   */
+  children?: React.ReactNode;
 }
 
 export function AlertDialog({
@@ -39,6 +44,7 @@ export function AlertDialog({
   onConfirm,
   isConfirming = false,
   confirmDisabled = false,
+  children,
 }: AlertDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -47,6 +53,7 @@ export function AlertDialog({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
+        {children}
         <DialogFooter>
           <Button
             type="button"

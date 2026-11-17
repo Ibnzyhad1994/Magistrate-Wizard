@@ -220,7 +220,8 @@ export function PortablePackPanel({
                   <ul className="max-h-32 overflow-y-auto break-words text-sm text-muted-foreground">
                     {preview.matters.map((matter) => (
                       <li key={matter.case_number}>
-                        {matter.case_number} · {matter.matter_title}
+                        <span className="identifier">{matter.case_number}</span> ·{" "}
+                        {matter.matter_title}
                       </li>
                     ))}
                   </ul>

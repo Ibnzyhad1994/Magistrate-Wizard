@@ -35,7 +35,7 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
                   Overdue · {formatDate(event.scheduled_date)}
                 </p>
                 <p className="mt-1 text-sm text-foreground">
-                  {event.case_number} · {event.matter_title}
+                  <span className="identifier">{event.case_number}</span> · {event.matter_title}
                 </p>
               </Link>
             </li>
@@ -66,7 +66,7 @@ export function AppearanceTimeline({ events, today }: { events: EventPulseRow[];
                 className="min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <p className="truncate text-sm font-medium text-foreground">
-                  {event.case_number} · {event.matter_title}
+                  <span className="identifier">{event.case_number}</span> · {event.matter_title}
                 </p>
                 <p className="eyebrow mt-1 text-muted-foreground">
                   {toTitleCase((event.event_type ?? "appearance").replace(/_/g, " "))}

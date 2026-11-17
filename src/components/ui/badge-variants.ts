@@ -20,6 +20,11 @@ export const badgeVariants = cva(
         // canonical content (shared, admin-curated — not a personal
         // record). Never used as a general-purpose accent.
         canonical: "border-brass/30 bg-brass/10 text-brass-foreground dark:text-brass",
+        // A quiet descriptive tag (a classification, a court, "Brought
+        // forward"): not a status, so neutral, and one line that truncates.
+        // Use through `cn(badgeVariants({ variant: "tag" }), …)` so these
+        // classes win over the base.
+        tag: "inline-block max-w-full truncate border-hairline bg-surface-2 px-1.5 text-[11px] font-medium text-muted-foreground hc:border-border",
       },
     },
     defaultVariants: {

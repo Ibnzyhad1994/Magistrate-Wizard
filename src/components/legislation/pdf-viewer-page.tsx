@@ -8,6 +8,7 @@ import {
   pixelRectToNormalized,
   type RedactionBox,
 } from "@/lib/redaction";
+import { scrollBehavior } from "@/lib/motion";
 
 /** A box on this page, paired with its index in the viewer's full list. */
 export type PageRedactionEntry = { box: RedactionBox; index: number };
@@ -199,7 +200,7 @@ export function PdfViewerPage({
 
   useEffect(() => {
     if (scrollToActive) {
-      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      containerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }, [scrollToActive]);
 
@@ -293,7 +294,7 @@ export function PdfViewerPage({
       // of paper the PDF renders onto. A page of an Act is white in both
       // themes — theming it would tint the document itself and misrepresent
       // what the file actually looks like.
-      className="relative mx-auto mb-4 bg-white shadow-md"
+      className="relative mx-auto mb-4 bg-white shadow-elevation-2"
       style={size ? { width: size.width, height: size.height } : { minHeight: 400, width: "100%" }}
     >
       {isVisible ? (
@@ -373,7 +374,7 @@ export function PdfViewerPage({
           <button
             ref={addButtonRef}
             type="button"
-            className="absolute left-2 top-2 z-10 rounded-sm border border-foreground/80 bg-foreground px-2 py-1 text-xs font-medium text-background shadow-sm transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute left-2 top-2 z-10 rounded-sm border border-foreground/80 bg-foreground px-2 py-1 text-xs font-medium text-background shadow-elevation-1 transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             // The drawing surface below listens on pointerdown; without
             // stopping here, pressing this button also starts a drag.
             onPointerDown={(e) => {
@@ -406,7 +407,7 @@ export function PdfViewerPage({
               <button
                 key={`remove-redact-${index}`}
                 type="button"
-                className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-full border border-foreground/80 bg-foreground text-background shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute z-10 flex h-6 w-6 items-center justify-center rounded-full border border-foreground/80 bg-foreground text-background shadow-elevation-1 transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 style={{ left: px.x + px.width - 12, top: px.y - 12 }}
                 // The drawing surface below listens on pointerdown; without
                 // stopping here, pressing this button also starts a drag.

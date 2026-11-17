@@ -30,6 +30,7 @@ import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { AUTH_PANEL_CLASS } from "@/components/theme/app-canvas";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { Alert } from "@/components/ui/alert";
 
 const fieldClassName =
   "h-12 rounded-sm border border-border bg-secondary text-foreground placeholder:text-muted-foreground focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring";
@@ -92,7 +93,7 @@ export default function RegisterPage() {
   return (
     <Card className={AUTH_PANEL_CLASS}>
       <CardHeader className="space-y-2 px-8 pt-10 sm:px-16 sm:pt-12">
-        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">Sign Up</h1>
+        <h1 className="text-display text-foreground">Sign Up</h1>
         <CardDescription className="text-foreground/70">
           Set up your {APP_NAME} account to start building your knowledge base.
         </CardDescription>
@@ -140,10 +141,10 @@ export default function RegisterPage() {
             />
 
             {accountType === "clerk" && (
-              <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+              <Alert role="note" className="py-2 text-xs text-muted-foreground">
                 The magistrate at each court you pick approves your access. Once your email is
                 verified you can sign in and check your request.
-              </p>
+              </Alert>
             )}
 
             <FormField
@@ -222,10 +223,10 @@ export default function RegisterPage() {
             />
 
             {accountType === "magistrate" && (
-              <p className="rounded-sm border border-border bg-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+              <Alert role="note" className="py-2 text-xs text-muted-foreground">
                 Picking a court sends a request. An administrator reviews each one. Once your email
                 is verified you can sign in and check on it.
-              </p>
+              </Alert>
             )}
 
             <FormField
@@ -251,7 +252,7 @@ export default function RegisterPage() {
                   void districtsQuery.refetch();
                   void courtsQuery.refetch();
                 }}
-                className="border-border bg-foreground/5 py-4"
+                className="py-4"
               />
             )}
 

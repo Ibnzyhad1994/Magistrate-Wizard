@@ -15,6 +15,7 @@ import {
   type ProcedureFilters,
 } from "@/lib/docket-procedure";
 import { cn } from "@/lib/utils";
+import { filterPillClass } from "@/components/ui/filter-pill";
 
 function Chip({
   selected,
@@ -30,12 +31,7 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={cn(
-        "min-h-8 touch-manipulation rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        selected
-          ? "border-foreground/40 bg-foreground text-background"
-          : "border-border bg-foreground/5 text-foreground/75 hover:bg-foreground/10",
-      )}
+      className={cn(filterPillClass(selected), "min-h-8 touch-manipulation")}
     >
       {children}
     </button>
@@ -45,9 +41,7 @@ function Chip({
 function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <span className="mr-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
+      <span className="eyebrow mr-0.5 text-muted-foreground">{label}</span>
       {children}
     </div>
   );

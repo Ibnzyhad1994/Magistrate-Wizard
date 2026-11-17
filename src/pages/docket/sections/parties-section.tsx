@@ -227,10 +227,7 @@ function PartyDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        preventDismissWhenDirty={form.formState.isDirty}
-        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
-      >
+      <DialogContent preventDismissWhenDirty={form.formState.isDirty} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{party ? "Edit party" : "Add party"}</DialogTitle>
           <DialogDescription>

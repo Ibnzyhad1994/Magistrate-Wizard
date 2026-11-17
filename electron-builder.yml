@@ -19,6 +19,9 @@ protocols:
   - name: Magistrate Wizard
     schemes:
       - magistratewizard
+# The seal on the dark canvas (drawn by `npm run native:icons`); the window
+# takes the same file at runtime. electron-builder makes the .ico from it.
+icon: electron/icon.png
 win:
   target:
     - nsis

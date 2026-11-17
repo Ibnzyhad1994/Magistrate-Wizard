@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BrowseHeader, BrowsePage } from "@/components/browse";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -312,10 +313,7 @@ const WebhooksPanel = () => {
             Add endpoint
           </Button>
           {justCreated && (
-            <div
-              role="status"
-              className="space-y-2 rounded-md border border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)] p-3 text-sm"
-            >
+            <Alert variant="warning" role="status" className="space-y-2">
               <p className="font-medium text-foreground">Signing secret for {justCreated.url}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <code className="break-all rounded-md bg-foreground/5 px-2 py-1 font-mono text-xs">
@@ -343,7 +341,7 @@ const WebhooksPanel = () => {
                 Configure the receiving system to verify X-Magistrate-Wizard-Signature with it. You
                 can reveal it again later; every reveal is recorded in the audit log.
               </p>
-            </div>
+            </Alert>
           )}
         </CardContent>
       </Card>

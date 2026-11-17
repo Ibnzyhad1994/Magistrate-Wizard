@@ -138,9 +138,7 @@ export function SharingPanel({ itemType, itemId, canManage }: SharingPanelProps)
 
       {revokedShares.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            History
-          </p>
+          <p className="eyebrow mb-2 text-muted-foreground">History</p>
           <Table aria-label="Share history">
             <TableBody>
               {revokedShares.map((share) => (

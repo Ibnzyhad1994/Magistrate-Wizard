@@ -1011,7 +1011,7 @@ function LinksPanel({ judgmentId }: { judgmentId: string }) {
                         {m.docket_matters.matter_title}
                       </span>{" "}
                       <span className="text-muted-foreground">
-                        ({m.docket_matters.case_number})
+                        (<span className="identifier">{m.docket_matters.case_number}</span>)
                       </span>
                     </span>
                   ) : (

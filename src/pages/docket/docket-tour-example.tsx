@@ -109,9 +109,7 @@ function MobileExampleCard() {
       <div className="mb-3 flex items-start justify-between gap-3">
         <ExampleCaseLabel />
         <div className="shrink-0" data-tour="docket-next-date">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Next date
-          </p>
+          <p className="eyebrow text-muted-foreground">Next date</p>
           <span className="whitespace-nowrap rounded-md px-1.5 py-1 text-left text-xs font-medium text-foreground/70 underline decoration-dotted underline-offset-2">
             + Set date
           </span>
@@ -124,7 +122,7 @@ function MobileExampleCard() {
             data-tour-focus={column.key === "arraignment_status" ? "" : undefined}
             className="min-w-0 space-y-1"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               <ProcedureColumnHeading columnKey={column.key} label={column.label} />
             </p>
             <ExampleStageChip

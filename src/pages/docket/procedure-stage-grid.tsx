@@ -59,7 +59,7 @@ export function ProcedureStageGrid({
             }
             className={cn("min-w-0 space-y-1", layout === "overview" && "sm:min-w-[6.5rem]")}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               <ProcedureColumnHeading columnKey={column.key} label={column.label} />
             </p>
             <DocketStageCell

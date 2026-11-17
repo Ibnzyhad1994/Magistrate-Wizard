@@ -24,7 +24,7 @@ export function DetailsHint({ label, details }: { label: string; details: string
       <DropdownMenuContent
         align="start"
         collisionPadding={12}
-        className="z-hint max-w-[min(18rem,calc(100vw-1.5rem))] border-border bg-card p-3 text-xs leading-relaxed text-foreground shadow-md"
+        className="z-hint max-w-[min(18rem,calc(100vw-1.5rem))] border-border bg-card p-3 text-xs leading-relaxed text-foreground shadow-elevation-3"
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
         {details}

@@ -35,6 +35,7 @@ import {
   type RedactionBox,
 } from "@/lib/redaction";
 import { burnRedactedPdf, redactedPdfFileName } from "@/lib/redaction-pdf";
+import { scrollBehavior } from "@/lib/motion";
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
@@ -210,7 +211,7 @@ export function LegislationPdfViewer({
   const goToPage = useCallback((n: number) => {
     const root = scrollRef.current;
     const target = root?.querySelector<HTMLElement>(`[data-page-number="${n}"]`);
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    target?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   }, []);
 
   function submitPageInput() {
@@ -642,7 +643,7 @@ export function LegislationPdfViewer({
       )}
 
       {searchOpen && showScannedNotice && (
-        <div className="border-b border-notice-action/35 bg-notice-action/10 px-3 py-2 text-xs text-notice-action">
+        <div className="border-b border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
           This PDF has no searchable text, but you can still read it.
         </div>
       )}
@@ -684,10 +685,7 @@ export function LegislationPdfViewer({
                     aria-labelledby={headingId}
                     className="rounded-sm border border-foreground/10 bg-card p-4"
                   >
-                    <h3
-                      id={headingId}
-                      className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
+                    <h3 id={headingId} className="eyebrow mb-2 text-muted-foreground">
                       Page {n}
                     </h3>
                     {lines.length === 0 ? (

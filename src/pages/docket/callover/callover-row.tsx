@@ -14,6 +14,8 @@ import { NOT_SET } from "@/lib/empty-display";
 import { ROUTES } from "@/routes/paths";
 import { formatDate } from "@/lib/utils";
 import type { TablesUpdate } from "@/types/database.types";
+import { badgeVariants } from "@/components/ui/badge-variants";
+import { cn } from "@/lib/utils";
 
 const OTHER = "__other__";
 
@@ -92,7 +94,7 @@ export function CalloverRow({
   return (
     <>
       <TableRow className={called ? "opacity-70" : undefined}>
-        <TableCell className="sticky left-0 z-20 w-[9rem] max-w-[9rem] overflow-hidden bg-card shadow-[2px_0_0_0_hsl(var(--foreground)/0.08)] sm:w-56 sm:max-w-56">
+        <TableCell className="sticky left-0 z-20 w-[9rem] max-w-[9rem] overflow-hidden border-r border-border bg-card sm:w-56 sm:max-w-56">
           <Link
             to={ROUTES.docketMatter(row.docket_matter_id)}
             className="block min-w-0 hover:underline"
@@ -107,7 +109,7 @@ export function CalloverRow({
               </p>
             )}
             {matter?.brought_forward_from && (
-              <span className="mt-0.5 inline-block truncate rounded-[2px] border border-foreground/20 bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+              <span className={cn(badgeVariants({ variant: "tag" }), "mt-0.5")}>
                 Brought forward
               </span>
             )}

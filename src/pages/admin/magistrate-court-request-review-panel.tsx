@@ -129,7 +129,7 @@ export function MagistrateCourtRequestReviewPanel() {
                 courtIsOccupied: Boolean(occupiedIds?.has(r.court_id)),
               });
               return (
-                <Card key={r.id} className="border-border bg-foreground/5">
+                <Card key={r.id}>
                   <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
                     <div>
                       <p className="font-medium text-foreground">
@@ -199,7 +199,7 @@ export function MagistrateCourtRequestReviewPanel() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-[hsl(var(--notice-action)/0.4)] text-notice-action hover:bg-[hsl(var(--notice-action)/0.1)]"
+                          className="border-warning/40 hover:bg-warning/10"
                           onClick={() => {
                             setBootstrapTarget(r);
                             setBootstrapReason("");
@@ -228,7 +228,7 @@ export function MagistrateCourtRequestReviewPanel() {
           <h2 className="mb-3 text-sm font-semibold text-foreground">History</h2>
           <div className="space-y-3">
             {decided.map((r) => (
-              <Card key={r.id} className="border-border bg-foreground/5">
+              <Card key={r.id}>
                 <CardContent className="flex items-center justify-between gap-4 py-4">
                   <div>
                     <p className="font-medium text-foreground">

@@ -616,10 +616,10 @@ function LinkedMattersCard({ caseLawId }: { caseLawId: string }) {
         {isPending ? (
           <Skeleton className="h-16 w-full" />
         ) : isError ? (
-          <InlineError error={error} onRetry={() => void refetch()} className="border-0 p-0" />
+          <InlineError error={error} onRetry={() => void refetch()} bare className="p-0" />
         ) : !data || data.length === 0 ? (
           <EmptyState
-            className="border-0 py-4"
+            className="py-4"
             title="Not linked to any matter"
             description="Link this authority to a Docket Matter you have access to."
           />
@@ -640,7 +640,7 @@ function LinkedMattersCard({ caseLawId }: { caseLawId: string }) {
                       {link.docket_matters.matter_title}
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      {link.docket_matters.case_number}
+                      <span className="identifier">{link.docket_matters.case_number}</span>
                       {link.docket_matters.status && (
                         <Badge
                           variant={statusBadgeVariant(link.docket_matters.status)}

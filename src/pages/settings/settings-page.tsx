@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ThemeSelect } from "@/components/theme/theme-select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { JudgmentLinksCard } from "@/pages/settings/judgment-links-card";
 import {
   BROWSE_VIEW_LABELS,
   TILE_SIZE_LABELS,
@@ -31,6 +32,7 @@ import { useTour } from "@/components/tour/use-tour";
 import { FeatureFlag } from "@/components/common/feature-flag";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import { DispatchCard } from "@/pages/settings/dispatch-card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Side index for the settings column. Anchors, not tabs: every card stays
@@ -230,7 +232,11 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {courtsPending ? (
-                      <p className="text-sm text-muted-foreground">Loading…</p>
+                      <div role="status" className="space-y-2">
+                        <span className="sr-only">Loading your courts…</span>
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-4 w-40" />
+                      </div>
                     ) : myCourts && myCourts.length > 0 ? (
                       <ul className="space-y-1.5 text-sm">
                         {myCourts.map((c) => (
@@ -274,6 +280,8 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {profile && profile.role !== "clerk" && <JudgmentLinksCard />}
             </SettingsSection>
           )}
 

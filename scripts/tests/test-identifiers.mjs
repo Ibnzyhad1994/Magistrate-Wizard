@@ -12,7 +12,8 @@
  *    and Billboard take it through their `identifier` prop, never
  *    `eyebrow`.
  *  - No element that renders only an identifier keeps wide tracking or an
- *    uppercase transform, and each one carries the utility.
+ *    uppercase transform, and each one carries the utility; a case number
+ *    written beside its title sits in its own identifier span.
  *
  *   npm run test:identifiers
  */
@@ -142,6 +143,23 @@ check("elements that render only an identifier use it and drop wide tracking", (
   }
   assert.ok(seen >= 8, `expected at least 8 identifier-only elements, found ${seen}`);
   assert.deepEqual(bad, [], bad.join("\n       "));
+});
+
+check("a case number written beside its title sits in its own identifier span", () => {
+  // `{x.case_number} · {x.matter_title}`: the number keeps the mono role
+  // even when the title beside it is set in Inter.
+  // (Not a template literal's `${x.case_number}`: that is a plain string.)
+  const re = /(?<!\$)\{[\w?.]+\.case_number\}\s*·/g;
+  const bad = files.flatMap(({ path, text }) =>
+    [...text.matchAll(re)]
+      .filter((m) => !/<span className="identifier">$/.test(text.slice(0, m.index)))
+      .map((m) => `${path}:${lineOf(text, m.index)}`),
+  );
+  assert.deepEqual(
+    bad,
+    [],
+    `wrap it in <span className="identifier">:\n       ${bad.join("\n       ")}`,
+  );
 });
 
 if (failures > 0) {

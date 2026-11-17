@@ -86,9 +86,7 @@ export default function ResetPasswordPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive-text">
             <AlertTriangle className="h-5 w-5" aria-hidden="true" />
           </div>
-          <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">
-            Link expired
-          </h1>
+          <h1 className="text-display text-foreground">Link expired</h1>
           <CardDescription className="text-foreground/70">
             This link has expired, was already used, or was opened outside the browser or app that
             asked for it. Request a new one.
@@ -109,9 +107,7 @@ export default function ResetPasswordPage() {
   return (
     <Card className={panelClassName}>
       <CardHeader className={headerClassName}>
-        <h1 className="text-3xl font-bold leading-none tracking-tight text-foreground">
-          Set a new password
-        </h1>
+        <h1 className="text-display text-foreground">Set a new password</h1>
         <CardDescription className="text-foreground/70">
           Choose a new password for your account.
         </CardDescription>

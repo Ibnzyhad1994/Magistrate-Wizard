@@ -53,7 +53,7 @@ export function BrowseHeader({
   return (
     <header
       className={cn(
-        "browse-bleed relative isolate -mt-[calc(6rem+env(safe-area-inset-top)+var(--offline-banner-h))] mb-8 overflow-hidden pb-8 pt-[calc(6rem+env(safe-area-inset-top)+var(--offline-banner-h))]",
+        "browse-bleed relative isolate -mt-[calc(6rem+env(safe-area-inset-top)+var(--offline-banner-h))] mb-6 overflow-hidden pb-6 pt-[calc(6rem+env(safe-area-inset-top)+var(--offline-banner-h))]",
         tone ? "tone-band" : "bg-gradient-to-b from-foreground/[0.05] to-transparent",
       )}
       style={tone ? ({ "--band": TONE_HSL_VAR[tone] } as CSSProperties) : undefined}

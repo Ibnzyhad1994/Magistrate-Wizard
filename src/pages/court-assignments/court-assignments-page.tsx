@@ -29,6 +29,10 @@ import {
 } from "@/lib/court-assignment-roster";
 import { OCCUPIED_COURT_EXCEPTION_LABEL } from "@/lib/occupied-court-exception";
 import { formatDate } from "@/lib/utils";
+import { Alert } from "@/components/ui/alert";
+import { RelinquishPreflightSummary } from "@/components/court-handover/relinquish-preflight";
+import { preflightRefused } from "@/lib/court-handover";
+import { useRelinquishPreflight } from "@/hooks/use-court-handover";
 
 const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {
   regular: "Primary",
@@ -71,6 +75,7 @@ export default function CourtAssignmentsPage() {
     null,
   );
   const [relinquishReason, setRelinquishReason] = useState("");
+  const relinquishPreflight = useRelinquishPreflight(relinquishTarget?.id ?? null);
 
   const pendingRequests = (requests ?? []).filter((r) => r.status === "pending");
   const decidedRequests = (requests ?? []).filter((r) => r.status !== "pending");
@@ -103,39 +108,34 @@ export default function CourtAssignmentsPage() {
       />
 
       {profile?.role === "magistrate" && !isPending && (assignments ?? []).length === 0 && (
-        <Card className="max-w-2xl border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.08)]">
-          <CardContent className="flex items-start gap-4 pt-6">
-            <ShieldAlert
-              className="mt-0.5 h-6 w-6 shrink-0 text-notice-action"
-              aria-hidden="true"
-            />
-            <div>
-              <p className="font-medium text-foreground">
-                {pendingRequests.length > 0
-                  ? "Access is limited until a court is approved."
-                  : latestReturned
-                    ? "Your court request was returned."
-                    : latestCancelled
-                      ? "You cancelled this request."
-                      : "Access is limited until a court is approved."}
+        <Alert variant="warning" role="note" className="max-w-2xl">
+          <ShieldAlert aria-hidden="true" />
+          <div>
+            <p className="font-medium text-foreground">
+              {pendingRequests.length > 0
+                ? "Access is limited until a court is approved."
+                : latestReturned
+                  ? "Your court request was returned."
+                  : latestCancelled
+                    ? "You cancelled this request."
+                    : "Access is limited until a court is approved."}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {pendingRequests.length > 0
+                ? "Your request is waiting for review. Once approved, you'll have full access to that court's docket."
+                : latestReturned
+                  ? COURT_REQUEST_RETURN_NEXT_STEP
+                  : latestCancelled
+                    ? "You cancelled this request. Request again when you are sure of the court."
+                    : "Request a court below to get started. You'll have access to the rest of the app once it's approved."}
+            </p>
+            {latestReturned?.rejection_reason && pendingRequests.length === 0 && (
+              <p className="mt-2 text-sm text-foreground">
+                Reason: {latestReturned.rejection_reason}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {pendingRequests.length > 0
-                  ? "Your request is waiting for review. Once approved, you'll have full access to that court's docket."
-                  : latestReturned
-                    ? COURT_REQUEST_RETURN_NEXT_STEP
-                    : latestCancelled
-                      ? "You cancelled this request. Request again when you are sure of the court."
-                      : "Request a court below to get started. You'll have access to the rest of the app once it's approved."}
-              </p>
-              {latestReturned?.rejection_reason && pendingRequests.length === 0 && (
-                <p className="mt-2 text-sm text-foreground">
-                  Reason: {latestReturned.rejection_reason}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+        </Alert>
       )}
 
       {isPending ? (
@@ -151,7 +151,7 @@ export default function CourtAssignmentsPage() {
       ) : (
         <div className="max-w-2xl space-y-3">
           {(assignments ?? []).map((a) => (
-            <Card key={a.id} className="border-border bg-foreground/5">
+            <Card key={a.id}>
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{a.courts?.name ?? "Unknown court"}</p>
@@ -189,7 +189,7 @@ export default function CourtAssignmentsPage() {
           </summary>
           <div className="space-y-2 border-t border-border p-3">
             {(endedAssignments ?? []).map((a) => (
-              <Card key={a.id} className="border-border bg-foreground/5">
+              <Card key={a.id}>
                 <CardContent className="py-3">
                   <p className="font-medium text-foreground">{a.courts?.name ?? "Unknown court"}</p>
                   <p className="text-xs text-muted-foreground">
@@ -211,7 +211,7 @@ export default function CourtAssignmentsPage() {
         <div className="max-w-2xl space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Pending requests</h2>
           {pendingRequests.map((r) => (
-            <Card key={r.id} className="border-border bg-foreground/5">
+            <Card key={r.id}>
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
@@ -248,7 +248,7 @@ export default function CourtAssignmentsPage() {
         <div className="max-w-2xl space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Request history</h2>
           {decidedRequests.map((r) => (
-            <Card key={r.id} className="border-border bg-foreground/5">
+            <Card key={r.id}>
               <CardContent className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="font-medium text-foreground">{r.courts?.name ?? "Unknown court"}</p>
@@ -274,7 +274,7 @@ export default function CourtAssignmentsPage() {
           </Button>
         )
       ) : (
-        <Card className="max-w-lg border-border bg-foreground/5">
+        <Card className="max-w-lg">
           <CardHeader>
             <CardTitle>Request a court assignment</CardTitle>
             <CardDescription>
@@ -368,32 +368,7 @@ export default function CourtAssignmentsPage() {
         title="Relinquish this court?"
         confirmLabel="Relinquish court"
         isConfirming={relinquish.isPending}
-        description={
-          relinquishTarget ? (
-            <div className="space-y-3">
-              <div className="text-sm">
-                <p className="font-medium text-foreground">{relinquishTarget.courts?.name}</p>
-                <p className="text-muted-foreground">
-                  {relinquishTarget.courts?.magisterial_districts?.name ??
-                    relinquishTarget.courts?.jurisdiction}{" "}
-                  · Since {formatDate(relinquishTarget.started_at)} ·{" "}
-                  {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ??
-                    relinquishTarget.assignment_type}
-                </p>
-              </div>
-              <p className="rounded-sm border-[hsl(var(--notice-action)/0.35)] bg-[hsl(var(--notice-action)/0.1)] px-3 py-2 text-xs text-notice-action">
-                You&apos;ll lose access to this court&apos;s docket. Its files and history stay with
-                the court for the next magistrate.
-              </p>
-              <Textarea
-                placeholder="Reason (optional)"
-                aria-label="Reason for relinquishing (optional)"
-                value={relinquishReason}
-                onChange={(e) => setRelinquishReason(e.target.value)}
-              />
-            </div>
-          ) : undefined
-        }
+        confirmDisabled={relinquishPreflight.isPending || preflightRefused(relinquishPreflight)}
         onConfirm={() => {
           if (!relinquishTarget) return;
           relinquish.mutate(
@@ -401,7 +376,33 @@ export default function CourtAssignmentsPage() {
             { onSuccess: () => setRelinquishTarget(null) },
           );
         }}
-      />
+      >
+        {relinquishTarget ? (
+          <div className="space-y-4">
+            <div className="text-sm">
+              <p className="font-medium text-foreground">{relinquishTarget.courts?.name}</p>
+              <p className="text-muted-foreground">
+                {relinquishTarget.courts?.magisterial_districts?.name ??
+                  relinquishTarget.courts?.jurisdiction}{" "}
+                · Since {formatDate(relinquishTarget.started_at)} ·{" "}
+                {ASSIGNMENT_TYPE_LABEL[relinquishTarget.assignment_type] ??
+                  relinquishTarget.assignment_type}
+              </p>
+            </div>
+            <RelinquishPreflightSummary preflight={relinquishPreflight} mode="self" />
+            <p className="rounded-md border border-l-2 border-border border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+              You&apos;ll lose access to this court&apos;s docket. Its files and history stay with
+              the court for the next magistrate.
+            </p>
+            <Textarea
+              placeholder="Reason (optional)"
+              aria-label="Reason for relinquishing (optional)"
+              value={relinquishReason}
+              onChange={(e) => setRelinquishReason(e.target.value)}
+            />
+          </div>
+        ) : null}
+      </AlertDialog>
     </BrowsePage>
   );
 }

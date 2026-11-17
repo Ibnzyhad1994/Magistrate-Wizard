@@ -49,7 +49,7 @@ export function ThemeMenuSub() {
             if (isTheme(value)) setTheme(value);
           }}
         >
-          <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <DropdownMenuLabel className="eyebrow text-muted-foreground">
             Appearance
           </DropdownMenuLabel>
           {APPEARANCE_THEMES.map((option) => (
@@ -59,7 +59,7 @@ export function ThemeMenuSub() {
             </DropdownMenuRadioItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <DropdownMenuLabel className="eyebrow text-muted-foreground">
             Accessible
           </DropdownMenuLabel>
           {ACCESSIBLE_THEMES.map((option) => (
